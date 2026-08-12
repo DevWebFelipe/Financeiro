@@ -1,0 +1,1558 @@
+# Arquitetura do Sistema — Financial Control
+
+## 1. Objetivo
+
+Este documento define a arquitetura técnica da aplicação Financial Control.
+
+A arquitetura deve priorizar:
+
+- simplicidade;
+- organização;
+- separação de responsabilidades;
+- testabilidade;
+- segurança;
+- manutenção;
+- evolução incremental;
+- aprendizado do desenvolvedor.
+
+
+# 2. Princípio principal
+
+A aplicação deve ser construída como um sistema profissional, porém sem complexidade desnecessária para a V1.
+
+
+# 3. Arquitetura geral
+
+O sistema será dividido em:
+
+- frontend;
+- backend;
+- banco de dados.
+
+
+Estrutura lógica:
+
+Frontend Angular
+        |
+        | HTTP/JSON
+        v
+Backend Spring Boot
+        |
+        | JDBC/JPA
+        v
+PostgreSQL
+
+
+# 4. Frontend
+
+Tecnologia principal:
+
+Angular
+
+
+# 5. Backend
+
+Tecnologia principal:
+
+Java
+
+
+Framework:
+
+Spring Boot
+
+
+# 6. Banco de dados
+
+Banco:
+
+PostgreSQL
+
+
+# 7. Containers
+
+Docker será utilizado para infraestrutura local.
+
+
+# 8. Docker
+
+A aplicação deve possuir:
+
+docker-compose.yml
+
+
+ou:
+
+compose.yaml
+
+
+para executar pelo menos:
+
+- PostgreSQL.
+
+
+Na V1 o backend e frontend podem ser executados diretamente durante o desenvolvimento.
+
+
+# 9. Infraestrutura
+
+O projeto deve permitir futuramente executar:
+
+Frontend
+
+Backend
+
+PostgreSQL
+
+
+todos via Docker.
+
+
+Não é obrigatório implementar isso completamente na primeira etapa.
+
+
+# 10. Java
+
+Utilizar uma versão LTS moderna do Java suportada pelo Spring Boot adotado no projeto.
+
+
+# 11. Spring Boot
+
+Utilizar versão estável atual compatível com a versão Java escolhida.
+
+
+# 12. Dependências
+
+As dependências devem ser adicionadas somente quando necessárias.
+
+
+Evitar bibliotecas desnecessárias.
+
+
+# 13. Backend
+
+O backend será uma API REST.
+
+
+# 14. API
+
+Formato:
+
+JSON
+
+
+# 15. REST
+
+Utilizar padrões REST consistentes.
+
+
+Exemplo:
+
+GET /api/v1/accounts
+
+POST /api/v1/accounts
+
+GET /api/v1/accounts/{id}
+
+PUT /api/v1/accounts/{id}
+
+DELETE /api/v1/accounts/{id}
+
+
+# 16. Versionamento
+
+A API deve utilizar:
+
+/api/v1
+
+
+# 17. Controller
+
+Controllers devem ser responsáveis por:
+
+- receber requisições;
+- validar entrada básica;
+- chamar serviços;
+- retornar respostas HTTP.
+
+
+# 18. Controller
+
+Controllers não devem conter:
+
+- regras financeiras;
+- cálculos complexos;
+- SQL;
+- lógica de negócio extensa.
+
+
+# 19. Service
+
+Services são responsáveis pelas regras de negócio.
+
+
+Exemplo:
+
+ExpenseService
+
+
+deve controlar regras relacionadas às despesas.
+
+
+# 20. Service
+
+Exemplos:
+
+AccountService
+
+CreditCardService
+
+ExpenseService
+
+IncomeService
+
+InvoiceService
+
+PaymentService
+
+TransferService
+
+GoalService
+
+
+# 21. Repository
+
+Repositories são responsáveis pelo acesso aos dados.
+
+
+# 22. Repository
+
+Repositories não devem conter regras financeiras.
+
+
+# 23. Entity
+
+Entities representam dados persistidos no banco.
+
+
+# 24. DTO
+
+A API não deve expor diretamente entidades JPA como contrato público.
+
+
+Utilizar DTOs.
+
+
+# 25. Request DTO
+
+Exemplo:
+
+CreateExpenseRequest
+
+
+# 26. Response DTO
+
+Exemplo:
+
+ExpenseResponse
+
+
+# 27. Mapper
+
+A conversão entre:
+
+Entity
+
+DTO
+
+
+deve ser organizada e previsível.
+
+
+# 28. Regra
+
+Não misturar:
+
+Entity
+
+DTO
+
+Request
+
+Response
+
+
+na mesma classe sem necessidade.
+
+
+# 29. Pacotes
+
+Estrutura recomendada:
+
+com.financialcontrol
+
+
+com.financialcontrol
+├── config
+├── controller
+├── dto
+├── entity
+├── repository
+├── service
+├── exception
+├── security
+└── mapper
+
+
+# 30. Organização futura
+
+Se o projeto crescer muito, poderá evoluir para organização por domínio.
+
+
+Exemplo:
+
+expense
+
+invoice
+
+account
+
+income
+
+
+A decisão deve ser tomada conforme o crescimento real.
+
+
+# 31. V1
+
+Não criar dezenas de módulos vazios apenas para "preparar o futuro".
+
+
+# 32. Banco
+
+PostgreSQL será o banco oficial.
+
+
+# 33. ORM
+
+Utilizar:
+
+Spring Data JPA
+
+
+com:
+
+Hibernate
+
+
+# 34. SQL
+
+SQL deve ser utilizado quando necessário.
+
+
+Não utilizar JPA para operações que claramente ficam melhores com SQL específico.
+
+
+# 35. Regra
+
+Não transformar consultas simples em SQL nativo sem necessidade.
+
+
+# 36. Migration
+
+O banco deve ser versionado através de migrations.
+
+
+# 37. Ferramenta
+
+Utilizar:
+
+Flyway
+
+
+# 38. Migration
+
+Nunca depender exclusivamente de:
+
+hibernate ddl-auto=create
+
+ou:
+
+hibernate ddl-auto=update
+
+
+para estruturar o banco.
+
+
+# 39. Produção
+
+O schema oficial deve ser criado através das migrations.
+
+
+# 40. Desenvolvimento
+
+O Hibernate pode validar o schema.
+
+
+Preferencialmente:
+
+ddl-auto=validate
+
+
+# 41. Migration inicial
+
+Deve criar as tabelas fundamentais da V1.
+
+
+# 42. Migration
+
+Cada alteração estrutural deve criar nova migration.
+
+
+Exemplo:
+
+V1__initial_schema.sql
+
+V2__add_credit_card.sql
+
+V3__add_goals.sql
+
+
+# 43. Banco
+
+Utilizar UUID como identificador principal.
+
+
+# 44. UUID
+
+IDs devem ser gerados no backend/banco de forma segura e consistente.
+
+
+# 45. Datas
+
+Utilizar tipos Java apropriados.
+
+
+Para datas sem horário:
+
+LocalDate
+
+
+Para data/hora:
+
+Instant
+
+
+ou outro tipo definido pela arquitetura.
+
+
+# 46. Dinheiro
+
+Nunca utilizar:
+
+double
+
+float
+
+
+para valores monetários.
+
+
+# 47. Dinheiro
+
+Utilizar:
+
+BigDecimal
+
+
+# 48. Precisão
+
+Valores monetários devem possuir duas casas decimais quando persistidos.
+
+
+# 49. Transações
+
+Operações financeiras devem utilizar:
+
+@Transactional
+
+
+quando houver múltiplas alterações dependentes.
+
+
+# 50. Exemplo
+
+Transferência:
+
+debitar conta origem;
+
+creditar conta destino;
+
+registrar transferência.
+
+
+Tudo deve ocorrer na mesma transação.
+
+
+# 51. Rollback
+
+Se qualquer etapa crítica falhar:
+
+toda a operação deve ser revertida.
+
+
+# 52. Concorrência
+
+Operações financeiras devem considerar concorrência.
+
+
+# 53. Pagamentos
+
+O sistema deve impedir:
+
+dois pagamentos simultâneos;
+
+ultrapassagem do valor devido.
+
+
+# 54. Segurança
+
+A aplicação deve possuir autenticação.
+
+
+# 55. V1
+
+Utilizar:
+
+Spring Security
+
+
+# 56. Autenticação
+
+A estratégia pode utilizar:
+
+JWT
+
+
+# 57. JWT
+
+O token deve identificar:
+
+userId
+
+
+# 58. Autorização
+
+Toda operação financeira deve validar o usuário autenticado.
+
+
+# 59. Regra crítica
+
+Nunca confiar em:
+
+userId
+
+
+enviado pelo frontend.
+
+
+# 60. User ID
+
+O backend deve obter o usuário a partir do contexto de segurança.
+
+
+# 61. Isolamento
+
+Toda consulta deve aplicar filtro de usuário quando necessário.
+
+
+# 62. Exemplo
+
+Errado:
+
+findById(expenseId)
+
+
+Correto conceitualmente:
+
+findByIdAndUserId(expenseId, authenticatedUserId)
+
+
+# 63. Regra
+
+Não permitir IDOR.
+
+
+# 64. Validação
+
+Utilizar:
+
+Jakarta Bean Validation
+
+
+# 65. Exemplos
+
+@NotNull
+
+@NotBlank
+
+@Positive
+
+@Size
+
+@Email
+
+
+# 66. Validação
+
+Validar no backend mesmo que o frontend já valide.
+
+
+# 67. Erros
+
+A API deve possuir formato padronizado de erro.
+
+
+# 68. Exemplo
+
+HTTP 400
+
+
+{
+  "code": "VALIDATION_ERROR",
+  "message": "Dados inválidos",
+  "details": []
+}
+
+
+# 69. Erro de autenticação
+
+HTTP:
+
+401
+
+
+# 70. Erro de autorização
+
+HTTP:
+
+403
+
+
+# 71. Recurso inexistente
+
+HTTP:
+
+404
+
+
+# 72. Regra de negócio
+
+HTTP:
+
+422
+
+
+quando apropriado.
+
+
+# 73. Conflito
+
+HTTP:
+
+409
+
+
+quando houver conflito de estado.
+
+
+# 74. Erro inesperado
+
+HTTP:
+
+500
+
+
+Não expor stack trace ao cliente.
+
+
+# 75. Logging
+
+Utilizar logging estruturado e adequado.
+
+
+# 76. Logs
+
+Não registrar:
+
+- senha;
+- token;
+- dados sensíveis;
+- informações financeiras desnecessárias.
+
+
+# 77. Swagger
+
+A API deve possuir documentação OpenAPI.
+
+
+# 78. Ferramenta
+
+Utilizar:
+
+springdoc-openapi
+
+
+# 79. Swagger
+
+A documentação deve permitir:
+
+- visualizar endpoints;
+- visualizar DTOs;
+- visualizar respostas;
+- testar endpoints autenticados quando possível.
+
+
+# 80. Frontend
+
+Angular deve consumir somente a API.
+
+
+# 81. Regra
+
+Angular não deve acessar PostgreSQL diretamente.
+
+
+# 82. Regra
+
+Nenhuma regra financeira crítica deve existir exclusivamente no Angular.
+
+
+# 83. Angular
+
+Utilizar uma versão moderna e estável do Angular.
+
+
+# 84. Angular
+
+Preferir:
+
+Standalone Components
+
+
+# 85. Angular
+
+Utilizar:
+
+TypeScript
+
+
+# 86. Angular
+
+Utilizar:
+
+Reactive Forms
+
+
+quando houver formulários complexos.
+
+
+# 87. Angular
+
+Utilizar:
+
+HttpClient
+
+
+para comunicação com backend.
+
+
+# 88. Angular
+
+Centralizar comunicação com API em:
+
+services
+
+
+# 89. Exemplo
+
+account.service.ts
+
+
+expense.service.ts
+
+
+invoice.service.ts
+
+
+# 90. Angular
+
+Componentes devem evitar chamadas HTTP diretamente quando isso puder ser encapsulado em services.
+
+
+# 91. Estado
+
+A V1 não precisa utilizar uma biblioteca global complexa de estado.
+
+
+# 92. Estado
+
+Preferir inicialmente:
+
+signals;
+
+services;
+
+
+e recursos nativos do Angular.
+
+
+# 93. Regra
+
+Não instalar NgRx apenas por antecipação.
+
+
+# 94. Formulários
+
+Formulários devem possuir:
+
+- validação;
+- mensagens de erro;
+- estados de loading;
+- tratamento de erro.
+
+
+# 95. UI
+
+A interface deve priorizar:
+
+- clareza;
+- usabilidade;
+- responsividade;
+- simplicidade.
+
+
+# 96. Design
+
+Não é necessário criar um design extremamente sofisticado na V1.
+
+
+# 97. Dashboard
+
+Dashboard deve apresentar:
+
+- cards;
+- gráficos;
+- tabelas;
+- indicadores.
+
+
+# 98. Gráficos
+
+A biblioteca de gráficos deve ser escolhida por:
+
+- compatibilidade com Angular;
+- simplicidade;
+- manutenção;
+- licença adequada.
+
+
+# 99. Regra
+
+Não criar gráficos manualmente com SVG complexo sem necessidade.
+
+
+# 100. Datas
+
+Frontend não deve recalcular regras financeiras de fechamento de cartão.
+
+
+# 101. Backend
+
+Backend deve ser responsável pelos cálculos financeiros.
+
+
+# 102. Frontend
+
+Frontend deve apresentar o resultado recebido da API.
+
+
+# 103. API
+
+Responses devem ser consistentes.
+
+
+# 104. Paginação
+
+Listagens grandes devem suportar paginação.
+
+
+# 105. Ordenação
+
+Quando necessário, API deve permitir:
+
+sort;
+
+
+# 106. Filtros
+
+Listagens devem permitir filtros relevantes.
+
+
+Exemplo:
+
+GET /api/v1/expenses?from=2026-08-01&to=2026-08-31
+
+
+# 107. Busca
+
+Busca textual deve ser implementada quando realmente necessária.
+
+
+# 108. Banco
+
+Criar índices para consultas importantes.
+
+
+# 109. Índices
+
+Priorizar índices em:
+
+user_id;
+
+due_date;
+
+status;
+
+credit_card_id;
+
+account_id;
+
+category_id;
+
+
+quando aplicável.
+
+
+# 110. Performance
+
+Não otimizar prematuramente.
+
+
+# 111. Performance
+
+Primeiro:
+
+correção.
+
+
+Depois:
+
+clareza.
+
+
+Depois:
+
+performance.
+
+
+# 112. Testes
+
+Testes automatizados são obrigatórios.
+
+
+# 113. Backend
+
+Utilizar:
+
+JUnit
+
+
+# 114. Backend
+
+Utilizar:
+
+Mockito
+
+
+quando mocks forem realmente necessários.
+
+
+# 115. Backend
+
+Utilizar:
+
+Spring Boot Test
+
+
+# 116. Testes unitários
+
+Devem testar regras de negócio isoladamente.
+
+
+# 117. Exemplo
+
+ParcelamentoServiceTest
+
+
+deve testar:
+
+R$ 100
+
+3 parcelas
+
+
+resultado:
+
+33,34
+
+33,33
+
+33,33
+
+
+# 118. Testes de integração
+
+Devem testar:
+
+Controller
+
+Service
+
+Repository
+
+
+quando necessário.
+
+
+# 119. Banco em testes
+
+Preferir banco real em container para testes de integração.
+
+
+# 120. Testcontainers
+
+Utilizar:
+
+Testcontainers
+
+
+para testes que dependam do PostgreSQL.
+
+
+# 121. Regra
+
+Não substituir todos os testes de PostgreSQL por banco H2 apenas por facilidade.
+
+
+# 122. Frontend
+
+Utilizar ferramenta de testes recomendada pela versão do Angular adotada.
+
+
+# 123. Testes frontend
+
+Priorizar:
+
+services;
+
+componentes críticos;
+
+formulários;
+
+fluxos financeiros importantes.
+
+
+# 124. Testes E2E
+
+Não são obrigatórios para toda a aplicação na V1.
+
+
+Podem ser adicionados posteriormente.
+
+
+# 125. Cobertura
+
+Não buscar uma porcentagem artificial de cobertura.
+
+
+# 126. Prioridade
+
+Testar principalmente:
+
+regras financeiras.
+
+
+# 127. Docker
+
+PostgreSQL deve ser executado via Docker.
+
+
+# 128. PostgreSQL
+
+Configuração local deve possuir:
+
+database;
+
+user;
+
+password;
+
+port;
+
+
+# 129. Segurança
+
+Credenciais não devem ser commitadas.
+
+
+# 130. Environment
+
+Utilizar:
+
+.env
+
+
+quando apropriado.
+
+
+# 131. Git
+
+Não versionar:
+
+.env
+
+
+# 132. Git
+
+Não versionar:
+
+logs;
+
+builds;
+
+node_modules;
+
+target;
+
+arquivos temporários.
+
+
+# 133. Cursor
+
+O Cursor será utilizado para desenvolvimento assistido por IA.
+
+
+# 134. GitHub
+
+O GitHub pessoal não será conectado ao Cursor.
+
+
+# 135. Git
+
+Commits serão realizados pelo VSCode.
+
+
+# 136. Regra
+
+O Cursor não deve tentar:
+
+configurar;
+
+alterar;
+
+ou utilizar credenciais do GitHub.
+
+
+# 137. Git
+
+O projeto deve continuar funcionando normalmente independentemente da IDE utilizada.
+
+
+# 138. IDE
+
+Não criar configurações obrigatórias específicas do Cursor.
+
+
+# 139. Documentação
+
+Toda decisão arquitetural importante deve ser documentada.
+
+
+# 140. ADR
+
+Quando houver uma decisão técnica relevante e difícil de reverter:
+
+criar um ADR.
+
+
+# 141. Exemplo
+
+docs/adr/001-escolha-do-banco.md
+
+
+# 142. IA
+
+A IA deve consultar:
+
+AGENTS.md
+
+e
+
+documentação em docs/
+
+
+antes de implementar funcionalidades relevantes.
+
+
+# 143. IA
+
+A IA não deve modificar arquitetura sem justificar a alteração.
+
+
+# 144. IA
+
+Antes de adicionar uma nova dependência:
+
+verificar se a funcionalidade pode ser resolvida com recursos existentes.
+
+
+# 145. IA
+
+Não instalar bibliotecas apenas porque são populares.
+
+
+# 146. IA
+
+Toda dependência deve ter justificativa.
+
+
+# 147. Arquitetura
+
+Não utilizar microserviços.
+
+
+# 148. Arquitetura
+
+A V1 será um:
+
+monólito modular.
+
+
+# 149. Monólito
+
+Backend:
+
+uma aplicação Spring Boot.
+
+
+# 150. Banco
+
+Um PostgreSQL.
+
+
+# 151. Frontend
+
+Uma aplicação Angular.
+
+
+# 152. Comunicação
+
+HTTP/REST.
+
+
+# 153. Futuro
+
+A arquitetura deve permitir crescimento sem obrigar a adoção imediata de microserviços.
+
+
+# 154. Regra
+
+Não criar:
+
+Kafka;
+
+RabbitMQ;
+
+Redis;
+
+Kubernetes;
+
+
+na V1.
+
+
+# 155. Cache
+
+Não implementar cache antes de existir necessidade real.
+
+
+# 156. Mensageria
+
+Não implementar mensageria na V1.
+
+
+# 157. Observabilidade
+
+Logging básico é obrigatório.
+
+
+Monitoramento avançado pode ficar para o futuro.
+
+
+# 158. CI/CD
+
+Não é necessário implementar pipeline completo na V1.
+
+
+# 159. Deploy
+
+V1:
+
+execução local.
+
+
+# 160. Configuração
+
+Separar:
+
+development;
+
+test;
+
+futuramente production.
+
+
+# 161. Profiles
+
+Spring Profiles podem ser utilizados.
+
+
+Exemplo:
+
+application.yml
+
+application-test.yml
+
+
+# 162. Configuração
+
+Nunca hardcodar:
+
+senha do banco;
+
+JWT secret;
+
+credenciais externas.
+
+
+# 163. API
+
+Endpoints devem possuir nomes consistentes.
+
+
+# 164. REST
+
+Utilizar substantivos no plural.
+
+
+Exemplo:
+
+/accounts
+
+/expenses
+
+/incomes
+
+/cards
+
+/invoices
+
+
+# 165. Regra
+
+Evitar endpoints excessivamente verbosos.
+
+
+# 166. Operações especiais
+
+Operações financeiras específicas podem utilizar endpoints orientados à ação quando fizer sentido.
+
+
+Exemplo:
+
+POST /invoices/{id}/payments
+
+
+# 167. Pagamento
+
+Pagamento deve ser tratado como operação financeira própria.
+
+
+# 168. Estorno
+
+Estorno deve ser tratado como operação própria.
+
+
+# 169. Transferência
+
+Transferência deve ser tratada como operação própria.
+
+
+# 170. Parcelamento
+
+Criação de parcelamento deve ser uma operação de negócio.
+
+
+# 171. Regra
+
+Não permitir que o frontend monte manualmente dezenas de requisições para criar parcelas.
+
+
+# 172. Backend
+
+O backend deve receber:
+
+valor;
+
+quantidade de parcelas;
+
+data;
+
+cartão;
+
+
+e gerar as parcelas.
+
+
+# 173. Banco
+
+Operação deve ser transacional.
+
+
+# 174. API
+
+Criar endpoints de domínio claros.
+
+
+# 175. Exemplo
+
+POST /expenses
+
+
+pode criar uma despesa parcelada.
+
+
+# 176. Resultado
+
+Backend retorna:
+
+despesa;
+
+parcelas;
+
+
+# 177. Regra
+
+A API deve evitar múltiplas fontes de verdade.
+
+
+# 178. Fonte de verdade
+
+Banco de dados é fonte de verdade dos dados persistidos.
+
+
+# 179. Fonte de verdade
+
+Backend é fonte de verdade das regras.
+
+
+# 180. Fonte de verdade
+
+Frontend é responsável pela apresentação e interação.
+
+
+# 181. Arquitetura final da V1
+
+Frontend:
+
+Angular
+
+
+Backend:
+
+Java + Spring Boot
+
+
+Persistência:
+
+Spring Data JPA
+
+
+ORM:
+
+Hibernate
+
+
+Banco:
+
+PostgreSQL
+
+
+Migration:
+
+Flyway
+
+
+Segurança:
+
+Spring Security + JWT
+
+
+Documentação:
+
+OpenAPI + Swagger
+
+
+Testes:
+
+JUnit + Mockito + Spring Boot Test + Testcontainers
+
+
+Infraestrutura:
+
+Docker
+
+
+# 182. Princípio final
+
+A arquitetura deve ser suficientemente profissional para servir como base de aprendizado e evolução, mas suficientemente simples para que um desenvolvedor consiga entender todo o sistema.
+
+
+# 183. Regra final
+
+Se uma decisão técnica aumentar significativamente a complexidade sem benefício claro para a V1:
+
+não implementar.
+
+
+# 184. Regra final
+
+Primeiro construir:
+
+uma base correta.
+
+
+Depois:
+
+uma base testada.
+
+
+Depois:
+
+uma base fácil de evoluir.
+
+
+Somente então:
+
+adicionar funcionalidades.

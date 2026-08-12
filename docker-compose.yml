@@ -1,0 +1,43 @@
+services:
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: financial-control-postgres
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-financial_control}
+      POSTGRES_USER: ${POSTGRES_USER:-financial_control}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-financial_control_dev}
+
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-financial_control} -d ${POSTGRES_DB:-financial_control}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - financial-control-network
+
+
+volumes:
+
+  postgres_data:
+
+
+networks:
+
+  financial-control-network:
+    driver: bridge
