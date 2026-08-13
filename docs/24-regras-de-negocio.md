@@ -1,5 +1,12 @@
 # Regras de Negócio — Financial Control
 
+## 0. Hierarquia
+
+`AGENTS.md` → `docs/20–28` → `README.md`
+
+Este é o documento canônico das regras financeiras detalhadas.
+
+
 ## 1. Objetivo
 
 Este documento define as regras de negócio da aplicação Financial Control.
@@ -86,7 +93,9 @@ saídas.
 
 ## RN012 — Saldo negativo
 
-A V1 não permite que uma transferência deixe a conta de origem com saldo negativo.
+A V1 não permite que operações financeiras normais deixem a conta com saldo negativo.
+
+Inclui: transferências, pagamento de despesas e pagamento de fatura (limitado ao saldo da conta).
 
 
 ## RN013 — Pagamento
@@ -176,6 +185,25 @@ Uma compra no cartão não reduz imediatamente o saldo bancário.
 ## RN029 — Comprometimento
 
 Uma compra no cartão aumenta o comprometimento do cartão.
+
+
+## RN029A — Limite disponível
+
+Uma compra não pode ultrapassar o limite disponível do cartão.
+
+Exemplo:
+
+Limite: R$ 5.000,00
+
+Comprometido: R$ 4.500,00
+
+Disponível: R$ 500,00
+
+Compra: R$ 600,00
+
+Resultado: compra recusada.
+
+Esta regra deve ser validada no backend.
 
 
 ## RN030 — Estorno
@@ -389,11 +417,18 @@ Uma despesa não deve possuir simultaneamente conta e cartão como forma princip
 OPEN representa obrigação ainda não quitada.
 
 
-## RN055 — Despesa vencida
+## RN055 — Despesa vencida (derivada)
 
-Uma despesa OPEN cuja data de vencimento passou deve ser considerada:
+OVERDUE NÃO deve ser armazenado como status principal.
 
-OVERDUE
+Uma despesa é considerada vencida quando:
+
+- status é OPEN ou PARTIALLY_PAID; e
+- dueDate < data atual (timezone da aplicação).
+
+A interface poderá apresentar "VENCIDA" sem alterar o status persistido.
+
+Status oficiais persistidos: OPEN, PARTIALLY_PAID, PAID, CANCELLED, REFUNDED.
 
 
 ## RN056 — Pagamento parcial
@@ -521,6 +556,13 @@ Pagamento deve ser maior que zero.
 A soma dos pagamentos não pode ultrapassar o valor devido.
 
 
+## RN076A — Saldo da conta
+
+Pagamento de despesa não pode exceder o saldo disponível da conta utilizada.
+
+Não permitir saldo negativo.
+
+
 ## RN077 — Pagamento parcial
 
 Uma despesa pode possuir múltiplos pagamentos.
@@ -604,11 +646,13 @@ OPEN permite novas compras pertencentes ao ciclo.
 CLOSED não deve receber novas compras do ciclo fechado.
 
 
-## RN089 — Fatura vencida
+## RN089 — Fatura vencida (derivada)
 
-Fatura não paga após vencimento deve ser considerada:
+OVERDUE NÃO é status persistido da fatura.
 
-OVERDUE
+Status persistidos: OPEN, CLOSED, PARTIALLY_PAID, PAID.
+
+Fatura não quitada após o vencimento pode ser apresentada como vencida na UI (derivado de dueDate e status ≠ PAID).
 
 
 ## RN090 — Fatura parcialmente paga
@@ -634,22 +678,32 @@ A data de fechamento determina o ciclo da compra.
 
 ## RN093 — Compra antes do fechamento
 
-Compra realizada antes do fechamento deve pertencer ao ciclo atual.
+Compra realizada **antes** do dia de fechamento deve pertencer ao ciclo atual.
+
+O dia do fechamento não faz parte deste caso (ver RN095).
 
 
 ## RN094 — Compra após fechamento
 
-Compra realizada após o fechamento deve pertencer ao próximo ciclo.
+Compra realizada após o dia de fechamento deve pertencer ao próximo ciclo.
 
 
 ## RN095 — Dia do fechamento
 
-A regra para compras realizadas exatamente no dia do fechamento deve ser determinística e documentada na implementação.
+Compra realizada exatamente no dia do fechamento pertence à **próxima fatura**.
+
+Exemplo:
+
+Fechamento: dia 10
+
+Compra: 10/08
+
+Resultado: a compra entra no próximo ciclo (não no que fecha em 10/08).
 
 
 ## RN096 — Horário
 
-O sistema deve utilizar timezone definido pela aplicação para evitar inconsistências.
+O sistema deve utilizar timezone definido pela aplicação (`America/Sao_Paulo`) para evitar inconsistências.
 
 
 # 14. Vencimento de cartão
@@ -661,17 +715,20 @@ O cartão possui dia configurado para vencimento.
 
 ## RN098 — Mês sem o dia
 
-Se o mês não possuir o dia configurado, a aplicação deve utilizar regra consistente previamente definida.
-
+Se o mês não possuir o dia configurado, utilizar o **último dia daquele mês**.
 
 Exemplo:
 
-dia 31 em mês com 30 dias.
+Dia configurado: 31
+
+Fevereiro (não bissexto): 28/02
+
+Abril: 30/04
 
 
 ## RN099 — Regra
 
-A regra deve ser coberta por testes automatizados.
+RN095 e RN098 devem ser cobertas por testes automatizados.
 
 
 # 15. Pagamento de fatura
@@ -733,6 +790,23 @@ R$ 800
 ## RN105 — Conta
 
 Pagamento de fatura deve indicar a conta utilizada.
+
+
+## RN105A — Saldo da conta no pagamento de fatura
+
+Pagamento parcial é permitido.
+
+O valor pago não pode exceder o saldo disponível da conta utilizada.
+
+Exemplo:
+
+Saldo da conta: R$ 500,00
+
+Fatura: R$ 1.000,00
+
+Pagamento: R$ 500,00
+
+Resultado: saldo da conta R$ 0,00; fatura com R$ 500,00 restantes.
 
 
 ## RN106 — Atomicidade

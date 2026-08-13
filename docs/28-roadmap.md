@@ -1,5 +1,12 @@
 # Roadmap — Financial Control
 
+## 0. Hierarquia
+
+`AGENTS.md` → `docs/20–28` → `README.md`
+
+A IA não deve implementar fases futuras sem autorização explícita.
+
+
 ## 1. Objetivo
 
 Este documento define a ordem de desenvolvimento do Financial Control.
@@ -53,12 +60,14 @@ Documentos:
 
 AGENTS.md
 
-docs/01-*.md até docs/28-roadmap.md
+docs/20-fluxos-financeiros.md até docs/28-roadmap.md
+
+README.md
 
 
 Resultado esperado:
 
-Base documental do projeto.
+Base documental do projeto consolidada (hierarquia AGENTS → docs/20–28 → README).
 
 
 # 6. Fase 1 — Estrutura inicial
@@ -464,9 +473,9 @@ Implementar:
 
 # 44. Estados
 
-OPEN
+Status persistidos:
 
-OVERDUE
+OPEN
 
 PARTIALLY_PAID
 
@@ -475,6 +484,9 @@ PAID
 CANCELLED
 
 REFUNDED
+
+
+OVERDUE: derivado (não persistido).
 
 
 # 45. Testes
@@ -605,9 +617,10 @@ Parcelas devem ser associadas às respectivas faturas.
 
 Testar:
 
-- compra antes do fechamento;
-- compra depois do fechamento;
-- compra no dia do fechamento;
+- compra antes do fechamento (ciclo atual);
+- compra depois do fechamento (próximo ciclo);
+- compra no dia do fechamento (próxima fatura — RN095);
+- dia 31 em mês curto (último dia do mês — RN098);
 - compra parcelada.
 
 
@@ -633,19 +646,18 @@ Implementar:
 
 # 64. Fase 11
 
-Estados:
+Status persistidos:
 
 OPEN
 
 CLOSED
 
-OVERDUE
-
 PARTIALLY_PAID
 
 PAID
 
-CANCELLED
+
+OVERDUE: derivado da data de vencimento (não persistido).
 
 
 # 65. Fase 11

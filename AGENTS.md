@@ -10,7 +10,51 @@ O projeto também possui finalidade educacional. As decisões técnicas devem se
 
 ---
 
-## 2. Regra principal de desenvolvimento
+## 2. Hierarquia da documentação
+
+A documentação do projeto segue esta hierarquia:
+
+```text
+AGENTS.md
+    ↓
+documentação ativa em docs/20–28
+    ↓
+README.md
+```
+
+Significado:
+
+- `AGENTS.md` — regras que a IA deve seguir durante o desenvolvimento;
+- `docs/20`–`docs/28` — especificação detalhada (arquitetura, stack, modelo, regras, API, segurança, testes, roadmap);
+- `README.md` — visão geral do projeto.
+
+Em caso de conflito:
+
+1. identificar o conflito;
+2. corrigir a documentação conflitante;
+3. deixar todos os documentos consistentes.
+
+Não manter duas decisões diferentes sobre a mesma questão.
+
+Documentação ativa:
+
+- `docs/20-fluxos-financeiros.md`
+- `docs/21-arquitetura-do-sistema.md`
+- `docs/22-stack-tecnologica.md`
+- `docs/23-modelo-de-dados.md`
+- `docs/24-regras-de-negocio.md`
+- `docs/25-api.md`
+- `docs/26-seguranca.md`
+- `docs/27-testes.md`
+- `docs/28-roadmap.md`
+
+Se existirem arquivos `docs/01`–`docs/19` no repositório, considerá-los **obsoletos/históricos**. A IA NÃO deve usá-los como fonte de verdade.
+
+**DECISÃO PENDENTE DO DESENVOLVEDOR:** remover fisicamente `docs/01`–`docs/19` do repositório (ainda presentes no disco na consolidação; esta etapa não pôde alterá-los por restrição de escopo).
+
+---
+
+## 3. Regra principal de desenvolvimento
 
 O projeto DEVE ser desenvolvido por etapas.
 
@@ -33,69 +77,125 @@ Se uma decisão importante de negócio não estiver definida, a IA deve parar e 
 
 ---
 
-## 3. Stack tecnológica
+## 4. Stack tecnológica oficial
 
 ### Backend
 
-- Java 25
-- Spring Boot
+- Java 25 LTS
+- Spring Boot 4.1.x
+- Maven
 - Spring Web
 - Spring Data JPA
 - Hibernate
 - Spring Security
-- JWT
-- Bean Validation
+- JWT (Access Token + Refresh Token)
+- Argon2id (hash de senhas)
+- Jakarta Bean Validation
 - Flyway
-- PostgreSQL
-- OpenAPI / Swagger
-- JUnit
+- springdoc-openapi
+- JUnit 5
 - Mockito
+- AssertJ
 - Testcontainers
+- OpenPDF
 
 ### Frontend
 
-- Angular
-- TypeScript
+- Angular 22.x
+- TypeScript strict
 - Standalone Components
-- Angular Router
-- HttpClient
-- Reactive Forms
 - Signals
+- Services
+- Reactive Forms
+- Angular HttpClient
+- HTTP Interceptors
+- Route Guards
+- Angular Material
+- Material Icons
+- Apache ECharts
+- ESLint
+- Prettier
+- npm
+
+### Banco
+
+- PostgreSQL 18
+- UUID
+- NUMERIC(19,2) / BigDecimal
+- TIMESTAMPTZ para timestamps
+- LocalDate para datas financeiras
+- timezone America/Sao_Paulo
+- Flyway
 
 ### Infraestrutura
 
 - Docker
 - Docker Compose
-- Git
-- GitHub
+- PostgreSQL em container no desenvolvimento
+- backend/frontend podem executar fora do Docker inicialmente
+- Dockerização completa da aplicação poderá ser feita posteriormente
+
+### Convenções
+
+- Pacote Java: `br.com.financialcontrol`
+- API: `/api/v1`
+- Moeda V1: BRL
+- Nunca usar float ou double para valores financeiros
+
+Detalhes: `docs/22-stack-tecnologica.md`.
 
 ---
 
-## 4. Banco de dados
+## 5. Tecnologias excluídas da V1
 
-O banco de dados oficial do projeto é PostgreSQL.
+Não introduzir na V1 sem decisão futura explícita:
+
+- Redis
+- Kafka
+- RabbitMQ
+- Kubernetes
+- microsserviços
+- GraphQL
+- NgRx
+- Zod
+- Tailwind
+- Bootstrap
+- H2
+- SQLite
+- CI/CD obrigatório
+- integração bancária
+- investimentos
+- importação automática de extratos
+- notificações
+- PWA
+- dark mode
+
+---
+
+## 6. Banco de dados
+
+O banco oficial é PostgreSQL 18.
 
 Regras:
 
-- utilizar UUID como identificador das entidades;
-- utilizar NUMERIC para valores monetários;
-- utilizar BigDecimal no Java para valores monetários;
-- utilizar Foreign Keys;
-- utilizar constraints;
-- criar índices quando necessários;
-- utilizar Flyway para migrations;
-- nunca alterar uma migration que já tenha sido executada;
-- alterações posteriores devem ser feitas através de novas migrations.
+- UUID como identificador das entidades;
+- NUMERIC(19,2) para valores monetários;
+- BigDecimal no Java;
+- Foreign Keys e constraints;
+- índices quando necessários;
+- Flyway para migrations;
+- Hibernate `ddl-auto=validate`;
+- nunca alterar uma migration já executada;
+- alterações posteriores via novas migrations;
+- fonte de verdade do saldo: movimentações financeiras (não um `current_balance` independente).
 
 ---
 
-## 5. Arquitetura
+## 7. Arquitetura
 
-O sistema será desenvolvido como uma aplicação monolítica modular.
+Aplicação monolítica modular. Não criar microsserviços na V1.
 
-Não criar microsserviços na V1.
-
-O backend deverá possuir separação clara entre:
+Backend:
 
 - Controller;
 - DTO;
@@ -104,531 +204,280 @@ O backend deverá possuir separação clara entre:
 - Repository;
 - Entity.
 
+Organização inicial deve facilitar separação por domínio. Estrutura definitiva na Fase 1.
+
 O backend é a autoridade final sobre as regras de negócio.
 
-O frontend pode realizar validações para melhorar a experiência do usuário, mas nenhuma regra importante de segurança ou negócio deve depender exclusivamente do frontend.
+Frontend: validações para UX; nenhuma regra crítica só no frontend.
 
-Entidades JPA não devem ser expostas diretamente pela API.
+Não expor entidades JPA na API. Usar DTOs.
 
-Utilizar DTOs na comunicação entre backend e frontend.
-
----
-
-## 6. Multiusuário
-
-O sistema será multiusuário.
-
-Todo dado financeiro deve pertencer direta ou indiretamente a um usuário.
-
-Um usuário nunca poderá acessar ou alterar dados pertencentes a outro usuário.
-
-O backend deve garantir o isolamento dos dados.
-
-Nunca confiar em um idUsuario enviado pelo frontend para determinar o proprietário de uma operação.
-
-O usuário autenticado deve ser obtido através do contexto de segurança.
+Frontend organizado por features (`core`, `shared`, `features/*`).
 
 ---
 
-## 7. Segurança
+## 8. Multiusuário e isolamento (regra fundamental de segurança)
 
-Senhas nunca devem ser armazenadas em texto puro.
+O sistema é multiusuário.
 
-Utilizar mecanismo seguro de hash de senha.
+Todo dado financeiro deve estar relacionado ao usuário (`userId` / IdUsuario).
 
-A autenticação da API deverá utilizar JWT.
+O backend deve obter o usuário autenticado a partir do contexto de segurança.
 
-Segredos e credenciais não podem ser armazenados no código-fonte.
+Nunca confiar em um `userId` enviado pelo frontend para determinar o proprietário.
 
-Utilizar variáveis de ambiente para informações sensíveis.
-
-Arquivos contendo credenciais, tokens, senhas ou chaves privadas nunca devem ser versionados.
+Um usuário nunca pode consultar, alterar ou excluir dados pertencentes a outro usuário.
 
 ---
 
-## 8. Valores monetários
+## 9. Segurança
 
-Valores financeiros devem utilizar precisão decimal.
+- Senhas nunca em texto puro; hash com **Argon2id**.
+- Autenticação: Spring Security + JWT.
+- Access Token + Refresh Token (fluxo detalhado na implementação da autenticação; arquitetura deve estar preparada).
+- Segredos apenas em variáveis de ambiente; nunca versionar credenciais.
 
-No Java utilizar BigDecimal.
-
-No PostgreSQL utilizar NUMERIC.
-
-Não utilizar float ou double para representar valores financeiros.
-
-Arredondamentos financeiros devem ser definidos explicitamente conforme a regra de negócio.
+Detalhes: `docs/26-seguranca.md`.
 
 ---
 
-## 9. Regras financeiras fundamentais
+## 10. Valores monetários
 
-As seguintes regras são obrigatórias:
-
-### 9.1 Receita prevista
-
-Uma receita prevista não altera o saldo real da conta.
-
-Ela participa das projeções futuras.
-
-### 9.2 Receita recebida
-
-Uma receita recebida gera uma entrada financeira.
-
-### 9.3 Despesa pendente
-
-Uma despesa pendente não gera saída financeira.
-
-Ela deve aparecer nas contas a pagar e participar das projeções.
-
-### 9.4 Despesa paga
-
-Uma despesa paga gera uma saída financeira.
-
-### 9.5 Compra no cartão
-
-Uma compra no cartão representa um compromisso com a fatura.
-
-Ela não deve reduzir imediatamente o saldo bancário.
-
-### 9.6 Pagamento da fatura
-
-O pagamento da fatura gera a saída financeira na conta escolhida.
-
-### 9.7 Transferência
-
-Uma transferência entre contas:
-
-- reduz a conta origem;
-- aumenta a conta destino;
-- não é receita;
-- não é despesa.
-
-### 9.8 Estorno
-
-Um estorno não deve apagar o registro original.
-
-O histórico da operação deve permanecer.
-
-### 9.9 Cancelamento
-
-Um cancelamento não deve apagar fisicamente o registro.
-
-O registro deve permanecer disponível para histórico e auditoria básica.
+- Java: `BigDecimal`
+- PostgreSQL: `NUMERIC(19,2)`
+- Nunca float/double
+- Arredondamentos financeiros explícitos e determinísticos
 
 ---
 
-## 10. Responsáveis pelas despesas
+## 11. Regras financeiras fundamentais
 
-Na V1, despesas poderão possuir um responsável.
+### 11.1 Receitas
 
-Os responsáveis são:
+- `EXPECTED` — não altera saldo; participa de projeções
+- `RECEIVED` — gera entrada financeira
+- Receitas canceladas não participam de projeções
 
-0 - Meu
-1 - Giulia
-2 - Ederson
-3 - Elisiane
+### 11.2 Despesas — status oficiais
 
-Esses responsáveis NÃO são usuários do sistema.
+- `OPEN`
+- `PARTIALLY_PAID`
+- `PAID`
+- `CANCELLED`
+- `REFUNDED`
 
-Não criar usuários automaticamente para eles.
+`OVERDUE` **não** é status persistido. É derivado quando status é `OPEN` ou `PARTIALLY_PAID` e `dueDate` < data atual. A UI pode exibir "VENCIDA".
 
-O campo representa apenas a quem aquela despesa pertence para fins de organização e relatórios.
+Formas de pagamento: `ACCOUNT`, `CREDIT_CARD`, `NONE`.
+
+`NONE` = despesa sem cartão (pode permanecer aberta até o pagamento).
+
+### 11.3 Cancelamento e estorno
+
+Sem exclusão física. `CANCELLED` / `REFUNDED` preservam histórico e não impactam saldo, projeções, totais, gráficos nem contas a pagar.
+
+### 11.4 Compra no cartão
+
+Não reduz saldo bancário imediatamente; aumenta comprometimento; **não pode ultrapassar o limite disponível** (validação no backend).
+
+### 11.5 Pagamento da fatura
+
+Gera saída na conta escolhida; **não** cria nova despesa de consumo; despesas originais permanecem; pagamento parcial permitido; valor não pode exceder saldo disponível da conta.
+
+### 11.6 Transferência
+
+Operação própria, atômica: saída na origem + entrada no destino. Não é receita nem despesa. Contas diferentes. Sem saldo insuficiente.
+
+### 11.7 Saldo negativo
+
+Operações normais não permitem saldo negativo (transferências, pagamento de despesas, pagamento de fatura limitado ao saldo da conta).
+
+### 11.8 Contas
+
+Tipos oficiais: `BANK_ACCOUNT`, `CASH`.
+
+Não usar: `CHECKING`, `SAVINGS`, `PERSONAL_WALLET`, `OTHER`.
+
+`CASH` = dinheiro em espécie (ex.: Carteira Felipe). Sem entidade separada de carteira.
+
+### 11.9 Saldo
+
+Fonte de verdade: movimentações. Saldo derivado delas. Cache/`current_balance` só se mantido transacionalmente consistente com as movimentações — nunca duas fontes independentes.
 
 ---
 
-## 11. Cartões de crédito
+## 12. Responsáveis pelas despesas
 
-Cartões devem possuir:
+Valores oficiais:
+
+- `MINE`
+- `GIULIA`
+- `EDERSON`
+- `ELISIANE`
+- `OTHER` (permite descrição textual)
+
+Não são usuários do sistema. Apenas classificação para controle e prestação de contas.
+
+---
+
+## 13. Cartões de crédito
+
+Campos essenciais incluem:
 
 - nome/apelido;
-- titular textual;
+- `holderName` (titular textual — não precisa ser usuário);
 - limite;
+- limite disponível / comprometimento;
 - dia de fechamento;
 - dia de vencimento;
 - status;
-- usuário.
+- usuário proprietário do registro.
 
-O titular do cartão é textual.
+Um cartão pode ser usado por diferentes responsáveis nas despesas.
 
-Não é necessário criar uma conta de usuário para o titular.
+Regras de ciclo:
 
-Um cartão poderá ser utilizado para despesas de diferentes responsáveis.
-
----
-
-## 12. Faturas
-
-O sistema deve possuir controle real de faturas.
-
-Uma fatura deve possuir:
-
-- cartão;
-- período;
-- data de fechamento;
-- data de vencimento;
-- valor total;
-- valor pago;
-- saldo restante;
-- status.
-
-Uma fatura poderá ser:
-
-- aberta;
-- fechada;
-- paga;
-- parcialmente paga;
-- vencida.
-
-A implementação definitiva dos estados deve seguir as regras de negócio documentadas.
+- compra no dia do fechamento pertence à próxima fatura (RN095);
+- dia configurado inexistente no mês → último dia daquele mês (RN098).
 
 ---
 
-## 13. Parcelamentos
+## 14. Faturas
 
-Parcelamentos são uma funcionalidade fundamental da V1.
+Status persistidos: `OPEN`, `CLOSED`, `PARTIALLY_PAID`, `PAID`.
 
-Compras parceladas devem gerar automaticamente as parcelas futuras.
+`OVERDUE` derivado da data de vencimento.
 
-Cada parcela deve possuir:
+Campos: cartão, período, fechamento, vencimento, valor total, valor pago, saldo restante, status.
 
-- número;
-- valor;
-- vencimento;
-- status;
-- referência ao parcelamento;
-- referência à fatura quando aplicável.
-
-O sistema NÃO deve assumir que todas as parcelas possuem o mesmo valor.
-
-O usuário deve poder editar individualmente o valor de cada parcela.
+Pagamento parcial permitido. Parcelamento do saldo restante é operação separada e **não** apaga/modifica compras originais.
 
 ---
 
-## 14. Parcelamento de fatura
+## 15. Parcelamentos
 
-O usuário poderá pagar apenas parte de uma fatura.
+Gerar automaticamente todas as parcelas futuras.
 
-Exemplo:
+Parcelas podem ter valores diferentes; a soma deve ser exatamente o total.
 
-Fatura: R$ 2.000,00
-
-Pagamento: R$ 1.000,00
-
-Saldo restante: R$ 1.000,00
-
-O sistema deve manter a fatura parcialmente paga.
-
-Posteriormente, o saldo poderá ser transformado em um parcelamento.
-
-O parcelamento da fatura não deve apagar as despesas originais.
-
----
-
-## 15. Despesas e status
-
-Despesas devem possuir estados que permitam preservar o histórico.
-
-Estados previstos:
-
-- PENDENTE
-- PAGA
-- ESTORNADA
-- CANCELADA
-
-Não utilizar exclusão física para remover despesas financeiras efetivadas.
+Arredondamento determinístico; sem residual de centavos.
 
 ---
 
 ## 16. Número do boleto
 
-Despesas podem possuir número de boleto.
-
-O campo deve ser opcional.
-
-O objetivo é permitir que o usuário copie o número do boleto diretamente do sistema quando for realizar o pagamento.
-
-O sistema não precisa gerar boletos.
+Campo opcional na despesa, para cópia no pagamento. O sistema não gera boletos.
 
 ---
 
-## 17. Testes
+## 17. Metas, projeções, relatórios e gráficos
 
-Testes automatizados são obrigatórios.
-
-Devem existir testes principalmente para:
-
-- autenticação;
-- isolamento de usuários;
-- contas;
-- receitas;
-- despesas;
-- pagamentos;
-- cartões;
-- faturas;
-- parcelamentos;
-- pagamentos parciais;
-- transferências;
-- estornos;
-- cancelamentos;
-- metas;
-- projeções;
-- endpoints críticos.
-
-Utilizar:
-
-- JUnit;
-- Mockito;
-- Testcontainers quando testes de integração com PostgreSQL forem necessários.
+- Metas na V1: nome, valor alvo, acumulado, data alvo, progresso, situação.
+- Projeções: receitas/despesas futuras, parcelas, faturas, compromissos; excluir `CANCELLED`/`REFUNDED` e receitas canceladas.
+- PDF: **OpenPDF** (ex.: relatório por responsável em cartão de terceiro).
+- Gráficos: **Apache ECharts**.
 
 ---
 
-## 18. API
+## 18. Testes
 
-A API deverá utilizar REST.
+Obrigatórios para regras críticas. Backend: JUnit 5, Mockito, AssertJ, Spring Boot Test, Testcontainers (PostgreSQL).
 
-Prefixo inicial:
+Priorizar: regras financeiras, parcelamentos, arredondamentos, faturas, pagamentos parciais, transferências, limite de cartão, isolamento, cancelamentos, estornos, autenticação/autorização.
 
-/api/v1
+Frontend: framework oficial do Angular 22.x. E2E Playwright posteriormente.
 
-A API deve possuir documentação OpenAPI / Swagger.
-
-Utilizar:
-
-- DTOs;
-- validação;
-- HTTP status codes apropriados;
-- respostas de erro padronizadas;
-- autenticação;
-- autorização.
-
-Endpoints devem ser definidos conforme cada módulo for implementado.
-
-Não criar todos os endpoints antecipadamente sem necessidade.
+Detalhes: `docs/27-testes.md`.
 
 ---
 
-## 19. Frontend
+## 19. API
 
-O frontend será desenvolvido em Angular com TypeScript.
+REST em `/api/v1`. DTOs, validação, status HTTP adequados, erros padronizados, autenticação/autorização, OpenAPI/Swagger.
 
-Utilizar Standalone Components.
-
-Preferir recursos nativos do Angular quando forem suficientes.
-
-Utilizar:
-
-- Angular Router;
-- HttpClient;
-- Reactive Forms;
-- Signals.
-
-A arquitetura deve ser organizada por funcionalidades.
-
-Exemplo:
-
-core
-shared
-features/auth
-features/dashboard
-features/accounts
-features/categories
-features/incomes
-features/expenses
-features/cards
-features/invoices
-features/installments
-features/goals
-features/projections
+Não criar todos os endpoints antecipadamente. Detalhes: `docs/25-api.md`.
 
 ---
 
-## 20. Bibliotecas adicionais
+## 20. Frontend
 
-Não adicionar bibliotecas sem necessidade.
+Angular 22.x, TypeScript strict, Standalone, Signals, Services, Reactive Forms, Material, HttpClient, Interceptors, Guards, ESLint, Prettier.
 
-Antes de adicionar uma biblioteca, explicar:
+Sem NgRx e sem Zod na V1.
 
-1. qual problema ela resolve;
-2. se o Angular ou Java já possui solução nativa;
-3. alternativas;
-4. vantagens;
-5. desvantagens;
-6. impacto na manutenção;
-7. recomendação.
-
-Isso vale especialmente para tecnologias como:
-
-- Zod;
-- NgRx;
-- bibliotecas de UI;
-- bibliotecas de gráficos;
-- bibliotecas de formulários;
-- bibliotecas de validação.
-
-A decisão deve priorizar aprendizado, simplicidade e boas práticas modernas.
+Validação: Angular Validators no front; Jakarta Validation + regras de negócio no backend.
 
 ---
 
-## 21. Docker
+## 21. Qualidade de código
 
-O projeto deve ser preparado para execução local através de Docker.
+- Frontend: ESLint + Prettier
+- Backend: Spotless (Google Java Format) — formatação consistente e automatizável
 
-O PostgreSQL deverá preferencialmente ser executado através do Docker Compose.
-
-A aplicação deverá possuir configuração adequada para ambiente de desenvolvimento.
-
-Não criar configuração de produção desnecessariamente complexa na V1.
+Não adicionar ferramentas de qualidade sem necessidade.
 
 ---
 
-## 22. Git e GitHub
+## 22. Docker
 
-O desenvolvimento será realizado no Cursor.
+PostgreSQL via Docker Compose no desenvolvimento.
 
-Os commits e pushes serão realizados manualmente pelo desenvolvedor através do VSCode.
+Backend e frontend podem rodar localmente fora do Docker.
 
-A IA NÃO deve presumir que possui acesso ao GitHub.
-
-A IA NÃO deve executar push.
-
-A IA pode criar e modificar arquivos do projeto normalmente.
+Não criar configuração de produção complexa na V1.
 
 ---
 
-## 23. Gitignore
+## 23. Git e GitHub
 
-Nunca versionar:
+Desenvolvimento no Cursor. Commits/pushes manuais pelo desenvolvedor (VSCode).
 
-- credenciais;
-- arquivos .env;
-- senhas;
-- tokens;
-- certificados privados;
-- node_modules;
-- target;
-- dist;
-- arquivos temporários;
-- logs;
-- arquivos gerados;
-- configurações pessoais da IDE.
+A IA NÃO deve presumir acesso ao GitHub nem executar push.
 
 ---
 
-## 24. Documentação
+## 24. Gitignore
 
-A documentação principal deverá ficar dentro da pasta:
-
-docs/
-
-A documentação deve conter, conforme o projeto evoluir:
-
-- requisitos;
-- regras de negócio;
-- arquitetura;
-- modelo de domínio;
-- API;
-- stack tecnológica;
-- roadmap;
-- decisões arquiteturais.
+Nunca versionar: credenciais, `.env`, senhas, tokens, certificados privados, `node_modules`, `target`, `dist`, temporários, logs, gerados, configs pessoais de IDE.
 
 ---
 
 ## 25. Finalidade educacional
 
-Este projeto também tem como objetivo aprendizado.
-
-Sempre que uma decisão técnica importante for tomada, explicar de forma objetiva:
-
-- o que está sendo feito;
-- por que está sendo feito;
-- quais alternativas existem;
-- por que a solução escolhida é adequada ao projeto.
-
-Não transformar cada alteração em uma aula extensa.
-
-A explicação deve ser proporcional à complexidade da decisão.
+Em decisões técnicas importantes, explicar de forma proporcional: o quê, por quê, alternativas e adequação ao projeto.
 
 ---
 
 ## 26. Escopo da V1
 
-A V1 deverá contemplar:
-
-- usuários;
-- autenticação;
-- contas;
-- categorias;
-- receitas;
-- despesas;
-- cartões;
-- faturas;
-- parcelamentos;
-- pagamentos;
-- pagamentos parciais;
-- transferências;
-- estornos;
-- cancelamentos;
-- metas;
-- projeções;
-- dashboard;
-- gráficos;
-- relatórios;
-- exportação de relatório de fatura;
-- testes;
-- Docker;
-- PostgreSQL;
-- migrations;
-- Swagger/OpenAPI.
+Usuários, autenticação, contas, categorias, receitas, despesas, cartões, faturas, parcelamentos, pagamentos (incl. parciais), transferências, estornos, cancelamentos, metas, projeções, dashboard, gráficos, relatórios, exportação PDF, testes, Docker, PostgreSQL, migrations, Swagger/OpenAPI.
 
 ---
 
 ## 27. Fora da V1
 
-Não implementar neste momento:
-
-- investimentos;
-- importação automática de extratos;
-- integração bancária;
-- notificações;
-- deploy em produção;
-- compartilhamento familiar;
-- contas compartilhadas;
-- automações bancárias;
-- integrações externas.
-
-A arquitetura pode ser preparada para futuras expansões, mas essas funcionalidades não devem ser implementadas agora.
+Além das tecnologias excluídas (seção 5): deploy em produção, compartilhamento familiar, contas compartilhadas, automações bancárias, integrações externas.
 
 ---
 
 ## 28. Regra de parada
 
-A IA deve parar e solicitar orientação quando:
+Parar e solicitar orientação quando:
 
-- existir uma decisão de negócio não definida;
-- houver conflito entre requisitos;
-- uma alteração mudar significativamente o escopo;
-- houver risco de perda de dados;
-- uma regra financeira estiver ambígua;
-- os testes não puderem ser corrigidos com segurança;
-- uma biblioteca ou tecnologia adicional for necessária e ainda não tiver sido aprovada.
+- decisão de negócio não definida;
+- conflito entre requisitos;
+- mudança significativa de escopo;
+- risco de perda de dados;
+- regra financeira ambígua;
+- testes sem correção segura;
+- biblioteca não aprovada.
 
-Não assumir decisões importantes de negócio.
+Não assumir decisões importantes de negócio. Usar: **DECISÃO PENDENTE DO DESENVOLVEDOR**.
 
 ---
 
 ## 29. Regra final
 
-O objetivo não é apenas fazer o sistema funcionar.
-
-O objetivo é construir uma aplicação:
-
-- organizada;
-- segura;
-- testável;
-- compreensível;
-- moderna;
-- extensível;
-- adequada para aprendizado;
-- com regras financeiras confiáveis.
+Construir uma aplicação organizada, segura, testável, compreensível, moderna, extensível, adequada ao aprendizado e com regras financeiras confiáveis.
 
 Priorizar qualidade e clareza em vez de velocidade de implementação.

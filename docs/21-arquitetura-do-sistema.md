@@ -1,5 +1,17 @@
 # Arquitetura do Sistema — Financial Control
 
+## 0. Hierarquia e versões oficiais
+
+`AGENTS.md` → `docs/20–28` → `README.md`
+
+- Java 25 LTS
+- Spring Boot 4.1.x
+- Angular 22.x
+- PostgreSQL 18
+- Pacote: `br.com.financialcontrol`
+- API: `/api/v1`
+
+
 ## 1. Objetivo
 
 Este documento define a arquitetura técnica da aplicação Financial Control.
@@ -113,12 +125,12 @@ Não é obrigatório implementar isso completamente na primeira etapa.
 
 # 10. Java
 
-Utilizar uma versão LTS moderna do Java suportada pelo Spring Boot adotado no projeto.
+Utilizar Java **25 LTS**.
 
 
 # 11. Spring Boot
 
-Utilizar versão estável atual compatível com a versão Java escolhida.
+Utilizar Spring Boot **4.1.x**.
 
 
 # 12. Dependências
@@ -287,40 +299,37 @@ na mesma classe sem necessidade.
 
 # 29. Pacotes
 
-Estrutura recomendada:
+Package principal oficial:
 
-com.financialcontrol
+```text
+br.com.financialcontrol
+```
 
+Organização inicial deve facilitar separação por domínio.
 
-com.financialcontrol
+A estrutura definitiva de pacotes será definida na Fase 1.
+
+Exemplo conceitual (não prescritivo de pastas vazias):
+
+```text
+br.com.financialcontrol
 ├── config
-├── controller
-├── dto
-├── entity
-├── repository
-├── service
-├── exception
 ├── security
-└── mapper
+├── common
+├── account
+├── expense
+├── income
+├── creditcard
+├── invoice
+└── ...
+```
 
 
 # 30. Organização futura
 
-Se o projeto crescer muito, poderá evoluir para organização por domínio.
+Manter monólito modular com tendência a pacotes por domínio.
 
-
-Exemplo:
-
-expense
-
-invoice
-
-account
-
-income
-
-
-A decisão deve ser tomada conforme o crescimento real.
+Não criar dezenas de módulos vazios apenas para "preparar o futuro".
 
 
 # 31. V1
@@ -467,7 +476,7 @@ BigDecimal
 
 # 48. Precisão
 
-Valores monetários devem possuir duas casas decimais quando persistidos.
+Valores monetários devem utilizar NUMERIC(19,2) no PostgreSQL e BigDecimal no Java.
 
 
 # 49. Transações
@@ -529,9 +538,12 @@ Spring Security
 
 # 56. Autenticação
 
-A estratégia pode utilizar:
+Utilizar:
 
 JWT
+
+
+com Access Token e Refresh Token.
 
 
 # 57. JWT
@@ -539,6 +551,9 @@ JWT
 O token deve identificar:
 
 userId
+
+
+Senhas: Argon2id.
 
 
 # 58. Autorização
@@ -730,7 +745,7 @@ Nenhuma regra financeira crítica deve existir exclusivamente no Angular.
 
 # 83. Angular
 
-Utilizar uma versão moderna e estável do Angular.
+Utilizar Angular **22.x**.
 
 
 # 84. Angular
@@ -849,17 +864,16 @@ Dashboard deve apresentar:
 
 # 98. Gráficos
 
-A biblioteca de gráficos deve ser escolhida por:
+Biblioteca oficial:
 
-- compatibilidade com Angular;
-- simplicidade;
-- manutenção;
-- licença adequada.
+Apache ECharts
 
 
 # 99. Regra
 
 Não criar gráficos manualmente com SVG complexo sem necessidade.
+
+Não utilizar Chart.js / ng2-charts na V1.
 
 
 # 100. Datas
@@ -1476,27 +1490,27 @@ Frontend é responsável pela apresentação e interação.
 
 Frontend:
 
-Angular
+Angular 22.x
 
 
 Backend:
 
-Java + Spring Boot
+Java 25 LTS + Spring Boot 4.1.x
+
+
+Pacote:
+
+br.com.financialcontrol
 
 
 Persistência:
 
-Spring Data JPA
-
-
-ORM:
-
-Hibernate
+Spring Data JPA + Hibernate
 
 
 Banco:
 
-PostgreSQL
+PostgreSQL 18
 
 
 Migration:
@@ -1506,22 +1520,32 @@ Flyway
 
 Segurança:
 
-Spring Security + JWT
+Spring Security + JWT (Access + Refresh) + Argon2id
 
 
 Documentação:
 
-OpenAPI + Swagger
+springdoc-openapi / Swagger
+
+
+PDF:
+
+OpenPDF
+
+
+Gráficos:
+
+Apache ECharts
 
 
 Testes:
 
-JUnit + Mockito + Spring Boot Test + Testcontainers
+JUnit 5 + Mockito + AssertJ + Spring Boot Test + Testcontainers
 
 
 Infraestrutura:
 
-Docker
+Docker / Docker Compose (PostgreSQL)
 
 
 # 182. Princípio final

@@ -1,5 +1,12 @@
 # Fluxos Financeiros — Financial Control
 
+## 0. Hierarquia
+
+`AGENTS.md` → `docs/20–28` → `README.md`
+
+Este documento detalha fluxos. Regras canônicas: `docs/24-regras-de-negocio.md`.
+
+
 ## 1. Objetivo
 
 Este documento descreve os principais fluxos financeiros da V1.
@@ -511,6 +518,33 @@ recebe comprometimento de:
 R$ 600
 
 
+# 23.1 Fluxo — Compra acima do limite disponível
+
+Limite do cartão:
+
+R$ 5.000,00
+
+
+Comprometido:
+
+R$ 4.500,00
+
+
+Disponível:
+
+R$ 500,00
+
+
+Tentativa de compra:
+
+R$ 600,00
+
+
+Resultado:
+
+compra recusada pelo backend.
+
+
 # 24. Fluxo — Compra parcelada
 
 Usuário compra:
@@ -618,7 +652,7 @@ O sistema deve permitir.
 O usuário pode editar cada parcela individualmente.
 
 
-# 29. Fluxo — Compra parcelada perto do fechamento
+# 29. Fluxo — Compra no dia do fechamento
 
 Cartão:
 
@@ -630,12 +664,9 @@ Compra:
 10/08
 
 
-A regra de fechamento deve ser claramente definida.
+Regra oficial (RN095):
 
-
-## Regra V1
-
-O sistema deve considerar o horário/data conforme a regra do ciclo do cartão e evitar ambiguidades.
+compra no dia do fechamento pertence à próxima fatura.
 
 
 # 30. Fluxo — Compra depois do fechamento
@@ -741,9 +772,11 @@ Se chegar:
 
 e ainda houver saldo:
 
-status:
+A UI pode apresentar como VENCIDA.
 
-OVERDUE
+O status persistido permanece OPEN, CLOSED ou PARTIALLY_PAID conforme o ciclo.
+
+OVERDUE é derivado (não persistido).
 
 
 # 36. Fluxo — Pagamento integral da fatura
@@ -1552,9 +1585,14 @@ Não paga.
 
 # 90. Resultado
 
-Status:
+Status persistido:
 
-OVERDUE
+OPEN
+
+
+Apresentação na UI:
+
+VENCIDA (derivado: dueDate < hoje)
 
 
 Saldo devido:

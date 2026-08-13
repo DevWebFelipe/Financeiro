@@ -1,5 +1,16 @@
 # Testes — Financial Control
 
+## 0. Stack de testes
+
+Backend: JUnit 5, Mockito, AssertJ, Spring Boot Test, Testcontainers (PostgreSQL 18).
+
+Frontend: framework oficial do Angular 22.x.
+
+E2E: Playwright posteriormente.
+
+PDF: OpenPDF. Gráficos: Apache ECharts.
+
+
 ## 1. Objetivo
 
 Este documento define a estratégia de testes do Financial Control.
@@ -234,11 +245,9 @@ Testar transições válidas e inválidas.
 
 # 21. Despesas
 
-Estados relevantes:
+Status persistidos:
 
 OPEN
-
-OVERDUE
 
 PARTIALLY_PAID
 
@@ -247,6 +256,9 @@ PAID
 CANCELLED
 
 REFUNDED
+
+
+OVERDUE é derivado (não persistido): status OPEN ou PARTIALLY_PAID e dueDate < hoje.
 
 
 # 22. Receita
@@ -262,19 +274,18 @@ CANCELLED
 
 # 23. Fatura
 
-Estados relevantes:
+Status persistidos:
 
 OPEN
 
 CLOSED
 
-OVERDUE
-
 PARTIALLY_PAID
 
 PAID
 
-CANCELLED
+
+OVERDUE é derivado da data de vencimento (não persistido).
 
 
 # 24. Testes de transição
@@ -441,9 +452,13 @@ saldo zero;
 
 saldo insuficiente;
 
-saldo negativo quando permitido;
+recusa de operação que geraria saldo negativo;
 
-transferências.
+transferências;
+
+pagamento de despesa sem saldo;
+
+pagamento de fatura limitado ao saldo da conta.
 
 
 # 34. Transferência
@@ -608,6 +623,19 @@ Disponível:
 3500
 
 
+# 50.1 Recusa por limite
+
+Limite: 5000
+
+Comprometido: 4500
+
+Disponível: 500
+
+Compra: 600
+
+Resultado esperado: compra recusada.
+
+
 # 51. Teste
 
 Compra no cartão não deve reduzir saldo bancário imediatamente.
@@ -641,7 +669,7 @@ Compra:
 09
 
 
-Deve pertencer ao ciclo esperado.
+Deve pertencer ao ciclo que fecha no dia 10.
 
 
 # 55. Exemplo
@@ -661,20 +689,22 @@ Deve pertencer ao próximo ciclo.
 
 # 56. Regra
 
-O comportamento do dia exato do fechamento deve possuir teste explícito.
+Compra exatamente no dia do fechamento (RN095) deve ir para a próxima fatura.
+
+Exemplo: fechamento dia 10; compra 10/08 → próximo ciclo.
 
 
-# 57. Testes de vencimento
+# 57. Testes de vencimento e fechamento (RN098)
 
-Testar:
+Testar dia configurado 31 em:
 
-mês de 28 dias;
+mês de 28 dias → 28;
 
-mês de 29 dias;
+mês de 29 dias → 29;
 
-mês de 30 dias;
+mês de 30 dias → 30;
 
-mês de 31 dias.
+mês de 31 dias → 31.
 
 
 # 58. Exemplo

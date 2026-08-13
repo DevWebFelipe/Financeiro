@@ -1,89 +1,160 @@
 # Financial Control
 
-Sistema de controle financeiro pessoal desenvolvido com foco em organização financeira, planejamento futuro e aprendizado de tecnologias modernas.
+Sistema de controle financeiro pessoal multiusuário, com foco em organização financeira, planejamento futuro e aprendizado de tecnologias modernas.
 
-O sistema será multiusuário, permitindo que cada usuário possua suas próprias contas, cartões, receitas, despesas, metas e demais informações financeiras.
+Cada usuário possui suas próprias contas, cartões, receitas, despesas, metas e demais informações financeiras.
+
+---
+
+## Hierarquia da documentação
+
+```text
+AGENTS.md
+    ↓
+docs/20–28 (especificação detalhada)
+    ↓
+README.md (visão geral)
+```
+
+- `AGENTS.md` — regras para a IA e desenvolvimento por etapas
+- `docs/20`–`docs/28` — especificação completa
+- Este README — visão geral e execução local
+
+Em conflito: corrigir a documentação até ficar consistente. Não manter duas decisões sobre o mesmo tema.
+
+Documentação ativa em `docs/`:
+
+| Documento | Conteúdo |
+|-----------|----------|
+| `20-fluxos-financeiros.md` | Fluxos financeiros |
+| `21-arquitetura-do-sistema.md` | Arquitetura |
+| `22-stack-tecnologica.md` | Stack oficial |
+| `23-modelo-de-dados.md` | Modelo de dados |
+| `24-regras-de-negocio.md` | Regras de negócio |
+| `25-api.md` | API REST |
+| `26-seguranca.md` | Segurança |
+| `27-testes.md` | Estratégia de testes |
+| `28-roadmap.md` | Roadmap por fases |
+
+Se ainda existirem `docs/01`–`docs/19`, são **históricos/obsoletos** e não devem ser usados.
 
 ---
 
 ## Objetivo
 
-O Financial Control tem como objetivo permitir um controle financeiro pessoal completo, porém inicialmente enxuto e sólido.
+Permitir controle financeiro pessoal completo, inicialmente enxuto e sólido:
 
-O sistema deverá permitir principalmente:
-
-- controlar receitas;
-- controlar despesas;
-- controlar contas bancárias;
-- controlar cartões de crédito;
-- controlar faturas;
-- controlar despesas parceladas;
-- controlar pagamentos parciais;
-- realizar transferências entre contas;
-- controlar metas financeiras;
-- visualizar contas a pagar;
-- visualizar contas a receber;
-- realizar projeções financeiras;
-- visualizar informações através de gráficos;
-- gerar relatórios;
-- exportar informações de faturas.
+- receitas e despesas;
+- contas bancárias e dinheiro em espécie (`CASH`);
+- cartões, faturas e parcelamentos;
+- pagamentos e pagamentos parciais;
+- transferências entre contas;
+- metas e projeções;
+- contas a pagar / a receber;
+- dashboard, gráficos e relatórios;
+- exportação PDF (ex.: despesas em cartão de terceiro por responsável).
 
 ---
 
-## Stack
+## Stack oficial
 
 ### Backend
 
-- Java
-- Spring Boot
-- Spring Security
-- Spring Data JPA
-- PostgreSQL
+- Java 25 LTS
+- Spring Boot 4.1.x
+- Maven
+- Spring Web, Spring Data JPA, Hibernate
+- Spring Security, JWT (Access + Refresh Token)
+- Argon2id
+- Jakarta Bean Validation
 - Flyway
-- OpenAPI / Swagger
-- JUnit
-- Mockito
-- Testcontainers
+- springdoc-openapi
+- JUnit 5, Mockito, AssertJ, Testcontainers
+- OpenPDF
 
 ### Frontend
 
-- Angular
-- TypeScript
-- RxJS
+- Angular 22.x
+- TypeScript strict
+- Standalone Components, Signals, Services
+- Reactive Forms, HttpClient, Interceptors, Route Guards
+- Angular Material, Material Icons
+- Apache ECharts
+- ESLint, Prettier, npm
 
-Tecnologias adicionais deverão ser avaliadas antes de serem adicionadas ao projeto.
+### Banco
+
+- PostgreSQL 18
+- UUID
+- NUMERIC(19,2) / BigDecimal
+- TIMESTAMPTZ / LocalDate
+- timezone `America/Sao_Paulo`
+- Flyway; Hibernate `ddl-auto=validate`
+
+### Infraestrutura
+
+- Docker / Docker Compose (PostgreSQL no desenvolvimento)
+- Backend e frontend podem rodar fora do Docker inicialmente
+
+### Convenções
+
+- Pacote Java: `br.com.financialcontrol`
+- API: `/api/v1`
+- Moeda V1: BRL
+
+Detalhes: `docs/22-stack-tecnologica.md`.
 
 ---
 
-## Banco de dados
+## Fora da V1
 
-O banco utilizado será:
-
-PostgreSQL
-
-Cada informação financeira deverá possuir isolamento por usuário.
-
-A regra fundamental é:
-
-> Nenhum usuário pode acessar ou alterar dados financeiros pertencentes a outro usuário.
+Não introduzir sem decisão futura explícita: Redis, Kafka, RabbitMQ, Kubernetes, microsserviços, GraphQL, NgRx, Zod, Tailwind, Bootstrap, H2, SQLite, CI/CD obrigatório, integração bancária, investimentos, importação de extratos, notificações, PWA, dark mode, deploy em produção, contas compartilhadas.
 
 ---
 
 ## Arquitetura
 
-A arquitetura inicial seguirá:
-
 ```text
-Angular
+Angular 22
    |
-   | HTTP / REST
+   | HTTP / REST /api/v1
    v
-Spring Boot
+Spring Boot 4.1
    |
-   | JPA / Repository
+   | JPA / Flyway
    v
-PostgreSQL
+PostgreSQL 18
 ```
+
+Monólito modular. Backend é autoridade das regras. Frontend apresenta e valida para UX.
+
+---
+
+## Isolamento de usuários
+
+> Nenhum usuário pode consultar, alterar ou excluir dados financeiros de outro usuário.
+
+O backend obtém o usuário do contexto de segurança. Nunca confiar em `userId` enviado pelo frontend.
+
+---
+
+## Regras financeiras (resumo)
+
+| Tema | Regra |
+|------|--------|
+| Contas | Tipos: `BANK_ACCOUNT`, `CASH` |
+| Responsável | `MINE`, `GIULIA`, `EDERSON`, `ELISIANE`, `OTHER` (+ texto) — não são usuários |
+| Despesa status | `OPEN`, `PARTIALLY_PAID`, `PAID`, `CANCELLED`, `REFUNDED` |
+| Vencida | Derivada (`OVERDUE` não persistido) |
+| Cartão | `holderName` textual; compra não reduz saldo bancário; respeita limite disponível; compra no dia do fechamento vai para a próxima fatura; dia inexistente no mês → último dia do mês |
+| Fatura | `OPEN`, `CLOSED`, `PARTIALLY_PAID`, `PAID`; pagamento não cria despesa nova |
+| Parcelas | Valores podem diferir; soma = total; arredondamento determinístico |
+| Transferência | Atômica; não é receita/despesa; sem saldo insuficiente |
+| Saldo | Derivado de movimentações |
+| Pagamentos | Sem saldo negativo; fatura parcial limitada ao saldo da conta |
+| PDF / gráficos | OpenPDF / Apache ECharts |
+
+Detalhes: `docs/24-regras-de-negocio.md`.
 
 ---
 
@@ -91,511 +162,86 @@ PostgreSQL
 
 ### Pré-requisitos
 
-Para desenvolvimento local, será necessário possuir:
-
 - Git
-- Docker
-- Docker Compose
-- Node.js
+- Docker e Docker Compose
+- Node.js (LTS compatível com Angular 22.x)
 - npm
-- Java
-- IDE ou editor de código
+- Java 25
+- Maven
+- IDE ou editor
 
----
-
-## PostgreSQL
-
-O PostgreSQL será executado através do Docker.
-
-Subir o banco:
+### PostgreSQL
 
 ```bash
 docker compose up -d
-```
-
-Verificar containers:
-
-```bash
 docker compose ps
-```
-
-Visualizar logs:
-
-```bash
 docker compose logs -f postgres
-```
-
-Parar containers:
-
-```bash
 docker compose down
 ```
 
----
+### Variáveis de ambiente
 
-## Variáveis de ambiente
+- `.env.example` — modelo das variáveis
+- `.env` — local, **não versionar**
 
-O projeto utiliza variáveis de ambiente.
-
-O arquivo:
-
-```text
-.env.example
-```
-
-contém as variáveis esperadas.
-
-O arquivo:
-
-```text
-.env
-```
-
-é local e não deve ser versionado.
-
----
-
-## Estrutura inicial
+### Estrutura
 
 ```text
 financial-control/
-|
 ├── AGENTS.md
 ├── README.md
 ├── .gitignore
 ├── .cursorignore
 ├── .env.example
 ├── docker-compose.yml
-|
 ├── docs/
-|
-├── backend/
-|
-└── frontend/
+├── backend/          (Fase 1+)
+└── frontend/         (Fase 1+)
 ```
 
-A estrutura definitiva poderá ser ajustada durante a implementação da Fase 1.
+Portas típicas: Angular `4200`, Spring Boot `8080`, PostgreSQL `5432`.
 
 ---
 
 ## Desenvolvimento
 
-O desenvolvimento será realizado utilizando o Cursor.
+Desenvolvimento assistido no Cursor. Commits e pushes manuais via VSCode/Git. A IA não deve executar push nem assumir acesso ao GitHub.
 
-O GitHub pessoal não será conectado ao Cursor.
+Fluxo por fases: ver `docs/28-roadmap.md`.
 
-O fluxo será:
-
-```text
-Cursor
-  |
-  v
-Desenvolvimento
-  |
-  v
-VSCode
-  |
-  v
-Revisão
-  |
-  v
-Commit
-  |
-  v
-GitHub
-```
-
----
-
-## Git
-
-Os commits devem ser pequenos e relacionados a uma alteração específica.
-
-Exemplos:
-
-```text
-feat: add account management
-
-feat: add expense installments
-
-feat: add credit card invoices
-
-test: add invoice payment tests
-
-fix: correct installment rounding
-```
-
-Antes de realizar um commit:
-
-1. revisar o diff;
-2. executar testes;
-3. verificar arquivos sensíveis;
-4. verificar documentação;
-5. confirmar que o escopo está correto.
-
----
-
-## Documentação
-
-A documentação do projeto está localizada em:
-
-```text
-docs/
-```
-
-O arquivo:
-
-```text
-AGENTS.md
-```
-
-define as regras que devem ser seguidas pela IA durante o desenvolvimento.
-
----
-
-## Desenvolvimento orientado por fases
-
-O projeto será desenvolvido incrementalmente.
-
-A IA não deve implementar todo o sistema de uma única vez.
-
-O roadmap está definido em:
-
-```text
-docs/28-roadmap.md
-```
-
-Cada fase deve:
-
-1. possuir escopo definido;
-2. possuir implementação;
-3. possuir testes;
-4. ser validada;
-5. somente então permitir o início da próxima fase.
+Cada fase: escopo definido → implementação → testes → validação → só então a próxima.
 
 ---
 
 ## Segurança
 
-O sistema trabalha com informações financeiras.
+- Argon2id para senhas
+- JWT (Access + Refresh Token)
+- Isolamento por usuário
+- Secrets fora do código
+- Validação no backend
+- Sem dados sensíveis desnecessários em logs
 
-Por isso:
-
-- senhas nunca serão armazenadas em texto puro;
-- dados financeiros serão isolados por usuário;
-- JWT será utilizado para autenticação;
-- endpoints privados exigirão autenticação;
-- secrets não serão versionados;
-- validações serão realizadas no backend;
-- operações financeiras serão protegidas contra inconsistências;
-- SQL Injection deve ser evitado;
-- dados financeiros não devem aparecer desnecessariamente em logs.
+Ver `docs/26-seguranca.md`.
 
 ---
 
 ## Testes
 
-Testes automatizados são obrigatórios para regras críticas.
-
-Serão utilizados:
-
-- testes unitários;
-- testes de integração;
-- testes de API;
-- testes de segurança;
-- testes de persistência;
-- testes E2E quando necessário.
-
-As regras de testes estão documentadas em:
-
-```text
-docs/27-testes.md
-```
-
----
-
-## Dinheiro
-
-Valores monetários devem utilizar:
-
-```text
-BigDecimal
-```
-
-no backend.
-
-Não utilizar:
-
-```text
-float
-double
-```
-
-para representar valores financeiros.
-
----
-
-## Parcelamentos
-
-Despesas parceladas devem gerar automaticamente as parcelas futuras.
-
-Exemplo:
-
-Uma compra realizada em agosto em 12 parcelas deverá gerar compromissos futuros até o período correspondente.
-
-As parcelas poderão possuir valores diferentes, desde que:
-
-```text
-soma das parcelas = valor total
-```
-
----
-
-## Cartões
-
-O sistema deverá controlar:
-
-- cartões;
-- limite;
-- fechamento;
-- vencimento;
-- compras;
-- parcelas;
-- faturas;
-- pagamentos;
-- pagamentos parciais;
-- parcelamento de saldo.
-
----
-
-## Faturas
-
-Uma fatura poderá ser:
-
-- aberta;
-- fechada;
-- vencida;
-- parcialmente paga;
-- paga;
-- cancelada.
-
-O pagamento da fatura não deve duplicar a despesa original.
-
----
-
-## Estornos e cancelamentos
-
-Despesas não devem ser apagadas fisicamente quando houver necessidade de removê-las do controle financeiro.
-
-Devem existir estados apropriados, como:
-
-```text
-CANCELLED
-REFUNDED
-```
-
-O registro histórico deve ser preservado.
-
----
-
-## Transferências
-
-Transferências entre contas devem ser tratadas como operações financeiras próprias.
-
-Exemplo:
-
-```text
-Conta A
-   |
-   | Transferência
-   v
-Conta B
-```
-
-Transferências não devem ser contabilizadas como receita ou despesa.
-
----
-
-## Metas
-
-O sistema terá suporte a metas financeiras na V1.
-
-Uma meta deverá permitir controlar:
-
-- valor alvo;
-- valor acumulado;
-- data alvo;
-- progresso;
-- situação.
-
----
-
-## Projeções
-
-O sistema deverá permitir visualizar compromissos financeiros futuros.
-
-As projeções devem considerar:
-
-- receitas futuras;
-- despesas futuras;
-- parcelas;
-- faturas;
-- compromissos conhecidos.
-
-Despesas canceladas e receitas canceladas não devem participar das projeções.
-
----
-
-## Responsável pela despesa
-
-Despesas poderão possuir um responsável/prestação de contas:
-
-```text
-0 - Meu
-1 - Giulia
-2 - Ederson
-3 - Elisiane
-4 - Outro
-```
-
-Quando o responsável for:
-
-```text
-Outro
-```
-
-será permitido informar uma descrição textual.
-
-Isso será utilizado principalmente para facilitar o controle de despesas realizadas no cartão de terceiros.
-
----
-
-## Relatórios
-
-O sistema deverá permitir gerar relatórios.
-
-Um dos principais casos de uso será:
-
-> Gerar uma relação das despesas realizadas no cartão de outra pessoa para conferência e pagamento.
-
-A V1 deverá possuir exportação em PDF.
-
----
-
-## Dashboard
-
-O dashboard deverá apresentar informações como:
-
-- saldo total;
-- receitas;
-- despesas;
-- contas a pagar;
-- contas a receber;
-- faturas;
-- projeções.
-
-Também deverá possuir gráficos.
-
-Exemplos:
-
-- despesas por categoria;
-- despesas por cartão;
-- despesas por responsável;
-- fluxo de caixa;
-- receitas x despesas.
-
----
-
-## V1
-
-A primeira versão deverá permitir:
-
-- usuários;
-- contas;
-- categorias;
-- receitas;
-- despesas;
-- parcelamentos;
-- cartões;
-- faturas;
-- pagamentos;
-- pagamentos parciais;
-- parcelamento de fatura;
-- transferências;
-- metas;
-- contas a pagar;
-- contas a receber;
-- projeções;
-- dashboard;
-- gráficos;
-- relatórios;
-- exportação PDF.
-
----
-
-## Funcionalidades futuras
-
-Não fazem parte da V1:
-
-- investimentos;
-- importação automática de extratos bancários;
-- notificações;
-- integração bancária;
-- deploy;
-- CI/CD completo;
-- PWA;
-- dark mode;
-- auditoria avançada.
-
-Essas funcionalidades poderão ser implementadas posteriormente.
-
----
-
-## Objetivo de aprendizado
-
-Este projeto também será utilizado como projeto de aprendizado.
-
-Sempre que uma tecnologia importante for introduzida, deve ser possível entender:
-
-- o que ela faz;
-- por que foi escolhida;
-- como funciona;
-- onde está sendo utilizada;
-- quais alternativas existem.
-
-A IA não deve simplesmente gerar código sem explicação quando uma decisão técnica importante estiver sendo tomada.
-
----
-
-## Regra para IA
-
-Antes de implementar qualquer funcionalidade:
-
-1. ler `AGENTS.md`;
-2. consultar a documentação relacionada;
-3. verificar o estado atual do projeto;
-4. identificar dependências;
-5. propor uma abordagem;
-6. implementar somente o escopo solicitado;
-7. criar ou atualizar testes;
-8. executar testes;
-9. revisar o resultado;
-10. informar os arquivos alterados.
-
-A IA não deve implementar funcionalidades futuras sem autorização.
+Unitários, integração, API e segurança. Testcontainers com PostgreSQL. Ver `docs/27-testes.md`.
 
 ---
 
 ## Status
 
-Projeto em:
-
 ```text
-Planejamento / Pré-implementação
+Planejamento / Consolidação documental
 ```
 
-Próxima etapa:
+Próxima etapa (após autorização):
 
 ```text
 Fase 1 — Estrutura inicial
 ```
+
+A IA não deve implementar a Fase 1 sem autorização explícita.

@@ -1,5 +1,12 @@
 # Modelo de Dados — Financial Control
 
+## 0. Hierarquia
+
+`AGENTS.md` → `docs/20–28` → `README.md`
+
+Stack e precisão: PostgreSQL 18, UUID, NUMERIC(19,2), TIMESTAMPTZ, timezone America/Sao_Paulo, BRL.
+
+
 ## 1. Objetivo
 
 Este documento define o modelo conceitual e lógico de dados da V1.
@@ -110,13 +117,20 @@ type
 
 initial_balance
 
-current_balance
-
 active
 
 created_at
 
 updated_at
+
+
+Observação:
+
+O saldo atual é derivado das movimentações financeiras.
+
+Não utilizar `current_balance` como fonte independente de verdade.
+
+Se no futuro existir saldo materializado/cacheado, ele deverá ser mantido de forma transacionalmente consistente com as movimentações.
 
 
 # 11. Tipo de conta
@@ -199,6 +213,8 @@ user_id
 
 name
 
+holder_name
+
 last_four_digits
 
 credit_limit
@@ -212,6 +228,15 @@ active
 created_at
 
 updated_at
+
+
+# 19.1 Titular
+
+`holder_name` (holderName na API) é textual.
+
+O titular NÃO precisa ser um usuário do sistema.
+
+Exemplos: Felipe, Giulia, Ederson, Elisiane.
 
 
 # 20. Cartão
@@ -607,7 +632,7 @@ como forma de pagamento principal.
 
 # 56. Status da despesa
 
-Valores V1:
+Valores persistidos oficiais:
 
 OPEN
 
@@ -615,16 +640,14 @@ PARTIALLY_PAID
 
 PAID
 
-OVERDUE
+CANCELLED
 
 REFUNDED
-
-CANCELLED
 
 
 # 57. OPEN
 
-Despesa ainda não paga.
+Despesa ainda não paga (ou obrigação aberta).
 
 
 # 58. PARTIALLY_PAID
@@ -637,9 +660,16 @@ Despesa parcialmente paga.
 Despesa totalmente paga.
 
 
-# 60. OVERDUE
+# 60. OVERDUE (derivado — NÃO persistir)
 
-Despesa aberta após o vencimento.
+`OVERDUE` NÃO deve ser armazenado como status principal.
+
+Uma despesa é considerada vencida quando:
+
+- status é `OPEN` ou `PARTIALLY_PAID`; e
+- `due_date` < data atual (timezone da aplicação).
+
+A interface poderá apresentar "VENCIDA" sem alterar o status persistido.
 
 
 # 61. REFUNDED
@@ -753,7 +783,7 @@ A soma das parcelas deve representar o valor total da despesa, salvo operações
 
 # 73. Parcela
 
-Status V1:
+Status persistidos V1:
 
 OPEN
 
@@ -761,11 +791,12 @@ PARTIALLY_PAID
 
 PAID
 
-OVERDUE
-
 CANCELLED
 
 REFUNDED
+
+
+Vencimento atrasado é derivado (mesma lógica de despesa), sem persistir OVERDUE.
 
 
 # 74. Parcela
@@ -973,7 +1004,7 @@ updated_at
 
 # 94. Fatura
 
-Status V1:
+Status persistidos V1:
 
 OPEN
 
@@ -982,8 +1013,6 @@ CLOSED
 PARTIALLY_PAID
 
 PAID
-
-OVERDUE
 
 
 # 95. Fatura
@@ -1014,11 +1043,13 @@ PAID:
 fatura totalmente paga.
 
 
-# 99. Fatura
+# 99. Fatura — OVERDUE (derivado)
 
-OVERDUE:
+`OVERDUE` NÃO é status persistido.
 
-fatura vencida e ainda não quitada.
+Pode ser derivado quando a fatura não está `PAID` e `due_date` < data atual.
+
+A UI pode exibir "VENCIDA".
 
 
 # 100. Regra
@@ -1955,49 +1986,38 @@ Não duplicar dados apenas para gerar projeção.
 
 # 203. Saldo
 
-Saldo atual da conta pode ser calculado através das movimentações.
+A fonte de verdade financeira deve ser baseada nas **movimentações**.
 
 
 # 204. Implementação
 
-A estratégia de saldo deve ser definida antes da criação da migration final.
+O sistema deve possuir estrutura consistente de movimentações financeiras.
+
+O saldo é derivado dessas movimentações (a partir de `initial_balance` + entradas − saídas).
 
 
-# 205. Opção
+# 205. Regra
 
-Manter:
-
-initial_balance
+Não utilizar somente um campo `current_balance` como fonte independente de verdade.
 
 
-e calcular:
+# 206. Cache / materialização
 
-saldo atual = initial_balance + entradas - saídas
-
-
-# 206. Alternativa
-
-Manter:
-
-current_balance
-
-
-e atualizá-lo transacionalmente.
+Caso futuramente exista saldo materializado/cacheado para performance, ele deverá ser derivado e mantido de forma transacionalmente consistente com as movimentações.
 
 
 # 207. Decisão V1
 
 Utilizar:
 
-initial_balance
-
-
-e uma estratégia transacional consistente para movimentações.
+- `initial_balance`
+- movimentações como fonte de verdade
+- saldo calculado/derivado (e, se houver cache, sempre consistente com as movimentações)
 
 
 # 208. Regra
 
-A implementação não deve permitir divergência entre saldo e movimentações.
+A implementação não deve permitir divergência entre saldo apresentado e movimentações.
 
 
 # 209. Conta
@@ -2035,6 +2055,17 @@ Pagamento da fatura reduz saldo bancário.
 # 213. Regra
 
 Compra no cartão aumenta o comprometimento do cartão.
+
+
+# 213.1 Limite disponível
+
+Uma compra não pode ultrapassar o limite disponível do cartão.
+
+Exemplo:
+
+Limite R$ 5.000,00; comprometido R$ 4.500,00; disponível R$ 500,00; compra R$ 600,00 → recusada.
+
+Validação obrigatória no backend.
 
 
 # 214. Regra
@@ -2105,12 +2136,16 @@ transferência > saldo disponível.
 
 # 223. Decisão
 
-A V1 deve impedir saldo negativo em transferências.
+A V1 deve impedir saldo negativo em operações financeiras normais:
+
+- transferências;
+- pagamento de despesas;
+- pagamento de fatura (valor não pode exceder o saldo disponível da conta).
 
 
 # 224. Observação
 
-Saldo negativo poderá ser suportado futuramente através de configuração específica.
+Saldo negativo poderá ser suportado futuramente através de configuração específica e decisão explícita.
 
 
 # 225. Integridade
@@ -2161,9 +2196,9 @@ due_day:
 Alguns meses possuem menos dias.
 
 
-# 232. Regra
+# 232. Regra (RN098)
 
-A lógica de vencimento deve tratar corretamente meses sem determinado dia.
+Se o mês não possuir o dia configurado de fechamento ou vencimento, utilizar o último dia daquele mês.
 
 
 # 233. Exemplo
@@ -2173,10 +2208,14 @@ Vencimento configurado:
 31
 
 
-Mês com 30 dias.
+Abril (30 dias):
+
+30/04
 
 
-O sistema deve definir comportamento consistente para o vencimento.
+Fevereiro não bissexto:
+
+28/02
 
 
 # 234. Regra

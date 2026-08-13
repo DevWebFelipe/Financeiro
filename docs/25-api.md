@@ -1,5 +1,15 @@
 # API — Financial Control
 
+## 0. Hierarquia e convenções
+
+`AGENTS.md` → `docs/20–28` → `README.md`
+
+- Prefixo: `/api/v1`
+- REST + JSON + DTOs
+- OpenAPI / springdoc-openapi
+- PDF: OpenPDF
+
+
 ## 1. Objetivo
 
 Este documento define o contrato inicial da API REST do Financial Control.
@@ -38,12 +48,15 @@ HTTP/HTTPS
 
 Desenvolvimento:
 
-/api
+```text
+http://localhost:8080/api/v1
+```
 
+Prefixo oficial da API:
 
-Exemplo:
-
-http://localhost:8080/api
+```text
+/api/v1
+```
 
 
 # 4. Versionamento
@@ -75,6 +88,23 @@ A API utilizará:
 JWT
 
 
+Access Token + Refresh Token.
+
+Senhas: Argon2id.
+
+
+# 6.1 Cadastro
+
+Endpoint:
+
+POST /api/v1/auth/register
+
+
+Deve permitir criar usuário (nome, e-mail, senha).
+
+Detalhes de request/response serão refinados na Fase 3.
+
+
 # 7. Login
 
 Endpoint:
@@ -90,13 +120,24 @@ Request:
 }
 
 
-Response:
+Response (conceitual):
 
 {
   "accessToken": "...",
+  "refreshToken": "...",
   "tokenType": "Bearer",
-  "expiresIn": 3600
+  "expiresIn": 1800
 }
+
+
+# 7.1 Refresh
+
+Endpoint (conceitual — detalhar na Fase 3):
+
+POST /api/v1/auth/refresh
+
+
+A arquitetura deve estar preparada para renovação segura do access token.
 
 
 # 8. Usuário autenticado
@@ -279,6 +320,7 @@ Request:
 
 {
   "name": "Nubank",
+  "holderName": "Ederson",
   "lastFourDigits": "1234",
   "creditLimit": 5000.00,
   "closingDay": 10,
@@ -1022,6 +1064,10 @@ application/pdf
 # 83. Relatório
 
 O PDF deve permitir conferência das despesas da fatura.
+
+Biblioteca oficial: **OpenPDF**.
+
+Deve permitir filtrar por responsável quando aplicável (ex.: cartão de terceiro).
 
 
 # 84. Filtros

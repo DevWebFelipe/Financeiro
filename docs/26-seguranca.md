@@ -1,5 +1,12 @@
 # Segurança — Financial Control
 
+## 0. Hierarquia
+
+`AGENTS.md` → `docs/20–28` → `README.md`
+
+Isolamento por usuário é regra fundamental de segurança.
+
+
 ## 1. Objetivo
 
 Este documento define os requisitos mínimos de segurança da aplicação Financial Control.
@@ -21,6 +28,11 @@ A aplicação utilizará autenticação baseada em:
 JWT
 
 
+Access Token + Refresh Token.
+
+Hash de senha: Argon2id.
+
+
 # 4. Login
 
 O usuário deverá informar:
@@ -37,20 +49,7 @@ A senha nunca deve ser armazenada em texto puro.
 
 # 6. Hash de senha
 
-O backend deve utilizar algoritmo moderno e apropriado para armazenamento de senhas.
-
-
-Preferencialmente:
-
-Argon2id
-
-
-Caso a biblioteca/framework utilizado possua suporte mais maduro a:
-
-BCrypt
-
-
-BCrypt poderá ser utilizado.
+O backend deve utilizar **Argon2id** para armazenamento de senhas.
 
 
 # 7. Regra
@@ -65,6 +64,8 @@ SHA256
 
 
 como mecanismo direto de armazenamento de senha.
+
+Não utilizar BCrypt na V1.
 
 
 # 8. Password Hash
@@ -107,14 +108,16 @@ Access tokens devem possuir tempo de expiração.
 
 # 13. Refresh Token
 
-A necessidade de refresh token deve ser avaliada na implementação da autenticação.
+A V1 utilizará Access Token e Refresh Token.
+
+A implementação exata do fluxo de refresh será definida na fase de autenticação.
+
+A arquitetura deve estar preparada para refresh token desde o início.
 
 
 # 14. V1
 
-Se refresh token for implementado:
-
-deve possuir mecanismo seguro de revogação.
+Refresh token deve possuir mecanismo seguro de revogação (detalhes na implementação da autenticação).
 
 
 # 15. Logout
