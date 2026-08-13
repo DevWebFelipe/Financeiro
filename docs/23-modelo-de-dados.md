@@ -217,7 +217,7 @@ Representa um cartão de crédito.
 
 # 19. Cartão
 
-Campos conceituais:
+Campos persistidos:
 
 id
 
@@ -240,6 +240,11 @@ active
 created_at
 
 updated_at
+
+
+`credit_limit` é o limite contratado (fato persistido).
+
+Limite disponível e comprometimento são derivados das compras/parcelas ativas do cartão. Não persistir como colunas independentes.
 
 
 # 19.1 Titular
@@ -457,6 +462,13 @@ notes
 created_at
 
 updated_at
+
+
+`account_id` é obrigatório quando `status = RECEIVED` (RN043).
+
+Pode ser nulo enquanto `EXPECTED` ou `CANCELLED`.
+
+FK composta `(account_id, user_id)` é nullable.
 
 
 # 37. Receita
@@ -718,11 +730,15 @@ Representa uma parcela individual de uma despesa.
 
 # 67. Parcela
 
-Campos:
+Campos persistidos:
 
 id
 
+user_id
+
 expense_id
+
+invoice_id
 
 installment_number
 
@@ -737,6 +753,18 @@ status
 created_at
 
 updated_at
+
+
+`user_id` é obrigatório (mesmo usuário da despesa).
+
+`invoice_id` referencia `credit_card_invoices.id`.
+
+- obrigatório quando a despesa for `CREDIT_CARD`;
+- nulo quando a despesa for `ACCOUNT` ou `NONE`.
+
+Uma despesa parcelada no cartão pode ter parcelas com `invoice_id` diferentes.
+
+`expenses` **não** possui `invoice_id`.
 
 
 # 68. Parcela
@@ -881,6 +909,20 @@ notes
 created_at
 
 
+`type` aparece no modelo conceitual; os valores oficiais **não** estão definidos nas regras.
+
+PENDÊNCIA DE DECISÃO — seção 269.1. Não inventar enum, CHECK, nem migrar o campo (nem omiti-lo) até decisão explícita.
+
+
+Toda despesa possui pelo menos uma parcela (seção 186 / RN063).
+
+Portanto o pagamento referencia a parcela (`installment_id` obrigatório).
+
+`expense_id` também é persistido para consulta, e deve ser o mesmo `expense_id` da parcela.
+
+Integridade: o trio (user_id, expense_id, installment_id) não pode cruzar registros de outro usuário nem parcela de outra despesa.
+
+
 # 81. Pagamento
 
 Um pagamento sempre deve estar relacionado ao usuário autenticado.
@@ -985,7 +1027,7 @@ Representa o ciclo financeiro do cartão.
 
 # 93. Fatura
 
-Campos:
+Campos persistidos (fatos):
 
 id
 
@@ -1003,15 +1045,21 @@ due_date
 
 status
 
+created_at
+
+updated_at
+
+
+Campos derivados (não persistidos como colunas; calculados na leitura / expostos na API):
+
 total_amount
 
 paid_amount
 
 remaining_amount
 
-created_at
 
-updated_at
+Fonte de verdade e fórmulas: seções 194–199 e 263.
 
 
 # 94. Fatura
@@ -1080,9 +1128,21 @@ Uma compra no cartão deve ser associada ao ciclo correto.
 
 # 102. Regra
 
-A associação entre despesa e fatura deve permitir consultar:
+A associação entre parcela e fatura deve permitir consultar:
 
-qual fatura contém a despesa.
+qual fatura contém cada parcela;
+
+
+e, a partir da parcela:
+
+qual despesa originou aquele item da fatura.
+
+
+Não existe `invoice_id` em `expenses`.
+
+A despesa de cartão possui `credit_card_id`.
+
+Cada parcela de cartão possui `invoice_id`.
 
 
 # 103. Relação
@@ -1100,15 +1160,25 @@ credit_card_invoices
 
 1:N
 
-expenses
+expense_installments
 
 
-quando a despesa utilizar cartão.
+quando a parcela pertencer a uma compra no cartão (`invoice_id` preenchido).
+
+
+Não modelar:
+
+credit_card_invoices 1:N expenses
+
+
+A despesa original não pertence a uma única fatura: uma compra parcelada atravessa várias faturas (RN085).
+
+Uma fatura contém parcelas de várias despesas (RN086).
 
 
 # 105. Fatura
 
-Não duplicar a despesa simplesmente porque ela pertence a uma fatura.
+Não duplicar a despesa simplesmente porque uma de suas parcelas pertence a uma fatura.
 
 
 # 106. Regra
@@ -1116,7 +1186,10 @@ Não duplicar a despesa simplesmente porque ela pertence a uma fatura.
 A despesa continua sendo a origem do gasto.
 
 
-A fatura é uma visão/agrupamento financeiro do cartão.
+A parcela é o item faturável.
+
+
+A fatura é o agrupamento das parcelas de um ciclo do cartão.
 
 
 # 107. Pagamento de fatura
@@ -1124,6 +1197,15 @@ A fatura é uma visão/agrupamento financeiro do cartão.
 O pagamento da fatura representa:
 
 saída de dinheiro da conta bancária.
+
+
+Utiliza `credit_card_invoice_payments`.
+
+Não cria linha em `payments`.
+
+`payments` é o pagamento de despesa/parcela com dinheiro de conta (`ACCOUNT` / `NONE`).
+
+Compra no cartão não gera `payments` no momento da compra.
 
 
 # 108. Regra
@@ -1349,7 +1431,7 @@ financial_goals
 
 # 131. Meta
 
-Campos:
+Campos persistidos:
 
 id
 
@@ -1361,8 +1443,6 @@ description
 
 target_amount
 
-current_amount
-
 target_date
 
 status
@@ -1370,6 +1450,9 @@ status
 created_at
 
 updated_at
+
+
+`current_amount` (acumulado) é derivado das contribuições. Não é coluna persistida independente. Ver seção 140.
 
 
 # 132. Status
@@ -1443,17 +1526,23 @@ R$ 4.500
 
 A meta possui:
 
-target_amount
+target_amount (persistido)
 
 
 e:
 
-current_amount
+current_amount (derivado)
 
 
 # 140. Regra
 
-current_amount deve ser consistente com as contribuições.
+`current_amount` = soma de `goal_contributions.amount` da meta.
+
+Não persistir acumulado como fonte independente (RN182, RN183, RN187).
+
+A API pode expor `currentAmount` e o percentual de progresso, ambos calculados na leitura.
+
+`status` (`ACTIVE`, `COMPLETED`, `CANCELLED`) continua persistido.
 
 
 # 141. Auditoria
@@ -1467,12 +1556,25 @@ updated_at
 
 # 142. Integridade
 
-Todas as entidades devem possuir:
+Todas as tabelas financeiras devem possuir:
 
-user_id
+user_id NOT NULL
 
 
-quando fizer sentido.
+incluindo tabelas filhas:
+
+expense_installments
+
+credit_card_invoice_payments
+
+credit_card_invoice_installments
+
+goal_contributions
+
+payments
+
+
+`user_id` do filho deve ser o mesmo do pai. Garantia física: seções 264–266.
 
 
 # 143. Foreign Keys
@@ -1552,9 +1654,17 @@ expenses:
 
 # 153. Exemplo
 
-invoices:
+credit_card_invoices:
 
 (user_id, credit_card_id, reference_year, reference_month)
+
+
+expense_installments:
+
+(user_id, invoice_id)
+
+
+(user_id, due_date)
 
 
 # 154. Unicidade
@@ -1838,6 +1948,13 @@ credit_card_invoices
 
 1:N
 
+expense_installments
+
+
+credit_card_invoices
+
+1:N
+
 credit_card_invoice_payments
 
 
@@ -1950,36 +2067,65 @@ Pagamento:
 R$ 200
 
 
-# 194. Fatura
+# 194. Fatura — total_amount (derivado)
 
-total_amount deve ser derivado das despesas/parcelas vinculadas.
+`total_amount` NÃO é coluna persistida.
+
+É a soma das parcelas (`expense_installments.amount`) vinculadas à fatura (`invoice_id`), excluindo parcelas `CANCELLED` e `REFUNDED`.
+
+Não somar a despesa inteira (`expenses.total_amount`): uma despesa parcelada atravessa várias faturas.
 
 
 # 195. Regra
 
 Evitar múltiplas fontes de verdade para o mesmo valor.
 
+Fatos persistidos da fatura:
 
-# 196. Fatura
+- parcelas vinculadas (`expense_installments.invoice_id`);
+- pagamentos realizados (`credit_card_invoice_payments`).
 
-paid_amount pode ser derivado dos pagamentos da fatura.
+Valores derivados:
 
-
-# 197. Fatura
-
-remaining_amount pode ser calculado.
-
-
-# 198. Decisão
-
-Se esses valores forem armazenados fisicamente:
-
-devem ser mantidos consistentes através de transações.
+- `total_amount`
+- `paid_amount`
+- `remaining_amount`
 
 
-# 199. Recomendação
+# 196. Fatura — paid_amount (derivado)
 
-Na V1, preferir calcular valores derivados quando o custo de consulta for aceitável.
+`paid_amount` NÃO é coluna persistida.
+
+É a soma de `credit_card_invoice_payments.amount` da fatura.
+
+
+# 197. Fatura — remaining_amount (derivado)
+
+`remaining_amount` NÃO é coluna persistida.
+
+Fórmula:
+
+remaining_amount = total_amount − paid_amount
+
+
+# 198. Decisão V1
+
+Não persistir `total_amount`, `paid_amount` nem `remaining_amount` em `credit_card_invoices`.
+
+A API pode (e deve) expô-los no response, calculados na leitura.
+
+O `status` da fatura (`OPEN`, `CLOSED`, `PARTIALLY_PAID`, `PAID`) continua persistido: é ciclo/estado, não valor monetário.
+
+
+# 199. Parcelamento do saldo restante
+
+`credit_card_invoice_installments` representa o plano de parcelamento do saldo restante.
+
+Criar esse parcelamento **não** altera `total_amount` nem `paid_amount`.
+
+O saldo restante só diminui quando houver pagamento em `credit_card_invoice_payments`.
+
+Esse parcelamento é distinto das parcelas de compra (`expense_installments`) — RN110.
 
 
 # 200. Projeções
@@ -2303,19 +2449,24 @@ etc.
 
 # 240. Regra
 
-A parcela deve possuir referência à fatura correspondente quando aplicável.
+A parcela de cartão deve possuir referência à fatura correspondente (`invoice_id` obrigatório).
+
+Parcela de despesa `ACCOUNT` ou `NONE` não possui fatura (`invoice_id` nulo).
 
 
 # 241. Modelo
 
-expense_installments pode possuir:
+expense_installments possui:
 
 invoice_id
 
 
+nullable conforme a forma de pagamento da despesa. Ver seção 67.
+
+
 # 242. Motivo
 
-Uma compra parcelada pode gerar parcelas em múltiplas faturas.
+Uma compra parcelada pode gerar parcelas em múltiplas faturas (RN085).
 
 
 # 243. Regra
@@ -2325,9 +2476,12 @@ A despesa original possui:
 credit_card_id
 
 
-e cada parcela possui:
+e cada parcela de cartão possui:
 
 invoice_id
+
+
+`expenses` não possui `invoice_id`.
 
 
 # 244. Resultado
@@ -2344,21 +2498,21 @@ em qual fatura a parcela está.
 
 # 245. Compra no cartão
 
-A despesa pode ter:
+A despesa deve ter:
 
 credit_card_id
 
 
-# 246. Parcela
+# 246. Parcela de cartão
 
-A parcela pode ter:
+A parcela deve ter:
 
 invoice_id
 
 
 # 247. Regra
 
-Não assumir que todas as parcelas pertencem à mesma fatura.
+Não assumir que todas as parcelas de uma despesa pertencem à mesma fatura.
 
 
 # 248. Relatório
@@ -2367,7 +2521,7 @@ Relatório de fatura deve utilizar:
 
 invoice
 
-→ installments
+→ expense_installments (invoice_id)
 
 → expense
 
@@ -2396,9 +2550,10 @@ USER
 ├── ACCOUNTS
 
 ├── CREDIT_CARDS
-│   └── INVOICES
-│       ├── INVOICE_PAYMENTS
-│       └── INVOICE_INSTALLMENTS
+│   └── CREDIT_CARD_INVOICES
+│       ├── EXPENSE_INSTALLMENTS (itens do ciclo; invoice_id)
+│       ├── CREDIT_CARD_INVOICE_PAYMENTS
+│       └── CREDIT_CARD_INVOICE_INSTALLMENTS (parcelamento do saldo restante)
 │
 ├── CATEGORIES
 │
@@ -2412,6 +2567,11 @@ USER
 │
 └── FINANCIAL_GOALS
     └── GOAL_CONTRIBUTIONS
+
+
+A mesma `expense_installments` aparece sob `EXPENSES` (origem) e sob `CREDIT_CARD_INVOICES` (ciclo), via `invoice_id`.
+
+Não há ligação direta expense → invoice.
 
 
 # 251. Regra final
@@ -2498,3 +2658,348 @@ e:
 
 
 antes de implementar.
+
+
+# 261. Decisão consolidada — despesa, parcela e fatura
+
+Relacionamento oficial (RN085, RN086):
+
+```text
+credit_card
+    ↓ 1:N
+credit_card_invoice
+    ↑ N:1
+expense_installment
+    ↑ N:1
+expense
+```
+
+Ou, no sentido da criação da compra:
+
+```text
+expense
+    ↓ 1:N
+expense_installment
+    ↓ N:1 (invoice_id; só cartão)
+credit_card_invoice
+```
+
+Regras:
+
+- `expenses` é a compra/despesa original;
+- `expenses.credit_card_id` é obrigatório quando `payment_method = CREDIT_CARD`;
+- `expense_installments` são as parcelas;
+- cada parcela de cartão pertence a **uma** fatura;
+- parcelas da mesma despesa podem pertencer a **faturas diferentes**;
+- `invoice_id` está em `expense_installments`, **nunca** em `expenses`;
+- `GET /invoices/{id}/items` retorna parcelas, não despesas inteiras.
+
+Exemplo: compra de R$ 2.400 em 12x
+
+```text
+expense (R$ 2.400, credit_card_id)
+  ├── installment 1  → fatura agosto
+  ├── installment 2  → fatura setembro
+  ├── installment 3  → fatura outubro
+  └── ...
+```
+
+
+# 262. Diagrama — cartão, fatura e parcela
+
+```mermaid
+erDiagram
+    USERS ||--o{ EXPENSES : "1:N"
+    USERS ||--o{ CREDIT_CARDS : "1:N"
+    USERS ||--o{ CREDIT_CARD_INVOICES : "1:N"
+    USERS ||--o{ EXPENSE_INSTALLMENTS : "1:N"
+
+    CREDIT_CARDS ||--o{ CREDIT_CARD_INVOICES : "1:N"
+    EXPENSES ||--|{ EXPENSE_INSTALLMENTS : "1:N"
+    CREDIT_CARD_INVOICES ||--o{ EXPENSE_INSTALLMENTS : "itens do ciclo"
+    CREDIT_CARD_INVOICES ||--o{ CREDIT_CARD_INVOICE_PAYMENTS : "1:N"
+    CREDIT_CARD_INVOICES ||--o{ CREDIT_CARD_INVOICE_INSTALLMENTS : "saldo parcelado"
+    EXPENSE_INSTALLMENTS ||--o{ PAYMENTS : "1:N"
+    EXPENSES ||--o{ PAYMENTS : "1:N"
+
+    EXPENSES {
+        uuid id PK
+        uuid user_id
+        uuid credit_card_id "nullable se nao cartao"
+        numeric total_amount
+    }
+    EXPENSE_INSTALLMENTS {
+        uuid id PK
+        uuid user_id
+        uuid expense_id FK
+        uuid invoice_id "FK nullable se nao cartao"
+        numeric amount
+    }
+    CREDIT_CARD_INVOICES {
+        uuid id PK
+        uuid user_id
+        uuid credit_card_id FK
+        varchar status
+    }
+```
+
+Não existe FK `expenses.invoice_id`.
+
+
+# 263. Decisão consolidada — valores da fatura
+
+Decisão V1, alinhada a RN182, RN183 e RN184:
+
+| Conceito | Persistido? | Fonte de verdade |
+|---|---|---|
+| parcelas do ciclo | sim — `expense_installments` | fato |
+| pagamentos da fatura | sim — `credit_card_invoice_payments` | fato |
+| status da fatura | sim — `credit_card_invoices.status` | ciclo/estado |
+| datas de fechamento/vencimento | sim | fato |
+| `total_amount` | **não** | derivado |
+| `paid_amount` | **não** | derivado |
+| `remaining_amount` | **não** | derivado |
+
+Fórmulas:
+
+```text
+total_amount =
+    SUM(expense_installments.amount)
+    WHERE invoice_id = :invoiceId
+      AND status NOT IN ('CANCELLED', 'REFUNDED')
+
+paid_amount =
+    SUM(credit_card_invoice_payments.amount)
+    WHERE invoice_id = :invoiceId
+
+remaining_amount = total_amount - paid_amount
+```
+
+Não somar `expenses.total_amount` para obter o total da fatura.
+
+Não persistir esses três valores. Se no futuro forem materializados por performance, deixam de ser fonte de verdade: devem ser cache transacionalmente consistente com as fórmulas acima (mesmo princípio do saldo da conta).
+
+O backend usa os valores derivados para:
+
+- validar que o pagamento não ultrapassa o devido (RN185);
+- transitar o status para `PARTIALLY_PAID` ou `PAID`.
+
+A API expõe `totalAmount`, `paidAmount` e `remainingAmount` no response (docs/25). Isso não os torna colunas.
+
+
+# 264. Decisão consolidada — isolamento de ownership
+
+FK simples `expense.category_id → categories.id` garante apenas que a categoria existe.
+
+Não garante que a categoria pertence ao mesmo usuário da despesa.
+
+A V1 exige as duas camadas:
+
+1. aplicação — `user_id` sempre do contexto autenticado; nunca do cliente (RN001, RN002, RN188);
+2. banco — impossível persistir referência cruzada entre usuários.
+
+Mecanismo físico:
+
+- toda tabela financeira tem `user_id UUID NOT NULL`;
+- toda tabela referenciada por ownership possui `UNIQUE (id, user_id)` além da PK `id`;
+- FKs de ownership são compostas: `(referenced_id, user_id) → parent (id, user_id)`.
+
+O `user_id` do filho é o mesmo valor do pai. Não existe “usuário da despesa” diferente do “usuário da categoria”.
+
+
+# 265. FKs compostas — especificação
+
+PK de todas as entidades principais permanece:
+
+```text
+id UUID PRIMARY KEY
+```
+
+(UUID v7 gerado pela aplicação.)
+
+Para cada tabela pai referenciada com ownership, além da PK:
+
+```text
+UNIQUE (id, user_id)
+```
+
+Esse UNIQUE existe para ser alvo da FK composta. Não substitui a PK.
+
+FKs compostas obrigatórias:
+
+| Tabela filha | FK composta | Pai |
+|---|---|---|
+| accounts | — (só `user_id → users`) | users |
+| categories | — | users |
+| credit_cards | — | users |
+| incomes | `(category_id, user_id)` | categories |
+| incomes | `(account_id, user_id)` | accounts (nullable) |
+| expenses | `(category_id, user_id)` | categories |
+| expenses | `(account_id, user_id)` | accounts (nullable) |
+| expenses | `(credit_card_id, user_id)` | credit_cards (nullable) |
+| expense_installments | `(expense_id, user_id)` | expenses |
+| expense_installments | `(invoice_id, user_id)` | credit_card_invoices (nullable) |
+| payments | `(expense_id, user_id)` | expenses |
+| payments | `(installment_id, user_id)` | expense_installments |
+| payments | `(account_id, user_id)` | accounts |
+| credit_card_invoices | `(credit_card_id, user_id)` | credit_cards |
+| credit_card_invoice_payments | `(invoice_id, user_id)` | credit_card_invoices |
+| credit_card_invoice_payments | `(account_id, user_id)` | accounts |
+| credit_card_invoice_installments | `(invoice_id, user_id)` | credit_card_invoices |
+| transfers | `(source_account_id, user_id)` | accounts |
+| transfers | `(destination_account_id, user_id)` | accounts |
+| financial_goals | — | users |
+| goal_contributions | `(goal_id, user_id)` | financial_goals |
+| goal_contributions | `(account_id, user_id)` | accounts |
+
+Todas as tabelas acima (exceto `users`) também referenciam `users(id)` via `user_id`.
+
+FK composta nullable: `MATCH SIMPLE` do PostgreSQL (padrão). Se `invoice_id` é NULL, a FK composta não é exigida. Correto para parcelas `ACCOUNT`/`NONE`.
+
+Integridade adicional de pagamento (não é ownership, é consistência interna):
+
+```text
+payments (installment_id, expense_id)
+    → expense_installments (id, expense_id)
+```
+
+Requer `UNIQUE (id, expense_id)` em `expense_installments`.
+
+Impede pagamento vinculado a parcela de outra despesa.
+
+Cross-check de cartão (aplicação, mesma transação):
+
+`expense.credit_card_id` da parcela deve ser igual a `credit_card_invoices.credit_card_id` da fatura apontada por `invoice_id`.
+
+Não denormalizar `credit_card_id` em `expense_installments` na V1 só para essa checagem.
+
+
+# 266. Compatibilidade JPA / Spring Data
+
+Objetivo: o banco impede cruzamento; o JPA permanece simples.
+
+Mapeamento JPA da V1:
+
+- PK: `id`;
+- `userId` como coluna simples, preenchida pelo Service a partir do contexto de segurança;
+- associações `@ManyToOne` / `@JoinColumn` apenas no id (`category_id`, `account_id`, …);
+- **não** mapear `@JoinColumns` compostas envolvendo `user_id` (evita o Hibernate gravar `user_id` duas vezes).
+
+As FKs compostas vivem no Flyway. São integridade de schema, não mapeamento JPA.
+
+`ddl-auto=validate` verifica colunas e FKs simples mapeadas. Constraints extras do Flyway são válidas e esperadas.
+
+Repositórios continuam filtrando por `userId` do contexto (defesa em profundidade). A FK composta não substitui o filtro nas queries; impede persistência inconsistente mesmo se uma query falhar.
+
+Não usar `ON DELETE CASCADE` nessas FKs.
+
+
+# 267. Diagrama — ownership
+
+```mermaid
+erDiagram
+    USERS ||--o{ CATEGORIES : "user_id"
+    USERS ||--o{ EXPENSES : "user_id"
+    CATEGORIES ||--o{ EXPENSES : "category_id + user_id"
+
+    CATEGORIES {
+        uuid id PK
+        uuid user_id
+        string name
+    }
+    EXPENSES {
+        uuid id PK
+        uuid user_id
+        uuid category_id
+    }
+```
+
+Inválido e rejeitado pelo banco:
+
+```text
+expense.user_id = A
+expense.category_id = categoria do usuário B
+```
+
+
+# 268. Critério de aceitação desta consolidação
+
+Antes da primeira migration:
+
+- `invoice_id` somente em `expense_installments`;
+- `credit_card_invoices` sem colunas `total_amount`, `paid_amount`, `remaining_amount`;
+- `financial_goals` sem coluna independente `current_amount`;
+- `expense_installments.user_id` obrigatório;
+- FKs compostas `(id, user_id)` documentadas nesta seção e a criar no Flyway da Fase 2.
+
+
+# 269. PENDÊNCIA DE DECISÃO — bloqueio oficial
+
+Governança: `AGENTS.md` seção 28.
+
+Nenhuma lacuna abaixo pode ser preenchida por suposição técnica.
+
+Não criar migration, coluna, enum, CHECK, constante, validação, teste ou regra de Service/API dependente destes itens até decisão explícita.
+
+Não sugerir “criar a coluna sem CHECK por enquanto” nem “omitir o campo na migration”: ambas são hipóteses.
+
+O restante do modelo consolidado (seções 261–268) permanece fonte de verdade.
+
+
+## 269.1 `payments.type`
+
+O campo aparece no modelo conceitual. `docs/20–28` **não** definem valores oficiais.
+
+Não implementar até responder:
+
+1. O campo `type` deve permanecer?
+2. Quais são os valores oficiais?
+3. Será enum lógico/aplicacional, CHECK no banco, ambos, ou nenhum?
+4. Existe significado adicional associado a cada valor?
+
+Até lá: não criar enum, CHECK, constantes, validações nem regras baseadas nesse campo.
+
+A tabela `payments` (demais colunas já definidas) não deve ser migrada com `type` hipotético nem com a omissão silenciosa do campo.
+
+
+## 269.2 Edição de parcela futura × `expenses.total_amount`
+
+RN067 vale **na criação** do parcelamento. O fluxo de edição de parcela futura (`docs/20`) não define o efeito sobre o total.
+
+Não decidir sozinho entre: alterar `expenses.total_amount`; redistribuir; manter o total original; rejeitar; permitir divergência; recalcular demais parcelas.
+
+Não implementar a edição até responder:
+
+1. Se uma parcela futura for alterada, `expenses.total_amount` deve mudar?
+2. A soma das parcelas deve obrigatoriamente continuar igual ao total da despesa?
+3. A diferença deve ser redistribuída entre outras parcelas?
+4. Se redistribuída, qual regra?
+5. É permitido que a soma das parcelas fique diferente de `expenses.total_amount`?
+6. Quais parcelas podem ser alteradas?
+7. O comportamento muda quando uma ou mais parcelas já estão vinculadas a faturas?
+
+A tabela `expense_installments` em si (criação, FKs, `invoice_id`) já está definida. O bloqueio é da **regra de edição**, não do schema da parcela.
+
+
+## 269.3 Pagamento parcial da fatura × status das parcelas
+
+Pagamentos da fatura: `credit_card_invoice_payments`.
+
+Não há regra oficial de rateio nem de efeito sobre `expense_installments.status`.
+
+Não assumir: FIFO, LIFO, proporcional, quitação das menores, manter todas `OPEN`, status individual, ou outra estratégia.
+
+Não implementar o efeito do pagamento parcial sobre parcelas até responder:
+
+1. O pagamento parcial altera o status das parcelas?
+2. Se sim, qual regra de rateio?
+3. O rateio é FIFO, proporcional ou outro?
+4. Uma parcela pode ficar parcialmente paga?
+5. Existe valor pago individualmente por parcela?
+6. As parcelas permanecem `OPEN` enquanto a fatura não estiver `PAID`?
+7. O status da fatura é independente do status das parcelas?
+8. O pagamento parcial deve aparecer na API como valor da fatura apenas ou também como valor por parcela?
+
+Não criar coluna de “valor pago da parcela via fatura” para antecipar a resposta da pergunta 5.
+
+Totais da fatura continuam **derivados** (seção 263). Status da fatura continua persistido.

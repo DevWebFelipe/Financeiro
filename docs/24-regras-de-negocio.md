@@ -26,6 +26,8 @@ Todo dado financeiro pertence a um usuário.
 
 Um usuário nunca pode visualizar, alterar ou excluir dados pertencentes a outro usuário.
 
+O modelo físico impede referência cruzada (ex.: despesa do usuário A com categoria do usuário B) via `user_id` e FKs compostas `(referenced_id, user_id)`. Detalhe: `docs/23-modelo-de-dados.md` seções 264–266.
+
 
 ## RN002 — Identificação do usuário
 
@@ -634,10 +636,18 @@ Compra no cartão deve ser vinculada à fatura correspondente.
 
 Uma compra parcelada pode gerar parcelas em várias faturas.
 
+A despesa original permanece uma só.
+
+Cada parcela (`expense_installments`) é vinculada à fatura do respectivo ciclo via `invoice_id`.
+
+`expenses` não possui `invoice_id`.
+
 
 ## RN086 — Fatura
 
 Uma fatura pode conter parcelas de várias despesas.
+
+Os itens da fatura são `expense_installments`, não `expenses`.
 
 
 ## RN087 — Fatura aberta
@@ -1362,28 +1372,42 @@ LocalDate
 
 Valores como:
 
-saldo;
+saldo da conta;
 
 total da fatura;
 
-saldo restante;
+valor pago da fatura;
+
+saldo restante da fatura;
+
+acumulado da meta;
 
 percentual da meta;
 
+comprometimento / limite disponível do cartão;
 
-podem ser derivados.
+
+são derivados. Não são colunas persistidas na V1.
+
+Fórmulas e fatos persistidos: `docs/23-modelo-de-dados.md` (seções 194–199 e 263).
 
 
 ## RN183 — Fonte de verdade
 
 A aplicação deve evitar múltiplas fontes de verdade para o mesmo valor.
 
+Fatos da fatura: parcelas vinculadas e pagamentos da fatura.
+
+Totais da fatura são calculados a partir desses fatos.
+
 
 # 35. Regras de consistência
 
 ## RN184 — Fatura
 
-Total da fatura deve corresponder às parcelas/despesas vinculadas.
+Total da fatura deve corresponder às parcelas vinculadas (`expense_installments` com aquele `invoice_id`), excluindo `CANCELLED` e `REFUNDED`.
+
+Não utilizar o `total_amount` da despesa inteira: uma compra parcelada atravessa várias faturas (RN085).
 
 
 ## RN185 — Pagamentos
@@ -1398,7 +1422,9 @@ Soma das parcelas deve corresponder ao valor parcelado.
 
 ## RN187 — Meta
 
-Valor acumulado deve corresponder às contribuições.
+Valor acumulado (`current_amount`) é derivado da soma das contribuições.
+
+Não persistir acumulado como fonte independente.
 
 
 # 36. Usuários

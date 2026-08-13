@@ -33,6 +33,17 @@ O objetivo é garantir:
 Toda regra financeira crítica deve possuir teste automatizado.
 
 
+Regra indefinida não deve ter teste que cristalize uma suposição.
+
+```text
+TESTE NÃO DEFINIDO → REGRA NÃO DEFINIDA → IMPLEMENTAÇÃO BLOQUEADA
+```
+
+Pendências oficiais (`AGENTS.md` §28.3 / `docs/23` §269): `payments.type`; edição de parcela futura × total da despesa; rateio do pagamento parcial da fatura.
+
+Depois da decisão: documentação → teste → implementação.
+
+
 # 3. Regra
 
 Código não deve ser considerado concluído apenas porque:
@@ -742,12 +753,16 @@ parcelamento.
 
 # 60. Fatura
 
-Compras devem aparecer na fatura correta.
+As parcelas (`expense_installments`) devem aparecer na fatura correta (`invoice_id`).
 
 
 # 61. Fatura
 
-Uma compra parcelada deve aparecer nas faturas correspondentes.
+Uma compra parcelada deve ter cada parcela na fatura do respectivo ciclo.
+
+A despesa original não pertence a uma única fatura.
+
+Testar também que `totalAmount` da fatura é a soma das parcelas do ciclo (derivado), não o total da despesa.
 
 
 # 62. Exemplo
@@ -1163,7 +1178,15 @@ unique;
 
 foreign key;
 
-not null.
+not null;
+
+FK composta de ownership (`referenced_id`, `user_id`);
+
+rejeição de despesa com `category_id` / `account_id` / `credit_card_id` de outro usuário;
+
+ausência de coluna `invoice_id` em `expenses`;
+
+ausência de colunas `total_amount` / `paid_amount` / `remaining_amount` em `credit_card_invoices`.
 
 
 # 99. Transações

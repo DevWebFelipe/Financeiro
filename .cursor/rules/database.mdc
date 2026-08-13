@@ -100,6 +100,20 @@ Do not add `deleted_at` to every table. Financial history uses domain status (`C
 
 Do not use PostgreSQL `ENUM` by default. Prefer `VARCHAR` + application enum. `CHECK` only for small stable sets (example: account type `BANK_ACCOUNT` / `CASH`).
 
+Every financial table has `user_id UUID NOT NULL`.
+
+Same-user ownership is enforced with composite FKs `(referenced_id, user_id) → parent (id, user_id)`. Parents need `UNIQUE (id, user_id)` in addition to PK `id`. Specification: `docs/23-modelo-de-dados.md` sections 264–266.
+
+`invoice_id` is on `expense_installments` only. Do not add `invoice_id` to `expenses`.
+
+Do not persist invoice `total_amount`, `paid_amount`, or `remaining_amount`. They are derived.
+
+Do not add `payments.type` enum, CHECK, or a silent omit/keep of that column until `AGENTS.md` §28.3 / `docs/23` §269.1 is decided.
+
+Do not add per-installment “invoice paid amount” columns to anticipate §269.3.
+
+If a column, CHECK, enum, or FK depends on an open business decision, do not create that migration.
+
 ---
 
 ## 7. What not to put in the database

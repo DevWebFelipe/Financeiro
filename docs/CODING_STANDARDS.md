@@ -511,6 +511,14 @@ Do not use `ON DELETE CASCADE` for financial relationships by default.
 
 Do not implement generic soft delete (`deleted_at` on every table). Financial records use `CANCELLED` / `REFUNDED` / `active`.
 
+Ownership: every financial table has `user_id NOT NULL`. Relationships that must belong to the same user use composite FKs `(referenced_id, user_id) → parent (id, user_id)`, with `UNIQUE (id, user_id)` on the parent. JPA maps simple `@JoinColumn` on the id; composite FKs live in Flyway. Details: `docs/23-modelo-de-dados.md` sections 264–266.
+
+`invoice_id` belongs to `expense_installments`, never to `expenses`.
+
+Invoice `total_amount` / `paid_amount` / `remaining_amount` are derived, not columns.
+
+Do not add `payments.type` enum/CHECK, installment-edit compensation logic, or invoice-payment allocation columns until `AGENTS.md` §28.3 / `docs/23` §269 is decided. Do not write a preparatory migration to guess those answers.
+
 ### 17.4 Other database rules
 
 - JSONB only for genuinely semi-structured data, not core financial modeling

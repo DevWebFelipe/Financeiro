@@ -20,6 +20,8 @@ If this file conflicts with a higher document, follow the higher document and re
 
 If a technical decision is not defined above, stop. Do not invent it silently.
 
+Business gaps: `AGENTS.md` seção 28. Official blockers: `payments.type`; edição de parcela futura × `expenses.total_amount`; pagamento parcial de fatura × status/rateio das parcelas. Details: `docs/23-modelo-de-dados.md` seção 269.
+
 ---
 
 ## 1. Default backend flow

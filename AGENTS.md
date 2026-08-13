@@ -271,6 +271,8 @@ Queries e operações de persistência devem filtrar pelo usuário autenticado.
 
 Um usuário nunca pode consultar, alterar ou excluir dados pertencentes a outro usuário.
 
+O modelo físico impede referência cruzada entre usuários (despesa A + categoria B, etc.) via `user_id` e FKs compostas. Detalhe: `docs/23-modelo-de-dados.md` seções 264–266.
+
 ---
 
 ## 9. Segurança
@@ -374,8 +376,8 @@ Campos essenciais incluem:
 
 - nome/apelido;
 - `holderName` (titular textual — não precisa ser usuário);
-- limite;
-- limite disponível / comprometimento;
+- limite contratado (persistido);
+- limite disponível / comprometimento (derivados; não colunas independentes);
 - dia de fechamento;
 - dia de vencimento;
 - status;
@@ -396,7 +398,11 @@ Status persistidos: `OPEN`, `CLOSED`, `PARTIALLY_PAID`, `PAID`.
 
 `OVERDUE` derivado da data de vencimento.
 
-Campos: cartão, período, fechamento, vencimento, valor total, valor pago, saldo restante, status.
+Campos persistidos: cartão, período, fechamento, vencimento, status.
+
+Valor total, valor pago e saldo restante são **derivados** (não colunas): soma das parcelas do ciclo, soma dos pagamentos da fatura, e a diferença. Detalhe: `docs/23-modelo-de-dados.md`.
+
+Itens da fatura: `expense_installments` (`invoice_id` na parcela, nunca na despesa). Uma compra parcelada atravessa várias faturas (RN085).
 
 Pagamento parcial permitido. Parcelamento do saldo restante é operação separada e **não** apaga/modifica compras originais.
 
@@ -410,6 +416,8 @@ Parcelas podem ter valores diferentes; a soma deve ser exatamente o total.
 
 Arredondamento determinístico; sem residual de centavos.
 
+Em compra no cartão, cada parcela referencia a fatura do respectivo ciclo (`expense_installments.invoice_id`). A despesa original não possui `invoice_id`.
+
 ---
 
 ## 16. Número do boleto
@@ -420,7 +428,7 @@ Campo opcional na despesa, para cópia no pagamento. O sistema não gera boletos
 
 ## 17. Metas, projeções, relatórios e gráficos
 
-- Metas na V1: nome, valor alvo, acumulado, data alvo, progresso, situação.
+- Metas na V1: nome, valor alvo, acumulado (derivado das contribuições), data alvo, progresso (derivado), situação.
 - Projeções: receitas/despesas futuras, parcelas, faturas, compromissos; excluir `CANCELLED`/`REFUNDED` e receitas canceladas.
 - PDF: **OpenPDF** (ex.: relatório por responsável em cartão de terceiro).
 - Gráficos: **Apache ECharts**.
@@ -524,7 +532,7 @@ Além das tecnologias excluídas (seção 5): deploy em produção, compartilham
 
 ---
 
-## 28. Regra de parada
+## 28. Regra de parada e governança de lacunas
 
 Parar e solicitar orientação quando:
 
@@ -536,11 +544,70 @@ Parar e solicitar orientação quando:
 - testes sem correção segura;
 - biblioteca não aprovada.
 
-Não assumir decisões importantes de negócio. Usar: **DECISÃO PENDENTE DO DESENVOLVEDOR**.
+Não assumir decisões importantes de negócio. Usar: **DECISÃO PENDENTE DO DESENVOLVEDOR** / **PENDÊNCIA DE DECISÃO**.
 
 Não criar automaticamente: UseCase por CRUD; interface + implementação para toda classe; DAO sobre Spring Data; Mapper para toda entidade; MapStruct sem necessidade; `common/` genérico; Domain Events; Specification; Strategy; Hexagonal Architecture; Clean Architecture por camadas artificiais; NgRx; `BaseComponent`; `GenericCrudService`.
 
 Antes de criar classe, interface, service, mapper, componente, pasta ou abstração: existe responsabilidade real que justifique isso **agora**? Se não, não criar.
+
+### 28.1 Regra máxima
+
+Nenhuma lacuna de negócio pode ser preenchida por suposição técnica.
+
+Não escolher automaticamente a alternativa mais simples, convencional ou conveniente.
+
+Se a decisão puder alterar modelo, relacionamento, cálculo, status, persistência vs derivação, ownership, API, Service, migration, constraint, índice, enum, CHECK ou qualquer regra de negócio: **parar e solicitar decisão explícita**.
+
+Não criar código provisório, migration “preparatória”, enum/CHECK com valores presumidos, nem alterar documentação para justificar decisão ainda não aprovada.
+
+### 28.2 Hierarquia de fontes (conflito)
+
+1. Decisão explícita do usuário
+2. Regras de negócio oficiais (`docs/24`)
+3. Modelo de dados oficial (`docs/23`)
+4. Arquitetura oficial (`docs/21`)
+5. API / documentação técnica (`docs/25` e correlatos)
+6. `docs/CODING_STANDARDS.md`
+7. Implementação existente
+8. Inferência técnica
+
+Implementação existente nunca justifica regra de negócio conflitante com a documentação oficial. Código pode estar errado ou desatualizado.
+
+### 28.3 Pendências oficiais (bloqueadas)
+
+Até decisão explícita, **não** implementar Flyway, entidade, enum, CHECK, teste ou regra dependente de:
+
+1. `payments.type` — o campo existe no modelo; valores oficiais não existem. Não criar enum, CHECK, constantes, validações nem regras. Perguntar: o campo permanece? quais valores? enum aplicativo e/ou CHECK? significado de cada valor?
+2. Edição de parcela futura × `expenses.total_amount` — RN067 vale na criação; a edição posterior não está definida. Não escolher sozinho: alterar total, redistribuir, rejeitar, permitir divergência, etc.
+3. Pagamento parcial da fatura × status/rateio das parcelas — pagamentos em `credit_card_invoice_payments`; não há regra de rateio. Não assumir FIFO, proporcional, manter tudo `OPEN`, etc.
+
+Detalhe das perguntas obrigatórias: `docs/23-modelo-de-dados.md` seção 269.
+
+O restante do modelo já consolidado continua válido e é fonte de verdade.
+
+### 28.4 Novas lacunas durante a implementação
+
+1. Identificar: documento consultado, regra existente, o que falta, o que a decisão trava.
+2. Não implementar a parte dependente.
+3. Apresentar alternativas de negócio de forma neutra.
+4. Aguardar aprovação.
+5. Só então: atualizar documentação / RN / modelo / API / testes, e implementar.
+
+### 28.5 Banco, derivados, ownership, JPA, testes
+
+- Migration: se entidade, FK, nullable, CHECK, enum, índice, derivado vs persistido, cascade ou exclusão depender de decisão em aberto, **não criar a migration**.
+- Não criar colunas para valores definidos como derivados (`total_amount` / `paid_amount` / `remaining_amount` da fatura; `current_amount` da meta; comprometimento do cartão). Otimização não autoriza segunda fonte de verdade.
+- Ownership: FK composta `(referenced_id, user_id) → (parent.id, parent.user_id)`. Não trocar por FK simples só para facilitar o JPA. Service usa `user_id` do contexto autenticado; o banco também impede cruzamento.
+- JPA não altera o modelo físico. Constraint no banco + mapeamento JPA compatível.
+- Teste de regra indefinida é proibido (`TESTE NÃO DEFINIDO → REGRA NÃO DEFINIDA → IMPLEMENTAÇÃO BLOQUEADA`). Depois: decisão → documentação → teste → implementação.
+
+### 28.6 O que a IA pode vs não pode decidir sozinha
+
+Pode (semântica inalterada): nome de variável, organização de métodos, estrutura de pacote, mapper interno, detalhe que não muda contrato.
+
+Não pode: significado de campo, cálculo, valor financeiro, status, pagamento, relacionamento, cardinalidade, persistido vs derivado, ownership, parcelamento, cancelamento/estorno, qualquer regra que altere o resultado financeiro ou o comportamento esperado pelo usuário.
+
+Dúvida “posso assumir que funciona assim?” → **não, se for decisão de negócio**.
 
 ---
 

@@ -164,6 +164,15 @@ Objetivo:
 Criar estrutura inicial do PostgreSQL.
 
 
+Bloqueios oficiais (não migrar nem implementar a parte dependente até decisão):
+
+- `payments.type` (`docs/23` §269.1);
+- edição de parcela futura × `expenses.total_amount` (`docs/23` §269.2) — não bloqueia o schema da parcela; bloqueia a regra de edição;
+- pagamento parcial da fatura × status/rateio das parcelas (`docs/23` §269.3) — não bloqueia a tabela de pagamentos da fatura; bloqueia rateio e efeito sobre parcelas.
+
+Governança: `AGENTS.md` seção 28. O modelo já consolidado permanece fonte de verdade.
+
+
 Escopo:
 
 - migrations;
@@ -196,11 +205,15 @@ payments
 
 transfers
 
-invoices
+credit_card_invoices
 
-invoice_installments
+credit_card_invoice_payments
 
-goals
+credit_card_invoice_installments
+
+financial_goals
+
+goal_contributions
 
 
 # 14. Banco

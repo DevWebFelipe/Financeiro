@@ -1512,10 +1512,16 @@ parcelas;
 
 A API deve evitar múltiplas fontes de verdade.
 
+Totais de fatura (`totalAmount`, `paidAmount`, `remainingAmount`) são calculados pelo backend a partir de parcelas e pagamentos. Não são colunas.
+
+`invoice_id` vive na parcela, não na despesa. Modelo: `docs/23-modelo-de-dados.md`.
+
 
 # 178. Fonte de verdade
 
 Banco de dados é fonte de verdade dos dados persistidos.
+
+Integridade de ownership: FKs compostas `(referenced_id, user_id)` além do filtro de `user_id` nas queries.
 
 
 # 179. Fonte de verdade

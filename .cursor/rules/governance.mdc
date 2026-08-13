@@ -1,0 +1,64 @@
+---
+description: Business-gap governance — stop and ask; do not fill undefined financial rules by assumption
+alwaysApply: true
+---
+
+# Financial Control — Decision Governance
+
+Operational reminder. Do not invent business rules here.
+
+Authority: `AGENTS.md` seção 28 → `docs/20–28` → `docs/CODING_STANDARDS.md` → this file.
+
+---
+
+## 1. Max rule
+
+No business gap may be filled by technical assumption.
+
+If a decision could change model, relationships, calculation, status, persisted vs derived values, ownership, API, Service, migration, constraint, index, enum, CHECK, or any business rule: **stop and ask**.
+
+Do not create provisional code, preparatory migrations, presumed enums/CHECKs, or documentation written to justify an unapproved decision.
+
+---
+
+## 2. Official blockers (do not implement until explicit decision)
+
+1. `payments.type` — field exists; official values do not. No enum, CHECK, constants, or rules.
+2. Future installment edit vs `expenses.total_amount` — creation rule (RN067) exists; edit behavior does not.
+3. Partial invoice payment vs installment status/allocation — invoice payments exist; allocation rule does not.
+
+Mandatory questions: `docs/23-modelo-de-dados.md` seção 269.
+
+Everything else already consolidated in `docs/23` remains the source of truth.
+
+---
+
+## 3. New gaps
+
+Identify (document, existing rule, missing piece, what it blocks) → do not implement the dependent part → present neutral options → wait → then update docs/RN/model/tests → then implement.
+
+---
+
+## 4. Source hierarchy on conflict
+
+1. Explicit user decision
+2. `docs/24`
+3. `docs/23`
+4. `docs/21`
+5. `docs/25` and technical docs
+6. `docs/CODING_STANDARDS.md`
+7. Existing code
+8. Technical inference
+
+Existing code never overrides official docs.
+
+---
+
+## 5. Special cases
+
+- **DB:** if a column/FK/CHECK/enum/index depends on an open decision, do not create that migration (or that part of it).
+- **Derived:** do not persist invoice totals, goal `current_amount`, or card commitment.
+- **Ownership:** keep composite FKs; do not drop them to simplify JPA.
+- **Tests:** undefined rule → no test → implementation blocked.
+
+"Can I assume it works this way?" → **No, if it is a business decision.**

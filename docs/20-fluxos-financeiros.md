@@ -741,6 +741,11 @@ Fatura:
 R$ 850
 
 
+Esse total é a soma das parcelas vinculadas ao ciclo (`expense_installments` com aquele `invoice_id`), não uma coluna persistida.
+
+Itens da fatura são parcelas. Uma compra parcelada pode ter as demais parcelas em faturas seguintes.
+
+
 # 34. Fluxo — Fatura fechada
 
 Quando chega o fechamento:
@@ -1871,6 +1876,10 @@ R$ 200
 # 114. Projeção
 
 Sistema deve mostrar cada parcela no mês correspondente.
+
+Cada parcela de cartão é vinculada à fatura do respectivo ciclo (`expense_installments.invoice_id`).
+
+A despesa original não possui `invoice_id`.
 
 
 # 115. Fluxo — Compra cancelada antes da fatura

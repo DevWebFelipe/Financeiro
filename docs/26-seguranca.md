@@ -317,6 +317,11 @@ WHERE id = :id
 AND user_id = :authenticatedUserId
 
 
+O filtro nas queries é obrigatório e não é a única barreira.
+
+O modelo físico (`docs/23-modelo-de-dados.md` seções 264–266) usa FKs compostas `(referenced_id, user_id)` para impedir persistir, por exemplo, despesa do usuário A apontando para categoria, conta ou cartão do usuário B.
+
+
 # 38. IDOR
 
 A aplicação deve prevenir:

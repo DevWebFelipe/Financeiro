@@ -1,8 +1,10 @@
 # 🚀 Financial Control — Manual de Execução
 
-Este guia apresenta os passos necessários para colocar o projeto **Financial Control** em execução localmente.
+Este guia apresenta os passos necessários para colocar o projeto **Financial Control** em execução localmente, realizar os testes e, ao finalizar, encerrar todos os serviços corretamente.
 
 ---
+
+# ▶️ Iniciando o sistema
 
 ## 1. 🐘 Subir o PostgreSQL
 
@@ -14,7 +16,7 @@ docker compose up -d
 
 O comando inicia os containers definidos no `docker-compose.yml`, incluindo o PostgreSQL.
 
-> **Importante:** o Docker deve estar em execução antes de executar este comando.
+> **Importante:** o Docker Desktop deve estar em execução antes de executar este comando.
 
 ---
 
@@ -86,35 +88,184 @@ Depois que o frontend estiver iniciado, abra o navegador e acesse:
 
 **http://localhost:4200**
 
+Se a aplicação abrir normalmente, o ambiente está funcionando. ✅
+
 ---
 
-# 🔄 Resumo da inicialização
+# 🧪 Realizando os testes
 
-Para facilitar, a ordem correta é:
+Com os três componentes em execução:
 
 ```text
-1. Docker / PostgreSQL
-        ↓
-2. Backend / Spring Boot
-        ↓
-3. Frontend / Angular
-        ↓
-4. Navegador
+🐘 PostgreSQL
+      ↓
+⚙️ Backend
+      ↓
+🖥️ Frontend
+      ↓
+🌐 Navegador
 ```
 
-### Terminais necessários
+Você pode realizar os testes funcionais da aplicação.
 
-| Terminal      | Pasta           | Comando                      |
-| ------------- | --------------- | ---------------------------- |
-| 🐘 PostgreSQL | Raiz do projeto | `docker compose up -d`       |
-| ⚙️ Backend    | `backend`       | `.\mvnw.cmd spring-boot:run` |
-| 🖥️ Frontend  | `frontend`      | `npm start`                  |
+Durante os testes, mantenha os terminais do **Backend** e **Frontend** abertos.
 
-### ✅ Sistema funcionando quando:
+---
 
-* PostgreSQL está rodando no Docker.
-* Backend responde `{"status":"UP"}` em `localhost:8080`.
-* Angular está rodando em `localhost:4200`.
-* O sistema abre normalmente no navegador.
+# ⏹️ Encerrando o sistema
 
-> **Dica:** mantenha os terminais do backend e frontend abertos durante a utilização do sistema. Para encerrar cada aplicação, utilize `Ctrl + C` no respectivo terminal.
+Depois de terminar os testes, é recomendado encerrar os serviços de forma organizada.
+
+## 5. 🖥️ Parar o Frontend
+
+No terminal onde o Angular está rodando, pressione:
+
+```text
+Ctrl + C
+```
+
+Isso encerra o servidor de desenvolvimento do Angular.
+
+---
+
+## 6. ⚙️ Parar o Backend
+
+No terminal onde o Spring Boot está rodando, pressione:
+
+```text
+Ctrl + C
+```
+
+Isso encerra a aplicação Spring Boot.
+
+---
+
+## 7. 🐘 Parar o PostgreSQL / Docker
+
+Volte para um terminal na **raiz do projeto** e execute:
+
+```powershell
+docker compose down
+```
+
+Isso encerra e remove os containers criados pelo `docker compose`.
+
+### ⚠️ Importante sobre os dados do banco
+
+Use:
+
+```powershell
+docker compose down
+```
+
+e **não**:
+
+```powershell
+docker compose down -v
+```
+
+O comando `down -v` também remove os volumes associados ao Docker e pode apagar os dados persistidos do PostgreSQL.
+
+Portanto, para o uso normal durante o desenvolvimento, utilize apenas:
+
+```powershell
+docker compose down
+```
+
+---
+
+# 🔄 Iniciar novamente depois
+
+Quando quiser voltar a trabalhar no projeto, basta repetir o processo.
+
+### 1. PostgreSQL
+
+Na raiz:
+
+```powershell
+docker compose up -d
+```
+
+### 2. Backend
+
+Em outro terminal:
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+### 3. Frontend
+
+Em outro terminal:
+
+```powershell
+cd frontend
+npm start
+```
+
+### 4. Sistema
+
+Abrir:
+
+**http://localhost:4200**
+
+---
+
+# 📋 Resumo completo
+
+## ▶️ Para iniciar
+
+| Ordem | Componente    | Local      | Comando                      |
+| ----- | ------------- | ---------- | ---------------------------- |
+| 1     | 🐘 PostgreSQL | Raiz       | `docker compose up -d`       |
+| 2     | ⚙️ Backend    | `backend`  | `.\mvnw.cmd spring-boot:run` |
+| 3     | 🖥️ Frontend  | `frontend` | `npm start`                  |
+| 4     | 🌐 Sistema    | Navegador  | `http://localhost:4200`      |
+
+## ⏹️ Para encerrar
+
+| Ordem | Componente    | Ação                  |
+| ----- | ------------- | --------------------- |
+| 1     | 🖥️ Frontend  | `Ctrl + C`            |
+| 2     | ⚙️ Backend    | `Ctrl + C`            |
+| 3     | 🐘 PostgreSQL | `docker compose down` |
+
+---
+
+# 🧠 Fluxo para o dia a dia
+
+```text
+                 INICIAR
+                    │
+                    ▼
+          docker compose up -d
+                    │
+                    ▼
+             Subir Backend
+                    │
+                    ▼
+            Subir Frontend
+                    │
+                    ▼
+          http://localhost:4200
+                    │
+                    ▼
+                🧪 TESTAR
+                    │
+                    ▼
+             Ctrl + C Frontend
+                    │
+                    ▼
+              Ctrl + C Backend
+                    │
+                    ▼
+          docker compose down
+                    │
+                    ▼
+                 FINALIZADO
+```
+
+> **Regra prática:** sempre que terminar de trabalhar, pare primeiro o **Frontend**, depois o **Backend** e, por último, execute `docker compose down` para o PostgreSQL.
+
+> **Regra de segurança:** evite `docker compose down -v` durante o desenvolvimento, a menos que você tenha certeza de que deseja remover os volumes e os dados persistidos do banco.

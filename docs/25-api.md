@@ -753,6 +753,11 @@ Response conceitual:
 }
 
 
+`totalAmount`, `paidAmount` e `remainingAmount` são derivados na leitura.
+
+Não são colunas de `credit_card_invoices`. Fórmulas: `docs/23-modelo-de-dados.md` seção 263.
+
+
 # 59. Compras da fatura
 
 Endpoint:
@@ -760,7 +765,11 @@ Endpoint:
 GET /api/v1/invoices/{id}/items
 
 
-Retorna as parcelas pertencentes à fatura.
+Retorna as parcelas (`expense_installments`) pertencentes à fatura (`invoice_id`).
+
+Não retorna a despesa inteira como se ela pertencesse a um único ciclo.
+
+Uma despesa parcelada pode ter parcelas em outras faturas.
 
 
 # 60. Fechar fatura
@@ -1398,10 +1407,13 @@ Fluxo:
 2. validar conta;
 3. validar valor;
 4. verificar saldo;
-5. criar pagamento;
-6. atualizar fatura;
-7. atualizar movimentação;
+5. criar pagamento (`credit_card_invoice_payments`);
+6. recalcular totais derivados e atualizar o status persistido da fatura;
+7. registrar a saída na conta;
 8. confirmar transação.
+
+
+Não gravar `total_amount` / `paid_amount` / `remaining_amount` como colunas. O status (`PARTIALLY_PAID` / `PAID`) é persistido.
 
 
 # 118. Transferência
@@ -1426,7 +1438,7 @@ Fluxo:
 3. localizar/criar fatura;
 4. criar despesa;
 5. criar parcelas;
-6. associar parcelas às faturas;
+6. associar cada parcela à fatura do respectivo ciclo (`expense_installments.invoice_id`);
 7. atualizar comprometimento;
 8. confirmar transação.
 
