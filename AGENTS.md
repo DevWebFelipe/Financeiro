@@ -83,7 +83,7 @@ Se uma decisão importante de negócio não estiver definida, a IA deve parar e 
 
 - Java 25 LTS
 - Spring Boot 4.1.x
-- Maven
+- Maven 3.9.x (≥ 3.9.12); o backend utilizará Maven Wrapper
 - Spring Web
 - Spring Data JPA
 - Hibernate
@@ -102,6 +102,8 @@ Se uma decisão importante de negócio não estiver definida, a IA deve parar e 
 ### Frontend
 
 - Angular 22.x
+- Node.js 22.x LTS (≥ 22.22.3); 24.x ≥ 24.15.0 aceito
+- npm (empacotado com o Node.js utilizado)
 - TypeScript strict
 - Standalone Components
 - Signals
@@ -115,11 +117,10 @@ Se uma decisão importante de negócio não estiver definida, a IA deve parar e 
 - Apache ECharts
 - ESLint
 - Prettier
-- npm
 
 ### Banco
 
-- PostgreSQL 18
+- PostgreSQL 18 (`postgres:18-alpine` via Docker)
 - UUID
 - NUMERIC(19,2) / BigDecimal
 - TIMESTAMPTZ para timestamps
@@ -129,11 +130,14 @@ Se uma decisão importante de negócio não estiver definida, a IA deve parar e 
 
 ### Infraestrutura
 
-- Docker
-- Docker Compose
-- PostgreSQL em container no desenvolvimento
+- Docker Engine ≥ 24; no Windows, Docker Desktop
+- Docker Compose V2 ≥ 2.24 (`docker compose`)
+- PostgreSQL em container no desenvolvimento (`postgres:18-alpine`)
 - backend/frontend podem executar fora do Docker inicialmente
 - Dockerização completa da aplicação poderá ser feita posteriormente
+- Git ≥ 2.39
+
+Environment Contract completo: `docs/22-stack-tecnologica.md` (seção 30). Diagnóstico: `scripts/check-environment.ps1`.
 
 ### Convenções
 
@@ -420,7 +424,9 @@ Não adicionar ferramentas de qualidade sem necessidade.
 
 ## 22. Docker
 
-PostgreSQL via Docker Compose no desenvolvimento.
+PostgreSQL via Docker Compose no desenvolvimento (imagem `postgres:18-alpine`).
+
+Docker Engine ≥ 24, daemon em execução. Compose V2 ≥ 2.24 (`docker compose`).
 
 Backend e frontend podem rodar localmente fora do Docker.
 
@@ -429,6 +435,8 @@ Não criar configuração de produção complexa na V1.
 ---
 
 ## 23. Git e GitHub
+
+Git ≥ 2.39 (recomendado: versão atual do Git for Windows).
 
 Desenvolvimento no Cursor. Commits/pushes manuais pelo desenvolvedor (VSCode).
 

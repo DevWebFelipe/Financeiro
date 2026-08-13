@@ -62,7 +62,7 @@ Permitir controle financeiro pessoal completo, inicialmente enxuto e sólido:
 
 - Java 25 LTS
 - Spring Boot 4.1.x
-- Maven
+- Maven 3.9.x (≥ 3.9.12); Maven Wrapper no backend
 - Spring Web, Spring Data JPA, Hibernate
 - Spring Security, JWT (Access + Refresh Token)
 - Argon2id
@@ -75,16 +75,18 @@ Permitir controle financeiro pessoal completo, inicialmente enxuto e sólido:
 ### Frontend
 
 - Angular 22.x
+- Node.js 22.x LTS (≥ 22.22.3); 24.x ≥ 24.15.0 aceito
+- npm empacotado com o Node.js
 - TypeScript strict
 - Standalone Components, Signals, Services
 - Reactive Forms, HttpClient, Interceptors, Route Guards
 - Angular Material, Material Icons
 - Apache ECharts
-- ESLint, Prettier, npm
+- ESLint, Prettier
 
 ### Banco
 
-- PostgreSQL 18
+- PostgreSQL 18 (`postgres:18-alpine` via Docker)
 - UUID
 - NUMERIC(19,2) / BigDecimal
 - TIMESTAMPTZ / LocalDate
@@ -93,7 +95,8 @@ Permitir controle financeiro pessoal completo, inicialmente enxuto e sólido:
 
 ### Infraestrutura
 
-- Docker / Docker Compose (PostgreSQL no desenvolvimento)
+- Docker Engine ≥ 24 / Docker Desktop / Compose V2 ≥ 2.24
+- PostgreSQL no desenvolvimento via Docker Compose
 - Backend e frontend podem rodar fora do Docker inicialmente
 
 ### Convenções
@@ -162,13 +165,30 @@ Detalhes: `docs/24-regras-de-negocio.md`.
 
 ### Pré-requisitos
 
-- Git
-- Docker e Docker Compose
-- Node.js (LTS compatível com Angular 22.x)
-- npm
-- Java 25
-- Maven
+Versões oficiais: `docs/22-stack-tecnologica.md` (Environment Contract).
+
+- Git ≥ 2.39
+- Docker Desktop (Engine ≥ 24, daemon em execução)
+- Docker Compose V2 ≥ 2.24 (`docker compose`)
+- Node.js 22.x LTS ≥ 22.22.3 (preferencial) ou 24.x ≥ 24.15.0
+- npm empacotado com o Node.js (não atualizar com `npm install -g npm@latest`)
+- Java 25 LTS (JDK, com `javac`)
+- Maven 3.9.x ≥ 3.9.12 (Maven Wrapper será criado com o backend)
 - IDE ou editor
+
+### Diagnóstico do ambiente (Windows)
+
+Somente leitura; não instala nem altera o sistema:
+
+```powershell
+.\scripts\check-environment.ps1
+```
+
+Se a política de execução bloquear o script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\check-environment.ps1
+```
 
 ### PostgreSQL
 
@@ -195,6 +215,8 @@ financial-control/
 ├── .env.example
 ├── docker-compose.yml
 ├── docs/
+├── scripts/
+│   └── check-environment.ps1
 ├── backend/          (Fase 1+)
 └── frontend/         (Fase 1+)
 ```
@@ -235,13 +257,9 @@ Unitários, integração, API e segurança. Testcontainers com PostgreSQL. Ver `
 ## Status
 
 ```text
-Planejamento / Consolidação documental
+Fase 1 — Fundação (Environment Contract)
 ```
 
-Próxima etapa (após autorização):
+Etapa atual: diagnóstico do ambiente de desenvolvimento.
 
-```text
-Fase 1 — Estrutura inicial
-```
-
-A IA não deve implementar a Fase 1 sem autorização explícita.
+A IA não deve avançar para instalação automática (`setup-windows.ps1`) nem para o scaffold do backend/frontend sem autorização explícita.
