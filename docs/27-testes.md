@@ -1,6 +1,8 @@
 # Testes — Financial Control
 
-## 0. Stack de testes
+## 0. Hierarquia e stack de testes
+
+`AGENTS.md` → `docs/20–28` → `docs/CODING_STANDARDS.md` → `.cursor/rules/*.mdc`
 
 Backend: JUnit 5, Mockito, AssertJ, Spring Boot Test, Testcontainers (PostgreSQL 18).
 
@@ -1513,7 +1515,11 @@ Fixtures devem ser simples e legíveis.
 
 # 146. Test Builders
 
-Builders podem ser utilizados quando reduzirem complexidade.
+Builders ou factories podem ser utilizados quando reduzirem complexidade real.
+
+Não criar Factory/Builder para cada entidade ou para objetos simples que cabem em poucas linhas no próprio teste.
+
+Não criar testes de concorrência antes que exista comportamento concorrente real a proteger.
 
 
 # 147. Nomenclatura

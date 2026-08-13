@@ -1,0 +1,148 @@
+---
+description: Project-wide architecture and design rules for Financial Control
+alwaysApply: true
+---
+
+# Financial Control — Architecture Rules
+
+Operational instructions for Cursor. Do not invent architectural decisions here.
+
+Authority:
+
+```text
+AGENTS.md
+  → docs/20–28
+  → docs/CODING_STANDARDS.md
+  → this file
+```
+
+If this file conflicts with a higher document, follow the higher document and report the conflict.
+
+If a technical decision is not defined above, stop. Do not invent it silently.
+
+---
+
+## 1. Default backend flow
+
+```text
+Controller → Service → Repository
+```
+
+Controller does not access Repository.
+
+Even simple reads go through the module Service.
+
+A small Service is valid. Do not create a UseCase per CRUD operation.
+
+---
+
+## 2. Real domain modules
+
+Use the official V1 concepts:
+
+- `accounts`
+- `expenses`
+- `incomes`
+- `transfers`
+- `payments`
+- `credit_cards`
+- `credit_card_invoices`
+- `financial_goals`
+
+Do not create a generic `transactions`, `cards`, or `goals` module.
+
+Java packages: plural, lowercase, aligned with tables and HTTP resources.
+
+Do not create empty domain packages in Phase 1.
+
+---
+
+## 3. What not to create automatically
+
+- UseCase per CRUD (`CreateExpenseUseCase`, `GetExpenseUseCase`, ...)
+- Interface + `*Impl` for every class
+- DAO over Spring Data
+- Mapper for every entity
+- MapStruct in Phase 1
+- Generic `common/`, `utils/`, `helpers/`, `managers/`
+- Angular `*StateService` for every feature
+- NgRx
+- `BaseComponent` / `GenericCrudService`
+- Domain Events, Specification, Strategy
+- Hexagonal / Clean Architecture extra layers
+- Controller → Repository shortcut
+
+Spring Data repository interfaces are required by the framework. That is not “an interface for every class”.
+
+---
+
+## 4. HTTP boundary
+
+Every HTTP endpoint uses DTOs. Never expose JPA entities.
+
+Do not create duplicate DTOs for the same contract.
+
+---
+
+## 5. UseCase
+
+Not the default.
+
+Allowed only for a named, atomic, complex business operation, and only if the module Service is genuinely insufficient.
+
+Example that may be justified later: `TransferMoneyUseCase`.
+
+If in doubt, keep the logic in `TransferService` / `ExpenseService`.
+
+---
+
+## 6. Before creating anything
+
+1. Inspect the existing project structure.
+2. Prefer extending an existing responsibility.
+3. Ask: does a real responsibility justify this **now**?
+4. Ask: what concrete problem does this pattern solve?
+
+If the only answer is “best practice”, do not create it.
+
+---
+
+## 7. Frontend / backend independence
+
+Frontend talks to the backend only through `/api/v1`.
+
+Frontend never accesses PostgreSQL.
+
+Backend never depends on Angular.
+
+The API must not expose Java, JPA, Spring, or Angular details.
+
+---
+
+## 8. Business rules
+
+Financial rules are authoritative in the backend.
+
+Do not duplicate authoritative financial rules in the frontend.
+
+User isolation: authenticated user comes from the security context. Never trust a client-supplied `userId` as owner.
+
+---
+
+## 9. Naming
+
+English identifiers. No Delphi prefixes (`m`, `T`, `I`, `cg`).
+
+PostgreSQL boolean column: `active`. Java: `isActive`.
+
+---
+
+## 10. Scope
+
+Do not perform unrelated refactoring while implementing a feature.
+
+Do not silently introduce a new project-wide convention.
+
+Optimize generated code for correctness, clear responsibility, maintainability, testability, and simplicity — not for looking enterprise-oriented.
+
+Details: `docs/CODING_STANDARDS.md`, `docs/21-arquitetura-do-sistema.md`.

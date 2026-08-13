@@ -2,7 +2,7 @@
 
 ## 0. Hierarquia
 
-`AGENTS.md` → `docs/20–28` → `README.md`
+`AGENTS.md` → `docs/20–28` → `docs/CODING_STANDARDS.md` → `.cursor/rules/*.mdc`
 
 Este é o documento canônico das regras financeiras detalhadas.
 
@@ -32,6 +32,10 @@ Um usuário nunca pode visualizar, alterar ou excluir dados pertencentes a outro
 O backend deve obter o ID do usuário autenticado através do contexto de segurança.
 
 Nunca confiar em um userId enviado pelo frontend para determinar o proprietário de uma operação.
+
+Incorreto: `GET /expenses?userId=...` aceito como dono dos dados.
+
+Correto: `GET /expenses` — o backend determina o usuário pelo contexto autenticado.
 
 
 ## RN003 — Email
@@ -703,7 +707,11 @@ Resultado: a compra entra no próximo ciclo (não no que fecha em 10/08).
 
 ## RN096 — Horário
 
-O sistema deve utilizar timezone definido pela aplicação (`America/Sao_Paulo`) para evitar inconsistências.
+Timestamps de sistema são persistidos em UTC.
+
+Regras de calendário financeiro (dia da compra vs dia de fechamento, "hoje", atraso) utilizam `America/Sao_Paulo`.
+
+O frontend não deve usar o timezone do navegador para essa decisão.
 
 
 # 14. Vencimento de cartão
@@ -1314,7 +1322,15 @@ no Java.
 
 ## RN178 — Regra
 
-Definir explicitamente o rounding mode utilizado em cada cálculo financeiro.
+O rounding mode oficial da V1 é:
+
+`RoundingMode.HALF_UP`
+
+Valores monetários devem ser normalizados para escala 2 quando aplicável.
+
+Nenhum Service pode escolher outro `RoundingMode`.
+
+Em parcelamentos, o residual de centavos é absorvido pela última parcela.
 
 
 # 33. Calendário
@@ -1326,7 +1342,11 @@ Datas financeiras devem utilizar calendário do Brasil.
 
 ## RN180 — Timezone
 
-Timezone da aplicação deve ser definido explicitamente.
+Timestamps de sistema são persistidos em UTC.
+
+Regras de calendário financeiro ("hoje", vencimento, fechamento, atraso, ciclos) utilizam `America/Sao_Paulo`.
+
+O frontend não deve usar o timezone do navegador para decidir regras financeiras.
 
 
 ## RN181 — LocalDate

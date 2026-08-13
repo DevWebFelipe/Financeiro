@@ -2,7 +2,7 @@
 
 ## 0. Hierarquia
 
-`AGENTS.md` → `docs/20–28` → `README.md`
+`AGENTS.md` → `docs/20–28` → `docs/CODING_STANDARDS.md` → `.cursor/rules/*.mdc`
 
 Este documento detalha fluxos. Regras canônicas: `docs/24-regras-de-negocio.md`.
 

@@ -2,7 +2,7 @@
 
 ## 0. Hierarquia e convenções
 
-`AGENTS.md` → `docs/20–28` → `README.md`
+`AGENTS.md` → `docs/20–28` → `docs/CODING_STANDARDS.md` → `.cursor/rules/*.mdc`
 
 - Prefixo: `/api/v1`
 - REST + JSON + DTOs
@@ -249,7 +249,7 @@ PUT /api/v1/accounts/{id}
 
 Endpoint:
 
-PATCH /api/v1/accounts/{id}/deactivate
+POST /api/v1/accounts/{id}/deactivate
 
 
 Não excluir fisicamente.
@@ -259,7 +259,7 @@ Não excluir fisicamente.
 
 Endpoint:
 
-PATCH /api/v1/accounts/{id}/activate
+POST /api/v1/accounts/{id}/activate
 
 
 # 19. Saldo da conta
@@ -281,7 +281,7 @@ Response:
 
 Endpoint:
 
-GET /api/v1/accounts/{id}/transactions
+GET /api/v1/accounts/{id}/statement
 
 
 Query parameters:
@@ -339,14 +339,14 @@ PUT /api/v1/credit-cards/{id}
 
 Endpoint:
 
-PATCH /api/v1/credit-cards/{id}/deactivate
+POST /api/v1/credit-cards/{id}/deactivate
 
 
 # 26. Reativar cartão
 
 Endpoint:
 
-PATCH /api/v1/credit-cards/{id}/activate
+POST /api/v1/credit-cards/{id}/activate
 
 
 # 27. Limite do cartão
@@ -405,7 +405,7 @@ PUT /api/v1/categories/{id}
 
 Endpoint:
 
-PATCH /api/v1/categories/{id}/deactivate
+POST /api/v1/categories/{id}/deactivate
 
 
 # 32. Receitas
@@ -487,7 +487,7 @@ Request:
 
 Endpoint:
 
-PATCH /api/v1/incomes/{id}/cancel
+POST /api/v1/incomes/{id}/cancel
 
 
 # 38. Despesas
@@ -592,7 +592,7 @@ PUT /api/v1/expenses/{id}
 
 Endpoint:
 
-PATCH /api/v1/expenses/{id}/cancel
+POST /api/v1/expenses/{id}/cancel
 
 
 # 45. Estornar despesa
@@ -1108,12 +1108,16 @@ A API deve retornar metadados de paginação.
 Exemplo:
 
 {
-  "content": [],
+  "items": [],
   "page": 0,
   "size": 20,
-  "totalElements": 100,
+  "totalItems": 100,
   "totalPages": 5
 }
+
+A API não deve expor o modelo `Page` do Spring Data.
+
+Não utilizar `content` nem `totalElements` no contrato externo.
 
 
 # 88. Respostas
@@ -1137,34 +1141,33 @@ Consulta:
 
 # 91. PUT
 
-Atualização:
+Substituição completa de recurso quando aplicável.
 
-200 OK
+Resposta padrão: 200 OK com o recurso atualizado.
 
-
-ou:
-
-204 No Content
-
-
-conforme o padrão adotado.
+Não criar `PUT` apenas porque o verbo existe.
 
 
 # 92. PATCH
 
-Alteração parcial:
+Alteração parcial quando aplicável.
 
-200 OK
+Resposta padrão: 200 OK com o recurso atualizado.
 
-
-ou:
-
-204 No Content
+Ações de negócio nomeadas (cancelar, estornar, pagar) devem usar `POST /{recurso}/{id}/{acao}`, não PATCH genérico de status.
 
 
 # 93. DELETE
 
 Não utilizar DELETE como operação padrão para dados financeiros.
+
+Preferir ações explícitas:
+
+POST /api/v1/expenses/{id}/cancel
+
+POST /api/v1/payments/{id}/reverse
+
+DELETE somente pode existir para recurso não financeiro com regra explícita autorizando a remoção.
 
 
 # 94. Erro de validação
@@ -1212,6 +1215,12 @@ HTTP:
 # 100. Formato de erro
 
 A API deve possuir formato padronizado.
+
+Este é o contrato oficial de erro da V1.
+
+Não substituir automaticamente pelo RFC 7807.
+
+Não criar um segundo formato paralelo.
 
 
 Exemplo:
@@ -1523,7 +1532,7 @@ Ordem inicial:
 9. Payments
 10. Transfers
 11. Invoices
-12. Goals
+12. Financial Goals
 13. Projections
 14. Dashboard
 15. Reports

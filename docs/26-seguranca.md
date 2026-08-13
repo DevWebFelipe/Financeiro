@@ -2,7 +2,7 @@
 
 ## 0. Hierarquia
 
-`AGENTS.md` → `docs/20–28` → `README.md`
+`AGENTS.md` → `docs/20–28` → `docs/CODING_STANDARDS.md` → `.cursor/rules/*.mdc`
 
 Isolamento por usuário é regra fundamental de segurança.
 
@@ -773,7 +773,9 @@ sem endpoint/regra específica.
 
 # 98. DTO
 
-Preferir DTOs para entrada e saída da API.
+Toda fronteira HTTP deve utilizar DTOs.
+
+Não criar DTOs duplicados sem diferença real de contrato.
 
 
 # 99. Entity

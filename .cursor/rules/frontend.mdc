@@ -1,0 +1,141 @@
+---
+description: Angular frontend development rules for Financial Control
+globs:
+  - "frontend/**/*.ts"
+  - "frontend/**/*.html"
+  - "frontend/**/*.scss"
+  - "frontend/**/*.css"
+  - "frontend/**/*.json"
+alwaysApply: false
+---
+
+# Financial Control — Frontend Rules
+
+Operational instructions for Cursor. Do not create new architectural decisions here.
+
+Authority: `AGENTS.md` → `docs/20–28` → `docs/CODING_STANDARDS.md` → this file.
+
+Official stack: Angular 22.x, TypeScript strict, standalone components. Do not invent tutorial versions.
+
+---
+
+## 1. Responsibility
+
+The Angular app talks to the backend only through `/api/v1`.
+
+It must not:
+
+- access PostgreSQL;
+- implement authoritative financial rules;
+- depend on Java/JPA/Spring types;
+- use the browser timezone to decide financial rules.
+
+---
+
+## 2. Feature organization
+
+Organize by the real domain:
+
+```text
+features/accounts
+features/expenses
+features/incomes
+features/transfers
+features/payments
+features/credit-cards
+features/financial-goals
+```
+
+Do not create a generic `transactions` feature.
+
+Do not automatically create four folders per feature.
+
+If a feature only needs:
+
+```text
+expenses-page.ts
+expenses-page.html
+expenses.service.ts
+```
+
+keep it that way. Add `components/`, `pages/`, `services/`, `models/` only when there are enough files to justify them.
+
+Shared code must be genuinely reusable. `core/` is for app-wide infrastructure (auth, HTTP), not a dumping ground.
+
+---
+
+## 3. Components and services
+
+Components present UI and call feature services.
+
+Services own HTTP. Components do not call `HttpClient` directly.
+
+Do not create `AppService`, `DataService`, `HelperService`, `GenericCrudService`, or `BaseComponent`.
+
+Do not create `ExpenseStateService` to pass one value between parent and child.
+
+HTTP URLs belong in services and environment config, never hard-coded `localhost:8080` in feature code.
+
+Models represent the JSON API (`ExpenseResponse`), not Java entities.
+
+---
+
+## 4. State, signals, RxJS
+
+Local component state first.
+
+Signals when they make local UI state clearer. Not every variable needs to be a signal.
+
+RxJS where Angular already exposes observables. Do not convert every observable into a signal automatically.
+
+No NgRx in V1.
+
+No global state by default.
+
+---
+
+## 5. Forms, money, errors
+
+Typed reactive forms for complex forms.
+
+Frontend validation is UX only.
+
+Format money for display (`R$ 1.234,50`) without changing the numeric value.
+
+Map API errors from the official `docs/25-api.md` format (`status`, `code`, `message`, `fields`). Do not invent a second error shape.
+
+Pagination fields from the API: `items`, `totalItems`, `totalPages`. Do not expect Spring `content` / `totalElements`.
+
+---
+
+## 6. Routing
+
+Feature routes: `expenses.routes.ts`.
+
+`GET`-style screens: `/accounts`, `/expenses`, `/credit-cards`.
+
+Guards for auth/access only. Guards are not security and not business rules.
+
+Lazy-load meaningful features, not tiny screens.
+
+---
+
+## 7. UI and CSS
+
+Use Angular Material directly. Do not wrap every button/input/table on day one.
+
+Component-scoped styles. No `!important` as default.
+
+Accessibility is required: semantic HTML, labels, keyboard, focus.
+
+---
+
+## 8. Before creating a component or service
+
+1. Is there a real UI/application responsibility?
+2. Is it reused for a real reason, not because two templates look similar once?
+3. Can this stay in the existing page/service?
+
+Do not add npm packages because they are popular.
+
+Details: `docs/CODING_STANDARDS.md`, `docs/21-arquitetura-do-sistema.md`.

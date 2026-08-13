@@ -2,7 +2,7 @@
 
 ## 0. Hierarquia
 
-`AGENTS.md` → `docs/20–28` → `README.md`
+`AGENTS.md` → `docs/20–28` → `docs/CODING_STANDARDS.md` → `.cursor/rules/*.mdc`
 
 A IA não deve implementar fases futuras sem autorização explícita.
 
@@ -62,12 +62,14 @@ AGENTS.md
 
 docs/20-fluxos-financeiros.md até docs/28-roadmap.md
 
+docs/CODING_STANDARDS.md
+
 README.md
 
 
 Resultado esperado:
 
-Base documental do projeto consolidada (hierarquia AGENTS → docs/20–28 → README).
+Base documental do projeto consolidada (hierarquia AGENTS → docs/20–28 → CODING_STANDARDS → .cursor/rules).
 
 
 # 6. Fase 1 — Estrutura inicial

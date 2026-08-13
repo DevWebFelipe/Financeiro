@@ -1,0 +1,113 @@
+---
+description: Testing strategy and conventions for Financial Control
+globs:
+  - "backend/src/test/**/*.java"
+  - "frontend/**/*.spec.ts"
+  - "frontend/**/*.test.ts"
+  - "frontend/e2e/**/*"
+  - "backend/pom.xml"
+  - "frontend/package.json"
+alwaysApply: false
+---
+
+# Financial Control — Testing Rules
+
+Operational instructions for Cursor. Do not create new testing policy here.
+
+Authority: `AGENTS.md` → `docs/20–28` → `docs/CODING_STANDARDS.md` → this file.
+
+Details: `docs/27-testes.md`.
+
+---
+
+## 1. Goal
+
+Confidence in behavior. Not maximum test count. Not coverage theater.
+
+---
+
+## 2. Choose the right level
+
+- Pure calculation (installments, rounding, invoice cycle day): unit test
+- Persistence, Flyway, transactions, PostgreSQL: integration test with Testcontainers
+- HTTP contract, status, error format, auth: API test
+- Important user journey: few E2E tests later (Playwright)
+
+Do not use H2 when PostgreSQL behavior is what you are testing.
+
+Do not boot the full Spring context for a pure calculation.
+
+Do not repeat the same assertion at unit + API + E2E without a reason.
+
+---
+
+## 3. What must be tested
+
+- Financial rules: amounts, status transitions, transfers, payments, installments, rounding (`HALF_UP`, last installment absorbs residual)
+- User isolation: user A cannot read/change user B; client-supplied `userId` is ignored
+- Authorization and authentication
+- Atomic operations roll back on failure
+- Official API error format from `docs/25-api.md`
+- Pagination contract: `items`, `totalItems`, `totalPages`
+
+---
+
+## 4. What not to test
+
+- Trivial getters/setters
+- Simple DTOs
+- Trivial field-to-field mappers
+- Spring Data `save()` itself
+- Angular / Java / BigDecimal framework internals
+- A test whose only job is to raise coverage
+
+---
+
+## 5. Mocks and fixtures
+
+Mock expensive, external, or irrelevant collaborators.
+
+Do not mock every object around a service (repository + mapper + entity + validator + helper).
+
+Do not create `ExpenseTestFactory` and `ExpenseBuilder` for every entity.
+
+A simple valid object can be built in the test.
+
+Use an injectable clock when “today” / overdue / invoice closing must be deterministic.
+
+Do not create concurrency tests before real concurrent behavior exists.
+
+No `Thread.sleep`. No real production data or credentials.
+
+---
+
+## 6. Naming
+
+```text
+shouldRejectPaymentWhenAmountExceedsAccountBalance()
+shouldCancelOpenExpense()
+shouldIgnoreClientSuppliedUserId()
+shouldRollbackTransferWhenDestinationUpdateFails()
+```
+
+Not `test1()`, `testExpense()`, `shouldWork()`.
+
+---
+
+## 7. Money in tests
+
+Compare `BigDecimal` with exact expected values.
+
+Never compare money through `double`.
+
+Verify rounding and residual-cent rules when they are part of the behavior.
+
+---
+
+## 8. Isolation
+
+Tests must not depend on order.
+
+Database tests must not leak rows between cases.
+
+Tests must not connect to production or developer personal databases.

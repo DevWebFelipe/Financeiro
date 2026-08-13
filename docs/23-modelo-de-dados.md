@@ -2,9 +2,9 @@
 
 ## 0. Hierarquia
 
-`AGENTS.md` → `docs/20–28` → `README.md`
+`AGENTS.md` → `docs/20–28` → `docs/CODING_STANDARDS.md` → `.cursor/rules/*.mdc`
 
-Stack e precisão: PostgreSQL 18, UUID, NUMERIC(19,2), TIMESTAMPTZ, timezone America/Sao_Paulo, BRL.
+Stack e precisão: PostgreSQL 18, UUID v7 gerado pela aplicação, NUMERIC(19,2), TIMESTAMPTZ em UTC, calendário financeiro America/Sao_Paulo, BRL, coluna `active`.
 
 
 ## 1. Objetivo
@@ -42,6 +42,10 @@ UUID
 
 # 4. UUID
 
+Estratégia oficial: UUID v7 gerado pela aplicação.
+
+O banco armazena o identificador como `UUID`. Não gera o valor.
+
 Não utilizar:
 
 AUTO_INCREMENT
@@ -50,8 +54,16 @@ SERIAL
 
 BIGSERIAL
 
+uuid_generate_v4()
 
-como identificadores principais.
+DEFAULT gen_random_uuid()
+
+@GeneratedValue
+
+
+como estratégia de identificação.
+
+Não misturar geração na aplicação com default de banco.
 
 
 # 5. Usuário
@@ -1601,12 +1613,19 @@ no PostgreSQL.
 
 # 162. Precisão
 
-Preferencialmente:
+Valores monetários da V1 utilizam:
 
 NUMERIC(19,2)
 
+Não utilizar NUMERIC(19,4) para dinheiro.
 
-para valores monetários.
+Não utilizar FLOAT, REAL ou DOUBLE PRECISION para valores financeiros.
+
+Percentuais são armazenados como fração:
+
+5,25% = 0.0525
+
+Assim: 100.00 × 0.0525 = 5.25
 
 
 # 163. Não utilizar
@@ -1641,7 +1660,11 @@ quando representarem instante real.
 
 # 167. Timezone
 
-Definir timezone da aplicação.
+Persistência de timestamps: UTC (`TIMESTAMPTZ` / `Instant`).
+
+Calendário financeiro: `America/Sao_Paulo` ("hoje", vencimento, fechamento, atraso, ciclos).
+
+O frontend não deve usar o timezone do navegador para regras financeiras.
 
 
 # 168. Brasil

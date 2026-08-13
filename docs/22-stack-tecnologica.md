@@ -8,7 +8,7 @@ A IA e o desenvolvimento devem seguir esta stack.
 
 Não substituir tecnologias sem justificativa, atualização da documentação e alinhamento com `AGENTS.md`.
 
-Hierarquia: `AGENTS.md` → `docs/20–28` → `README.md`.
+Hierarquia: `AGENTS.md` → `docs/20–28` → `docs/CODING_STANDARDS.md` → `.cursor/rules/*.mdc`.
 
 
 # 2. Princípio
@@ -79,7 +79,8 @@ Não utilizar `com.example` nem `com.financialcontrol`.
 - Spring Data JPA + Hibernate
 - PostgreSQL **18**
 - Driver JDBC oficial PostgreSQL
-- Flyway para todo schema oficial
+- UUID v7 gerado pela aplicação; coluna `UUID` sem default de geração
+- Flyway para todo schema oficial; nomes de migration no plural (`V1__create_accounts.sql`)
 - `spring.jpa.hibernate.ddl-auto=validate`
 - Nunca `ddl-auto=create` / `update` como fonte do schema
 
@@ -112,7 +113,9 @@ Geração no backend, sob demanda, com isolamento por usuário.
 # 12. Lombok e MapStruct
 
 - Lombok: permitido com uso restrito (evitar `@SneakyThrows` e excessos)
-- MapStruct: opcional; mapeamento manual aceitável quando simples
+- MapStruct: **não** introduzir na Fase 1 apenas por convenção
+- Mapeamento manual é aceitável quando for pequeno e claro
+- Não criar `*Mapper` automaticamente para cada entidade
 
 
 # 13. Testes backend
@@ -203,21 +206,32 @@ E2E: **Playwright** poderá ser introduzido posteriormente (não obrigatório no
 | Item | Definição |
 |------|-----------|
 | SGBD | PostgreSQL **18** (imagem `postgres:18-alpine` via Docker) |
-| IDs | UUID |
+| IDs | UUID v7 gerado pela aplicação |
 | Dinheiro | NUMERIC(**19,2**) |
-| Java | BigDecimal |
-| Datas financeiras | DATE / LocalDate |
-| Timestamps | TIMESTAMPTZ / Instant |
-| Timezone app | **America/Sao_Paulo** |
+| Percentual | Fração (`0.0525` = 5,25%) |
+| Java | BigDecimal; `RoundingMode.HALF_UP`; escala 2 |
+| Booleanos | coluna `active` / Java `isActive` |
+| Datas financeiras | DATE / LocalDate (`America/Sao_Paulo`) |
+| Timestamps | TIMESTAMPTZ / Instant (UTC) |
+| Timezone app | **America/Sao_Paulo** (calendário financeiro) |
 | Moeda V1 | **BRL** |
 
 
 # 22. Timezone e datas
 
-- Timezone da aplicação: `America/Sao_Paulo`
-- Datas de vencimento/fechamento: LocalDate
-- Eventos de sistema: Instant + TIMESTAMPTZ
-- Não depender do timezone do navegador para regras financeiras
+Persistência de instantes:
+
+- `Instant` no Java
+- `TIMESTAMP WITH TIME ZONE` no PostgreSQL
+- valores persistidos em UTC
+
+Calendário financeiro:
+
+- timezone da aplicação: `America/Sao_Paulo`
+- "hoje", vencimento, fechamento de fatura, atraso e ciclos usam esse calendário
+- datas sem horário: `LocalDate` / `DATE`
+
+O frontend não deve usar o timezone local do navegador para decidir regras financeiras.
 
 
 # 23. Infraestrutura
@@ -391,8 +405,9 @@ Apache ECharts
 ESLint / Prettier
 
 PostgreSQL 18 (postgres:18-alpine via Docker)
-UUID / NUMERIC(19,2) / TIMESTAMPTZ
-America/Sao_Paulo / BRL
+UUID v7 (app) / NUMERIC(19,2) / TIMESTAMPTZ UTC
+Calendário financeiro: America/Sao_Paulo / BRL
+RoundingMode.HALF_UP / percentual como fração
 
 Docker Engine ≥ 24 / Docker Desktop
 Docker Compose V2 ≥ 2.24

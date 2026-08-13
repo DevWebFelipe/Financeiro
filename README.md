@@ -11,14 +11,18 @@ Cada usuário possui suas próprias contas, cartões, receitas, despesas, metas 
 ```text
 AGENTS.md
     ↓
-docs/20–28 (especificação detalhada)
+docs/20–28 (decisões funcionais e técnicas oficiais)
     ↓
-README.md (visão geral)
+docs/CODING_STANDARDS.md (convenções de código)
+    ↓
+.cursor/rules/*.mdc (instruções operacionais para o Cursor)
 ```
 
-- `AGENTS.md` — regras para a IA e desenvolvimento por etapas
+- `AGENTS.md` — autoridade máxima; regras para a IA e desenvolvimento por etapas
 - `docs/20`–`docs/28` — especificação completa
-- Este README — visão geral e execução local
+- `docs/CODING_STANDARDS.md` — convenções de código; não pode contradizer os documentos superiores
+- `.cursor/rules/*.mdc` — instruções operacionais; não criam decisões novas
+- Este README — visão geral e execução local; não é fonte de decisões técnicas
 
 Em conflito: corrigir a documentação até ficar consistente. Não manter duas decisões sobre o mesmo tema.
 
@@ -35,6 +39,7 @@ Documentação ativa em `docs/`:
 | `26-seguranca.md` | Segurança |
 | `27-testes.md` | Estratégia de testes |
 | `28-roadmap.md` | Roadmap por fases |
+| `CODING_STANDARDS.md` | Convenções de código |
 
 Se ainda existirem `docs/01`–`docs/19`, são **históricos/obsoletos** e não devem ser usados.
 
@@ -87,10 +92,10 @@ Permitir controle financeiro pessoal completo, inicialmente enxuto e sólido:
 ### Banco
 
 - PostgreSQL 18 (`postgres:18-alpine` via Docker)
-- UUID
-- NUMERIC(19,2) / BigDecimal
-- TIMESTAMPTZ / LocalDate
-- timezone `America/Sao_Paulo`
+- UUID v7 gerado pela aplicação
+- NUMERIC(19,2) / BigDecimal; `RoundingMode.HALF_UP`
+- TIMESTAMPTZ / `Instant` em UTC; `DATE` / `LocalDate` para calendário financeiro
+- Calendário financeiro: timezone `America/Sao_Paulo`
 - Flyway; Hibernate `ddl-auto=validate`
 
 ### Infraestrutura
@@ -215,6 +220,9 @@ financial-control/
 ├── .env.example
 ├── docker-compose.yml
 ├── docs/
+│   ├── 20–28
+│   └── CODING_STANDARDS.md
+├── .cursor/rules/
 ├── scripts/
 │   └── check-environment.ps1
 ├── backend/          (Fase 1+)

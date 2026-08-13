@@ -12,21 +12,29 @@ O projeto também possui finalidade educacional. As decisões técnicas devem se
 
 ## 2. Hierarquia da documentação
 
-A documentação do projeto segue esta hierarquia:
+A documentação do projeto segue esta hierarquia de autoridade:
 
 ```text
 AGENTS.md
-    ↓
-documentação ativa em docs/20–28
-    ↓
-README.md
+ ↓
+docs/20–28 — decisões funcionais e técnicas oficiais do projeto
+ ↓
+docs/CODING_STANDARDS.md — convenções gerais de código e organização
+ ↓
+.cursor/rules/*.mdc — instruções operacionais para o Cursor
 ```
 
 Significado:
 
-- `AGENTS.md` — regras que a IA deve seguir durante o desenvolvimento;
+- `AGENTS.md` — regras que a IA deve seguir durante o desenvolvimento; autoridade máxima;
 - `docs/20`–`docs/28` — especificação detalhada (arquitetura, stack, modelo, regras, API, segurança, testes, roadmap);
-- `README.md` — visão geral do projeto.
+- `docs/CODING_STANDARDS.md` — convenções de código, nomenclatura e organização; não pode contradizer `AGENTS.md` nem `docs/20–28`;
+- `.cursor/rules/*.mdc` — instruções operacionais para o Cursor; **não criam decisões arquiteturais novas**; não podem contradizer documentos superiores;
+- `README.md` — visão geral do projeto; não é fonte de decisões técnicas.
+
+Regras inferiores não podem contradizer regras superiores.
+
+Quando uma regra técnica ainda não estiver decidida nos documentos superiores, a IA NÃO deve inventar uma decisão silenciosamente. Deve parar e usar: **DECISÃO PENDENTE DO DESENVOLVEDOR**.
 
 Em caso de conflito:
 
@@ -47,6 +55,7 @@ Documentação ativa:
 - `docs/26-seguranca.md`
 - `docs/27-testes.md`
 - `docs/28-roadmap.md`
+- `docs/CODING_STANDARDS.md`
 
 Se existirem arquivos `docs/01`–`docs/19` no repositório, considerá-los **obsoletos/históricos**. A IA NÃO deve usá-los como fonte de verdade.
 
@@ -121,12 +130,15 @@ Se uma decisão importante de negócio não estiver definida, a IA deve parar e 
 ### Banco
 
 - PostgreSQL 18 (`postgres:18-alpine` via Docker)
-- UUID
-- NUMERIC(19,2) / BigDecimal
-- TIMESTAMPTZ para timestamps
-- LocalDate para datas financeiras
-- timezone America/Sao_Paulo
-- Flyway
+- UUID v7 gerado pela aplicação; coluna `UUID` no banco (sem default de geração misturado)
+- NUMERIC(19,2) / BigDecimal para valores monetários
+- Percentuais armazenados como fração (5,25% = `0.0525`)
+- TIMESTAMPTZ / `Instant` para instantes absolutos (persistidos em UTC)
+- `DATE` / `LocalDate` para datas financeiras
+- Calendário financeiro: timezone `America/Sao_Paulo`
+- Booleanos de estado: coluna `active` (Java: `isActive`)
+- Flyway (único responsável pelo schema)
+- Hibernate `ddl-auto=validate`
 
 ### Infraestrutura
 
@@ -142,9 +154,14 @@ Environment Contract completo: `docs/22-stack-tecnologica.md` (seção 30). Diag
 ### Convenções
 
 - Pacote Java: `br.com.financialcontrol`
+- Pacotes de domínio no plural, alinhados ao modelo real: `accounts`, `expenses`, `incomes`, `transfers`, `payments`, `credit_cards`, `credit_card_invoices`, `financial_goals`
+- Não criar módulo genérico `transactions` para agrupar operações financeiras diferentes
 - API: `/api/v1`
 - Moeda V1: BRL
 - Nunca usar float ou double para valores financeiros
+- Arredondamento financeiro V1: `RoundingMode.HALF_UP`, escala 2
+- Formato de erro da API: o definido em `docs/25-api.md` (não RFC 7807 nesta etapa)
+- Paginação da API: `items`, `totalItems`, `totalPages` (não expor `Page` do Spring Data)
 
 Detalhes: `docs/22-stack-tecnologica.md`.
 
@@ -182,13 +199,16 @@ O banco oficial é PostgreSQL 18.
 
 Regras:
 
-- UUID como identificador das entidades;
-- NUMERIC(19,2) para valores monetários;
-- BigDecimal no Java;
+- UUID v7 gerado pela aplicação; o banco armazena `UUID` e não gera o identificador;
+- não misturar geração na aplicação com `DEFAULT`, `uuid_generate_v4()` ou `@GeneratedValue`;
+- NUMERIC(19,2) para valores monetários; nunca `NUMERIC(19,4)` para dinheiro da V1;
+- BigDecimal no Java; `RoundingMode.HALF_UP`; escala 2;
+- percentuais como fração (`0.0525` = 5,25%);
+- coluna booleana de estado: `active` (não `is_active`);
 - Foreign Keys e constraints;
 - índices quando necessários;
-- Flyway para migrations;
-- Hibernate `ddl-auto=validate`;
+- Flyway para migrations; nomes no plural da tabela (`V1__create_accounts.sql`);
+- Hibernate `ddl-auto=validate`; nunca `update` / `create` como fonte do schema;
 - nunca alterar uma migration já executada;
 - alterações posteriores via novas migrations;
 - fonte de verdade do saldo: movimentações financeiras (não um `current_balance` independente).
@@ -199,24 +219,37 @@ Regras:
 
 Aplicação monolítica modular. Não criar microsserviços na V1.
 
-Backend:
+Fluxo padrão do backend:
 
-- Controller;
-- DTO;
-- Service;
-- regras de negócio;
-- Repository;
-- Entity.
+```text
+Controller
+    ↓
+Service
+    ↓
+Repository
+```
 
-Organização inicial deve facilitar separação por domínio. Estrutura definitiva na Fase 1.
+Controller **não** acessa Repository diretamente. Mesmo leituras simples passam pelo Service do módulo.
+
+Isso **não** significa criar um UseCase por operação. O padrão é **Service por módulo** (`AccountService`, `ExpenseService`, `TransferService`). O Service pode ser pequeno.
+
+`*UseCase` só existe quando a operação for um caso de negócio nomeado, atômico e suficientemente complexo (ex.: `TransferMoneyUseCase`, se a orquestração justificar). Não criar `CreateExpenseUseCase`, `GetExpenseUseCase`, `ListExpenseUseCase`.
+
+Toda fronteira HTTP usa DTOs. Entidades JPA nunca são expostas pela API. Não criar DTOs duplicados que representam o mesmo contrato.
+
+Não introduzir MapStruct na Fase 1. Mapeamento manual é aceitável quando pequeno e claro. Não criar `*Mapper` automaticamente para cada entidade.
+
+Não criar interface + `*Impl` para toda classe. Repositories Spring Data continuam sendo interfaces do framework. Não criar DAO adicional.
+
+Não criar `common/`, `utils/`, `helpers/` ou `managers/` genéricos sem responsabilidade compartilhada real.
+
+Organização por domínio real, pacotes no plural. Não criar pastas de domínio vazias na Fase 1 só para antecipar o futuro.
 
 O backend é a autoridade final sobre as regras de negócio.
 
 Frontend: validações para UX; nenhuma regra crítica só no frontend.
 
-Não expor entidades JPA na API. Usar DTOs.
-
-Frontend organizado por features (`core`, `shared`, `features/*`).
+Frontend organizado por features (`core`, `shared`, `features/*`). A estrutura de uma feature cresce conforme a necessidade; não criar `pages/`, `components/`, `services/` e `models/` automaticamente para cada feature.
 
 ---
 
@@ -229,6 +262,12 @@ Todo dado financeiro deve estar relacionado ao usuário (`userId` / IdUsuario).
 O backend deve obter o usuário autenticado a partir do contexto de segurança.
 
 Nunca confiar em um `userId` enviado pelo frontend para determinar o proprietário.
+
+Incorreto: `GET /expenses?userId=...` aceito como dono dos dados.
+
+Correto: `GET /expenses` — o backend determina o usuário pelo contexto autenticado.
+
+Queries e operações de persistência devem filtrar pelo usuário autenticado.
 
 Um usuário nunca pode consultar, alterar ou excluir dados pertencentes a outro usuário.
 
@@ -250,7 +289,10 @@ Detalhes: `docs/26-seguranca.md`.
 - Java: `BigDecimal`
 - PostgreSQL: `NUMERIC(19,2)`
 - Nunca float/double
-- Arredondamentos financeiros explícitos e determinísticos
+- `RoundingMode.HALF_UP` em todos os cálculos financeiros da V1; nenhum Service escolhe outro modo
+- Valores monetários normalizados para escala 2 quando aplicável
+- Parcelamentos: residual de centavos absorvido pela última parcela
+- Percentuais: fração (`0.0525` = 5,25%)
 
 ---
 
@@ -279,6 +321,8 @@ Formas de pagamento: `ACCOUNT`, `CREDIT_CARD`, `NONE`.
 ### 11.3 Cancelamento e estorno
 
 Sem exclusão física. `CANCELLED` / `REFUNDED` preservam histórico e não impactam saldo, projeções, totais, gráficos nem contas a pagar.
+
+Não utilizar `DELETE` HTTP como operação padrão para dados financeiros. Preferir ações explícitas (`POST /expenses/{id}/cancel`, `POST /payments/{id}/reverse`). `DELETE` só pode existir para recurso não financeiro com regra explícita.
 
 ### 11.4 Compra no cartão
 
@@ -399,6 +443,12 @@ Detalhes: `docs/27-testes.md`.
 
 REST em `/api/v1`. DTOs, validação, status HTTP adequados, erros padronizados, autenticação/autorização, OpenAPI/Swagger.
 
+Métodos: `GET` leitura; `POST` criação ou ação de negócio; `PUT` substituição completa quando aplicável; `PATCH` alteração parcial quando aplicável. Não criar endpoint só porque o verbo existe.
+
+Erros: formato de `docs/25-api.md` (`timestamp`, `status`, `code`, `message`, `path`, `fields` quando houver validação). Não adotar RFC 7807 nesta etapa. Não criar um segundo formato paralelo.
+
+Paginação: `items`, `page`, `size`, `totalItems`, `totalPages`. Não expor `content` / `totalElements` do Spring Data `Page`.
+
 Não criar todos os endpoints antecipadamente. Detalhes: `docs/25-api.md`.
 
 ---
@@ -408,6 +458,12 @@ Não criar todos os endpoints antecipadamente. Detalhes: `docs/25-api.md`.
 Angular 22.x, TypeScript strict, Standalone, Signals, Services, Reactive Forms, Material, HttpClient, Interceptors, Guards, ESLint, Prettier.
 
 Sem NgRx e sem Zod na V1.
+
+Sem `BaseComponent`, `GenericCrudService`, design system prematuro ou estado global por padrão.
+
+Signals sob demanda. RxJS quando a API já for stream. Sem `*StateService` por feature.
+
+O frontend não usa o timezone do navegador para decidir regras financeiras.
 
 Validação: Angular Validators no front; Jakarta Validation + regras de negócio no backend.
 
@@ -481,6 +537,10 @@ Parar e solicitar orientação quando:
 - biblioteca não aprovada.
 
 Não assumir decisões importantes de negócio. Usar: **DECISÃO PENDENTE DO DESENVOLVEDOR**.
+
+Não criar automaticamente: UseCase por CRUD; interface + implementação para toda classe; DAO sobre Spring Data; Mapper para toda entidade; MapStruct sem necessidade; `common/` genérico; Domain Events; Specification; Strategy; Hexagonal Architecture; Clean Architecture por camadas artificiais; NgRx; `BaseComponent`; `GenericCrudService`.
+
+Antes de criar classe, interface, service, mapper, componente, pasta ou abstração: existe responsabilidade real que justifique isso **agora**? Se não, não criar.
 
 ---
 

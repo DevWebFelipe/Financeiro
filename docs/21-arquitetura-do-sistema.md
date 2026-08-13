@@ -2,7 +2,7 @@
 
 ## 0. Hierarquia e versões oficiais
 
-`AGENTS.md` → `docs/20–28` → `README.md`
+`AGENTS.md` → `docs/20–28` → `docs/CODING_STANDARDS.md` → `.cursor/rules/*.mdc`
 
 - Java 25 LTS
 - Spring Boot 4.1.x
@@ -168,7 +168,9 @@ GET /api/v1/accounts/{id}
 
 PUT /api/v1/accounts/{id}
 
-DELETE /api/v1/accounts/{id}
+POST /api/v1/expenses/{id}/cancel
+
+Não utilizar `DELETE` como operação padrão para dados financeiros.
 
 
 # 16. Versionamento
@@ -184,8 +186,16 @@ Controllers devem ser responsáveis por:
 
 - receber requisições;
 - validar entrada básica;
-- chamar serviços;
+- chamar o Service do módulo;
 - retornar respostas HTTP.
+
+Fluxo padrão:
+
+```text
+Controller → Service → Repository
+```
+
+O Controller **não** acessa o Repository diretamente. Leituras simples também passam pelo Service do módulo. O Service pode ser pequeno.
 
 
 # 18. Controller
@@ -195,13 +205,13 @@ Controllers não devem conter:
 - regras financeiras;
 - cálculos complexos;
 - SQL;
+- acesso a Repository;
 - lógica de negócio extensa.
 
 
 # 19. Service
 
-Services são responsáveis pelas regras de negócio.
-
+O padrão é **um Service por módulo**, não um UseCase por operação CRUD.
 
 Exemplo:
 
@@ -210,6 +220,10 @@ ExpenseService
 
 deve controlar regras relacionadas às despesas.
 
+Não criar `CreateExpenseUseCase`, `GetExpenseUseCase`, `ListExpenseUseCase` nem equivalentes.
+
+Uma classe `*UseCase` só é aceitável quando a operação for um caso de negócio nomeado, atômico e suficientemente complexo (ex.: `TransferMoneyUseCase`, se a orquestração justificar).
+
 
 # 20. Service
 
@@ -217,24 +231,28 @@ Exemplos:
 
 AccountService
 
-CreditCardService
-
 ExpenseService
 
 IncomeService
 
-InvoiceService
+TransferService
 
 PaymentService
 
-TransferService
+CreditCardService
 
-GoalService
+CreditCardInvoiceService
+
+FinancialGoalService
 
 
 # 21. Repository
 
 Repositories são responsáveis pelo acesso aos dados.
+
+Queries de dados financeiros devem respeitar o usuário autenticado obtido do contexto de segurança.
+
+Não aceitar `userId` do cliente como autoridade sobre a propriedade do recurso.
 
 
 # 22. Repository
@@ -249,10 +267,9 @@ Entities representam dados persistidos no banco.
 
 # 24. DTO
 
+Toda fronteira HTTP deve utilizar DTOs.
+
 A API não deve expor diretamente entidades JPA como contrato público.
-
-
-Utilizar DTOs.
 
 
 # 25. Request DTO
@@ -268,17 +285,18 @@ Exemplo:
 
 ExpenseResponse
 
+Não criar DTOs duplicados sem diferença real de contrato (`ExpenseDto`, `ExpenseRequest`, `ExpenseResponse`, `ExpenseView` e `ExpenseResult` todos iguais).
+
 
 # 27. Mapper
 
-A conversão entre:
+Mapeamento manual é aceitável quando for pequeno e claro.
 
-Entity
+Não introduzir MapStruct na Fase 1 apenas por convenção.
 
-DTO
+Não criar `ExpenseMapper`, `AccountMapper` ou equivalente automaticamente para cada entidade.
 
-
-deve ser organizada e previsível.
+Criar um mapper separado somente quando a transformação justificar uma responsabilidade própria.
 
 
 # 28. Regra
@@ -309,20 +327,28 @@ Organização inicial deve facilitar separação por domínio.
 
 A estrutura definitiva de pacotes será definida na Fase 1.
 
-Exemplo conceitual (não prescritivo de pastas vazias):
+Exemplo conceitual (não prescritivo de pastas vazias; não criar módulos só para antecipar o futuro):
 
 ```text
 br.com.financialcontrol
 ├── config
 ├── security
-├── common
-├── account
-├── expense
-├── income
-├── creditcard
-├── invoice
+├── accounts
+├── expenses
+├── incomes
+├── transfers
+├── payments
+├── credit_cards
+├── credit_card_invoices
+├── financial_goals
 └── ...
 ```
+
+Pacotes de domínio no plural, alinhados às tabelas e aos recursos HTTP.
+
+Não criar pacote `common` genérico sem responsabilidade compartilhada real.
+
+Não criar módulo genérico `transactions` para agrupar receitas, despesas, transferências e pagamentos.
 
 
 # 30. Organização futura
@@ -403,9 +429,11 @@ O schema oficial deve ser criado através das migrations.
 O Hibernate pode validar o schema.
 
 
-Preferencialmente:
+Configuração oficial:
 
-ddl-auto=validate
+spring.jpa.hibernate.ddl-auto=validate
+
+Nunca utilizar `update` ou `create` como fonte do schema.
 
 
 # 41. Migration inicial
@@ -420,11 +448,13 @@ Cada alteração estrutural deve criar nova migration.
 
 Exemplo:
 
-V1__initial_schema.sql
+V1__create_accounts.sql
 
-V2__add_credit_card.sql
+V2__create_credit_cards.sql
 
-V3__add_goals.sql
+V3__create_financial_goals.sql
+
+O nome da migration deve usar a tabela no plural. Não alternar entre `create_account`, `create_accounts` e `initial_schema` sem razão explícita.
 
 
 # 43. Banco
@@ -434,7 +464,11 @@ Utilizar UUID como identificador principal.
 
 # 44. UUID
 
-IDs devem ser gerados no backend/banco de forma segura e consistente.
+Estratégia oficial: UUID v7 gerado pela aplicação.
+
+O banco armazena o identificador como `UUID`.
+
+Não misturar geração na aplicação com default de banco, `uuid_generate_v4()` ou `@GeneratedValue`.
 
 
 # 45. Datas
@@ -447,12 +481,16 @@ Para datas sem horário:
 LocalDate
 
 
-Para data/hora:
+Para instantes absolutos:
 
 Instant
 
 
-ou outro tipo definido pela arquitetura.
+Timestamps são persistidos em UTC (`TIMESTAMPTZ`).
+
+Regras de calendário financeiro ("hoje", vencimento, fechamento, atraso, ciclos) utilizam `America/Sao_Paulo`.
+
+O frontend não deve usar o timezone do navegador para decidir regras financeiras.
 
 
 # 46. Dinheiro
@@ -1378,9 +1416,13 @@ Exemplo:
 
 /incomes
 
-/cards
+/transfers
+
+/credit-cards
 
 /invoices
+
+/financial-goals
 
 
 # 165. Regra
