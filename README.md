@@ -69,8 +69,8 @@ Permitir controle financeiro pessoal completo, inicialmente enxuto e sólido:
 - Spring Boot 4.1.x
 - Maven 3.9.x (≥ 3.9.12); Maven Wrapper no backend
 - Spring Web, Spring Data JPA, Hibernate
-- Spring Security, JWT (Access + Refresh Token)
-- Argon2id
+- Spring Security, JWT Access Token (HS256; Refresh Token não implementado na Fase 3)
+- Argon2id (`Argon2PasswordEncoder` + BouncyCastle)
 - Jakarta Bean Validation
 - Flyway
 - springdoc-openapi
@@ -129,6 +129,7 @@ Angular 22
    v
 Spring Boot 4.1
    |
+   | Controller → Service → Repository
    | JPA / Flyway
    v
 PostgreSQL 18
@@ -136,13 +137,45 @@ PostgreSQL 18
 
 Monólito modular. Backend é autoridade das regras. Frontend apresenta e valida para UX.
 
+Fluxo HTTP do backend: Controller → Service → Repository. O Controller não acessa o Repository. Toda fronteira HTTP usa DTOs.
+
 ---
 
 ## Isolamento de usuários
 
 > Nenhum usuário pode consultar, alterar ou excluir dados financeiros de outro usuário.
 
-O backend obtém o usuário do contexto de segurança. Nunca confiar em `userId` enviado pelo frontend.
+O backend obtém o usuário do contexto de segurança (`SecurityContext`). Nunca confiar em `userId` enviado pelo frontend.
+
+---
+
+## Autenticação (Fase 3)
+
+Implementado: cadastro, login, Access Token JWT, perfil autenticado e alteração de senha.
+
+| Método | Caminho | Autenticação | Resposta |
+|--------|---------|--------------|----------|
+| `GET` | `/api/v1/health` | público | `200` `{ "status": "UP" }` |
+| `POST` | `/api/v1/auth/register` | público | `201` perfil (sem login automático) |
+| `POST` | `/api/v1/auth/login` | público | `200` `{ accessToken, tokenType: "Bearer", expiresIn: 1800 }` |
+| `GET` | `/api/v1/users/me` | Bearer | `200` perfil |
+| `PUT` | `/api/v1/users/me` | Bearer | `200`; apenas `name` e `email` |
+| `PUT` | `/api/v1/users/me/password` | Bearer | `204` |
+
+Regras em vigor:
+
+- Access Token JWT, algoritmo **HS256**, validade **30 minutos** (`expiresIn`: 1800 segundos);
+- transporte: `Authorization: Bearer <token>`;
+- identidade: claim `sub` = UUID do usuário, lido pelo backend a partir do SecurityContext;
+- senhas com **Argon2id**; nunca texto puro;
+- e-mail normalizado (trim + minúsculas) antes de persistir e autenticar;
+- usuário desativado não autentica (`401` `"Credenciais inválidas."`, mesma mensagem de e-mail/senha inválidos);
+- campos JSON desconhecidos na API são rejeitados (`400`);
+- e-mail duplicado no cadastro: `409`.
+
+Não implementado na Fase 3: Refresh Token, logout no backend, OAuth, MFA, roles, rate limiting, frontend de autenticação.
+
+Detalhes: `docs/25-api.md` e `docs/26-seguranca.md`.
 
 ---
 
@@ -178,7 +211,7 @@ Versões oficiais: `docs/22-stack-tecnologica.md` (Environment Contract).
 - Node.js 22.x LTS ≥ 22.22.3 (preferencial) ou 24.x ≥ 24.15.0
 - npm empacotado com o Node.js (não atualizar com `npm install -g npm@latest`)
 - Java 25 LTS (JDK, com `javac`)
-- Maven 3.9.x ≥ 3.9.12 (Maven Wrapper será criado com o backend)
+- Maven 3.9.x ≥ 3.9.12; o backend já possui Maven Wrapper (`backend/mvnw` / `backend/mvnw.cmd`)
 - IDE ou editor
 
 ### Diagnóstico do ambiente (Windows)
@@ -208,6 +241,30 @@ docker compose down
 
 - `.env.example` — modelo das variáveis
 - `.env` — local, **não versionar**
+
+O backend **exige** `JWT_SECRET` com no mínimo 32 bytes. Não há default de produção em `application.yml`. O valor de exemplo em `.env.example` não deve ser usado em produção.
+
+Outras variáveis típicas: `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `JWT_EXPIRATION_MINUTES` (padrão 30), `CORS_ALLOWED_ORIGINS`, `APP_PORT`.
+
+### Backend
+
+Com o PostgreSQL no ar:
+
+```powershell
+cd backend
+$env:JWT_SECRET = "CHANGE_ME_WITH_A_LONG_RANDOM_SECRET"
+.\mvnw.cmd spring-boot:run
+```
+
+Ajuste `JWT_SECRET` e as credenciais do banco conforme o seu `.env`.
+
+- Health: `http://localhost:8080/api/v1/health`
+- OpenAPI: `http://localhost:8080/v3/api-docs`
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+
+### Frontend
+
+O scaffold Angular da Fase 1 existe em `frontend/`. A UI de autenticação **não** foi implementada na Fase 3.
 
 ### Estrutura
 
@@ -246,10 +303,11 @@ Cada fase: escopo definido → implementação → testes → validação → s�
 ## Segurança
 
 - Argon2id para senhas
-- JWT (Access + Refresh Token)
-- Isolamento por usuário
-- Secrets fora do código
-- Validação no backend
+- JWT Access Token (HS256, 30 minutos, Bearer)
+- Refresh Token **não** implementado na Fase 3
+- Isolamento por usuário via SecurityContext
+- Secrets fora do código (`JWT_SECRET` obrigatório)
+- Validação no backend (Jakarta Bean Validation + regras de negócio)
 - Sem dados sensíveis desnecessários em logs
 
 Ver `docs/26-seguranca.md`.
@@ -265,9 +323,14 @@ Unitários, integração, API e segurança. Testcontainers com PostgreSQL. Ver `
 ## Status
 
 ```text
-Fase 1 — Fundação (Environment Contract)
+Fase 0 — Planejamento — CONCLUÍDA
+Fase 1 — Fundação / estrutura inicial — CONCLUÍDA
+Fase 2 — Persistência / modelo de dados — CONCLUÍDA
+Fase 3 — Autenticação e segurança — CONCLUÍDA
 ```
 
-Etapa atual: diagnóstico do ambiente de desenvolvimento.
+Estado atual do backend (Fases 1–3): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository.
 
-A IA não deve avançar para instalação automática (`setup-windows.ps1`) nem para o scaffold do backend/frontend sem autorização explícita.
+Próxima fase: **Fase 4 — Contas**. Não iniciar sem autorização explícita.
+
+Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend de autenticação nem módulos financeiros da Fase 4+ sem autorização.

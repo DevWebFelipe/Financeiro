@@ -74,6 +74,11 @@ Base documental do projeto consolidada (hierarquia AGENTS → docs/20–28 → C
 
 # 6. Fase 1 — Estrutura inicial
 
+Status:
+
+CONCLUÍDA
+
+
 Objetivo:
 
 Criar a estrutura base do projeto.
@@ -158,6 +163,11 @@ Deve ser possível:
 
 
 # 12. Fase 2 — Banco de dados
+
+Status:
+
+CONCLUÍDA
+
 
 Objetivo:
 
@@ -252,7 +262,7 @@ Banco deve:
 
 Status:
 
-IMPLEMENTADA (aguardando revisão)
+CONCLUÍDA
 
 
 Objetivo:
@@ -1498,12 +1508,8 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Após este documento:
+Fases 0 a 3: CONCLUÍDAS.
 
-configurar arquivos do projeto;
+Próxima fase: Fase 4 — Contas.
 
-validar arquitetura;
-
-criar estrutura inicial;
-
-iniciar Fase 1.
+A IA não deve iniciar a Fase 4 nem implementar Refresh Token, logout backend ou módulos financeiros sem autorização explícita.

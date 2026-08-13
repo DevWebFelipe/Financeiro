@@ -92,12 +92,13 @@ Se uma decisão importante de negócio não estiver definida, a IA deve parar e 
 
 - Java 25 LTS
 - Spring Boot 4.1.x
-- Maven 3.9.x (≥ 3.9.12); o backend utilizará Maven Wrapper
+- Maven 3.9.x (≥ 3.9.12); o backend possui Maven Wrapper
 - Spring Web
 - Spring Data JPA
 - Hibernate
 - Spring Security
-- JWT (Access Token + Refresh Token)
+- JWT Access Token (HS256, 30 minutos, Bearer) — implementado na Fase 3
+- Refresh Token — **não implementado na Fase 3**
 - Argon2id (hash de senhas)
 - Jakarta Bean Validation
 - Flyway
@@ -278,8 +279,8 @@ O modelo físico impede referência cruzada entre usuários (despesa A + categor
 ## 9. Segurança
 
 - Senhas nunca em texto puro; hash com **Argon2id**.
-- Autenticação: Spring Security + JWT.
-- Access Token + Refresh Token (fluxo detalhado na implementação da autenticação; arquitetura deve estar preparada).
+- Autenticação: Spring Security + JWT Access Token (HS256, 30 minutos, Bearer).
+- Refresh Token **não** foi implementado na Fase 3. Não implementar sem autorização explícita.
 - Segredos apenas em variáveis de ambiente; nunca versionar credenciais.
 
 Detalhes: `docs/26-seguranca.md`.
