@@ -27,11 +27,11 @@ Priorizar: tecnologias modernas e estáveis, boa documentação, aprendizado, in
 | Spring Data JPA | Persistência |
 | Hibernate | Implementação JPA |
 | Spring Security | Segurança |
-| JWT | Access Token + Refresh Token |
-| Hash de senha | **Argon2id** |
+| JWT | Access Token HS256 (Fase 3). Refresh Token: não implementado nesta fase |
+| Hash de senha | **Argon2id** (`Argon2PasswordEncoder` + BouncyCastle) |
 | Validação | Jakarta Bean Validation |
 | Migrations | Flyway |
-| OpenAPI | springdoc-openapi |
+| OpenAPI | springdoc-openapi **3.0.2** (linha 3.x / Spring Boot 4) |
 | PDF | **OpenPDF** |
 | Testes | JUnit 5, Mockito, AssertJ, Spring Boot Test, Testcontainers |
 
@@ -87,11 +87,13 @@ Não utilizar `com.example` nem `com.financialcontrol`.
 
 # 9. Segurança e autenticação
 
-- Spring Security
-- JWT: Access Token + Refresh Token
-- A implementação detalhada do refresh será definida na fase de autenticação; a arquitetura deve estar preparada
+- Spring Security (stateless)
+- JWT Access Token: **HS256**, biblioteca **Nimbus JOSE JWT** (`nimbus-jose-jwt` 10.3)
+- Claims: `sub` (UUID), `iat`, `exp`; validade 30 minutos
+- Refresh Token: **não implementado na Fase 3**
 - Senhas: **Argon2id** apenas (nunca texto puro; nunca MD5/SHA como hash de senha)
 - Não usar BCrypt na V1
+- OpenAPI: `springdoc-openapi-starter-webmvc-ui` **3.0.2** (linha 3.x, Spring Boot 4)
 
 
 # 10. Validação e API
@@ -385,7 +387,7 @@ Java 25 LTS
 Spring Boot 4.1.x
 Maven 3.9.x (≥ 3.9.12) + Maven Wrapper no backend
 Spring Web / Data JPA / Hibernate
-Spring Security + JWT (Access + Refresh)
+Spring Security + JWT Access Token (HS256)
 Argon2id
 Jakarta Validation
 Flyway

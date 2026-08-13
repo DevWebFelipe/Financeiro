@@ -331,8 +331,11 @@ Exemplo conceitual (não prescritivo de pastas vazias; não criar módulos só p
 
 ```text
 br.com.financialcontrol
-├── config
+├── auth
+├── users
 ├── security
+├── config
+├── health
 ├── accounts
 ├── expenses
 ├── incomes
@@ -343,6 +346,13 @@ br.com.financialcontrol
 ├── financial_goals
 └── ...
 ```
+
+Pacotes da Fase 3:
+
+- `auth` — cadastro e login (`AuthController` → `AuthService` → `UserRepository`);
+- `users` — perfil e senha (`UserController` → `UserService` → `UserRepository`);
+- `security` — Spring Security, JWT HS256, `AuthenticatedUser`, filtro Bearer;
+- `config` — formato de erro oficial, OpenAPI, Jackson.
 
 Pacotes de domínio no plural, alinhados às tabelas e aos recursos HTTP.
 
@@ -576,20 +586,16 @@ Spring Security
 
 # 56. Autenticação
 
-Utilizar:
+Utilizar JWT Access Token (HS256, 30 minutos).
 
-JWT
-
-
-com Access Token e Refresh Token.
+Refresh Token não foi implementado na Fase 3.
 
 
 # 57. JWT
 
-O token deve identificar:
+O token identifica o usuário no claim `sub` (UUID).
 
-userId
-
+Também possui `iat` e `exp`.
 
 Senhas: Argon2id.
 
@@ -670,12 +676,20 @@ A API deve possuir formato padronizado de erro.
 
 HTTP 400
 
-
+```json
 {
+  "timestamp": "2026-08-12T14:00:00Z",
+  "status": 400,
   "code": "VALIDATION_ERROR",
-  "message": "Dados inválidos",
-  "details": []
+  "message": "Dados inválidos.",
+  "path": "/api/v1/auth/register",
+  "fields": {
+    "password": "A senha deve ter entre 8 e 128 caracteres."
+  }
 }
+```
+
+Contrato oficial: `docs/25-api.md`. Não usar `details` nem RFC 7807.
 
 
 # 69. Erro de autenticação
@@ -1568,7 +1582,7 @@ Flyway
 
 Segurança:
 
-Spring Security + JWT (Access + Refresh) + Argon2id
+Spring Security + JWT Access Token (HS256) + Argon2id
 
 
 Documentação:

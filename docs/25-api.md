@@ -83,109 +83,182 @@ application/json
 
 # 6. Autenticação
 
-A API utilizará:
+A API utiliza JWT Access Token (HS256).
 
-JWT
-
-
-Access Token + Refresh Token.
+Transporte: `Authorization: Bearer <token>`.
 
 Senhas: Argon2id.
+
+Identidade: claim `sub` = UUID do usuário, obtido pelo backend a partir do SecurityContext.
+
+Nunca confiar em `userId` enviado pelo cliente.
+
+
+## Fase 3 — implementado
+
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `GET /api/v1/users/me`
+- `PUT /api/v1/users/me`
+- `PUT /api/v1/users/me/password`
+- Access Token JWT (HS256, 30 minutos, `expiresIn` em segundos = 1800)
+
+
+## Fase 3 — não implementado
+
+- Refresh Token
+- `POST /api/v1/auth/refresh`
+- Logout no backend
+- OAuth / login social
+- MFA
+- roles
+- rate limiting
+- frontend de autenticação
 
 
 # 6.1 Cadastro
 
-Endpoint:
+Endpoint público:
 
-POST /api/v1/auth/register
+`POST /api/v1/auth/register`
 
+Request:
 
-Deve permitir criar usuário (nome, e-mail, senha).
+```json
+{
+  "name": "Nome do Usuário",
+  "email": "usuario@email.com",
+  "password": "senha"
+}
+```
 
-Detalhes de request/response serão refinados na Fase 3.
+Regras:
+
+- `name` obrigatório, 1–255 caracteres (após trim);
+- `email` obrigatório, formato válido, normalizado (`trim` + lowercase) antes de persistir;
+- `password` obrigatório, 8–128 caracteres;
+- usuário criado como `active = true`;
+- UUID v7 gerado pela aplicação;
+- senha persistida somente como hash Argon2id;
+- não realiza auto-login;
+- e-mail duplicado: **409 Conflict** (`code`: `CONFLICT`);
+- validação: **400** (`code`: `VALIDATION_ERROR`).
+
+Response **201 Created**:
+
+```json
+{
+  "id": "uuid",
+  "name": "Nome do Usuário",
+  "email": "usuario@email.com",
+  "active": true,
+  "createdAt": "2026-08-13T12:00:00Z",
+  "updatedAt": "2026-08-13T12:00:00Z"
+}
+```
+
+Nunca retorna `password` nem `passwordHash`.
 
 
 # 7. Login
 
-Endpoint:
+Endpoint público:
 
-POST /api/v1/auth/login
-
+`POST /api/v1/auth/login`
 
 Request:
 
+```json
 {
   "email": "usuario@email.com",
   "password": "senha"
 }
+```
 
+O e-mail é normalizado (`trim` + lowercase) antes da busca.
 
-Response (conceitual):
+Response **200 OK**:
 
+```json
 {
   "accessToken": "...",
-  "refreshToken": "...",
   "tokenType": "Bearer",
   "expiresIn": 1800
 }
+```
+
+`expiresIn` é a validade do Access Token em segundos (30 minutos).
+
+Não retorna `refreshToken`, perfil, `password` nem `passwordHash`.
+
+E-mail inexistente, senha incorreta ou usuário desativado: **401 Unauthorized**, mensagem genérica `Credenciais inválidas.`, `code`: `UNAUTHORIZED`. A API não distingue esses casos.
 
 
 # 7.1 Refresh
 
-Endpoint (conceitual — detalhar na Fase 3):
+Não implementado na Fase 3.
 
-POST /api/v1/auth/refresh
-
-
-A arquitetura deve estar preparada para renovação segura do access token.
+Não existe `POST /api/v1/auth/refresh` nesta versão da API.
 
 
 # 8. Usuário autenticado
 
-O backend deve identificar o usuário através do JWT.
+O backend identifica o usuário através do JWT (`sub`) e do SecurityContext.
 
-
-Nunca confiar em:
-
-userId
-
-
-enviado pelo frontend.
+Nunca confiar em `userId` enviado pelo frontend.
 
 
 # 9. Perfil
 
-Endpoint:
+Endpoint protegido (Bearer):
 
-GET /api/v1/users/me
+`GET /api/v1/users/me`
 
+Retorna somente o usuário autenticado, no mesmo formato do cadastro.
 
-Retorna os dados do usuário autenticado.
+Sem token, token inválido, expirado, usuário inexistente ou desativado: **401** (`code`: `UNAUTHORIZED`, mensagem `Não autenticado.`).
 
 
 # 10. Atualização de perfil
 
-Endpoint:
+Endpoint protegido (Bearer):
 
-PUT /api/v1/users/me
+`PUT /api/v1/users/me`
 
+Request (substituição dos campos permitidos):
 
-Permite atualizar dados permitidos do usuário autenticado.
+```json
+{
+  "name": "Novo Nome",
+  "email": "novo@email.com"
+}
+```
+
+Campos permitidos: `name`, `email`.
+
+Campos rejeitados (propriedades desconhecidas no DTO → **400**): `id`, `active`, `password`, `passwordHash`, `createdAt`, `updatedAt`, `userId`.
+
+E-mail duplicado de outro usuário: **409 Conflict**.
 
 
 # 11. Alteração de senha
 
-Endpoint:
+Endpoint protegido (Bearer):
 
-PUT /api/v1/users/me/password
-
+`PUT /api/v1/users/me/password`
 
 Request:
 
+```json
 {
   "currentPassword": "...",
   "newPassword": "..."
 }
+```
+
+- `newPassword`: 8–128 caracteres;
+- senha atual incorreta: **401**, `Credenciais inválidas.`;
+- sucesso: **204 No Content**, sem corpo.
 
 
 # 12. Health Check
@@ -1241,6 +1314,13 @@ Exemplo:
   "message": "Não é possível realizar o pagamento.",
   "path": "/api/v1/invoices/..."
 }
+
+Códigos usados na Fase 3:
+
+- `VALIDATION_ERROR` — 400
+- `UNAUTHORIZED` — 401
+- `CONFLICT` — 409
+- `INTERNAL_ERROR` — 500
 
 
 # 101. Erros de validação

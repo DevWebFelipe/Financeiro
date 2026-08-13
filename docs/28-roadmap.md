@@ -250,6 +250,11 @@ Banco deve:
 
 # 19. Fase 3 — Autenticação
 
+Status:
+
+IMPLEMENTADA (aguardando revisão)
+
+
 Objetivo:
 
 Implementar:
@@ -257,22 +262,27 @@ Implementar:
 - cadastro;
 - login;
 - senha;
-- JWT;
+- JWT Access Token;
 - autenticação;
-- autorização.
+- autorização por identidade/ownership.
 
 
 # 20. Fase 3
 
-Implementar:
+Implementado:
+
+POST /api/v1/auth/register
 
 POST /api/v1/auth/login
 
-
 GET /api/v1/users/me
 
-
 PUT /api/v1/users/me
+
+PUT /api/v1/users/me/password
+
+
+Não implementado nesta fase: refresh token, logout backend, OAuth, MFA, roles, rate limiting, frontend de autenticação.
 
 
 # 21. Fase 3 — Segurança

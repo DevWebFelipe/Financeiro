@@ -1116,6 +1116,9 @@ em logs;
 em banco em texto puro.
 
 
+A Fase 3 cobre autenticação (`/auth`, `/users/me`). Testes de IDOR financeiro (despesa/conta/fatura de outro usuário) permanecem para as fases dos respectivos módulos.
+
+
 # 95. Validação
 
 Testar:

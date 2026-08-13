@@ -44,10 +44,18 @@ Correto: `GET /expenses` — o backend determina o usuário pelo contexto autent
 
 O email do usuário deve ser único.
 
+Antes de persistir ou autenticar, o e-mail é normalizado: `trim` seguido de lowercase.
+
+A constraint `UNIQUE (email)` da tabela `users` permanece a garantia no banco.
+
 
 ## RN004 — Usuário desativado
 
-Usuário desativado não pode autenticar ou realizar novas operações financeiras.
+Usuário desativado (`active = false`) não pode autenticar.
+
+Login de usuário desativado, inexistente ou com senha incorreta responde **401** com a mensagem genérica `Credenciais inválidas.`
+
+Um Access Token de usuário desativado não autoriza endpoints protegidos.
 
 
 # 3. Contas
@@ -1432,6 +1440,27 @@ Não persistir acumulado como fonte independente.
 ## RN188 — Segurança
 
 Nenhuma regra de negócio pode permitir acesso cruzado entre usuários.
+
+A identidade do usuário autenticado vem exclusivamente do SecurityContext (`AuthenticatedUser`). Nunca de `userId` no JSON, query ou path de `/users/me`.
+
+
+## RN194 — Política de senha
+
+A senha deve ter entre 8 e 128 caracteres. Não há regra adicional de complexidade na V1 desta fase.
+
+Somente o hash Argon2id é persistido.
+
+
+## RN195 — Perfil
+
+`PUT /api/v1/users/me` altera somente `name` e `email` do usuário autenticado.
+
+Não é permitido alterar `id`, `active`, senha, `passwordHash`, `createdAt` ou `updatedAt` por esse endpoint.
+
+
+## RN196 — Alteração de senha
+
+`PUT /api/v1/users/me/password` exige a senha atual. Senha atual incorreta: **401** com `Credenciais inválidas.` Sucesso: **204 No Content**.
 
 
 # 37. API

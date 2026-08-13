@@ -23,14 +23,18 @@ Nenhum usuário pode acessar dados financeiros de outro usuário.
 
 # 3. Autenticação
 
-A aplicação utilizará autenticação baseada em:
-
-JWT
-
-
-Access Token + Refresh Token.
+A aplicação utiliza autenticação baseada em JWT Access Token.
 
 Hash de senha: Argon2id.
+
+Fase 3 implementada:
+
+- cadastro, login, perfil, alteração de senha;
+- Access Token HS256;
+- Spring Security stateless;
+- identidade via SecurityContext (`AuthenticatedUser`).
+
+Não implementado na Fase 3: Refresh Token, logout backend, OAuth, MFA, roles, rate limiting.
 
 
 # 4. Login
@@ -93,31 +97,36 @@ informações sensíveis desnecessárias.
 
 # 11. Identificação
 
-O JWT deve permitir identificar:
+O JWT contém somente:
 
-userId
+- `sub` — UUID do usuário;
+- `iat`;
+- `exp`.
 
-
-e informações mínimas necessárias para autorização.
+Não incluir senha, hash, nome, e-mail, dados financeiros nem roles.
 
 
 # 12. Expiração
 
-Access tokens devem possuir tempo de expiração.
+Access Token: **30 minutos**.
+
+Algoritmo: **HS256**.
+
+Segredo: variável `JWT_SECRET` (mínimo 32 bytes). Não versionar segredo real.
+
+Expiração configurável por `JWT_EXPIRATION_MINUTES` (padrão 30).
 
 
 # 13. Refresh Token
 
-A V1 utilizará Access Token e Refresh Token.
+Não implementado na Fase 3.
 
-A implementação exata do fluxo de refresh será definida na fase de autenticação.
-
-A arquitetura deve estar preparada para refresh token desde o início.
+Não há endpoint de refresh nem persistência de refresh token.
 
 
 # 14. V1
 
-Refresh token deve possuir mecanismo seguro de revogação (detalhes na implementação da autenticação).
+Refresh token, se for adotado em fase posterior, deverá ter revogação segura. Não faz parte desta implementação.
 
 
 # 15. Logout
@@ -463,24 +472,26 @@ Access-Control-Allow-Origin: *
 
 # 56. CSRF
 
-A estratégia de autenticação deve considerar proteção contra CSRF quando cookies forem utilizados.
+A Fase 3 transporta o Access Token no header `Authorization: Bearer`. CSRF está desabilitado (API stateless, sem cookie de sessão).
+
+Se no futuro o token for armazenado em cookie, CSRF deverá ser reavaliado.
 
 
 # 57. JWT
 
-Se JWT for armazenado no frontend:
-
-avaliar cuidadosamente a estratégia de armazenamento.
+Transporte oficial da Fase 3: `Authorization: Bearer <accessToken>`.
 
 
 # 58. Armazenamento
 
-Evitar armazenar tokens sensíveis de maneira que facilite exposição por XSS.
+O frontend de autenticação não foi implementado nesta fase.
+
+Quando existir, evitar armazenar tokens de maneira que facilite exposição por XSS.
 
 
 # 59. Decisão
 
-A estratégia final de armazenamento do token deve ser definida durante a implementação da autenticação.
+Transporte no backend: Bearer header. Armazenamento no Angular fica para a fase de frontend.
 
 
 # 60. Logs
@@ -726,18 +737,18 @@ Preferir:
 
 # 91. Password Policy
 
-A senha deve possuir requisitos mínimos de segurança.
+Política da Fase 3:
+
+- mínimo: 8 caracteres;
+- máximo: 128 caracteres;
+- sem regras artificiais de complexidade.
 
 
 # 92. Senha
 
-Definir durante implementação:
+E-mail é normalizado com `trim` + lowercase antes de persistir ou autenticar.
 
-tamanho mínimo;
-
-caracteres permitidos;
-
-política de alteração.
+Usuário desativado (`active = false`) não autentica e um Access Token previamente emitido não autoriza endpoints protegidos.
 
 
 # 93. Complexidade
