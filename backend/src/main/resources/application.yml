@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: financial-control
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/financial_control}
+    username: ${DATABASE_USERNAME:financial_control}
+    password: ${DATABASE_PASSWORD:financial_control_dev}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: ${APP_PORT:8080}
