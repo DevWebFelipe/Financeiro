@@ -352,6 +352,105 @@ function Update-UserPath {
     $env:Path = [string]::Join(';', $sessionParts.ToArray())
 }
 
+function Get-ManagedMavenBinEntries {
+    param(
+        [string]$PathValue,
+        [string]$InstallRoot,
+        [string]$KeepBin = ''
+    )
+
+    $entries = New-Object 'System.Collections.Generic.List[string]'
+    if ([string]::IsNullOrWhiteSpace($PathValue) -or [string]::IsNullOrWhiteSpace($InstallRoot)) {
+        return $entries
+    }
+
+    $root = $InstallRoot.TrimEnd('\')
+    $keep = $KeepBin.TrimEnd('\')
+
+    foreach ($part in ($PathValue -split ';')) {
+        $trimmed = $part.Trim().TrimEnd('\')
+        if ([string]::IsNullOrWhiteSpace($trimmed)) { continue }
+        if (-not $trimmed.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)) { continue }
+
+        $leaf = Split-Path -Leaf $trimmed
+        $parent = Split-Path -Parent $trimmed
+        $parentLeaf = ''
+        if (-not [string]::IsNullOrWhiteSpace($parent)) {
+            $parentLeaf = Split-Path -Leaf $parent
+        }
+        if ($leaf -ne 'bin') { continue }
+        if ($parentLeaf -notmatch '^apache-maven-\d+') { continue }
+        if (-not [string]::IsNullOrWhiteSpace($keep) -and [string]::Equals($trimmed, $keep, [StringComparison]::OrdinalIgnoreCase)) {
+            continue
+        }
+        [void]$entries.Add($trimmed)
+    }
+
+    return $entries
+}
+
+function Remove-ManagedMavenFromMachinePath {
+    param(
+        [Parameter(Mandatory = $true)][string]$InstallRoot,
+        [Parameter(Mandatory = $true)][string]$KeepBin
+    )
+
+    $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    if ($null -eq $machinePath) { return }
+
+    $toRemove = @(Get-ManagedMavenBinEntries -PathValue $machinePath -InstallRoot $InstallRoot -KeepBin $KeepBin)
+    if ($toRemove.Count -eq 0) { return }
+
+    $kept = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($part in ($machinePath -split ';')) {
+        $trimmed = $part.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed)) { continue }
+        $normalized = $trimmed.TrimEnd('\')
+        $remove = $false
+        foreach ($oldBin in $toRemove) {
+            if ([string]::Equals($normalized, $oldBin.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase)) {
+                $remove = $true
+                break
+            }
+        }
+        if (-not $remove) {
+            [void]$kept.Add($trimmed)
+        }
+    }
+
+    $newMachinePath = [string]::Join(';', $kept.ToArray())
+    try {
+        [Environment]::SetEnvironmentVariable('Path', $newMachinePath, 'Machine')
+    }
+    catch {
+        $oldList = [string]::Join(', ', [string[]]$toRemove)
+        throw "O PATH do sistema ainda contem Maven antigo ($oldList) e ele tem precedencia sobre o PATH do usuario. Nao foi possivel alterar somente essa entrada (permissao negada). Execute o setup uma vez como administrador ou remova manualmente essa entrada do PATH do sistema. O diretorio do Maven antigo nao precisa ser apagado."
+    }
+
+    foreach ($oldBin in $toRemove) {
+        Write-Info "Removida do PATH do sistema (somente a entrada): $oldBin"
+        [void]$script:Changes.Add("PATH do sistema: removida entrada gerenciada $oldBin (diretorio mantido)")
+    }
+}
+
+function Disable-NodePowerShellShims {
+    param([Parameter(Mandatory = $true)][string]$NodeHome)
+
+    foreach ($name in @('npm.ps1', 'npx.ps1', 'corepack.ps1')) {
+        $ps1Path = Join-Path $NodeHome $name
+        if (-not (Test-Path -LiteralPath $ps1Path)) { continue }
+
+        $disabledName = $name + '.disabled'
+        $disabledPath = Join-Path $NodeHome $disabledName
+        if (Test-Path -LiteralPath $disabledPath) {
+            Remove-Item -LiteralPath $disabledPath
+        }
+        Rename-Item -LiteralPath $ps1Path -NewName $disabledName
+        Write-Info "$name foi desativado ($disabledName) para o PowerShell usar o .cmd correspondente, sem alterar ExecutionPolicy."
+        [void]$script:Changes.Add("Shim PowerShell desativado: $name -> $disabledName")
+    }
+}
+
 # =============================================================================
 # Downloads oficiais
 # =============================================================================
@@ -612,13 +711,17 @@ function Install-OfficialMaven {
             }
         }
 
+        $userPathNow = [Environment]::GetEnvironmentVariable('Path', 'User')
         $removePrefixes = @()
+        foreach ($oldBin in (Get-ManagedMavenBinEntries -PathValue $userPathNow -InstallRoot $script:InstallRoot -KeepBin $targetBin)) {
+            $removePrefixes += $oldBin
+        }
         $installed = Get-InstalledMaven
         if ($installed.Found -and -not [string]::IsNullOrWhiteSpace($installed.Home)) {
             $removePrefixes += $installed.Home
         }
-        $removePrefixes += (Join-Path $script:InstallRoot 'apache-maven-3.9.11')
 
+        Remove-ManagedMavenFromMachinePath -InstallRoot $script:InstallRoot -KeepBin $targetBin
         Update-UserPath -AddPaths @($targetBin) -RemovePrefixes $removePrefixes
 
         $verify = Invoke-NativeCommand -FileName $mvnCmd -ArgumentList @('-version')
@@ -632,7 +735,7 @@ function Install-OfficialMaven {
 
         [void]$script:Changes.Add("Maven atualizado para $($artifact.Version) em $installHome")
         Write-Ok "Maven $($artifact.Version) disponivel em $installHome"
-        Write-Info 'O diretorio Maven anterior nao foi removido; apenas o PATH do usuario passou a apontar para a 3.9.x nova.'
+        Write-Info 'O diretorio Maven anterior nao foi removido. Entradas antigas apache-maven-*\bin gerenciadas pelo script foram substituidas no PATH do usuario; se existiam no PATH do sistema, apenas essa entrada foi retirada para nao sombrear a 3.9.x nova.'
     }
     catch {
         $message = $_.Exception.Message
@@ -682,6 +785,7 @@ function Install-OfficialNode {
             }
         }
 
+        Disable-NodePowerShellShims -NodeHome $installHome
         Update-UserPath -AddPaths @($installHome) -RemovePrefixes @()
 
         $verify = Invoke-NativeCommand -FileName $nodeExe -ArgumentList @('--version')
@@ -791,6 +895,15 @@ if (-not $needNode) {
 }
 elseif ($node.Found -and $null -ne $node.Version -and $node.Version.Major -eq 26) {
     Write-Warn "Node.js $($node.Version.Full) e Current (nao LTS). O setup instalara Node.js 22.x LTS e colocara no PATH do usuario, sem remover a instalacao Current."
+}
+
+if ($node.Found -and -not [string]::IsNullOrWhiteSpace($node.Path)) {
+    $detectedNodeHome = Split-Path -Parent $node.Path
+    $rootPrefix = $script:InstallRoot.TrimEnd('\') + '\'
+    $normalizedNodeHome = $detectedNodeHome.TrimEnd('\')
+    if ($normalizedNodeHome.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        Disable-NodePowerShellShims -NodeHome $normalizedNodeHome
+    }
 }
 
 [void]$script:AlreadyOk.Add('Git, Java/JDK, Docker Desktop e Docker Compose nao serao alterados por este script.')
