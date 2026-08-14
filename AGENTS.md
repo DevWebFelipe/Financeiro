@@ -303,12 +303,33 @@ Detalhes: `docs/26-seguranca.md`.
 
 ### 11.1 Receitas
 
-- `EXPECTED` — não altera saldo; participa de projeções
-- `RECEIVED` — gera entrada financeira
-- Receitas canceladas não participam de projeções nem do saldo efetivo
-- Estorno de receita recebida: operação explícita `RECEIVED` → `EXPECTED` (`POST /incomes/{id}/reverse`); não cria status `REVERSED`; limpa `account_id` e `received_date`
+O registro em `incomes` é a duplicata (título a receber). Não existe entidade separada.
+
+Cancelamento e estorno **não são a mesma operação**.
+
+```text
+CRIAR RECEITA
+      ↓
+   EXPECTED
+    ↙     ↘
+RECEBER   CANCELAR
+   ↓          ↓
+RECEIVED   CANCELLED
+   ↓
+ESTORNAR
+   ↓
+EXPECTED
+```
+
+- `EXPECTED` — duplicata ativa, ainda não recebida; não altera saldo; participa de projeções; `account_id` e `received_date` nulos
+- `RECEIVED` — recebimento efetivo; gera entrada financeira; `account_id` e `received_date` obrigatórios
+- `CANCELLED` — cancelamento inutiliza a duplicata; o registro permanece para histórico; não é mais receita pendente; não pode ser recebida; não participa de projeções nem do saldo efetivo
+- Recebimento: `EXPECTED` → `RECEIVED` (`POST /incomes/{id}/receive`)
+- Cancelamento: `EXPECTED` → `CANCELLED` (`POST /incomes/{id}/cancel`); não é reversão de recebimento
+- Estorno de recebimento: `RECEIVED` → `EXPECTED` (`POST /incomes/{id}/reverse`); **não cancela** a duplicata; ela permanece ativa como não recebida e pode ser recebida novamente; não cria status `REVERSED`; limpa `account_id` e `received_date`
 - Receita `RECEIVED` não deve ser editada de forma que altere silenciosamente a movimentação já realizada; correção = estornar → editar → receber novamente (o próximo receive informa conta e data de novo)
 - Receitas não utilizam responsável na Fase 6; `incomes.responsible_type` é nullable; as colunas físicas permanecem
+- **DECISÃO PENDENTE DO DESENVOLVEDOR:** cancelamento direto de receita já `RECEIVED` (sem estornar antes). A Fase 6 rejeita `RECEIVED` → `CANCELLED`. O caminho composto estornar e depois cancelar já é possível. Não está definido se, em fase posterior, a transição direta existirá.
 
 ### 11.2 Despesas — status oficiais
 
@@ -326,11 +347,18 @@ Formas de pagamento: `ACCOUNT`, `CREDIT_CARD`, `NONE`.
 
 ### 11.3 Cancelamento e estorno
 
+Cancelamento e estorno **não são sinônimos**.
+
 Sem exclusão física. Em despesas, `CANCELLED` / `REFUNDED` preservam histórico e não impactam saldo, projeções, totais, gráficos nem contas a pagar.
 
-Estorno de receita recebida é operação distinta: volta para `EXPECTED` (ver 11.1). Receitas não possuem `REFUNDED` nem `REVERSED`.
+Em receitas (ver 11.1):
 
-Não utilizar `DELETE` HTTP como operação padrão para dados financeiros. Preferir ações explícitas (`POST /expenses/{id}/cancel`, `POST /incomes/{id}/reverse`, `POST /payments/{id}/reverse`). `DELETE` só pode existir para recurso não financeiro com regra explícita.
+- cancelar inutiliza a duplicata (`EXPECTED` → `CANCELLED`);
+- estornar desfaz o recebimento e mantém a duplicata ativa (`RECEIVED` → `EXPECTED`).
+
+Receitas não possuem `REFUNDED` nem `REVERSED`.
+
+Não utilizar `DELETE` HTTP como operação padrão para dados financeiros. Preferir ações explícitas (`POST /expenses/{id}/cancel`, `POST /incomes/{id}/receive`, `POST /incomes/{id}/reverse`, `POST /incomes/{id}/cancel`, `POST /payments/{id}/reverse`). `DELETE` só pode existir para recurso não financeiro com regra explícita.
 
 ### 11.4 Compra no cartão
 

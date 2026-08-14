@@ -278,11 +278,13 @@ OVERDUE é derivado (não persistido): status OPEN ou PARTIALLY_PAID e dueDate <
 
 Estados relevantes:
 
-EXPECTED
+EXPECTED — duplicata ativa, não recebida
 
-RECEIVED
+RECEIVED — recebimento efetivado
 
-CANCELLED
+CANCELLED — duplicata inutilizada
+
+Cancelamento (`EXPECTED` → `CANCELLED`) e estorno (`RECEIVED` → `EXPECTED`) são operações diferentes. Não existe status `REVERSED`.
 
 
 # 23. Fatura
@@ -566,15 +568,19 @@ criação;
 
 edição em `EXPECTED`;
 
-recebimento;
+recebimento (`EXPECTED` → `RECEIVED`);
 
-estorno;
+estorno (`RECEIVED` → `EXPECTED`);
 
-cancelamento;
+cancelamento (`EXPECTED` → `CANCELLED`);
 
 rejeição de edição em `RECEIVED`;
 
-rejeição de transições inválidas.
+rejeição de transições inválidas;
+
+que estorno **não** resulta em `CANCELLED`;
+
+que cancelamento **não** é tratado como estorno.
 
 
 A Fase 6 não testa responsável em receitas (`responsibleType` / `responsibleName`).
@@ -599,11 +605,15 @@ Deve possuir conta de destino.
 
 Após `RECEIVED` → `reverse` → `EXPECTED`:
 
+o status deve ser `EXPECTED`, **não** `CANCELLED`;
+
 o saldo deve voltar ao valor anterior ao recebimento daquela receita (pode ficar negativo);
 
 `accountId` deve ser `null`;
 
 `receivedDate` deve ser `null`;
+
+a duplicata permanece ativa;
 
 a receita pode ser editada e recebida novamente, informando outra vez a conta e a data.
 
@@ -628,12 +638,33 @@ Rejeitar:
 
 `reverse` sobre receita `EXPECTED` ou `CANCELLED`;
 
+`cancel` sobre receita `RECEIVED` ou `CANCELLED`;
+
 `PUT` sobre receita `RECEIVED` ou `CANCELLED`.
+
+
+Não criar teste que autorize `RECEIVED` → `CANCELLED`. Essa transição é rejeitada na Fase 6 e permanece **DECISÃO PENDENTE** para fases posteriores.
 
 
 # 47. Receita cancelada
 
-Não deve aparecer como receita futura.
+Após `EXPECTED` → `cancel` → `CANCELLED`:
+
+o registro permanece (não é apagado);
+
+o status é `CANCELLED`;
+
+não deve aparecer como receita futura;
+
+não participa do saldo efetivo;
+
+não altera o saldo;
+
+não pode ser recebida nesta fase;
+
+não pode ser editada nesta fase.
+
+O cancelamento não deve produzir os efeitos do estorno (não há movimentação financeira a desfazer).
 
 
 # 48. Testes de cartão
@@ -959,9 +990,12 @@ continua disponível no histórico.
 
 # 74. Estorno
 
-Após estorno:
+Após estorno de **despesa**:
 
 não representa obrigação financeira ativa.
+
+
+Esta seção aplica-se a despesas / compras. Não se aplica ao estorno de receita: após `RECEIVED` → `EXPECTED`, a duplicata permanece ativa como receita não recebida e pode ser recebida novamente (seção 46.1).
 
 
 # 75. Testes de boleto
@@ -1295,10 +1329,14 @@ estornos.
 
 Receita EXPECTED deve participar.
 
+Inclui receita que voltou a `EXPECTED` após estorno. Essa duplicata permanece ativa e prevista.
+
 
 # 103. Projeção
 
 Receita CANCELLED não deve participar.
+
+Cancelamento inutiliza a duplicata. Não confundir com estorno.
 
 
 # 104. Projeção

@@ -227,6 +227,8 @@ Entity behavior must not become a hidden balance cache. Account balance is deriv
 
 Prefer `expense.cancel()` over `expense.setStatus(CANCELLED)` when cancellation has rules.
 
+For incomes: `cancel()` is `EXPECTED` → `CANCELLED` (inutiliza a duplicata). `reverse()` is `RECEIVED` → `EXPECTED` (desfaz o recebimento). They are not the same operation.
+
 Do not model `account.debit(amount)` as mutation of an independent `currentBalance`.
 
 ### 7.4 Repositories
@@ -509,7 +511,7 @@ Application rules and database constraints complement each other.
 
 Do not use `ON DELETE CASCADE` for financial relationships by default.
 
-Do not implement generic soft delete (`deleted_at` on every table). Financial records use `CANCELLED` / `REFUNDED` / `active`.
+Do not implement generic soft delete (`deleted_at` on every table). Financial records use `CANCELLED` / `REFUNDED` / `active`. Income reversal returns the record to `EXPECTED`; it does not use `CANCELLED` or `REFUNDED`.
 
 Ownership: every financial table has `user_id NOT NULL`. Relationships that must belong to the same user use composite FKs `(referenced_id, user_id) → parent (id, user_id)`, with `UNIQUE (id, user_id)` on the parent. JPA maps simple `@JoinColumn` on the id; composite FKs live in Flyway. Details: `docs/23-modelo-de-dados.md` sections 264–266.
 

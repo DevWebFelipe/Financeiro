@@ -428,7 +428,7 @@ Status:
 
 NÃO INICIADA
 
-A documentação oficial da Fase 6 foi refinada antes da implementação: estorno `RECEIVED` → `EXPECTED` (limpa `account_id` e `received_date`; pode deixar saldo negativo); responsável fora desta fase (`responsible_type` nullable); saldo derivado; ajuste de saldo como conceito futuro.
+A documentação oficial da Fase 6 foi refinada antes da implementação: cancelamento inutiliza a duplicata (`EXPECTED` → `CANCELLED`); estorno desfaz o recebimento e mantém a duplicata ativa (`RECEIVED` → `EXPECTED`; limpa `account_id` e `received_date`; pode deixar saldo negativo); responsável fora desta fase (`responsible_type` nullable); saldo derivado; ajuste de saldo como conceito futuro.
 
 Objetivo:
 
@@ -491,9 +491,10 @@ Testar:
 
 - receita prevista;
 - receita recebida;
-- receita cancelada;
-- estorno (`RECEIVED` → `EXPECTED`);
-- transições inválidas;
+- receita cancelada (`EXPECTED` → `CANCELLED`; duplicata inutilizada; sem impacto no saldo);
+- estorno (`RECEIVED` → `EXPECTED`; duplicata permanece ativa e pode ser recebida novamente);
+- que estorno não resulta em `CANCELLED`;
+- transições inválidas (incluindo rejeição de `RECEIVED` → `CANCELLED`);
 - impacto no saldo (recebimento e estorno);
 - isolamento;
 - categoria `INCOME` ativa.
@@ -502,6 +503,8 @@ Testar:
 # 39. Critério de conclusão
 
 Usuário consegue lançar, consultar, editar (quando `EXPECTED`), receber, estornar e cancelar receitas, com impacto correto no saldo.
+
+Estorno e cancelamento devem comportar-se como operações distintas: estornar volta a `EXPECTED`; cancelar inutiliza em `CANCELLED`.
 
 
 # 40. Fase 7 — Despesas simples
@@ -1548,6 +1551,6 @@ Fases 0 a 5: CONCLUÍDAS.
 
 Próxima fase: Fase 6 — Receitas.
 
-O contrato documental da Fase 6 foi fechado (`responsible_type` nullable; estorno limpa `account_id` e `received_date`; estorno pode deixar saldo negativo). A implementação ainda não começou.
+O contrato documental da Fase 6 foi fechado (`responsible_type` nullable; cancelamento `EXPECTED` → `CANCELLED` inutiliza a duplicata; estorno `RECEIVED` → `EXPECTED` limpa `account_id` e `received_date` e pode deixar saldo negativo). A implementação ainda não começou.
 
 A IA não deve iniciar a Fase 6 nem implementar Refresh Token, logout backend ou módulos financeiros posteriores sem autorização explícita.

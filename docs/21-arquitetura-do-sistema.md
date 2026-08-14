@@ -393,7 +393,11 @@ Isso não autoriza criar agora uma entidade genérica `Transaction`.
 
 A implementação concreta ocorre por domínio (`incomes`, `expenses`, `transfers` e, no futuro, ajustes), sem ledger paralelo.
 
-Na Fase 6, receita `RECEIVED` passa a participar positivamente do saldo da conta informada (`+ amount`). Receita `EXPECTED` ou `CANCELLED` não participa do saldo efetivo. O estorno desfaz exatamente essa movimentação (`− amount`), limpa `account_id` e `received_date`, e não é bloqueado se o saldo ficar negativo.
+Na Fase 6, receita `RECEIVED` passa a participar positivamente do saldo da conta informada (`+ amount`). Receita `EXPECTED` ou `CANCELLED` não participa do saldo efetivo.
+
+O estorno desfaz exatamente essa movimentação (`− amount`), devolve a duplicata a `EXPECTED` (ativa, não cancelada), limpa `account_id` e `received_date`, e não é bloqueado se o saldo ficar negativo.
+
+O cancelamento (`EXPECTED` → `CANCELLED`) inutiliza a duplicata e não altera saldo. Cancelamento e estorno não são a mesma operação.
 
 Ajuste de saldo é conceito oficial e requisito futuro. Não implementar na Fase 6. A arquitetura da Fase 6 não pode impedir essa funcionalidade.
 
@@ -1514,6 +1518,10 @@ Pagamento deve ser tratado como operação financeira própria.
 # 168. Estorno
 
 Estorno deve ser tratado como operação própria.
+
+Em receitas, estorno (`POST /incomes/{id}/reverse`) desfaz o recebimento (`RECEIVED` → `EXPECTED`) e **não** cancela a duplicata.
+
+Cancelamento de receita (`POST /incomes/{id}/cancel`) é operação distinta (`EXPECTED` → `CANCELLED`).
 
 
 # 169. Transferência

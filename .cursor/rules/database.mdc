@@ -96,7 +96,7 @@ Use `NOT NULL`, `UNIQUE`, `FOREIGN KEY`, and simple `CHECK`.
 
 Do not use `ON DELETE CASCADE` on financial relationships by default.
 
-Do not add `deleted_at` to every table. Financial history uses domain status (`CANCELLED`, `REFUNDED`) or `active`.
+Do not add `deleted_at` to every table. Financial history uses domain status (`CANCELLED`, `REFUNDED`) or `active`. Income reversal is not a status: it returns the record to `EXPECTED` and does not use `CANCELLED` or `REFUNDED`.
 
 Do not use PostgreSQL `ENUM` by default. Prefer `VARCHAR` + application enum. `CHECK` only for small stable sets (example: account type `BANK_ACCOUNT` / `CASH`).
 

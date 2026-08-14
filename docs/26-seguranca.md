@@ -813,7 +813,9 @@ Campos internos não devem ser expostos automaticamente.
 
 Operações financeiras devem ser transacionais.
 
-Inclui o estorno de receita recebida: desfazer o impacto financeiro e alterar o status devem ocorrer na mesma transação.
+Inclui o estorno de receita recebida: desfazer o impacto financeiro e alterar o status para `EXPECTED` (não `CANCELLED`) devem ocorrer na mesma transação.
+
+O cancelamento de receita prevista não possui impacto financeiro a desfazer; mesmo assim, a alteração de status deve ser transacional.
 
 
 # 103. Concorrência

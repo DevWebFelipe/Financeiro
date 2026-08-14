@@ -139,6 +139,8 @@ Inclui: transferências, pagamento de despesas e pagamento de fatura (limitado a
 
 Esta regra **não** se aplica ao estorno de receita recebida. O estorno é operação de correção (RN200), não despesa, não pagamento, não transferência e não consumo normal de saldo.
 
+O cancelamento de receita prevista (RN207) também não consome saldo: parte de `EXPECTED`, que já não alterava o saldo.
+
 
 ## RN013 — Pagamento
 
@@ -332,6 +334,11 @@ O responsável é utilizado principalmente para classificação e relatórios.
 
 # 8. Receitas
 
+O registro em `incomes` é a duplicata (título a receber). Não existe entidade separada.
+
+Cancelamento e estorno são operações diferentes (RN198, RN200, RN207).
+
+
 ## RN039 — Receita
 
 Uma receita deve possuir:
@@ -359,9 +366,11 @@ Status:
 EXPECTED
 
 
-não altera o saldo da conta.
+Duplicata ativa, ainda não recebida. Não altera o saldo da conta.
 
 `account_id` e `received_date` são nulos. Não representa movimentação financeira efetivada.
+
+É também o estado após o estorno de um recebimento (RN200): a duplicata permanece ativa e pode ser recebida novamente.
 
 
 ## RN042 — Receita recebida
@@ -371,7 +380,9 @@ Status:
 RECEIVED
 
 
-representa entrada financeira real.
+O recebimento baixa a duplicata e gera a movimentação financeira correspondente (`EXPECTED` → `RECEIVED`).
+
+Representa entrada financeira real.
 
 `account_id` e `received_date` são obrigatórios.
 
@@ -392,17 +403,50 @@ Após o estorno, `received_date` volta a `null`. O próximo recebimento informa 
 
 ## RN045 — Receita cancelada
 
-Receita cancelada não entra na projeção futura e não participa do saldo efetivo.
+O cancelamento inutiliza a duplicata (`EXPECTED` → `CANCELLED`).
+
+Após o cancelamento:
+
+- o registro permanece para fins históricos;
+- o status passa a `CANCELLED`;
+- a receita não representa mais duplicata pendente;
+- não entra na projeção futura;
+- não participa do saldo efetivo;
+- não pode ser recebida posteriormente nesta fase.
+
+O cancelamento **não** é estorno de recebimento e **não** deve ser tratado como reversão de `RECEIVED`.
+
+Nesta fase o cancelamento parte somente de `EXPECTED`. Não há impacto financeiro, porque `EXPECTED` já não alterava o saldo.
 
 
 ## RN046 — Receita recebida
 
 Receita já recebida não pode voltar silenciosamente para EXPECTED.
 
-A correção explícita é o estorno (`POST /api/v1/incomes/{id}/reverse`).
+A correção explícita é o estorno (`POST /api/v1/incomes/{id}/reverse`), que retorna a duplicata a `EXPECTED` (ativa, não cancelada).
+
+Não usar cancelamento para desfazer um recebimento.
 
 
 ## RN198 — Transições de status de receita
+
+Cancelamento e estorno **não são a mesma operação**.
+
+Ciclo oficial:
+
+```text
+CRIAR RECEITA
+      ↓
+   EXPECTED
+    ↙     ↘
+RECEBER   CANCELAR
+   ↓          ↓
+RECEIVED   CANCELLED
+   ↓
+ESTORNAR
+   ↓
+EXPECTED
+```
 
 Transições permitidas:
 
@@ -415,7 +459,9 @@ RECEIVED
    └── reverse ──► EXPECTED
 ```
 
-Não existe status `REVERSED` para receitas. Os status oficiais continuam `EXPECTED`, `RECEIVED` e `CANCELLED`.
+Cancelar inutiliza a duplicata. Estornar desfaz o recebimento e mantém a duplicata ativa como não recebida.
+
+Não existe status `REVERSED` para receitas. Os status oficiais continuam `EXPECTED`, `RECEIVED` e `CANCELLED`. O registro em `incomes` é a duplicata; não existe entidade separada.
 
 
 ## RN199 — Transições não permitidas de receita
@@ -427,12 +473,40 @@ RECEIVED  → CANCELLED
 CANCELLED → EXPECTED
 CANCELLED → RECEIVED
 RECEIVED  → RECEIVED via receive
+EXPECTED  → EXPECTED via reverse
+CANCELLED → CANCELLED via cancel
 ```
 
 Não existe operação de reativação de receita cancelada nesta fase.
 
+O caminho composto `RECEIVED` → reverse → `EXPECTED` → cancel → `CANCELLED` já é possível pela composição das operações definidas (estornar e, em seguida, cancelar a duplicata prevista). Isso não é cancelamento direto de receita recebida.
+
+**DECISÃO PENDENTE DO DESENVOLVEDOR:** cancelamento direto de receita já `RECEIVED` (sem estornar antes). A Fase 6 rejeita `RECEIVED` → `CANCELLED`. Não está definido se, em fase posterior, essa transição passará a existir, nem se o único caminho continuará sendo estornar e depois cancelar. Não implementar `RECEIVED` → `CANCELLED` até decisão explícita.
+
 
 ## RN200 — Estorno de receita recebida
+
+O estorno **não cancela** a duplicata. Ele desfaz o recebimento e os efeitos financeiros correspondentes.
+
+Transição:
+
+```text
+RECEIVED
+   │
+   └── ESTORNO
+          ↓
+      EXPECTED
+```
+
+e não:
+
+```text
+RECEIVED
+   │
+   └── ESTORNO
+          ↓
+      CANCELLED
+```
 
 O estorno de uma receita em `RECEIVED`:
 
@@ -441,11 +515,18 @@ O estorno de uma receita em `RECEIVED`:
 3. limpa `account_id` (`null`);
 4. limpa `received_date` (`null`).
 
-Não cria despesa, receita negativa, status `REFUNDED` nem status `REVERSED`.
+Após o estorno, a duplicata:
 
-A receita volta a poder ser editada. O próximo recebimento (`POST /receive`) deve informar novamente `accountId` e `receivedDate`. Não reutilizar automaticamente a conta anterior.
+- continua ativa;
+- continua existindo (o registro não é apagado);
+- volta a representar uma receita não recebida;
+- pode ser editada e recebida novamente.
 
-O estorno não deve ser bloqueado apenas porque o saldo resultante da conta ficará negativo.
+Não cria despesa, receita negativa, status `REFUNDED`, status `REVERSED` nem status `CANCELLED`.
+
+O próximo recebimento (`POST /receive`) deve informar novamente `accountId` e `receivedDate`. Não reutilizar automaticamente a conta anterior.
+
+O estorno não deve ser bloqueado apenas porque o saldo resultante da conta ficará negativo. Esta possibilidade de saldo negativo é exceção à regra das operações normais (RN012).
 
 Exemplo (correção com saldo não negativo):
 
@@ -515,7 +596,7 @@ Se qualquer etapa falhar, toda a operação sofre rollback.
 RECEIVED → reverse → EXPECTED → PUT → EXPECTED → receive → RECEIVED
 ```
 
-`CANCELLED`: não deve ser editada nem recebida nesta fase.
+`CANCELLED`: não deve ser editada nem recebida nesta fase. Cancelamento inutiliza a duplicata; não há reativação nesta fase.
 
 
 ## RN203 — Receitas sem responsável (Fase 6)
@@ -533,6 +614,31 @@ O CHECK de valores válidos (`MINE`, `GIULIA`, `EDERSON`, `ELISIANE`, `OTHER`) p
 `responsible_name` permanece e é compatível com a ausência de responsável.
 
 Esta regra não altera o uso de responsável em despesas (RN035–RN038).
+
+
+## RN207 — Cancelamento de receita prevista
+
+O cancelamento inutiliza a duplicata. Não desfaz um recebimento, porque só se aplica a receita ainda não recebida.
+
+Transição:
+
+```text
+EXPECTED → CANCELLED
+```
+
+Endpoint: `POST /api/v1/incomes/{id}/cancel`.
+
+Após o cancelamento (RN045):
+
+- o registro permanece para histórico;
+- o status é `CANCELLED`;
+- a duplicata deixa de ser receita pendente;
+- não pode ser recebida nesta fase;
+- não há efeito financeiro a desfazer (`EXPECTED` não alterava o saldo).
+
+O cancelamento **não** limpa dados de recebimento por analogia com o estorno: em `EXPECTED`, `account_id` e `received_date` já são nulos.
+
+Não tratar `cancel` como sinônimo de `reverse`.
 
 
 # 9. Despesas
@@ -1083,18 +1189,25 @@ Parcelas do parcelamento de fatura podem possuir valores diferentes.
 A soma das parcelas deve representar o valor parcelado.
 
 
-# 17. Estornos
+# 17. Cancelamentos e estornos
+
+Cancelamento e estorno **não são sinônimos**.
+
+Em receitas: cancelar inutiliza a duplicata (`EXPECTED` → `CANCELLED`); estornar desfaz o recebimento (`RECEIVED` → `EXPECTED`). Em despesas: `CANCELLED` anula a obrigação; `REFUNDED` registra que a despesa ocorreu e depois foi revertida.
+
 
 ## RN114 — Cancelamento
 
 CANCELLED significa que a operação foi anulada.
+
+Em receitas, `CANCELLED` inutiliza a duplicata prevista (RN045, RN207). Não é o destino do estorno de recebimento.
 
 
 ## RN115 — Estorno
 
 REFUNDED significa que a despesa ocorreu e posteriormente foi revertida.
 
-Receitas não possuem status `REFUNDED`. O estorno de receita recebida segue RN198 e RN200.
+Receitas não possuem status `REFUNDED`. O estorno de receita recebida segue RN198 e RN200: `RECEIVED` → `EXPECTED`. Não usa `CANCELLED`.
 
 
 ## RN116 — Histórico
@@ -1240,6 +1353,8 @@ Compromissos futuros de cartão participam da projeção.
 ## RN139 — Cancelamento
 
 Despesas CANCELLED não participam da projeção.
+
+Receitas CANCELLED também não participam da projeção (RN045). Receita estornada volta a `EXPECTED` e, portanto, volta a participar da projeção enquanto permanecer prevista.
 
 
 ## RN140 — Estorno
@@ -1435,6 +1550,8 @@ Quando a operação não deve mais ser considerada:
 
 utilizar CANCELLED.
 
+Em receitas, isso inutiliza a duplicata prevista (`EXPECTED` → `CANCELLED`). Não usar cancelamento para desfazer um recebimento já efetivado.
+
 
 ## RN166 — Estorno
 
@@ -1442,7 +1559,7 @@ Quando a despesa ocorreu e depois foi revertida:
 
 utilizar REFUNDED.
 
-Esta regra aplica-se a despesas. O estorno de receita recebida não utiliza `REFUNDED` nem cria `REVERSED`; a transição oficial é `RECEIVED` → `EXPECTED` (RN198, RN200).
+Esta regra aplica-se a despesas. O estorno de receita recebida não utiliza `REFUNDED` nem cria `REVERSED`; a transição oficial é `RECEIVED` → `EXPECTED` (RN198, RN200). A duplicata permanece ativa como não recebida.
 
 
 # 29. Concorrência

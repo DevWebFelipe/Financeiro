@@ -432,6 +432,8 @@ Tabela:
 
 incomes
 
+O registro nesta tabela é a duplicata (título a receber). Não existe tabela separada.
+
 
 # 36. Receita
 
@@ -468,7 +470,9 @@ updated_at
 
 `account_id` é obrigatório quando `status = RECEIVED` (RN043).
 
-Em `EXPECTED`, `account_id` e `received_date` são nulos. Em `RECEIVED`, ambos são obrigatórios. `CANCELLED` não representa recebimento efetivo (nesta fase só parte de `EXPECTED`).
+Em `EXPECTED`, `account_id` e `received_date` são nulos. Em `RECEIVED`, ambos são obrigatórios.
+
+`CANCELLED` inutiliza a duplicata; não representa recebimento efetivo. Nesta fase o cancelamento parte somente de `EXPECTED`. Após estorno (`RECEIVED` → `EXPECTED`), `account_id` e `received_date` voltam a nulos; a duplicata permanece ativa.
 
 Não criar CHECK adicional nesta etapa. A Fase 6 deve respeitar o contrato.
 
@@ -494,7 +498,9 @@ CANCELLED
 
 EXPECTED:
 
-receita prevista, ainda não recebida.
+duplicata ativa, receita prevista, ainda não recebida.
+
+É também o estado após o estorno de um recebimento: a duplicata permanece ativa e pode ser recebida novamente.
 
 
 # 39. Receita
@@ -503,17 +509,43 @@ RECEIVED:
 
 dinheiro efetivamente recebido.
 
+O recebimento baixa a duplicata (`EXPECTED` → `RECEIVED`) e gera a movimentação financeira.
+
 
 # 40. Receita
 
 CANCELLED:
 
-receita que não acontecerá.
+o cancelamento inutiliza a duplicata.
+
+A receita não acontecerá. O registro permanece para histórico. Não é mais pendente. Não pode ser recebida nesta fase.
 
 Não participa do saldo efetivo nem da projeção.
 
+Não é o resultado de um estorno de recebimento.
+
 
 # 40.1 Transições de status de receita
+
+Cancelamento e estorno **não são a mesma operação**.
+
+O registro em `incomes` é a duplicata (título a receber). Não existe entidade separada.
+
+Ciclo oficial:
+
+```text
+CRIAR RECEITA
+      ↓
+   EXPECTED
+    ↙     ↘
+RECEBER   CANCELAR
+   ↓          ↓
+RECEIVED   CANCELLED
+   ↓
+ESTORNAR
+   ↓
+EXPECTED
+```
 
 Permitidas:
 
@@ -526,24 +558,32 @@ RECEIVED
    └── reverse ──► EXPECTED
 ```
 
+Cancelar inutiliza a duplicata. Estornar desfaz o recebimento e mantém a duplicata ativa como não recebida.
+
 Não existe status `REVERSED`. Os status oficiais continuam `EXPECTED`, `RECEIVED` e `CANCELLED`.
 
-Não permitidas nesta fase: `RECEIVED` → `CANCELLED`; `CANCELLED` → `EXPECTED`; `CANCELLED` → `RECEIVED`; `receive` sobre receita já `RECEIVED`. Não há reativação de receita cancelada nesta fase.
+Não permitidas nesta fase: `RECEIVED` → `CANCELLED`; `CANCELLED` → `EXPECTED`; `CANCELLED` → `RECEIVED`; `receive` sobre receita já `RECEIVED`; `reverse` sobre `EXPECTED` ou `CANCELLED`. Não há reativação de receita cancelada nesta fase.
+
+O caminho composto `RECEIVED` → reverse → `EXPECTED` → cancel → `CANCELLED` já é possível pela composição das operações definidas.
+
+**DECISÃO PENDENTE DO DESENVOLVEDOR:** cancelamento direto de receita já `RECEIVED`. A Fase 6 rejeita essa transição. Não está definido se, em fase posterior, ela existirá. Não implementar até decisão explícita.
 
 
 # 40.2 Estorno de receita
 
-O estorno é operação explícita sobre receita `RECEIVED`.
+O estorno é operação explícita sobre receita `RECEIVED`. **Não cancela** a duplicata.
 
 Desfaz o impacto financeiro do recebimento original na conta que recebeu o valor.
 
-Altera o status para `EXPECTED`.
+Altera o status para `EXPECTED` (duplicata ativa, não recebida). Não altera para `CANCELLED`.
 
 Limpa `account_id` e `received_date` (`null`).
 
-Não cria despesa, receita negativa, `REFUNDED` nem `REVERSED`.
+A duplicata continua existindo, permanece ativa e pode ser recebida novamente.
 
-Não é bloqueado se o saldo resultante for negativo.
+Não cria despesa, receita negativa, `REFUNDED`, `REVERSED` nem `CANCELLED`.
+
+Não é bloqueado se o saldo resultante for negativo. Esta possibilidade de saldo negativo é exceção à regra das operações normais.
 
 Operação atômica: se qualquer etapa falhar, rollback completo.
 
@@ -564,10 +604,13 @@ RECEIVED
   received_date != NULL
 
 CANCELLED
+  inutiliza a duplicata
   não representa recebimento efetivo
+  nesta fase parte somente de EXPECTED
+  (account_id e received_date já nulos)
 ```
 
-Ciclo:
+Ciclo de recebimento e estorno:
 
 ```text
 EXPECTED
@@ -582,6 +625,29 @@ EXPECTED
 account_id = NULL
 received_date = NULL
 ```
+
+Ciclo de cancelamento (não é estorno):
+
+```text
+EXPECTED
+account_id = NULL
+received_date = NULL
+        ↓ CANCEL
+CANCELLED
+duplicata inutilizada
+sem movimentação financeira
+```
+
+
+# 40.4 Cancelamento de receita
+
+O cancelamento (`EXPECTED` → `CANCELLED`) inutiliza a duplicata.
+
+Não desfaz recebimento. Não limpa `account_id` / `received_date` por analogia com o estorno: em `EXPECTED` esses campos já são nulos.
+
+Não há efeito financeiro a reverter.
+
+Ver RN045 e RN207.
 
 
 # 41. Receita
@@ -2310,7 +2376,9 @@ ajustes de saldo (conceito oficial; implementação futura).
 
 Receita `EXPECTED` ou `CANCELLED` não participa do saldo efetivo.
 
-Estorno de receita recebida desfaz o impacto positivo anteriormente produzido.
+Estorno de receita recebida desfaz o impacto positivo anteriormente produzido e devolve a duplicata a `EXPECTED`. Não a coloca em `CANCELLED`.
+
+Cancelamento de receita prevista não altera saldo: `EXPECTED` já não participava do saldo efetivo.
 
 Isso **não** significa criar entidade genérica `Transaction`. A implementação ocorre por domínio.
 

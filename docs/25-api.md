@@ -660,6 +660,8 @@ Response **200** com a categoria (`active = false`). A operação é idempotente
 
 Contrato da Fase 6. Não implementar nesta atualização documental.
 
+O registro em `incomes` é a duplicata. Cancelamento (`/cancel`) e estorno (`/reverse`) são operações diferentes.
+
 Endpoint:
 
 GET /api/v1/incomes
@@ -777,6 +779,8 @@ Request:
 
 Somente `EXPECTED` → `RECEIVED`.
 
+O recebimento baixa a duplicata e gera a movimentação financeira correspondente.
+
 `accountId` e `receivedDate` obrigatórios. Conta do usuário e ativa.
 
 Produz movimentação positiva (`+ amount`) no saldo da conta informada.
@@ -795,13 +799,15 @@ POST /api/v1/incomes/{id}/reverse
 
 Somente `RECEIVED` → `EXPECTED`.
 
+O estorno **não cancela** a duplicata. Desfaz o recebimento e os efeitos financeiros. A duplicata permanece ativa como não recebida e pode ser recebida novamente.
+
 Desfaz exatamente a movimentação do recebimento original (`− amount`) na conta que recebeu o valor, na mesma transação.
 
 Limpa `accountId` e `receivedDate` (`null`).
 
-Não cria despesa, receita negativa, `REFUNDED` nem `REVERSED`.
+Não cria despesa, receita negativa, `REFUNDED`, `REVERSED` nem `CANCELLED`.
 
-Não é bloqueado se o saldo resultante for negativo.
+Não é bloqueado se o saldo resultante for negativo. Esta possibilidade de saldo negativo é exceção à regra das operações normais.
 
 Operação atômica: falha em qualquer etapa implica rollback (RN201).
 
@@ -816,7 +822,15 @@ POST /api/v1/incomes/{id}/cancel
 
 Somente `EXPECTED` → `CANCELLED`.
 
+O cancelamento inutiliza a duplicata. O registro permanece para histórico. Não representa mais receita pendente. Não pode ser recebida nesta fase.
+
+Não há efeito financeiro a desfazer (`EXPECTED` não alterava o saldo).
+
+Não tratar este endpoint como estorno. Estorno é `POST /reverse` (`RECEIVED` → `EXPECTED`).
+
 Não há `RECEIVED` → `CANCELLED` nesta fase. Não há reativação de receita cancelada.
+
+**DECISÃO PENDENTE DO DESENVOLVEDOR:** cancelamento direto de receita já `RECEIVED`. A Fase 6 rejeita essa transição. O caminho composto estornar e depois cancelar já é possível. Não implementar até decisão explícita.
 
 
 # 38. Despesas
@@ -1503,6 +1517,12 @@ Preferir ações explícitas:
 
 POST /api/v1/expenses/{id}/cancel
 
+POST /api/v1/incomes/{id}/receive
+
+POST /api/v1/incomes/{id}/reverse
+
+POST /api/v1/incomes/{id}/cancel
+
 POST /api/v1/payments/{id}/reverse
 
 DELETE somente pode existir para recurso não financeiro com regra explícita autorizando a remoção.
@@ -1742,6 +1762,8 @@ estorno de receita recebida.
 
 # 116.1 Estorno de receita
 
+O estorno **não** coloca a receita em `CANCELLED`. Transição: `RECEIVED` → `EXPECTED`.
+
 Fluxo:
 
 1. validar receita e ownership;
@@ -1755,6 +1777,25 @@ Fluxo:
 
 
 Se qualquer etapa falhar, rollback completo.
+
+A duplicata permanece ativa e pode ser recebida novamente.
+
+
+# 116.2 Cancelamento de receita
+
+O cancelamento inutiliza a duplicata. Não é estorno.
+
+Fluxo:
+
+1. validar receita e ownership;
+2. validar estado `EXPECTED`;
+3. alterar status para `CANCELLED`;
+4. confirmar transação.
+
+
+Não há impacto financeiro a desfazer. Não limpar `accountId` / `receivedDate` por analogia com o estorno: já são nulos em `EXPECTED`.
+
+Rejeitar `cancel` sobre `RECEIVED` ou `CANCELLED` nesta fase.
 
 
 # 117. Pagamento de fatura

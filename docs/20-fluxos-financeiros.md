@@ -27,6 +27,8 @@ O sistema não deve criar ou remover dinheiro artificialmente.
 
 Ajuste de saldo (conceito futuro, RN204) é exceção explícita de conciliação: reconcilia o saldo calculado com o saldo real da conta. Não é receita nem despesa. Não substitui lançamentos econômicos. Não autoriza alterar `current_balance` de forma arbitrária.
 
+Em receitas, cancelamento e estorno **não são a mesma operação**: cancelar inutiliza a duplicata (`EXPECTED` → `CANCELLED`); estornar desfaz o recebimento e mantém a duplicata ativa (`RECEIVED` → `EXPECTED`).
+
 
 # 3. Fluxo — Cadastro de usuário
 
@@ -1560,14 +1562,32 @@ R$ 1.000
 Mas o trabalho foi cancelado.
 
 
+A duplicata está em `EXPECTED`. O usuário cancela (`POST /incomes/{id}/cancel`).
+
+
 Marca:
 
 CANCELLED
 
 
+Este fluxo **não** é estorno. Estorno só se aplica a receita já `RECEIVED`.
+
+
 # 88. Resultado
 
-A receita deixa de impactar a projeção.
+A duplicata é inutilizada.
+
+A receita:
+
+permanece registrada no histórico;
+
+não representa mais receita pendente;
+
+não pode ser recebida nesta fase;
+
+deixa de impactar a projeção;
+
+não altera o saldo (EXPECTED já não alterava).
 
 
 # 89. Fluxo — Conta vencida
@@ -2734,6 +2754,8 @@ saldo da conta A diminui R$ 500.
 
 Receita em `RECEIVED`.
 
+O estorno **não cancela** a duplicata.
+
 Conta:
 
 R$ 10.000
@@ -2749,7 +2771,7 @@ Saldo:
 R$ 15.400
 
 
-Usuário solicita estorno.
+Usuário solicita estorno (`POST /incomes/{id}/reverse`).
 
 
 ## Resultado
@@ -2769,6 +2791,8 @@ EXPECTED
 `receivedDate` limpo (`null`).
 
 
+A duplicata continua ativa, continua existindo e pode ser recebida novamente.
+
 A movimentação desfeita é a que realmente ocorreu, na conta que recebeu o valor.
 
 O estorno não é bloqueado se o saldo ficar negativo.
@@ -2781,6 +2805,12 @@ Saldo atual: R$ 200
 Recebimento anterior: +R$ 1.000
 Estorno: −R$ 1.000
 Saldo resultante: −R$ 800
+```
+
+Não fazer:
+
+```text
+RECEIVED → CANCELLED
 ```
 
 
@@ -2817,6 +2847,24 @@ R$ 15.500
 
 # 176. Fluxo — Transições de status de receita
 
+Cancelamento e estorno **não são a mesma operação**.
+
+Ciclo oficial:
+
+```text
+CRIAR RECEITA
+      ↓
+   EXPECTED
+    ↙     ↘
+RECEBER   CANCELAR
+   ↓          ↓
+RECEIVED   CANCELLED
+   ↓
+ESTORNAR
+   ↓
+EXPECTED
+```
+
 Permitidas:
 
 ```text
@@ -2827,6 +2875,8 @@ EXPECTED
 RECEIVED
    └── reverse ──► EXPECTED
 ```
+
+Cancelar inutiliza a duplicata. Estornar desfaz o recebimento e mantém a duplicata ativa como não recebida.
 
 Não permitidas nesta fase:
 
@@ -2840,6 +2890,8 @@ RECEIVED  → RECEIVED via receive
 Não existe reativação de receita cancelada nesta fase.
 
 Não existe status `REVERSED`.
+
+**DECISÃO PENDENTE DO DESENVOLVEDOR:** cancelamento direto de receita já `RECEIVED`. A Fase 6 rejeita essa transição. O caminho composto estornar e depois cancelar já é possível. Não implementar a transição direta até decisão explícita.
 
 
 # 177. Fluxo — Ajuste de saldo (conceitual; fora da Fase 6)
