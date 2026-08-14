@@ -19,7 +19,7 @@ public class OpenApiConfig {
             new Info()
                 .title("Financial Control API")
                 .version("v1")
-                .description("API REST do Financial Control. Fase 3: autenticação."))
+                .description("API REST do Financial Control. Fase 4: contas financeiras."))
         .components(
             new Components()
                 .addSecuritySchemes(

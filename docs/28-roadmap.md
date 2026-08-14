@@ -363,7 +363,9 @@ Implementar:
 
 saldo inicial;
 
-movimentações.
+saldo derivado estruturado como `initial_balance` + entradas − saídas.
+
+Movimentações reais (receitas, despesas, transferências) **não** são implementadas nesta fase. Pertencem às fases dos respectivos domínios. A Fase 4 não cria ledger paralelo nem movimentação artificial.
 
 
 # 28. Testes
@@ -1508,8 +1510,8 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 3: CONCLUÍDAS.
+Fases 0 a 4: CONCLUÍDAS.
 
-Próxima fase: Fase 4 — Contas.
+Próxima fase: Fase 5 — Categorias.
 
-A IA não deve iniciar a Fase 4 nem implementar Refresh Token, logout backend ou módulos financeiros sem autorização explícita.
+A IA não deve iniciar a Fase 5 nem implementar Refresh Token, logout backend ou módulos financeiros posteriores sem autorização explícita.

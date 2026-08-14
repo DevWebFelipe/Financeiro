@@ -277,12 +277,55 @@ Response:
 
 # 13. Contas
 
+
+## Fase 4 — implementado
+
+- `GET /api/v1/accounts`
+- `GET /api/v1/accounts/{id}`
+- `POST /api/v1/accounts`
+- `PUT /api/v1/accounts/{id}`
+- `POST /api/v1/accounts/{id}/deactivate`
+- `POST /api/v1/accounts/{id}/activate`
+- `GET /api/v1/accounts/{id}/balance`
+
+Todos os endpoints de contas exigem JWT Bearer. Sem token, token inválido, expirado ou usuário desativado: **401** (`code`: `UNAUTHORIZED`).
+
+O proprietário é sempre o usuário autenticado (claim `sub`). Propriedades desconhecidas no JSON — inclusive `userId`, `id`, `active`, `createdAt` e `updatedAt` — são rejeitadas (**400**, `VALIDATION_ERROR`).
+
+Conta de outro usuário ou UUID inexistente: **404** (`code`: `NOT_FOUND`, mensagem `Conta não encontrada.`). A API não distingue esses casos, para não vazar existência do recurso.
+
+
+## Fase 4 — não implementado
+
+- `GET /api/v1/accounts/{id}/statement` — o extrato depende de movimentações financeiras reais (receitas, despesas, transferências), que pertencem a fases posteriores. Não há extrato artificial nesta fase.
+
+
 Endpoint:
 
 GET /api/v1/accounts
 
 
-Lista as contas do usuário autenticado.
+Lista todas as contas do usuário autenticado (ativas e desativadas), em array JSON, ordenadas por `createdAt` crescente.
+
+Não utiliza paginação nesta fase: o volume típico de contas pessoais não justifica o contrato paginado.
+
+Response **200**:
+
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Nubank",
+    "type": "BANK_ACCOUNT",
+    "initialBalance": 1500.00,
+    "active": true,
+    "createdAt": "2026-08-13T12:00:00Z",
+    "updatedAt": "2026-08-13T12:00:00Z"
+  }
+]
+```
+
+Não inclui `userId`.
 
 
 # 14. Conta
@@ -292,7 +335,9 @@ Endpoint:
 GET /api/v1/accounts/{id}
 
 
-Retorna uma conta específica.
+Retorna uma conta específica do usuário autenticado, inclusive se estiver desativada (histórico).
+
+UUID inválido no path: **400**.
 
 
 # 15. Criar conta
@@ -304,11 +349,24 @@ POST /api/v1/accounts
 
 Request:
 
+```json
 {
   "name": "Nubank",
   "type": "BANK_ACCOUNT",
   "initialBalance": 1500.00
 }
+```
+
+Regras:
+
+- `name` obrigatório, 1–255 caracteres (após trim);
+- `type` obrigatório; somente `BANK_ACCOUNT` ou `CASH`;
+- `initialBalance` obrigatório; número decimal JSON; no máximo 17 dígitos inteiros e 2 casas decimais; persistido como `NUMERIC(19,2)` e normalizado no backend com `RoundingMode.HALF_UP`, escala 2;
+- conta criada como `active = true`;
+- UUID v7 gerado pela aplicação;
+- o `userId` não é aceito no request.
+
+Response **201 Created**: mesmo formato de `GET /api/v1/accounts/{id}`.
 
 
 # 16. Atualizar conta
@@ -318,6 +376,24 @@ Endpoint:
 PUT /api/v1/accounts/{id}
 
 
+Request (substituição dos campos permitidos):
+
+```json
+{
+  "name": "Nubank PJ",
+  "type": "CASH"
+}
+```
+
+Campos permitidos: `name`, `type`.
+
+Campos rejeitados (propriedades desconhecidas no DTO → **400**): `id`, `userId`, `initialBalance`, `active`, `createdAt`, `updatedAt`.
+
+O saldo inicial não é alterável por esta operação: não é movimentação financeira real (`docs/23` §16, RN011).
+
+O estado ativo/inativo não é alterável por PUT; usar os endpoints de desativar e reativar.
+
+
 # 17. Desativar conta
 
 Endpoint:
@@ -325,7 +401,11 @@ Endpoint:
 POST /api/v1/accounts/{id}/deactivate
 
 
-Não excluir fisicamente.
+Desativação lógica. Não excluir fisicamente. Não existe `DELETE /api/v1/accounts/{id}`.
+
+A conta permanece persistida e consultável. Somente contas ativas poderão ser utilizadas em novas operações financeiras das fases posteriores (RN007).
+
+Response **200** com a conta (`active = false`). A operação é idempotente.
 
 
 # 18. Reativar conta
@@ -333,6 +413,11 @@ Não excluir fisicamente.
 Endpoint:
 
 POST /api/v1/accounts/{id}/activate
+
+
+Reativa uma conta do usuário autenticado.
+
+Response **200** com a conta (`active = true`). A operação é idempotente.
 
 
 # 19. Saldo da conta
@@ -344,15 +429,19 @@ GET /api/v1/accounts/{id}/balance
 
 Response:
 
+```json
 {
   "accountId": "...",
   "balance": 1500.00
 }
+```
+
+Na Fase 4 o saldo derivado é igual ao `initialBalance`. Entradas e saídas passam a compor o cálculo quando os respectivos domínios forem implementados. Não existe coluna `current_balance`.
 
 
 # 20. Extrato da conta
 
-Endpoint:
+Endpoint previsto:
 
 GET /api/v1/accounts/{id}/statement
 
@@ -366,6 +455,8 @@ endDate
 page
 
 size
+
+Não implementado na Fase 4. Dependência futura: movimentações financeiras reais.
 
 
 # 21. Cartões
@@ -1315,10 +1406,13 @@ Exemplo:
   "path": "/api/v1/invoices/..."
 }
 
-Códigos usados na Fase 3:
+Códigos usados nas Fases 3 e 4:
 
 - `VALIDATION_ERROR` — 400
+- `BUSINESS_RULE_VIOLATION` — 400
 - `UNAUTHORIZED` — 401
+- `NOT_FOUND` — 404
+- `METHOD_NOT_ALLOWED` — 405
 - `CONFLICT` — 409
 - `INTERNAL_ERROR` — 500
 

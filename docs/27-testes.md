@@ -1116,7 +1116,7 @@ em logs;
 em banco em texto puro.
 
 
-A Fase 3 cobre autenticação (`/auth`, `/users/me`). Testes de IDOR financeiro (despesa/conta/fatura de outro usuário) permanecem para as fases dos respectivos módulos.
+A Fase 3 cobre autenticação (`/auth`, `/users/me`). A Fase 4 cobre IDOR de contas (`/accounts`). Testes de IDOR dos demais recursos financeiros (despesa/fatura/etc.) permanecem para as fases dos respectivos módulos.
 
 
 # 95. Validação

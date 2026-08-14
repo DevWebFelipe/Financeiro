@@ -179,6 +179,26 @@ Detalhes: `docs/25-api.md` e `docs/26-seguranca.md`.
 
 ---
 
+## Contas (Fase 4)
+
+Implementado: criar, listar, consultar, editar (`name` e `type`), desativar, reativar e consultar saldo. Tipos V1: `BANK_ACCOUNT` e `CASH`.
+
+| Método | Caminho | Autenticação | Resposta |
+|--------|---------|--------------|----------|
+| `GET` | `/api/v1/accounts` | Bearer | `200` array das contas do usuário |
+| `GET` | `/api/v1/accounts/{id}` | Bearer | `200`; `404` se não for do usuário |
+| `POST` | `/api/v1/accounts` | Bearer | `201` |
+| `PUT` | `/api/v1/accounts/{id}` | Bearer | `200`; apenas `name` e `type` |
+| `POST` | `/api/v1/accounts/{id}/deactivate` | Bearer | `200` desativação lógica |
+| `POST` | `/api/v1/accounts/{id}/activate` | Bearer | `200` |
+| `GET` | `/api/v1/accounts/{id}/balance` | Bearer | `200` `{ accountId, balance }` |
+
+Na Fase 4 o saldo consultado é o saldo inicial. Não existe `current_balance` persistido. Extrato (`/statement`) não foi implementado: depende de movimentações reais das fases seguintes.
+
+Não existe `DELETE` de conta.
+
+---
+
 ## Regras financeiras (resumo)
 
 | Tema | Regra |
@@ -359,10 +379,11 @@ Fase 0 — Planejamento — CONCLUÍDA
 Fase 1 — Fundação / estrutura inicial — CONCLUÍDA
 Fase 2 — Persistência / modelo de dados — CONCLUÍDA
 Fase 3 — Autenticação e segurança — CONCLUÍDA
+Fase 4 — Contas — CONCLUÍDA
 ```
 
-Estado atual do backend (Fases 1–3): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository.
+Estado atual do backend (Fases 1–4): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas.
 
-Próxima fase: **Fase 4 — Contas**. Não iniciar sem autorização explícita.
+Próxima fase: **Fase 5 — Categorias**. Não iniciar sem autorização explícita.
 
-Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend de autenticação nem módulos financeiros da Fase 4+ sem autorização.
+Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend de autenticação nem módulos financeiros da Fase 5+ sem autorização.

@@ -354,6 +354,10 @@ Pacotes da Fase 3:
 - `security` — Spring Security, JWT HS256, `AuthenticatedUser`, filtro Bearer;
 - `config` — formato de erro oficial, OpenAPI, Jackson.
 
+Pacotes da Fase 4:
+
+- `accounts` — contas financeiras (`AccountController` → `AccountService` → `AccountRepository`).
+
 Pacotes de domínio no plural, alinhados às tabelas e aos recursos HTTP.
 
 Não criar pacote `common` genérico sem responsabilidade compartilhada real.

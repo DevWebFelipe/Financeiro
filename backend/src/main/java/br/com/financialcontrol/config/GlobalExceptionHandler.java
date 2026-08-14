@@ -10,9 +10,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -45,6 +47,35 @@ public class GlobalExceptionHandler {
         null);
   }
 
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ApiError> handleTypeMismatch(
+      MethodArgumentTypeMismatchException exception, HttpServletRequest request) {
+    return build(
+        HttpStatus.BAD_REQUEST,
+        "VALIDATION_ERROR",
+        "Dados inválidos.",
+        request.getRequestURI(),
+        null);
+  }
+
+  @ExceptionHandler(NotFoundException.class)
+  public ResponseEntity<ApiError> handleNotFound(
+      NotFoundException exception, HttpServletRequest request) {
+    return build(
+        HttpStatus.NOT_FOUND, "NOT_FOUND", exception.getMessage(), request.getRequestURI(), null);
+  }
+
+  @ExceptionHandler(BusinessRuleException.class)
+  public ResponseEntity<ApiError> handleBusinessRule(
+      BusinessRuleException exception, HttpServletRequest request) {
+    return build(
+        HttpStatus.BAD_REQUEST,
+        "BUSINESS_RULE_VIOLATION",
+        exception.getMessage(),
+        request.getRequestURI(),
+        null);
+  }
+
   @ExceptionHandler(UnauthorizedException.class)
   public ResponseEntity<ApiError> handleUnauthorized(
       UnauthorizedException exception, HttpServletRequest request) {
@@ -61,6 +92,17 @@ public class GlobalExceptionHandler {
       ConflictException exception, HttpServletRequest request) {
     return build(
         HttpStatus.CONFLICT, "CONFLICT", exception.getMessage(), request.getRequestURI(), null);
+  }
+
+  @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ApiError> handleMethodNotSupported(
+      HttpRequestMethodNotSupportedException exception, HttpServletRequest request) {
+    return build(
+        HttpStatus.METHOD_NOT_ALLOWED,
+        "METHOD_NOT_ALLOWED",
+        "Método não permitido.",
+        request.getRequestURI(),
+        null);
   }
 
   @ExceptionHandler(Exception.class)
