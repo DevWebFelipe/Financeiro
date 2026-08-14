@@ -96,13 +96,39 @@ Toda conta pode possuir um saldo inicial.
 
 ## RN011 — Saldo
 
-O saldo da conta deve refletir:
+O saldo da conta é derivado das movimentações financeiras efetivas, tendo o saldo inicial como ponto de partida.
+
+Não utilizar um campo `current_balance` como fonte de verdade.
+
+O saldo deve refletir:
 
 saldo inicial;
 
-entradas;
+receitas efetivamente recebidas;
 
-saídas.
+despesas efetivamente realizadas;
+
+transferências de entrada;
+
+transferências de saída;
+
+ajustes de saldo.
+
+Conceitualmente:
+
+```text
+Saldo em uma data =
+saldo inicial
++ receitas efetivamente recebidas
+− despesas efetivamente realizadas
++ transferências de entrada
+− transferências de saída
++ ajustes de saldo
+```
+
+As operações futuras participam desse cálculo conforme o respectivo significado financeiro, quando o domínio correspondente for implementado.
+
+Ajuste de saldo é movimentação própria de conciliação (RN204). Não é receita nem despesa. A funcionalidade de ajuste não pertence à Fase 6 (RN206).
 
 
 ## RN012 — Saldo negativo
@@ -110,6 +136,8 @@ saídas.
 A V1 não permite que operações financeiras normais deixem a conta com saldo negativo.
 
 Inclui: transferências, pagamento de despesas e pagamento de fatura (limitado ao saldo da conta).
+
+Esta regra **não** se aplica ao estorno de receita recebida. O estorno é operação de correção (RN200), não despesa, não pagamento, não transferência e não consumo normal de saldo.
 
 
 ## RN013 — Pagamento
@@ -333,6 +361,8 @@ EXPECTED
 
 não altera o saldo da conta.
 
+`account_id` e `received_date` são nulos. Não representa movimentação financeira efetivada.
+
 
 ## RN042 — Receita recebida
 
@@ -343,28 +373,166 @@ RECEIVED
 
 representa entrada financeira real.
 
+`account_id` e `received_date` são obrigatórios.
+
 
 ## RN043 — Conta
 
 Uma receita recebida deve estar vinculada à conta que recebeu o dinheiro.
+
+Após o estorno, `account_id` volta a `null`. O próximo recebimento informa novamente a conta.
 
 
 ## RN044 — Data de recebimento
 
 Receitas recebidas devem possuir data de recebimento.
 
+Após o estorno, `received_date` volta a `null`. O próximo recebimento informa novamente a data.
+
 
 ## RN045 — Receita cancelada
 
-Receita cancelada não entra na projeção futura.
+Receita cancelada não entra na projeção futura e não participa do saldo efetivo.
 
 
 ## RN046 — Receita recebida
 
 Receita já recebida não pode voltar silenciosamente para EXPECTED.
 
+A correção explícita é o estorno (`POST /api/v1/incomes/{id}/reverse`).
 
-Deve existir operação explícita de correção.
+
+## RN198 — Transições de status de receita
+
+Transições permitidas:
+
+```text
+EXPECTED
+   ├── receive ──► RECEIVED
+   └── cancel  ──► CANCELLED
+
+RECEIVED
+   └── reverse ──► EXPECTED
+```
+
+Não existe status `REVERSED` para receitas. Os status oficiais continuam `EXPECTED`, `RECEIVED` e `CANCELLED`.
+
+
+## RN199 — Transições não permitidas de receita
+
+Nesta fase, as seguintes transições são rejeitadas:
+
+```text
+RECEIVED  → CANCELLED
+CANCELLED → EXPECTED
+CANCELLED → RECEIVED
+RECEIVED  → RECEIVED via receive
+```
+
+Não existe operação de reativação de receita cancelada nesta fase.
+
+
+## RN200 — Estorno de receita recebida
+
+O estorno de uma receita em `RECEIVED`:
+
+1. desfaz o impacto financeiro produzido pelo recebimento original (conta e valor daquele recebimento);
+2. altera o status para `EXPECTED`;
+3. limpa `account_id` (`null`);
+4. limpa `received_date` (`null`).
+
+Não cria despesa, receita negativa, status `REFUNDED` nem status `REVERSED`.
+
+A receita volta a poder ser editada. O próximo recebimento (`POST /receive`) deve informar novamente `accountId` e `receivedDate`. Não reutilizar automaticamente a conta anterior.
+
+O estorno não deve ser bloqueado apenas porque o saldo resultante da conta ficará negativo.
+
+Exemplo (correção com saldo não negativo):
+
+```text
+Conta: R$ 10.000
+Receita recebida: +R$ 5.400
+Saldo: R$ 15.400
+
+Após estorno:
+Saldo: R$ 10.000
+status: EXPECTED
+account_id: null
+received_date: null
+
+Se recebida novamente por R$ 5.500:
+Saldo: R$ 15.500
+```
+
+Exemplo (correção com saldo negativo):
+
+```text
+Saldo atual: R$ 200
+Recebimento anterior: +R$ 1.000
+(o valor já foi utilizado em outras movimentações)
+
+Estorno: −R$ 1.000
+Saldo resultante: −R$ 800
+```
+
+O estorno continua permitido. Não se deve impedir a correção para preservar artificialmente um saldo não negativo.
+
+
+## RN201 — Atomicidade do estorno de receita
+
+O estorno é operação financeira atômica.
+
+Conceitualmente:
+
+```text
+validar receita
+↓
+validar estado RECEIVED
+↓
+identificar a conta que recebeu o valor
+↓
+desfazer o impacto financeiro
+↓
+alterar status para EXPECTED
+↓
+limpar account_id
+↓
+limpar received_date
+↓
+commit
+```
+
+Se qualquer etapa falhar, toda a operação sofre rollback.
+
+
+## RN202 — Edição de receita
+
+`EXPECTED`: pode ser editada dentro dos campos permitidos pelo contrato da API.
+
+`RECEIVED`: não pode sofrer edição que altere silenciosamente uma movimentação financeira já realizada. Para corrigir:
+
+```text
+RECEIVED → reverse → EXPECTED → PUT → EXPECTED → receive → RECEIVED
+```
+
+`CANCELLED`: não deve ser editada nem recebida nesta fase.
+
+
+## RN203 — Receitas sem responsável (Fase 6)
+
+Receitas não utilizam responsável nesta fase.
+
+A API, as regras de negócio e os testes da Fase 6 não expõem nem utilizam `responsibleType` / `responsibleName`.
+
+As colunas `responsible_type` e `responsible_name` permanecem no modelo físico. Não remover.
+
+`responsible_type` é nullable (migration V16). Não persistir valor artificial (ex.: `MINE`) só para satisfazer o antigo `NOT NULL`.
+
+O CHECK de valores válidos (`MINE`, `GIULIA`, `EDERSON`, `ELISIANE`, `OTHER`) permanece. Não alterar esses valores.
+
+`responsible_name` permanece e é compatível com a ausência de responsável.
+
+Esta regra não altera o uso de responsável em despesas (RN035–RN038).
 
 
 # 9. Despesas
@@ -924,7 +1092,9 @@ CANCELLED significa que a operação foi anulada.
 
 ## RN115 — Estorno
 
-REFUNDED significa que a operação ocorreu e posteriormente foi revertida.
+REFUNDED significa que a despesa ocorreu e posteriormente foi revertida.
+
+Receitas não possuem status `REFUNDED`. O estorno de receita recebida segue RN198 e RN200.
 
 
 ## RN116 — Histórico
@@ -1268,9 +1438,11 @@ utilizar CANCELLED.
 
 ## RN166 — Estorno
 
-Quando a operação ocorreu e depois foi revertida:
+Quando a despesa ocorreu e depois foi revertida:
 
 utilizar REFUNDED.
+
+Esta regra aplica-se a despesas. O estorno de receita recebida não utiliza `REFUNDED` nem cria `REVERSED`; a transição oficial é `RECEIVED` → `EXPECTED` (RN198, RN200).
 
 
 # 29. Concorrência
@@ -1553,7 +1725,36 @@ Quando houver ambiguidade:
 4. solicitar decisão.
 
 
-# 41. Regra final
+# 41. Ajuste de saldo
+
+## RN204 — Ajuste de saldo
+
+Um ajuste de saldo é uma movimentação cuja única finalidade é reconciliar o saldo calculado pelo sistema com o saldo real da conta.
+
+Pode ser positivo ou negativo. Altera o saldo. Deve possuir histórico/auditoria quando implementado.
+
+
+## RN205 — Ajuste não é receita nem despesa
+
+Ajuste de saldo não é receita e não é despesa.
+
+Não representa necessariamente uma operação econômica.
+
+Não deve ser lançado como despesa (ajuste negativo) nem como receita (ajuste positivo). Isso distorceria relatórios financeiros.
+
+Futuramente, um relatório poderá apresentar receitas, despesas, transferências, ajustes, movimentação líquida e saldo de forma separada.
+
+
+## RN206 — Ajuste fora da Fase 6
+
+A funcionalidade de ajuste de saldo não pertence à Fase 6.
+
+Não criar endpoint, DTO, entidade, service, controller, migration nem testes funcionais de ajuste nesta fase.
+
+A arquitetura da Fase 6 não pode impedir a futura existência de ajustes.
+
+
+# 42. Regra final
 
 O backend é a autoridade sobre:
 
@@ -1566,7 +1767,7 @@ O backend é a autoridade sobre:
 - regras financeiras.
 
 
-# 42. Regra final
+# 43. Regra final
 
 O frontend é responsável por:
 
@@ -1576,17 +1777,17 @@ O frontend é responsável por:
 - organizar informações.
 
 
-# 43. Regra final
+# 44. Regra final
 
 Nenhuma regra financeira crítica deve depender exclusivamente do frontend.
 
 
-# 44. Regra final
+# 45. Regra final
 
 Toda regra crítica deve possuir teste automatizado.
 
 
-# 45. Critério de aceitação
+# 46. Critério de aceitação
 
 Uma funcionalidade financeira somente estará concluída quando:
 
@@ -1598,7 +1799,7 @@ Uma funcionalidade financeira somente estará concluída quando:
 6. fluxo estiver validado.
 
 
-# 46. Regra final
+# 47. Regra final
 
 Em caso de conflito entre código e documentação:
 
@@ -1608,6 +1809,6 @@ o código não deve ser simplesmente considerado correto.
 O conflito deve ser identificado e resolvido.
 
 
-# 47. Regra final
+# 48. Regra final
 
 A documentação deve permanecer atualizada conforme o sistema evoluir.

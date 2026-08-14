@@ -226,6 +226,21 @@ class OwnershipAndPersistenceTest {
     income.setUpdatedAt(NOW);
     incomeRepository.saveAndFlush(income);
 
+    Income incomeWithoutResponsible = new Income();
+    incomeWithoutResponsible.setId(UuidV7.create());
+    incomeWithoutResponsible.setUserId(owner.getId());
+    incomeWithoutResponsible.setCategory(incomeCategory);
+    incomeWithoutResponsible.setDescription("Freelance");
+    incomeWithoutResponsible.setAmount(new BigDecimal("500.00"));
+    incomeWithoutResponsible.setExpectedDate(TODAY);
+    incomeWithoutResponsible.setStatus(IncomeStatus.EXPECTED);
+    incomeWithoutResponsible.setCreatedAt(NOW);
+    incomeWithoutResponsible.setUpdatedAt(NOW);
+    incomeRepository.saveAndFlush(incomeWithoutResponsible);
+    Income reloaded = incomeRepository.findById(incomeWithoutResponsible.getId()).orElseThrow();
+    assertThat(reloaded.getResponsibleType()).isNull();
+    assertThat(reloaded.getResponsibleName()).isNull();
+
     FinancialGoal goal = new FinancialGoal();
     goal.setId(UuidV7.create());
     goal.setUserId(owner.getId());

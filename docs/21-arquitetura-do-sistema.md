@@ -358,11 +358,59 @@ Pacotes da Fase 4:
 
 - `accounts` — contas financeiras (`AccountController` → `AccountService` → `AccountRepository`).
 
+Pacotes da Fase 5:
+
+- `categories` — categorias (`CategoryController` → `CategoryService` → `CategoryRepository`).
+
 Pacotes de domínio no plural, alinhados às tabelas e aos recursos HTTP.
 
 Não criar pacote `common` genérico sem responsabilidade compartilhada real.
 
 Não criar módulo genérico `transactions` para agrupar receitas, despesas, transferências e pagamentos.
+
+O conceito de movimentação financeira (receita recebida, despesa efetivada, transferência, ajuste de saldo) é de cálculo de saldo. Não implica criar entidade genérica `Transaction`.
+
+
+# 29.1 Saldo derivado
+
+O saldo de uma conta é derivado das movimentações financeiras efetivas, a partir do saldo inicial.
+
+Não utilizar `current_balance` como fonte de verdade.
+
+Conceitualmente:
+
+```text
+Conta
+   │
+   └── Movimentações financeiras
+          ├── Receita recebida
+          ├── Despesa efetivada
+          ├── Transferência
+          └── Ajuste de saldo
+```
+
+Isso não autoriza criar agora uma entidade genérica `Transaction`.
+
+A implementação concreta ocorre por domínio (`incomes`, `expenses`, `transfers` e, no futuro, ajustes), sem ledger paralelo.
+
+Na Fase 6, receita `RECEIVED` passa a participar positivamente do saldo da conta informada (`+ amount`). Receita `EXPECTED` ou `CANCELLED` não participa do saldo efetivo. O estorno desfaz exatamente essa movimentação (`− amount`), limpa `account_id` e `received_date`, e não é bloqueado se o saldo ficar negativo.
+
+Ajuste de saldo é conceito oficial e requisito futuro. Não implementar na Fase 6. A arquitetura da Fase 6 não pode impedir essa funcionalidade.
+
+
+# 29.2 Saldo em datas e períodos
+
+O modelo deve permitir futuramente obter:
+
+- saldo inicial;
+- saldo em uma data específica;
+- saldo anterior a um período;
+- movimentações de um período;
+- movimentação líquida;
+- saldo final de um período;
+- saldo atual.
+
+Não implementar relatórios, extrato completo nem dashboard nesta etapa.
 
 
 # 30. Organização futura

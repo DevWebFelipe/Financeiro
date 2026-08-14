@@ -424,6 +424,12 @@ Este critério é da regra RN033 e será aplicado nas fases de receitas e despes
 
 # 34. Fase 6 — Receitas
 
+Status:
+
+NÃO INICIADA
+
+A documentação oficial da Fase 6 foi refinada antes da implementação: estorno `RECEIVED` → `EXPECTED` (limpa `account_id` e `received_date`; pode deixar saldo negativo); responsável fora desta fase (`responsible_type` nullable); saldo derivado; ajuste de saldo como conceito futuro.
+
 Objetivo:
 
 Implementar controle de receitas.
@@ -434,10 +440,30 @@ Implementar controle de receitas.
 Implementar:
 
 - criação;
+- listagem;
+- consulta por ID;
 - edição;
-- consulta;
 - recebimento;
-- cancelamento.
+- estorno;
+- cancelamento;
+- validações;
+- ownership;
+- integração com categoria;
+- integração com conta;
+- impacto no saldo por recebimento e estorno;
+- testes;
+- documentação.
+
+
+Não implementar nesta fase:
+
+- despesas;
+- transferências;
+- ajuste de saldo;
+- relatórios;
+- dashboard;
+- frontend;
+- responsável em receitas.
 
 
 # 36. Estados
@@ -454,8 +480,9 @@ CANCELLED
 Implementar vínculo com:
 
 - categoria;
-- conta;
-- responsável.
+- conta.
+
+Não utilizar `responsibleType` / `responsibleName` na API, nas regras nem nos testes desta fase. As colunas físicas em `incomes` permanecem; `responsible_type` é nullable.
 
 
 # 38. Testes
@@ -465,16 +492,16 @@ Testar:
 - receita prevista;
 - receita recebida;
 - receita cancelada;
-- impacto no saldo.
+- estorno (`RECEIVED` → `EXPECTED`);
+- transições inválidas;
+- impacto no saldo (recebimento e estorno);
+- isolamento;
+- categoria `INCOME` ativa.
 
 
 # 39. Critério de conclusão
 
-Usuário consegue lançar:
-
-- salário;
-- freelance;
-- outras receitas.
+Usuário consegue lançar, consultar, editar (quando `EXPECTED`), receber, estornar e cancelar receitas, com impacto correto no saldo.
 
 
 # 40. Fase 7 — Despesas simples
@@ -1520,5 +1547,7 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 Fases 0 a 5: CONCLUÍDAS.
 
 Próxima fase: Fase 6 — Receitas.
+
+O contrato documental da Fase 6 foi fechado (`responsible_type` nullable; estorno limpa `account_id` e `received_date`; estorno pode deixar saldo negativo). A implementação ainda não começou.
 
 A IA não deve iniciar a Fase 6 nem implementar Refresh Token, logout backend ou módulos financeiros posteriores sem autorização explícita.

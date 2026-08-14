@@ -25,6 +25,8 @@ Cada fluxo deve representar uma operação financeira real.
 
 O sistema não deve criar ou remover dinheiro artificialmente.
 
+Ajuste de saldo (conceito futuro, RN204) é exceção explícita de conciliação: reconcilia o saldo calculado com o saldo real da conta. Não é receita nem despesa. Não substitui lançamentos econômicos. Não autoriza alterar `current_balance` de forma arbitrária.
+
 
 # 3. Fluxo — Cadastro de usuário
 
@@ -238,7 +240,7 @@ Nubank
 
 Responsável:
 
-MINE
+não utilizado na Fase 6 (RN203).
 
 
 Data:
@@ -2728,6 +2730,186 @@ Then:
 saldo da conta A diminui R$ 500.
 
 
-# 174. Critério final
+# 174. Fluxo — Estorno de receita recebida
+
+Receita em `RECEIVED`.
+
+Conta:
+
+R$ 10.000
+
+
+Recebimento original:
+
++R$ 5.400
+
+
+Saldo:
+
+R$ 15.400
+
+
+Usuário solicita estorno.
+
+
+## Resultado
+
+Saldo:
+
+R$ 10.000
+
+
+Receita:
+
+EXPECTED
+
+
+`accountId` limpo (`null`).
+
+`receivedDate` limpo (`null`).
+
+
+A movimentação desfeita é a que realmente ocorreu, na conta que recebeu o valor.
+
+O estorno não é bloqueado se o saldo ficar negativo.
+
+
+Exemplo:
+
+```text
+Saldo atual: R$ 200
+Recebimento anterior: +R$ 1.000
+Estorno: −R$ 1.000
+Saldo resultante: −R$ 800
+```
+
+
+# 175. Fluxo — Correção de receita recebida
+
+Para alterar valor, conta ou demais dados financeiros de uma receita já recebida:
+
+```text
+RECEIVED
+    ↓
+REVERSE
+    ↓
+EXPECTED
+    ↓
+PUT / edição
+    ↓
+EXPECTED
+    ↓
+RECEIVE
+    ↓
+RECEIVED
+```
+
+
+Exemplo:
+
+após o estorno, a receita é editada para R$ 5.500 e recebida novamente.
+
+
+Saldo final:
+
+R$ 15.500
+
+
+# 176. Fluxo — Transições de status de receita
+
+Permitidas:
+
+```text
+EXPECTED
+   ├── receive ──► RECEIVED
+   └── cancel  ──► CANCELLED
+
+RECEIVED
+   └── reverse ──► EXPECTED
+```
+
+Não permitidas nesta fase:
+
+```text
+RECEIVED  → CANCELLED
+CANCELLED → EXPECTED
+CANCELLED → RECEIVED
+RECEIVED  → RECEIVED via receive
+```
+
+Não existe reativação de receita cancelada nesta fase.
+
+Não existe status `REVERSED`.
+
+
+# 177. Fluxo — Ajuste de saldo (conceitual; fora da Fase 6)
+
+Um ajuste reconcilia o saldo calculado com o saldo real da conta.
+
+Não é receita. Não é despesa.
+
+
+Exemplo 1:
+
+```text
+Saldo calculado: R$ 1.000
+Saldo real:      R$   950
+
+Ajuste: −R$ 50
+Novo saldo: R$ 950
+```
+
+
+Exemplo 2:
+
+```text
+Saldo calculado: R$ 1.000
+Saldo real:      R$ 1.050
+
+Ajuste: +R$ 50
+Novo saldo: R$ 1.050
+```
+
+Não implementar na Fase 6. A arquitetura não deve impedir essa funcionalidade futura.
+
+
+# 178. Conceito — Saldo em datas e períodos
+
+O modelo deve permitir futuramente obter:
+
+- saldo inicial;
+- saldo em uma data específica;
+- saldo anterior a um período;
+- movimentações de um período;
+- movimentação líquida;
+- saldo final de um período;
+- saldo atual.
+
+
+Exemplo conceitual:
+
+```text
+Período: 10/08 → 20/08
+
+Saldo anterior ao período
+R$ 6.500,00
+
+Receitas
++R$ 1.700,00
+
+Despesas
+−R$ 300,00
+
+Movimentação líquida
++R$ 1.400,00
+
+Saldo final
+R$ 7.900,00
+```
+
+Requisito arquitetural/futuro. Não implementar relatórios nesta etapa.
+
+
+# 179. Critério final
 
 A implementação da V1 somente deve ser considerada correta quando os fluxos críticos estiverem funcionando e testados.

@@ -813,6 +813,8 @@ Campos internos não devem ser expostos automaticamente.
 
 Operações financeiras devem ser transacionais.
 
+Inclui o estorno de receita recebida: desfazer o impacto financeiro e alterar o status devem ocorrer na mesma transação.
+
 
 # 103. Concorrência
 

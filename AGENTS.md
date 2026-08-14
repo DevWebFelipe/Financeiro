@@ -305,7 +305,10 @@ Detalhes: `docs/26-seguranca.md`.
 
 - `EXPECTED` — não altera saldo; participa de projeções
 - `RECEIVED` — gera entrada financeira
-- Receitas canceladas não participam de projeções
+- Receitas canceladas não participam de projeções nem do saldo efetivo
+- Estorno de receita recebida: operação explícita `RECEIVED` → `EXPECTED` (`POST /incomes/{id}/reverse`); não cria status `REVERSED`; limpa `account_id` e `received_date`
+- Receita `RECEIVED` não deve ser editada de forma que altere silenciosamente a movimentação já realizada; correção = estornar → editar → receber novamente (o próximo receive informa conta e data de novo)
+- Receitas não utilizam responsável na Fase 6; `incomes.responsible_type` é nullable; as colunas físicas permanecem
 
 ### 11.2 Despesas — status oficiais
 
@@ -323,9 +326,11 @@ Formas de pagamento: `ACCOUNT`, `CREDIT_CARD`, `NONE`.
 
 ### 11.3 Cancelamento e estorno
 
-Sem exclusão física. `CANCELLED` / `REFUNDED` preservam histórico e não impactam saldo, projeções, totais, gráficos nem contas a pagar.
+Sem exclusão física. Em despesas, `CANCELLED` / `REFUNDED` preservam histórico e não impactam saldo, projeções, totais, gráficos nem contas a pagar.
 
-Não utilizar `DELETE` HTTP como operação padrão para dados financeiros. Preferir ações explícitas (`POST /expenses/{id}/cancel`, `POST /payments/{id}/reverse`). `DELETE` só pode existir para recurso não financeiro com regra explícita.
+Estorno de receita recebida é operação distinta: volta para `EXPECTED` (ver 11.1). Receitas não possuem `REFUNDED` nem `REVERSED`.
+
+Não utilizar `DELETE` HTTP como operação padrão para dados financeiros. Preferir ações explícitas (`POST /expenses/{id}/cancel`, `POST /incomes/{id}/reverse`, `POST /payments/{id}/reverse`). `DELETE` só pode existir para recurso não financeiro com regra explícita.
 
 ### 11.4 Compra no cartão
 
@@ -343,6 +348,8 @@ Operação própria, atômica: saída na origem + entrada no destino. Não é re
 
 Operações normais não permitem saldo negativo (transferências, pagamento de despesas, pagamento de fatura limitado ao saldo da conta).
 
+Estorno de receita recebida é correção: não é bloqueado se o saldo resultante for negativo.
+
 ### 11.8 Contas
 
 Tipos oficiais: `BANK_ACCOUNT`, `CASH`.
@@ -353,7 +360,13 @@ Não usar: `CHECKING`, `SAVINGS`, `PERSONAL_WALLET`, `OTHER`.
 
 ### 11.9 Saldo
 
-Fonte de verdade: movimentações. Saldo derivado delas. Cache/`current_balance` só se mantido transacionalmente consistente com as movimentações — nunca duas fontes independentes.
+Fonte de verdade: movimentações. Saldo derivado delas, a partir do saldo inicial.
+
+Conceitualmente: saldo inicial + receitas recebidas − despesas efetivadas + transferências de entrada − transferências de saída + ajustes de saldo.
+
+Cache/`current_balance` só se mantido transacionalmente consistente com as movimentações — nunca duas fontes independentes.
+
+Ajuste de saldo é movimentação própria de conciliação (não é receita nem despesa). Conceito oficial; implementação fora da Fase 6. Não criar entidade genérica `Transaction` para representar o conceito.
 
 ---
 
@@ -368,6 +381,8 @@ Valores oficiais:
 - `OTHER` (permite descrição textual)
 
 Não são usuários do sistema. Apenas classificação para controle e prestação de contas.
+
+Receitas não utilizam responsável na Fase 6. Esta seção não muda as regras de responsável das despesas.
 
 ---
 

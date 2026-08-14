@@ -108,6 +108,22 @@ class SchemaContractTest {
   }
 
   @Test
+  void shouldAllowNullIncomeResponsibleTypeWithoutDroppingTheColumn() {
+    assertThat(columnsOf("incomes")).contains("responsible_type", "responsible_name");
+    String nullable =
+        jdbcTemplate.queryForObject(
+            """
+            SELECT is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'incomes'
+              AND column_name = 'responsible_type'
+            """,
+            String.class);
+    assertThat(nullable).isEqualTo("YES");
+  }
+
+  @Test
   void shouldEnforceCaseInsensitiveCategoryNameUniquenessPerUserAndType() {
     List<String> indexes =
         jdbcTemplate.queryForList(

@@ -465,7 +465,9 @@ saldo zero;
 
 saldo insuficiente;
 
-recusa de operação que geraria saldo negativo;
+recusa de operação normal que geraria saldo negativo (transferência, pagamento de despesa, pagamento de fatura);
+
+estorno de receita mesmo quando o saldo resultante for negativo;
 
 transferências;
 
@@ -562,11 +564,20 @@ Testar:
 
 criação;
 
-edição;
+edição em `EXPECTED`;
 
 recebimento;
 
-cancelamento.
+estorno;
+
+cancelamento;
+
+rejeição de edição em `RECEIVED`;
+
+rejeição de transições inválidas.
+
+
+A Fase 6 não testa responsável em receitas (`responsibleType` / `responsibleName`).
 
 
 # 44. Receita esperada
@@ -582,6 +593,42 @@ RECEIVED deve aumentar saldo.
 # 46. Receita recebida
 
 Deve possuir conta de destino.
+
+
+# 46.1 Estorno de receita
+
+Após `RECEIVED` → `reverse` → `EXPECTED`:
+
+o saldo deve voltar ao valor anterior ao recebimento daquela receita (pode ficar negativo);
+
+`accountId` deve ser `null`;
+
+`receivedDate` deve ser `null`;
+
+a receita pode ser editada e recebida novamente, informando outra vez a conta e a data.
+
+O estorno desfaz a movimentação original (conta e valor do recebimento), não dados posteriormente alterados.
+
+Não rejeitar o estorno só porque o saldo resultante é negativo.
+
+Se qualquer etapa falhar, nenhuma alteração de saldo nem de status deve persistir.
+
+
+# 46.2 Transições inválidas de receita
+
+Rejeitar:
+
+`RECEIVED` → `CANCELLED`;
+
+`CANCELLED` → `EXPECTED`;
+
+`CANCELLED` → `RECEIVED`;
+
+`receive` sobre receita já `RECEIVED`;
+
+`reverse` sobre receita `EXPECTED` ou `CANCELLED`;
+
+`PUT` sobre receita `RECEIVED` ou `CANCELLED`.
 
 
 # 47. Receita cancelada

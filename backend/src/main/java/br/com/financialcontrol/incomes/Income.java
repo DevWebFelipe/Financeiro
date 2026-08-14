@@ -59,7 +59,7 @@ public class Income {
   private IncomeStatus status;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "responsible_type", nullable = false)
+  @Column(name = "responsible_type")
   private ResponsibleType responsibleType;
 
   @Column(name = "responsible_name")

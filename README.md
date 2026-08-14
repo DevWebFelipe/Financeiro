@@ -229,8 +229,9 @@ Não existe `GET` por id, reativação nem `DELETE` de categoria nesta fase.
 | Fatura | `OPEN`, `CLOSED`, `PARTIALLY_PAID`, `PAID`; pagamento não cria despesa nova |
 | Parcelas | Valores podem diferir; soma = total; arredondamento determinístico |
 | Transferência | Atômica; não é receita/despesa; sem saldo insuficiente |
-| Saldo | Derivado de movimentações |
-| Pagamentos | Sem saldo negativo; fatura parcial limitada ao saldo da conta |
+| Saldo | Derivado de movimentações, a partir do saldo inicial; sem `current_balance` como fonte de verdade |
+| Receita | `EXPECTED` / `RECEIVED` / `CANCELLED`; estorno explícito `RECEIVED` → `EXPECTED`; limpa `account_id` e `received_date`; pode deixar saldo negativo; sem `REVERSED`; sem responsável na Fase 6 (`responsible_type` nullable) |
+| Pagamentos | Sem saldo negativo em operações normais; fatura parcial limitada ao saldo da conta |
 | PDF / gráficos | OpenPDF / Apache ECharts |
 
 Detalhes: `docs/24-regras-de-negocio.md`.
@@ -403,6 +404,6 @@ Fase 5 — Categorias — CONCLUÍDA
 
 Estado atual do backend (Fases 1–5): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas e categorias.
 
-Próxima fase: **Fase 6 — Receitas**. Não iniciar sem autorização explícita.
+Próxima fase: **Fase 6 — Receitas**. O contrato documental foi fechado (`responsible_type` nullable; estorno limpa conta e data; estorno pode deixar saldo negativo). A implementação ainda não começou. Não iniciar sem autorização explícita.
 
 Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend de autenticação nem módulos financeiros da Fase 6+ sem autorização.

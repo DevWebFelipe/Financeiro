@@ -436,7 +436,7 @@ Response:
 }
 ```
 
-Na Fase 4 o saldo derivado é igual ao `initialBalance`. Entradas e saídas passam a compor o cálculo quando os respectivos domínios forem implementados. Não existe coluna `current_balance`.
+Na Fase 4 o saldo derivado é igual ao `initialBalance`. A partir da Fase 6, receitas `RECEIVED` passam a compor o cálculo. Demais entradas e saídas (despesas, transferências, ajustes) entram quando os respectivos domínios forem implementados. Não existe coluna `current_balance`.
 
 
 # 20. Extrato da conta
@@ -658,6 +658,8 @@ Response **200** com a categoria (`active = false`). A operação é idempotente
 
 # 32. Receitas
 
+Contrato da Fase 6. Não implementar nesta atualização documental.
+
 Endpoint:
 
 GET /api/v1/incomes
@@ -675,11 +677,34 @@ categoryId
 
 accountId
 
-responsibleType
-
 page
 
 size
+
+A Fase 6 **não** utiliza filtro `responsibleType`. `responsibleType` e `responsibleName` não fazem parte do contrato desta fase (RN203).
+
+
+Response de item (criação, consulta, listagem, edição e ações):
+
+```json
+{
+  "id": "...",
+  "categoryId": "...",
+  "accountId": "...",
+  "description": "Salário",
+  "amount": 5400.00,
+  "expectedDate": "2026-08-05",
+  "receivedDate": null,
+  "status": "EXPECTED",
+  "notes": "",
+  "createdAt": "...",
+  "updatedAt": "..."
+}
+```
+
+`accountId` e `receivedDate` são `null` em `EXPECTED` (criação e após estorno). Em `RECEIVED`, ambos são obrigatórios.
+
+Na criação e no `PUT`, propriedades desconhecidas no JSON — inclusive `userId`, `id`, `status`, `accountId`, `receivedDate`, `responsibleType`, `responsibleName`, `createdAt` e `updatedAt` — são rejeitadas (**400**, `VALIDATION_ERROR`). O `POST /receive` aceita `accountId` e `receivedDate`.
 
 
 # 33. Receita
@@ -687,6 +712,8 @@ size
 Endpoint:
 
 GET /api/v1/incomes/{id}
+
+Isolamento: **404** se a receita não existir ou não for do usuário autenticado. UUID inválido no path: **400**.
 
 
 # 34. Criar receita
@@ -698,15 +725,25 @@ POST /api/v1/incomes
 
 Request:
 
+```json
 {
   "categoryId": "...",
-  "accountId": "...",
   "description": "Salário",
   "amount": 5400.00,
   "expectedDate": "2026-08-05",
-  "responsibleType": "MINE",
   "notes": ""
 }
+```
+
+Regras da Fase 6:
+
+- criação resulta em `EXPECTED`, com `accountId` e `receivedDate` nulos;
+- a conta e a data de recebimento entram somente em `POST /receive`;
+- categoria obrigatória, do usuário, ativa e do tipo `INCOME` (RN031, RN033);
+- valor > 0;
+- não enviar `responsibleType` nem `responsibleName`.
+
+Response **201**.
 
 
 # 35. Atualizar receita
@@ -714,6 +751,12 @@ Request:
 Endpoint:
 
 PUT /api/v1/incomes/{id}
+
+Somente receita `EXPECTED`. Campos do contrato de criação (substituição dos campos permitidos).
+
+Receita `RECEIVED`: rejeitar (**400**, `BUSINESS_RULE_VIOLATION`). Correção: estornar → editar → receber novamente (RN202).
+
+Receita `CANCELLED`: rejeitar nesta fase.
 
 
 # 36. Receber receita
@@ -725,10 +768,44 @@ POST /api/v1/incomes/{id}/receive
 
 Request:
 
+```json
 {
   "accountId": "...",
   "receivedDate": "2026-08-05"
 }
+```
+
+Somente `EXPECTED` → `RECEIVED`.
+
+`accountId` e `receivedDate` obrigatórios. Conta do usuário e ativa.
+
+Produz movimentação positiva (`+ amount`) no saldo da conta informada.
+
+Não reutilizar conta de um recebimento anterior estornado: após o estorno `account_id` é `null`; este endpoint informa novamente a conta.
+
+Rejeitar `receive` sobre receita já `RECEIVED` ou `CANCELLED`.
+
+
+# 36.1 Estornar receita
+
+Endpoint:
+
+POST /api/v1/incomes/{id}/reverse
+
+
+Somente `RECEIVED` → `EXPECTED`.
+
+Desfaz exatamente a movimentação do recebimento original (`− amount`) na conta que recebeu o valor, na mesma transação.
+
+Limpa `accountId` e `receivedDate` (`null`).
+
+Não cria despesa, receita negativa, `REFUNDED` nem `REVERSED`.
+
+Não é bloqueado se o saldo resultante for negativo.
+
+Operação atômica: falha em qualquer etapa implica rollback (RN201).
+
+O próximo recebimento deve informar novamente `accountId` e `receivedDate`.
 
 
 # 37. Cancelar receita
@@ -736,6 +813,10 @@ Request:
 Endpoint:
 
 POST /api/v1/incomes/{id}/cancel
+
+Somente `EXPECTED` → `CANCELLED`.
+
+Não há `RECEIVED` → `CANCELLED` nesta fase. Não há reativação de receita cancelada.
 
 
 # 38. Despesas
@@ -1654,7 +1735,26 @@ Operações financeiras compostas devem utilizar transações.
 
 Exemplo:
 
-pagamento de fatura.
+pagamento de fatura;
+
+estorno de receita recebida.
+
+
+# 116.1 Estorno de receita
+
+Fluxo:
+
+1. validar receita e ownership;
+2. validar estado `RECEIVED`;
+3. identificar a conta que recebeu o valor;
+4. desfazer o impacto financeiro;
+5. alterar status para `EXPECTED`;
+6. limpar `accountId`;
+7. limpar `receivedDate`;
+8. confirmar transação.
+
+
+Se qualquer etapa falhar, rollback completo.
 
 
 # 117. Pagamento de fatura

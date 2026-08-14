@@ -199,6 +199,8 @@ movimentações.
 
 O saldo atual não deve ser alterado arbitrariamente por operações que não representam movimentação real.
 
+Ajuste de saldo, quando implementado, é movimentação real de conciliação — não edição direta de um campo de saldo.
+
 
 # 17. Conta
 
@@ -466,9 +468,15 @@ updated_at
 
 `account_id` é obrigatório quando `status = RECEIVED` (RN043).
 
-Pode ser nulo enquanto `EXPECTED` ou `CANCELLED`.
+Em `EXPECTED`, `account_id` e `received_date` são nulos. Em `RECEIVED`, ambos são obrigatórios. `CANCELLED` não representa recebimento efetivo (nesta fase só parte de `EXPECTED`).
+
+Não criar CHECK adicional nesta etapa. A Fase 6 deve respeitar o contrato.
 
 FK composta `(account_id, user_id)` é nullable.
+
+`responsible_type` e `responsible_name` permanecem no modelo físico. A Fase 6 **não** os utiliza na API, nas regras de negócio nem nos testes (RN203). Não remover as colunas.
+
+`responsible_type` é nullable (migration V16). Não persistir valor artificial para preencher a coluna. O CHECK de valores (`MINE`, `GIULIA`, `EDERSON`, `ELISIANE`, `OTHER`) permanece inalterado. `responsible_name` permanece e aceita ausência de responsável.
 
 
 # 37. Receita
@@ -501,6 +509,79 @@ dinheiro efetivamente recebido.
 CANCELLED:
 
 receita que não acontecerá.
+
+Não participa do saldo efetivo nem da projeção.
+
+
+# 40.1 Transições de status de receita
+
+Permitidas:
+
+```text
+EXPECTED
+   ├── receive ──► RECEIVED
+   └── cancel  ──► CANCELLED
+
+RECEIVED
+   └── reverse ──► EXPECTED
+```
+
+Não existe status `REVERSED`. Os status oficiais continuam `EXPECTED`, `RECEIVED` e `CANCELLED`.
+
+Não permitidas nesta fase: `RECEIVED` → `CANCELLED`; `CANCELLED` → `EXPECTED`; `CANCELLED` → `RECEIVED`; `receive` sobre receita já `RECEIVED`. Não há reativação de receita cancelada nesta fase.
+
+
+# 40.2 Estorno de receita
+
+O estorno é operação explícita sobre receita `RECEIVED`.
+
+Desfaz o impacto financeiro do recebimento original na conta que recebeu o valor.
+
+Altera o status para `EXPECTED`.
+
+Limpa `account_id` e `received_date` (`null`).
+
+Não cria despesa, receita negativa, `REFUNDED` nem `REVERSED`.
+
+Não é bloqueado se o saldo resultante for negativo.
+
+Operação atômica: se qualquer etapa falhar, rollback completo.
+
+O próximo `POST /receive` informa novamente `accountId` e `receivedDate`.
+
+Receita `RECEIVED` não deve ser editada de forma que altere silenciosamente a movimentação já realizada. Correção: estornar → editar em `EXPECTED` → receber novamente.
+
+
+# 40.3 Contrato de campos por status
+
+```text
+EXPECTED
+  account_id = NULL
+  received_date = NULL
+
+RECEIVED
+  account_id != NULL
+  received_date != NULL
+
+CANCELLED
+  não representa recebimento efetivo
+```
+
+Ciclo:
+
+```text
+EXPECTED
+account_id = NULL
+received_date = NULL
+        ↓ RECEIVE
+RECEIVED
+account_id = conta informada
+received_date = data informada
+        ↓ REVERSE
+EXPECTED
+account_id = NULL
+received_date = NULL
+```
 
 
 # 41. Receita
@@ -2169,12 +2250,26 @@ Não duplicar dados apenas para gerar projeção.
 
 A fonte de verdade financeira deve ser baseada nas **movimentações**.
 
+O saldo de uma conta é derivado das movimentações efetivas, tendo o saldo inicial como ponto de partida.
+
+Não utilizar `current_balance` como fonte de verdade.
+
 
 # 204. Implementação
 
 O sistema deve possuir estrutura consistente de movimentações financeiras.
 
-O saldo é derivado dessas movimentações (a partir de `initial_balance` + entradas − saídas).
+O saldo é derivado dessas movimentações:
+
+```text
+Saldo em uma data =
+saldo inicial
++ receitas efetivamente recebidas
+− despesas efetivamente realizadas
++ transferências de entrada
+− transferências de saída
++ ajustes de saldo
+```
 
 
 # 205. Regra
@@ -2205,11 +2300,43 @@ A implementação não deve permitir divergência entre saldo apresentado e movi
 
 Movimentações reais incluem:
 
-recebimentos;
+receitas recebidas (`RECEIVED`);
 
-pagamentos;
+despesas efetivadas;
 
-transferências.
+transferências;
+
+ajustes de saldo (conceito oficial; implementação futura).
+
+Receita `EXPECTED` ou `CANCELLED` não participa do saldo efetivo.
+
+Estorno de receita recebida desfaz o impacto positivo anteriormente produzido.
+
+Isso **não** significa criar entidade genérica `Transaction`. A implementação ocorre por domínio.
+
+
+# 209.1 Saldo em datas e períodos
+
+O modelo deve permitir futuramente obter:
+
+- saldo inicial;
+- saldo em uma data específica;
+- saldo anterior a um período;
+- movimentações de um período;
+- movimentação líquida;
+- saldo final de um período;
+- saldo atual.
+
+Não implementar relatórios nesta etapa.
+
+
+# 209.2 Ajuste de saldo
+
+Ajuste de saldo é movimentação de conciliação entre o saldo calculado e o saldo real da conta.
+
+Pode ser positivo ou negativo. Altera o saldo. Não é receita. Não é despesa. Não representa necessariamente uma operação econômica.
+
+Não criar tabela, endpoint, entidade nem migration de ajuste na Fase 6. A arquitetura não deve impedir essa funcionalidade futura.
 
 
 # 210. Cartão
@@ -2256,7 +2383,9 @@ Estorno deve reduzir o comprometimento correspondente.
 
 # 215. Responsável
 
-O responsável deve ser armazenado na despesa e/ou receita quando aplicável.
+O responsável deve ser armazenado na despesa quando aplicável.
+
+Em receitas, as colunas físicas existem; a Fase 6 não utiliza responsável na API nem nas regras (RN203).
 
 
 # 216. Relatório
@@ -2323,10 +2452,14 @@ A V1 deve impedir saldo negativo em operações financeiras normais:
 - pagamento de despesas;
 - pagamento de fatura (valor não pode exceder o saldo disponível da conta).
 
+Estorno de receita recebida é correção (RN200): pode deixar a conta negativa. Não é operação normal de consumo de saldo.
+
 
 # 224. Observação
 
-Saldo negativo poderá ser suportado futuramente através de configuração específica e decisão explícita.
+Saldo negativo em operações normais (transferência, pagamento, fatura) continua bloqueado na V1. Suporte geral a saldo negativo por configuração permanece futuro.
+
+Exceção já decidida: estorno de receita recebida (RN200).
 
 
 # 225. Integridade
