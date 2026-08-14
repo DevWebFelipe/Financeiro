@@ -13,6 +13,7 @@ import br.com.financialcontrol.accounts.dto.CreateAccountRequest;
 import br.com.financialcontrol.accounts.dto.UpdateAccountRequest;
 import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.NotFoundException;
+import br.com.financialcontrol.incomes.IncomeRepository;
 import br.com.financialcontrol.security.AuthenticatedUser;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -37,12 +38,14 @@ class AccountServiceTest {
   private static final UUID ACCOUNT_ID = UUID.fromString("01800000-0000-7000-8000-0000000000aa");
 
   @Mock private AccountRepository accountRepository;
+  @Mock private IncomeRepository incomeRepository;
 
   private AccountService accountService;
 
   @BeforeEach
   void setUp() {
-    accountService = new AccountService(accountRepository, Clock.fixed(NOW, ZoneOffset.UTC));
+    accountService =
+        new AccountService(accountRepository, incomeRepository, Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
   @Test
@@ -175,9 +178,11 @@ class AccountServiceTest {
   }
 
   @Test
-  void shouldCalculateBalanceFromInitialBalanceOnly() {
+  void shouldCalculateBalanceFromInitialBalanceWhenThereAreNoReceivedIncomes() {
     Account account = ownedAccount(true);
     when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
+    when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+        .thenReturn(BigDecimal.ZERO);
 
     AccountBalanceResponse response =
         accountService.getBalance(new AuthenticatedUser(USER_A), ACCOUNT_ID);
@@ -185,6 +190,19 @@ class AccountServiceTest {
     assertThat(response.accountId()).isEqualTo(ACCOUNT_ID);
     assertThat(response.balance()).isEqualByComparingTo("1500.00");
     assertThat(accountService.calculateCurrentBalance(account)).isEqualByComparingTo("1500.00");
+  }
+
+  @Test
+  void shouldAddReceivedIncomesToDerivedBalance() {
+    Account account = ownedAccount(true);
+    when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
+    when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+        .thenReturn(new BigDecimal("5400.00"));
+
+    AccountBalanceResponse response =
+        accountService.getBalance(new AuthenticatedUser(USER_A), ACCOUNT_ID);
+
+    assertThat(response.balance()).isEqualByComparingTo("6900.00");
   }
 
   @Test
@@ -226,6 +244,8 @@ class AccountServiceTest {
     AccountResponse response = accountService.get(new AuthenticatedUser(USER_A), ACCOUNT_ID);
 
     assertThat(response.active()).isFalse();
+    when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+        .thenReturn(BigDecimal.ZERO);
     assertThat(accountService.getBalance(new AuthenticatedUser(USER_A), ACCOUNT_ID).balance())
         .isEqualByComparingTo("1500.00");
   }

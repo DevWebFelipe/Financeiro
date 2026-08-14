@@ -426,7 +426,7 @@ Este critério é da regra RN033 e será aplicado nas fases de receitas e despes
 
 Status:
 
-NÃO INICIADA
+CONCLUÍDA
 
 A documentação oficial da Fase 6 foi refinada antes da implementação: cancelamento inutiliza a duplicata (`EXPECTED` → `CANCELLED`); estorno desfaz o recebimento e mantém a duplicata ativa (`RECEIVED` → `EXPECTED`; limpa `account_id` e `received_date`; pode deixar saldo negativo); responsável fora desta fase (`responsible_type` nullable); saldo derivado; ajuste de saldo como conceito futuro.
 
@@ -1547,10 +1547,8 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 5: CONCLUÍDAS.
+Fases 0 a 6: CONCLUÍDAS.
 
-Próxima fase: Fase 6 — Receitas.
+Próxima fase: Fase 7 — Despesas simples.
 
-O contrato documental da Fase 6 foi fechado (`responsible_type` nullable; cancelamento `EXPECTED` → `CANCELLED` inutiliza a duplicata; estorno `RECEIVED` → `EXPECTED` limpa `account_id` e `received_date` e pode deixar saldo negativo). A implementação ainda não começou.
-
-A IA não deve iniciar a Fase 6 nem implementar Refresh Token, logout backend ou módulos financeiros posteriores sem autorização explícita.
+A IA não deve iniciar a Fase 7 nem implementar Refresh Token, logout backend ou módulos financeiros posteriores sem autorização explícita.

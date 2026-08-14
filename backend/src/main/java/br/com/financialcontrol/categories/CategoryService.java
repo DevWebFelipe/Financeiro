@@ -4,6 +4,7 @@ import br.com.financialcontrol.UuidV7;
 import br.com.financialcontrol.categories.dto.CategoryResponse;
 import br.com.financialcontrol.categories.dto.CreateCategoryRequest;
 import br.com.financialcontrol.categories.dto.UpdateCategoryRequest;
+import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.ConflictException;
 import br.com.financialcontrol.config.NotFoundException;
 import br.com.financialcontrol.security.AuthenticatedUser;
@@ -20,6 +21,9 @@ public class CategoryService {
 
   static final String CATEGORY_NOT_FOUND = "Categoria não encontrada.";
   static final String CATEGORY_NAME_TYPE_CONFLICT = "Já existe uma categoria com este nome e tipo.";
+  static final String CATEGORY_INACTIVE =
+      "Somente categorias ativas devem ser utilizadas em novos lançamentos.";
+  static final String CATEGORY_NOT_INCOME = "A categoria deve ser do tipo receita.";
 
   private final CategoryRepository categoryRepository;
   private final Clock clock;
@@ -94,6 +98,17 @@ public class CategoryService {
     return categoryRepository
         .findByIdAndUserId(categoryId, userId)
         .orElseThrow(() -> new NotFoundException(CATEGORY_NOT_FOUND));
+  }
+
+  public Category requireActiveOwnedIncomeCategory(UUID userId, UUID categoryId) {
+    Category category = requireOwnedCategory(userId, categoryId);
+    if (!category.isActive()) {
+      throw new BusinessRuleException(CATEGORY_INACTIVE);
+    }
+    if (category.getType() != CategoryType.INCOME) {
+      throw new BusinessRuleException(CATEGORY_NOT_INCOME);
+    }
+    return category;
   }
 
   private Category saveUnique(Category category) {

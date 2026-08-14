@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import br.com.financialcontrol.categories.dto.CategoryResponse;
 import br.com.financialcontrol.categories.dto.CreateCategoryRequest;
 import br.com.financialcontrol.categories.dto.UpdateCategoryRequest;
+import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.ConflictException;
 import br.com.financialcontrol.config.NotFoundException;
 import br.com.financialcontrol.security.AuthenticatedUser;
@@ -250,6 +251,49 @@ class CategoryServiceTest {
             () ->
                 categoryService.update(
                     userB, CATEGORY_ID, new UpdateCategoryRequest("X", CategoryType.EXPENSE)))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage(CategoryService.CATEGORY_NOT_FOUND);
+  }
+
+  @Test
+  void shouldAcceptActiveOwnedIncomeCategoryForNewLaunch() {
+    Category category = ownedCategory(true, CategoryType.INCOME, "Salário");
+    when(categoryRepository.findByIdAndUserId(CATEGORY_ID, USER_A))
+        .thenReturn(Optional.of(category));
+
+    Category result = categoryService.requireActiveOwnedIncomeCategory(USER_A, CATEGORY_ID);
+
+    assertThat(result.getId()).isEqualTo(CATEGORY_ID);
+    assertThat(result.getType()).isEqualTo(CategoryType.INCOME);
+  }
+
+  @Test
+  void shouldRejectInactiveCategoryForNewLaunch() {
+    Category category = ownedCategory(false, CategoryType.INCOME, "Salário");
+    when(categoryRepository.findByIdAndUserId(CATEGORY_ID, USER_A))
+        .thenReturn(Optional.of(category));
+
+    assertThatThrownBy(() -> categoryService.requireActiveOwnedIncomeCategory(USER_A, CATEGORY_ID))
+        .isInstanceOf(BusinessRuleException.class)
+        .hasMessage(CategoryService.CATEGORY_INACTIVE);
+  }
+
+  @Test
+  void shouldRejectExpenseCategoryForIncomeLaunch() {
+    Category category = ownedCategory(true, CategoryType.EXPENSE, "Mercado");
+    when(categoryRepository.findByIdAndUserId(CATEGORY_ID, USER_A))
+        .thenReturn(Optional.of(category));
+
+    assertThatThrownBy(() -> categoryService.requireActiveOwnedIncomeCategory(USER_A, CATEGORY_ID))
+        .isInstanceOf(BusinessRuleException.class)
+        .hasMessage(CategoryService.CATEGORY_NOT_INCOME);
+  }
+
+  @Test
+  void shouldRejectIncomeCategoryOfAnotherUser() {
+    when(categoryRepository.findByIdAndUserId(CATEGORY_ID, USER_B)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> categoryService.requireActiveOwnedIncomeCategory(USER_B, CATEGORY_ID))
         .isInstanceOf(NotFoundException.class)
         .hasMessage(CategoryService.CATEGORY_NOT_FOUND);
   }

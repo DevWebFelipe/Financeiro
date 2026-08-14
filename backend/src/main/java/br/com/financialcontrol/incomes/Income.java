@@ -73,4 +73,37 @@ public class Income {
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  /** Baixa a duplicata: EXPECTED → RECEIVED. Não é cancelamento. */
+  public void receive(Account receivedAccount, LocalDate dateReceived) {
+    if (status != IncomeStatus.EXPECTED) {
+      throw new IllegalStateException("Only EXPECTED incomes can be received.");
+    }
+    this.account = receivedAccount;
+    this.receivedDate = dateReceived;
+    this.status = IncomeStatus.RECEIVED;
+  }
+
+  /**
+   * Desfaz o recebimento: RECEIVED → EXPECTED. Nunca utiliza CANCELLED. A duplicata permanece ativa
+   * e pode ser recebida novamente.
+   */
+  public void reverse() {
+    if (status != IncomeStatus.RECEIVED) {
+      throw new IllegalStateException("Only RECEIVED incomes can be reversed.");
+    }
+    this.status = IncomeStatus.EXPECTED;
+    this.account = null;
+    this.receivedDate = null;
+  }
+
+  /**
+   * Inutiliza a duplicata prevista: EXPECTED → CANCELLED. Não desfaz recebimento e não é estorno.
+   */
+  public void cancel() {
+    if (status != IncomeStatus.EXPECTED) {
+      throw new IllegalStateException("Only EXPECTED incomes can be cancelled.");
+    }
+    this.status = IncomeStatus.CANCELLED;
+  }
 }

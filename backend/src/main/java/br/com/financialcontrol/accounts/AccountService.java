@@ -7,6 +7,7 @@ import br.com.financialcontrol.accounts.dto.CreateAccountRequest;
 import br.com.financialcontrol.accounts.dto.UpdateAccountRequest;
 import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.NotFoundException;
+import br.com.financialcontrol.incomes.IncomeRepository;
 import br.com.financialcontrol.security.AuthenticatedUser;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -25,10 +26,13 @@ public class AccountService {
       "Somente contas ativas podem ser utilizadas em novas operações.";
 
   private final AccountRepository accountRepository;
+  private final IncomeRepository incomeRepository;
   private final Clock clock;
 
-  public AccountService(AccountRepository accountRepository, Clock clock) {
+  public AccountService(
+      AccountRepository accountRepository, IncomeRepository incomeRepository, Clock clock) {
     this.accountRepository = accountRepository;
+    this.incomeRepository = incomeRepository;
     this.clock = clock;
   }
 
@@ -92,11 +96,17 @@ public class AccountService {
   }
 
   /**
-   * Current balance is derived: initial balance + inflows − outflows. Inflows and outflows belong
-   * to later financial domains and are not invented here.
+   * Saldo derivado: saldo inicial + receitas RECEIVED da conta. Demais entradas e saídas entram
+   * quando os respectivos domínios forem implementados. Não consulta IncomeService (evita ciclo).
    */
   BigDecimal calculateCurrentBalance(Account account) {
-    return normalizeMoney(account.getInitialBalance());
+    BigDecimal received =
+        incomeRepository.sumReceivedAmountByAccountIdAndUserId(
+            account.getId(), account.getUserId());
+    if (received == null) {
+      received = BigDecimal.ZERO;
+    }
+    return normalizeMoney(account.getInitialBalance().add(received));
   }
 
   Account requireOwnedAccount(UUID userId, UUID accountId) {
@@ -105,7 +115,7 @@ public class AccountService {
         .orElseThrow(() -> new NotFoundException(ACCOUNT_NOT_FOUND));
   }
 
-  Account requireActiveOwnedAccount(UUID userId, UUID accountId) {
+  public Account requireActiveOwnedAccount(UUID userId, UUID accountId) {
     Account account = requireOwnedAccount(userId, accountId);
     if (!account.isActive()) {
       throw new BusinessRuleException(ACCOUNT_INACTIVE);

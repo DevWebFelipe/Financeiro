@@ -400,10 +400,11 @@ Fase 2 — Persistência / modelo de dados — CONCLUÍDA
 Fase 3 — Autenticação e segurança — CONCLUÍDA
 Fase 4 — Contas — CONCLUÍDA
 Fase 5 — Categorias — CONCLUÍDA
+Fase 6 — Receitas — CONCLUÍDA
 ```
 
-Estado atual do backend (Fases 1–5): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas e categorias.
+Estado atual do backend (Fases 1–6): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias e receitas.
 
-Próxima fase: **Fase 6 — Receitas**. O contrato documental foi fechado (`responsible_type` nullable; cancelamento inutiliza a duplicata; estorno limpa conta e data e pode deixar saldo negativo). A implementação ainda não começou. Não iniciar sem autorização explícita.
+Próxima fase: **Fase 7 — Despesas simples**. Não iniciar sem autorização explícita.
 
-Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend de autenticação nem módulos financeiros da Fase 6+ sem autorização.
+Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend de autenticação nem módulos financeiros da Fase 7+ sem autorização.
