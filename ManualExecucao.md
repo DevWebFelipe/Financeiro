@@ -6,6 +6,26 @@ Este guia apresenta os passos necessários para colocar o projeto **Financial Co
 
 # ▶️ Iniciando o sistema
 
+## 0. ⚡ Início automatizado (recomendado)
+
+Na **raiz do projeto**:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File ".\scripts\start.ps1"
+```
+
+O script valida o ambiente, cria `.env` local se ainda não existir (com `JWT_SECRET` gerado), sobe o PostgreSQL, o backend e o frontend.
+
+Para encerrar tudo:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File ".\scripts\stop.ps1"
+```
+
+Os passos abaixo descrevem a execução **manual**.
+
+---
+
 ## 1. 🐘 Subir o PostgreSQL
 
 Na **raiz do projeto**, abra um PowerShell e execute:
@@ -22,17 +42,21 @@ O comando inicia os containers definidos no `docker-compose.yml`, incluindo o Po
 
 ## 2. ⚙️ Subir o Backend
 
-Abra **um novo terminal** e navegue até a pasta `backend`:
+O backend exige `JWT_SECRET` (mínimo 32 bytes) via variável de ambiente. O valor fica no `.env` local (não versionado). Na **raiz do projeto**:
 
 ```powershell
-cd backend
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\run-backend.ps1
 ```
 
-Depois, inicie a aplicação Spring Boot:
+Ou, carregando o `.env` manualmente:
 
 ```powershell
+. .\scripts\import-dotenv.ps1
+cd backend
 .\mvnw.cmd spring-boot:run
 ```
+
+Se o `.env` ainda não existir, execute `scripts\start.ps1` uma vez ou copie `.env.example` para `.env` e defina um `JWT_SECRET` com no mínimo 32 bytes.
 
 Mantenha este terminal **aberto enquanto estiver utilizando o sistema**.
 

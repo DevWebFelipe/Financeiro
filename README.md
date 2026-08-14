@@ -201,6 +201,24 @@ Detalhes: `docs/24-regras-de-negocio.md`.
 
 ## Execução local
 
+### Início rápido (Windows)
+
+Na raiz do projeto:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File ".\scripts\start.ps1"
+```
+
+O script valida o ambiente, garante o `.env` local (gera `JWT_SECRET` se o arquivo ainda não existir), sobe o PostgreSQL, o backend e o frontend.
+
+Para encerrar:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File ".\scripts\stop.ps1"
+```
+
+O arquivo `.env` **não é versionado**. O modelo é `.env.example`.
+
 ### Pré-requisitos
 
 Versões oficiais: `docs/22-stack-tecnologica.md` (Environment Contract).
@@ -239,24 +257,34 @@ docker compose down
 
 ### Variáveis de ambiente
 
-- `.env.example` — modelo das variáveis
-- `.env` — local, **não versionar**
+- `.env.example` — modelo das variáveis (sem segredo real)
+- `.env` — local, **não versionar** (já está no `.gitignore`)
 
-O backend **exige** `JWT_SECRET` com no mínimo 32 bytes. Não há default de produção em `application.yml`. O valor de exemplo em `.env.example` não deve ser usado em produção.
+O backend **exige** `JWT_SECRET` com no mínimo 32 bytes. Não há default em `application.yml`. O valor de exemplo em `.env.example` não deve ser usado em produção.
+
+`scripts/start.ps1` cria `.env` a partir de `.env.example` e gera um `JWT_SECRET` local quando o arquivo ainda não existe. Para carregar o `.env` em uma sessão manual:
+
+```powershell
+. .\scripts\import-dotenv.ps1
+```
 
 Outras variáveis típicas: `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `JWT_EXPIRATION_MINUTES` (padrão 30), `CORS_ALLOWED_ORIGINS`, `APP_PORT`.
 
 ### Backend
 
-Com o PostgreSQL no ar:
+Com o PostgreSQL no ar e o `.env` configurado, na raiz do projeto:
 
 ```powershell
-cd backend
-$env:JWT_SECRET = "CHANGE_ME_WITH_A_LONG_RANDOM_SECRET"
-.\mvnw.cmd spring-boot:run
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\run-backend.ps1
 ```
 
-Ajuste `JWT_SECRET` e as credenciais do banco conforme o seu `.env`.
+Ou, de forma equivalente:
+
+```powershell
+. .\scripts\import-dotenv.ps1
+cd backend
+.\mvnw.cmd spring-boot:run
+```
 
 - Health: `http://localhost:8080/api/v1/health`
 - OpenAPI: `http://localhost:8080/v3/api-docs`
@@ -281,7 +309,11 @@ financial-control/
 │   └── CODING_STANDARDS.md
 ├── .cursor/rules/
 ├── scripts/
-│   └── check-environment.ps1
+│   ├── check-environment.ps1
+│   ├── import-dotenv.ps1
+│   ├── run-backend.ps1
+│   ├── start.ps1
+│   └── stop.ps1
 ├── backend/          (Fase 1+)
 └── frontend/         (Fase 1+)
 ```
