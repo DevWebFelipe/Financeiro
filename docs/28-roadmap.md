@@ -386,6 +386,11 @@ Usuário consegue cadastrar todas as contas pessoais necessárias.
 
 # 30. Fase 5 — Categorias
 
+Status:
+
+CONCLUÍDA
+
+
 Objetivo:
 
 Implementar categorias de receitas e despesas.
@@ -413,6 +418,8 @@ EXPENSE
 # 33. Critério
 
 Categorias desativadas não podem ser utilizadas em novos lançamentos.
+
+Este critério é da regra RN033 e será aplicado nas fases de receitas e despesas. A Fase 5 não implementa lançamentos.
 
 
 # 34. Fase 6 — Receitas
@@ -1510,8 +1517,8 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 4: CONCLUÍDAS.
+Fases 0 a 5: CONCLUÍDAS.
 
-Próxima fase: Fase 5 — Categorias.
+Próxima fase: Fase 6 — Receitas.
 
-A IA não deve iniciar a Fase 5 nem implementar Refresh Token, logout backend ou módulos financeiros posteriores sem autorização explícita.
+A IA não deve iniciar a Fase 6 nem implementar Refresh Token, logout backend ou módulos financeiros posteriores sem autorização explícita.

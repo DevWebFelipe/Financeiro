@@ -199,11 +199,29 @@ Não existe `DELETE` de conta.
 
 ---
 
+## Categorias (Fase 5)
+
+Implementado: criar, listar (filtros `type` e `active`), editar (`name` e `type`) e desativar. Tipos V1: `INCOME` e `EXPENSE`.
+
+| Método | Caminho | Autenticação | Resposta |
+|--------|---------|--------------|----------|
+| `GET` | `/api/v1/categories` | Bearer | `200` array das categorias do usuário |
+| `POST` | `/api/v1/categories` | Bearer | `201` |
+| `PUT` | `/api/v1/categories/{id}` | Bearer | `200`; apenas `name` e `type` |
+| `POST` | `/api/v1/categories/{id}/deactivate` | Bearer | `200` desativação lógica |
+
+Unicidade: `user_id + type + name`, case-insensitive, independente de `active`. Duplicidade: `409`. O nome é persistido após `trim`, com a capitalização informada.
+
+Não existe `GET` por id, reativação nem `DELETE` de categoria nesta fase.
+
+---
+
 ## Regras financeiras (resumo)
 
 | Tema | Regra |
 |------|--------|
 | Contas | Tipos: `BANK_ACCOUNT`, `CASH` |
+| Categorias | Tipos: `INCOME`, `EXPENSE`; unicidade `user + type + name` (case-insensitive, inclusive inativas) |
 | Responsável | `MINE`, `GIULIA`, `EDERSON`, `ELISIANE`, `OTHER` (+ texto) — não são usuários |
 | Despesa status | `OPEN`, `PARTIALLY_PAID`, `PAID`, `CANCELLED`, `REFUNDED` |
 | Vencida | Derivada (`OVERDUE` não persistido) |
@@ -380,10 +398,11 @@ Fase 1 — Fundação / estrutura inicial — CONCLUÍDA
 Fase 2 — Persistência / modelo de dados — CONCLUÍDA
 Fase 3 — Autenticação e segurança — CONCLUÍDA
 Fase 4 — Contas — CONCLUÍDA
+Fase 5 — Categorias — CONCLUÍDA
 ```
 
-Estado atual do backend (Fases 1–4): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas.
+Estado atual do backend (Fases 1–5): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas e categorias.
 
-Próxima fase: **Fase 5 — Categorias**. Não iniciar sem autorização explícita.
+Próxima fase: **Fase 6 — Receitas**. Não iniciar sem autorização explícita.
 
-Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend de autenticação nem módulos financeiros da Fase 5+ sem autorização.
+Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend de autenticação nem módulos financeiros da Fase 6+ sem autorização.

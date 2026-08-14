@@ -251,6 +251,17 @@ Somente categorias ativas devem ser utilizadas em novos lançamentos.
 Categorias utilizadas em operações históricas não devem ser excluídas fisicamente.
 
 
+## RN034A — Unicidade de categoria
+
+O usuário não pode possuir duas categorias com o mesmo `type` e o mesmo `name`.
+
+A unicidade considera `user_id + type + name`, independentemente de `active`.
+
+O nome é normalizado com `trim` antes da persistência e da comparação. A comparação de unicidade é case-insensitive (`Mercado`, ` mercado` e `MERCADO` são o mesmo nome).
+
+Categorias de tipos diferentes podem ter o mesmo nome (`EXPENSE` Mercado e `INCOME` Mercado).
+
+
 # 7. Responsável
 
 ## RN035 — Responsável

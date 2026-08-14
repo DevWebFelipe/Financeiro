@@ -531,16 +531,62 @@ Response:
 
 # 28. Categorias
 
+
+## Fase 5 — implementado
+
+- `GET /api/v1/categories`
+- `POST /api/v1/categories`
+- `PUT /api/v1/categories/{id}`
+- `POST /api/v1/categories/{id}/deactivate`
+
+Todos os endpoints de categorias exigem JWT Bearer. Sem token, token inválido, expirado ou usuário desativado: **401** (`code`: `UNAUTHORIZED`).
+
+O proprietário é sempre o usuário autenticado (claim `sub`). Propriedades desconhecidas no JSON — inclusive `userId`, `id`, `active`, `createdAt` e `updatedAt` — são rejeitadas (**400**, `VALIDATION_ERROR`).
+
+Categoria de outro usuário ou UUID inexistente: **404** (`code`: `NOT_FOUND`, mensagem `Categoria não encontrada.`). A API não distingue esses casos, para não vazar existência do recurso.
+
+Não existe `GET /api/v1/categories/{id}` nesta fase. Não existe `POST /api/v1/categories/{id}/activate`. Não existe `DELETE /api/v1/categories/{id}`.
+
+
+## Fase 5 — não implementado
+
+- uso de categoria em receitas ou despesas — pertence às fases dos respectivos domínios;
+- reativação de categoria;
+- categorias padrão / seeds;
+- subcategorias.
+
+
 Endpoint:
 
 GET /api/v1/categories
 
 
-Query:
+Query (opcionais, combináveis):
 
 type
 
 active
+
+Exemplos: `?type=EXPENSE`, `?type=INCOME`, `?active=true`, `?active=false`, `?type=EXPENSE&active=true`.
+
+Lista somente as categorias do usuário autenticado, em array JSON, ordenadas por `createdAt` crescente. Sem filtro `active`, retorna ativas e desativadas. Sem paginação nesta fase.
+
+Response **200**:
+
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Mercado",
+    "type": "EXPENSE",
+    "active": true,
+    "createdAt": "2026-08-14T12:00:00Z",
+    "updatedAt": "2026-08-14T12:00:00Z"
+  }
+]
+```
+
+Não inclui `userId`. Lista vazia: `[]`.
 
 
 # 29. Criar categoria
@@ -552,10 +598,23 @@ POST /api/v1/categories
 
 Request:
 
+```json
 {
   "name": "Mercado",
   "type": "EXPENSE"
 }
+```
+
+Regras:
+
+- `name` obrigatório, 1–255 caracteres (após trim);
+- `type` obrigatório; somente `INCOME` ou `EXPENSE`;
+- categoria criada como `active = true`;
+- UUID v7 gerado pela aplicação;
+- o `userId` não é aceito no request;
+- unicidade: `user_id + type + name` (case-insensitive; independente de `active`). Duplicidade: **409 Conflict** (`code`: `CONFLICT`).
+
+Response **201 Created**: mesmo formato de um item da listagem.
 
 
 # 30. Atualizar categoria
@@ -565,11 +624,36 @@ Endpoint:
 PUT /api/v1/categories/{id}
 
 
+Request (substituição dos campos permitidos):
+
+```json
+{
+  "name": "Moradia",
+  "type": "EXPENSE"
+}
+```
+
+Campos permitidos: `name`, `type`.
+
+Campos rejeitados (propriedades desconhecidas no DTO → **400**): `id`, `userId`, `active`, `createdAt`, `updatedAt`.
+
+O estado ativo/inativo não é alterável por PUT; usar o endpoint de desativar.
+
+A combinação final `user_id + type + name` permanece única (mesmas regras da criação). Duplicidade: **409**.
+
+
 # 31. Desativar categoria
 
 Endpoint:
 
 POST /api/v1/categories/{id}/deactivate
+
+
+Desativação lógica. Não excluir fisicamente. Não existe `DELETE /api/v1/categories/{id}`.
+
+A categoria permanece persistida e consultável (inclusive com `?active=false`). A combinação `user_id + type + name` continua exclusiva. Somente categorias ativas poderão ser utilizadas em novos lançamentos das fases posteriores (RN033).
+
+Response **200** com a categoria (`active = false`). A operação é idempotente.
 
 
 # 32. Receitas
@@ -1406,7 +1490,7 @@ Exemplo:
   "path": "/api/v1/invoices/..."
 }
 
-Códigos usados nas Fases 3 e 4:
+Códigos usados nas Fases 3, 4 e 5:
 
 - `VALIDATION_ERROR` — 400
 - `BUSINESS_RULE_VIOLATION` — 400

@@ -107,6 +107,21 @@ class SchemaContractTest {
     assertThat(constraintNames("credit_card_invoices")).contains("uq_credit_card_invoices_id_user");
   }
 
+  @Test
+  void shouldEnforceCaseInsensitiveCategoryNameUniquenessPerUserAndType() {
+    List<String> indexes =
+        jdbcTemplate.queryForList(
+            """
+            SELECT indexname
+            FROM pg_indexes
+            WHERE schemaname = 'public'
+              AND tablename = 'categories'
+            """,
+            String.class);
+    assertThat(indexes).contains("uq_categories_user_type_lower_name");
+    assertThat(constraintNames("categories")).doesNotContain("uq_categories_user_name_type");
+  }
+
   private List<String> columnsOf(String table) {
     return jdbcTemplate.queryForList(
         """

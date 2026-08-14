@@ -959,15 +959,29 @@ deve permitir descrição.
 
 Testar:
 
-criação;
+criação (`INCOME` e `EXPENSE`);
 
-edição;
+categoria inicia ativa;
 
-desativação;
+validações de `name` e `type`;
 
-uso em despesas;
+ownership pelo usuário autenticado;
 
-uso em receitas.
+rejeição de `userId` e demais campos não permitidos;
+
+unicidade `user_id + type + name` (case-insensitive; independente de `active`);
+
+mesmo nome em tipos diferentes permitido;
+
+listagem isolada por usuário e filtros `type` / `active`;
+
+edição de nome e tipo com reaplicação da unicidade;
+
+desativação lógica (sem exclusão física; idempotente);
+
+isolamento cross-user (404).
+
+Uso em despesas e receitas: fases posteriores.
 
 
 # 79. Categoria

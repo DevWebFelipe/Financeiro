@@ -1688,7 +1688,19 @@ devem identificar uma única fatura.
 
 # 156. Categorias
 
-Usuário não deve possuir duas categorias com o mesmo nome e mesmo tipo, salvo decisão futura.
+Usuário não deve possuir duas categorias com o mesmo `type` e o mesmo `name`.
+
+A unicidade é:
+
+```text
+user_id + type + name
+```
+
+Não inclui `active`. Uma categoria desativada continua ocupando a combinação.
+
+A comparação de `name` é case-insensitive. O valor persistido é o informado pelo usuário após `trim` (espaços no início e no fim removidos).
+
+Garantia no banco: índice único `uq_categories_user_type_lower_name` em `(user_id, type, LOWER(name))`.
 
 
 # 157. Email
