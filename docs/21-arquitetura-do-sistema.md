@@ -1120,7 +1120,7 @@ Devem testar regras de negócio isoladamente.
 
 # 117. Exemplo
 
-ParcelamentoServiceTest
+ExpenseServiceTest
 
 
 deve testar:
@@ -1137,6 +1137,9 @@ resultado:
 33,33
 
 33,33
+
+
+Não criar `ParcelamentoService` nem `ParcelamentoServiceTest`. A geração e as regras de parcelas ficam em `ExpenseService`.
 
 
 # 118. Testes de integração
@@ -1533,7 +1536,7 @@ Em receitas, estorno (`POST /incomes/{id}/reverse`) desfaz o recebimento (`RECEI
 
 Cancelamento de receita (`POST /incomes/{id}/cancel`) é operação distinta (`EXPECTED` → `CANCELLED`).
 
-Em despesas (Fase 7), pagamento é `POST /expenses/{id}/pay`; cancelamento é `POST /expenses/{id}/cancel` (`OPEN` → `CANCELLED`); estorno é `POST /expenses/{id}/refund` (`PARTIALLY_PAID` / `PAID` → `REFUNDED`). Não usar `POST /payments/{id}/reverse` nesta fase.
+Em despesas (Fase 7), pagamento é `POST /expenses/{id}/pay`; cancelamento é `POST /expenses/{id}/cancel` (`OPEN` → `CANCELLED`); estorno é `POST /expenses/{id}/refund` (`PARTIALLY_PAID` / `PAID` → `REFUNDED`). `POST /payments/{id}/reverse` **não** pertence à Fase 7; entra no contrato da Fase 8.
 
 
 # 169. Transferência
@@ -1557,14 +1560,12 @@ O backend deve receber:
 
 valor;
 
-quantidade de parcelas;
+quantidade de parcelas (`installmentCount`; omitido = 1);
 
-data;
-
-cartão;
+data de vencimento da primeira parcela (`dueDate`);
 
 
-e gerar as parcelas.
+e gerar as parcelas (valores e vencimentos mensais). Cartão **não** é input da Fase 8 (RN243).
 
 
 # 173. Banco
@@ -1582,7 +1583,7 @@ Criar endpoints de domínio claros.
 POST /expenses
 
 
-Na Fase 7 cria despesa simples (`OPEN`, parcela 1/1 interna). Parcelamento funcional (N>1) é a Fase 8.
+Na Fase 7 cria despesa simples (`OPEN`, parcela 1/1 interna). Parcelamento funcional (N>1), payments por parcela, adjustments e reverse são o **contrato da Fase 8** (não implementar sem autorização).
 
 
 # 176. Resultado

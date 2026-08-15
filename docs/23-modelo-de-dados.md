@@ -746,7 +746,7 @@ NONE
 
 Despesa vinculada diretamente a uma conta.
 
-Vinculação **não** implica pagamento. Na Fase 7 a despesa `ACCOUNT` nasce `OPEN`, com `account_id` obrigatório, sem linha em `payments`. O débito ocorre só no pagamento (RN208, RN210).
+Vinculação **não** implica pagamento. Na Fase 7 a despesa `ACCOUNT` nasce `OPEN`, com `account_id` obrigatório, sem linha em `payments`. O débito ocorre só no pagamento (RN208). A RN210 (mesma conta no payment) foi **SUPERADA** na Fase 8 (RN228): `account_id` da despesa é preferência.
 
 
 # 50. CREDIT_CARD
@@ -841,14 +841,14 @@ Despesa totalmente paga.
 
 `OVERDUE` NÃO deve ser armazenado como status principal.
 
-Uma despesa é considerada vencida quando:
+Uma despesa é considerada vencida conforme RN218:
 
-- status é `OPEN` ou `PARTIALLY_PAID`; e
-- `due_date` < data atual (timezone da aplicação).
+- **1/1:** status `OPEN` ou `PARTIALLY_PAID` e `expenses.due_date` < data atual (`America/Sao_Paulo`);
+- **N>1:** existe pelo menos uma parcela overdue segundo RN241. Não usar somente `expenses.due_date`.
 
 A interface poderá apresentar "VENCIDA" sem alterar o status persistido.
 
-A API da Fase 7 expõe o boolean derivado `overdue`. Não há coluna `overdue`.
+A API expõe o boolean derivado `overdue`. Não há coluna `overdue`.
 
 
 # 61. REFUNDED
@@ -973,7 +973,13 @@ Valores das parcelas podem ser diferentes.
 
 # 72. Regra
 
-A soma das parcelas deve representar o valor total da despesa, salvo operações posteriores explicitamente registradas.
+```text
+SUM(expense_installments.amount) = expenses.total_amount
+```
+
+Vale na criação e após edição cadastral permitida de parcelas `OPEN` (RN227).
+
+Payments, adjustments, reverse, refund e cancel **não** alteram `installment.amount`. Registram fatos; não modificam a distribuição original.
 
 
 # 73. Parcela
@@ -991,7 +997,15 @@ CANCELLED
 REFUNDED
 
 
-Vencimento atrasado é derivado (mesma lógica de despesa), sem persistir OVERDUE.
+Vencimento atrasado da parcela é derivado (RN241), sem persistir OVERDUE.
+
+Parcela overdue quando:
+
+- status é `OPEN` ou `PARTIALLY_PAID`;
+- `remaining > 0`;
+- `due_date` < `reference_date`;
+- a despesa não está `CANCELLED`;
+- a despesa não está `REFUNDED`.
 
 
 # 74. Parcela
@@ -1024,7 +1038,24 @@ Nunca perder centavos no parcelamento.
 
 # 77. Regra
 
-A última parcela deve absorver eventual diferença de arredondamento.
+A **primeira** parcela deve absorver eventual diferença de arredondamento.
+
+A redação anterior (“última parcela”) está substituída. Exemplo canônico: R$ 100 / 3 → 33,34 + 33,33 + 33,33; R$ 1.000,00 / 3 → 333,34 + 333,33 + 333,33.
+
+
+# 77A. Adjustment (Fase 8)
+
+Fato que altera a **obrigação** da parcela. Não é movimentação de conta.
+
+Relacionamento: `expense_installments` 1:N adjustments.
+
+Tipos oficiais iniciais: `DISCOUNT`, `SURCHARGE`. `amount` > 0.
+
+Status persistido: `ACTIVE`, `REVERSED`.
+
+Não persistir totais derivados de discount/surcharge/remaining. Fórmulas: RN231.
+
+Tabela física e FKs compostas na migration da implementação (RN232, RN242). Sem `ON DELETE CASCADE`. Sem usar `payments` negativos.
 
 
 # 78. Pagamento
@@ -1057,6 +1088,8 @@ amount
 
 payment_date
 
+status
+
 type
 
 notes
@@ -1064,9 +1097,11 @@ notes
 created_at
 
 
+`status` (Fase 8): `ACTIVE` | `REVERSED`. Novo payment nasce `ACTIVE`. Reverse: `ACTIVE` → `REVERSED`. Não usar `type` para esse estado.
+
 `type` aparece no modelo conceitual; os valores oficiais **não** estão definidos nas regras.
 
-PENDÊNCIA DE DECISÃO — seção 269.1. Não inventar enum, CHECK, nem migrar o campo (nem omiti-lo) até decisão explícita.
+PENDÊNCIA DE DECISÃO — seção 269.1. Não inventar enum, CHECK, nem migrar o campo (nem omiti-lo) até decisão explícita. Não gravar `ACTIVE`/`REVERSED` em `type`.
 
 
 Toda despesa possui pelo menos uma parcela (seção 186 / RN063).
@@ -1155,14 +1190,20 @@ O sistema deve permitir múltiplos pagamentos para uma mesma despesa/parcela.
 
 # 88. Regra
 
-A soma dos pagamentos não pode ultrapassar o valor devido, salvo operação explícita de ajuste/estorno.
+```text
+payment.amount <= remaining
+```
+
+`remaining` conforme RN231. Adjustment **não** autoriza overpayment. Reverse **não** autoriza overpayment. Não existe compensação posterior para persistir payment acima do remaining.
 
 
 # 89. Estorno de pagamento
 
-O sistema deve prever futuramente uma forma de registrar estorno **por pagamento** (`POST /api/v1/payments/{id}/reverse`).
+`POST /api/v1/payments/{id}/reverse` entra no **contrato da Fase 8** (RN238).
 
-Essa operação **não** pertence à Fase 7.
+Não pertence à Fase 7. A menção anterior a “fase futura” sem número de fase está **SUPERADA**.
+
+Payment `ACTIVE` → `REVERSED`. Não apagar. Não usar `payments.type`. Proibido se a despesa estiver `REFUNDED` ou `CANCELLED`.
 
 
 # 90. V1 — Estorno de despesa na Fase 7
@@ -1171,7 +1212,7 @@ Na Fase 7 o estorno é da despesa inteira (`POST /api/v1/expenses/{id}/refund`):
 
 As linhas de `payments` permanecem. Não há pagamento negativo. Não se usa `payments.type`. O saldo deixa de subtrair pagamentos cuja despesa está `REFUNDED` (RN214, RN215, RN216).
 
-O modelo não impede a evolução para reverse individual de pagamento.
+Na Fase 8 o reverse individual coexiste com o refund da despesa (RN237, RN238). Refund misto: parcelas com payment ativo → `REFUNDED`; sem payment → `OPEN` (somente consulta).
 
 
 # 91. Fatura
@@ -1832,6 +1873,8 @@ expense_installments:
 
 Um cartão não deve possuir duas faturas para o mesmo ciclo.
 
+Parcelas de uma despesa: `UNIQUE (expense_id, installment_number)` — previsto para **nova** migration na implementação da Fase 8 (RN242). Não alterar V8–V10.
+
 
 # 155. Regra
 
@@ -2156,7 +2199,7 @@ Uma expense pode possuir:
 
 Mesmo uma despesa à vista possui uma única parcela.
 
-A Fase 7 adota essa estratégia de forma obrigatória: parcela 1/1 interna. A API não expõe parcelamento funcional (RN211).
+A Fase 7 adota parcela 1/1 interna. A Fase 8 generaliza para N parcelas (`installmentCount` omitido = 1). `payments.installment_id` continua obrigatório.
 
 
 # 186. Decisão
@@ -2166,6 +2209,8 @@ A implementação deve preferir um modelo consistente:
 toda despesa possui pelo menos uma parcela.
 
 `payments.installment_id` é obrigatório. Não criar pagamento sem parcela. Não criar tabela paralela para despesa “simples”.
+
+A Fase 8 adiciona adjustments **da parcela** (1:N). Adjustment não é payment. Payment não é adjustment.
 
 
 # 187. Motivo
@@ -3073,6 +3118,7 @@ FKs compostas obrigatórias:
 | payments | `(expense_id, user_id)` | expenses |
 | payments | `(installment_id, user_id)` | expense_installments |
 | payments | `(account_id, user_id)` | accounts |
+| adjustments da parcela (Fase 8) | `(installment_id, user_id)` | expense_installments |
 | credit_card_invoices | `(credit_card_id, user_id)` | credit_cards |
 | credit_card_invoice_payments | `(invoice_id, user_id)` | credit_card_invoices |
 | credit_card_invoice_payments | `(account_id, user_id)` | accounts |
@@ -3170,7 +3216,9 @@ Governança: `AGENTS.md` seção 28.
 
 Nenhuma lacuna abaixo pode ser preenchida por suposição técnica.
 
-Não criar migration, coluna, enum, CHECK, constante, validação, teste ou regra de Service/API dependente destes itens até decisão explícita.
+Itens **ainda bloqueados**: 269.1 (`payments.type`) e 269.3 (rateio de fatura). O item 269.2 está **fechado** para ACCOUNT/NONE na Fase 8; a pergunta sobre parcela em fatura está **DEFERIDA**.
+
+Não criar migration, coluna, enum, CHECK, constante, validação, teste ou regra de Service/API dependente dos itens ainda bloqueados até decisão explícita.
 
 Não sugerir “criar a coluna sem CHECK por enquanto” nem “omitir o campo na migration”: ambas são hipóteses.
 
@@ -3190,28 +3238,27 @@ Não implementar até responder:
 
 Até lá: não criar enum, CHECK, constantes, validações nem regras baseadas nesse campo.
 
-A tabela `payments` (demais colunas já definidas) não deve ser migrada com `type` hipotético nem com a omissão silenciosa do campo.
+A tabela `payments` (demais colunas já definidas, inclusive `status` da Fase 8) não deve receber valores hipotéticos em `type` nem omitir `type` silenciosamente.
+
+`payments.status` (`ACTIVE` / `REVERSED`) é decisão da Fase 8 e **não** usa `type`.
 
 
-## 269.2 Edição de parcela futura × `expenses.total_amount`
+## 269.2 Edição de parcela × `expenses.total_amount`
 
-RN067 vale **na criação** do parcelamento. O fluxo de edição de parcela futura (`docs/20`) não define o efeito sobre o total.
+**Conta/NONE (Fase 8) — FECHADO** (RN223, RN227, RN245):
 
-A Fase 7 **não** implementa edição independente de parcela. O `PUT` da despesa `OPEN` atualiza a única parcela 1/1 em conjunto com `total_amount` e `due_date` (RN211, RN217). Isso não antecipa nem resolve esta pendência.
+1. Se uma parcela `OPEN` tiver `amount` alterado, `expenses.total_amount` **não** muda.
+2. A soma das parcelas deve continuar **igual** ao total. Se não fechar: rejeitar + rollback.
+3. **Não** há redistribuição automática.
+4. Divergência soma ≠ total **não** é permitida.
+5. Somente parcela `OPEN` pode ser editada (`amount` e `due_date`).
+6. Quantidade de parcelas é imutável após a criação.
 
-Não decidir sozinho entre: alterar `expenses.total_amount`; redistribuir; manter o total original; rejeitar; permitir divergência; recalcular demais parcelas.
+A Fase 7 **não** implementa edição independente: o `PUT` da despesa `OPEN` 1/1 atualiza a parcela única em conjunto e **pode alterar o total cadastralmente** (RN211, RN217, RN245). Isso não é payment, adjustment, reverse, refund nem cancel. Em N>1 o `PUT` da despesa não redistribui valores.
 
-Não implementar a edição até responder:
+**DEFERIDO (cartão/fatura — fora da Fase 8):**
 
-1. Se uma parcela futura for alterada, `expenses.total_amount` deve mudar?
-2. A soma das parcelas deve obrigatoriamente continuar igual ao total da despesa?
-3. A diferença deve ser redistribuída entre outras parcelas?
-4. Se redistribuída, qual regra?
-5. É permitido que a soma das parcelas fique diferente de `expenses.total_amount`?
-6. Quais parcelas podem ser alteradas?
-7. O comportamento muda quando uma ou mais parcelas já estão vinculadas a faturas?
-
-A tabela `expense_installments` em si (criação, FKs, `invoice_id`) já está definida. O bloqueio é da **regra de edição**, não do schema da parcela.
+7. O comportamento quando uma ou mais parcelas já estão vinculadas a faturas (`invoice_id` preenchido). Não implementar lógica de fatura nesta fase. Não antecipar a resposta.
 
 
 ## 269.3 Pagamento parcial da fatura × status das parcelas

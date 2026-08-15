@@ -469,7 +469,7 @@ Status na criação:
 OPEN
 
 
-A criação **não** reduz o saldo e **não** gera pagamento. `account_id` identifica a conta que deverá ser usada no pagamento.
+A criação **não** reduz o saldo e **não** gera pagamento. `account_id` identifica a conta de **referência/preferência** da despesa (`ACCOUNT`). A conta efetivamente movimentada no pagamento é `payments.account_id` e, no contrato da Fase 8, **pode diferir** (RN228). A Fase 7 ainda exige igualdade (RN210).
 
 
 Em seguida o usuário registra o pagamento (`POST /api/v1/expenses/{id}/pay`).
@@ -487,7 +487,7 @@ Nubank:
 - R$ 300
 
 
-Pagamento registrado. A conta do pagamento é obrigatoriamente a mesma da despesa (`ACCOUNT`).
+Pagamento registrado. Na Fase 7 a conta do pagamento `ACCOUNT` é a mesma da despesa (RN210). No contrato da Fase 8 essa restrição está **SUPERADA** (RN228).
 
 
 # 22. Fluxo — Compra no cartão
@@ -667,7 +667,16 @@ O sistema deve permitir.
 
 # 28. Regra
 
-O usuário pode editar cada parcela individualmente.
+Edição cadastral da parcela (RN227, RN070):
+
+- somente parcela `OPEN`;
+- pode alterar `amount` e `due_date`;
+- a soma de todos os `expense_installments.amount` deve permanecer igual a `expenses.total_amount`;
+- não há redistribuição automática entre as demais parcelas;
+- se a soma não fechar: rejeitar e rollback;
+- `PAID`, `PARTIALLY_PAID`, `CANCELLED` e `REFUNDED` não podem ser editadas assim.
+
+Não é payment, adjustment, refund nem reverse.
 
 
 # 29. Fluxo — Compra no dia do fechamento
@@ -1649,7 +1658,7 @@ OPEN
 
 Apresentação na UI:
 
-VENCIDA (derivado: dueDate < hoje)
+VENCIDA (derivado: RN218 — neste exemplo 1/1, `dueDate` < hoje; N>1 usa RN241)
 
 
 Saldo devido:
@@ -1712,7 +1721,9 @@ R$ 120
 
 # 96. Resultado
 
-Somente a parcela 5 deve ser alterada.
+Somente a parcela 5 é o alvo da operação cadastral. As demais **não** são redistribuídas automaticamente.
+
+A soma de todas as parcelas deve permanecer igual a R$ 1.200. Se a nova soma não fechar, a operação é **rejeitada** (rollback). Alterar a parcela 5 para R$ 120 mantendo as outras inalteradas, quando isso romper a soma, não é permitido (RN227).
 
 
 # 97. Fluxo — Tentativa de alterar parcela paga
@@ -1877,7 +1888,7 @@ Resultado:
 
 # 111. Regra
 
-Nunca perder ou criar centavos durante parcelamento.
+Nunca perder ou criar centavos durante parcelamento. Residual na **primeira** parcela.
 
 
 # 112. Fluxo — Compra parcelada no cartão

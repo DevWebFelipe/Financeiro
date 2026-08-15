@@ -837,11 +837,11 @@ Não há `RECEIVED` → `CANCELLED` nesta fase. Não há reativação de receita
 
 Contrato da Fase 7. Não implementar cartão, fatura, ciclo nem parcelamento funcional nesta fase.
 
-A Fase 7 opera despesas simples (`ACCOUNT` e `NONE`). Internamente toda despesa possui parcela 1/1 (`expense_installments`); `payments.installment_id` continua obrigatório. O consumidor **não** informa quantidade de parcelas nem `installmentId` nas operações desta fase.
+A Fase 7 opera despesas simples (`ACCOUNT` e `NONE`). Internamente toda despesa possui parcela 1/1 (`expense_installments`); `payments.installment_id` continua obrigatório. `installmentCount` é propriedade oficialmente aceita na criação (omitido = 1). O consumidor da Fase 7 **não** informa `installmentId` nas operações desta fase. A geração N>1 é o contrato da Fase 8 (seção 47).
 
-`CREDIT_CARD` está fora do contrato operacional da Fase 7. Endpoints de parcelas (listar/editar/pagar por `installmentId`) pertencem a fases posteriores.
+`CREDIT_CARD` está fora do contrato operacional da Fase 7 e da Fase 8. O contrato da Fase 8 (parcelas N>1, pagamento por parcela, reverse, adjustments) está na seção 47; **não está implementado**.
 
-Todos os endpoints de despesa e pagamento exigem JWT Bearer. Sem token, token inválido, expirado ou usuário desativado: **401** (`UNAUTHORIZED`). Proprietário = usuário autenticado. Recurso de outro usuário ou UUID inexistente: **404** (`NOT_FOUND`). UUID inválido no path: **400**. Propriedades JSON desconhecidas — inclusive `userId`, `id`, `status`, `overdue`, `installmentId`, `createdAt`, `updatedAt`, `creditCardId`, `installments` — são rejeitadas (**400**, `VALIDATION_ERROR`).
+Todos os endpoints de despesa e pagamento exigem JWT Bearer. Sem token, token inválido, expirado ou usuário desativado: **401** (`UNAUTHORIZED`). Proprietário = usuário autenticado. Recurso de outro usuário ou UUID inexistente: **404** (`NOT_FOUND`). UUID inválido no path: **400**. Propriedades JSON desconhecidas — inclusive `userId`, `id`, `status`, `overdue`, `installmentId`, `createdAt`, `updatedAt`, `creditCardId`, `installments` — são rejeitadas (**400**, `VALIDATION_ERROR`). `installmentCount` **não** é propriedade desconhecida: é propriedade oficialmente aceita na criação (omitido = 1; se informado, deve ser `> 0`). `FAIL_ON_UNKNOWN_PROPERTIES` continua rejeitando o que não pertence ao contrato.
 
 
 Endpoint:
@@ -851,9 +851,9 @@ GET /api/v1/expenses
 
 Filtros:
 
-startDate — inclusive, aplicado a `dueDate`
+startDate — inclusive; a despesa entra no intervalo quando **pelo menos uma** parcela tem `due_date` no intervalo (RN226). Em 1/1 isso equivale ao `dueDate` da despesa.
 
-endDate — inclusive, aplicado a `dueDate`
+endDate — inclusive; mesma regra de `startDate` (datas das parcelas, não somente `expenses.due_date`)
 
 status — status persistido (`OPEN`, `PARTIALLY_PAID`, `PAID`, `CANCELLED`, `REFUNDED`); não filtrar por `OVERDUE`
 
@@ -904,7 +904,7 @@ Regras do item:
 - `accountId` é obrigatório em `ACCOUNT` e `null` em `NONE` (permanece `null` após o pagamento);
 - `responsibleName` é obrigatório quando `responsibleType = OTHER`; nos demais casos é `null` ou omitível na entrada;
 - `barcode` é opcional (número de boleto; o sistema não gera boletos);
-- `overdue` é derivado (RN218): `true` somente se status é `OPEN` ou `PARTIALLY_PAID` e `dueDate` < hoje em `America/Sao_Paulo`; `PAID`, `CANCELLED` e `REFUNDED` nunca são overdue;
+- `overdue` é derivado (RN218): em 1/1, `true` se status é `OPEN` ou `PARTIALLY_PAID` e `dueDate` < hoje em `America/Sao_Paulo`; em N>1, `true` se existe pelo menos uma parcela overdue segundo RN241. Não usar somente `expenses.due_date` para N>1. `PAID`, `CANCELLED` e `REFUNDED` nunca são overdue;
 - `installmentId` identifica a parcela interna 1/1 (rastreabilidade); a Fase 7 não expõe CRUD de parcelas;
 - a lista de pagamentos **não** vem neste response; usar `GET /api/v1/expenses/{id}/payments`.
 
@@ -963,7 +963,8 @@ Regras da Fase 7:
 - `totalAmount` > 0;
 - `responsibleType` obrigatório (`MINE`, `GIULIA`, `EDERSON`, `ELISIANE`, `OTHER`);
 - `OTHER` exige `responsibleName`;
-- `barcode` e `notes` opcionais; em branco são persistidos como `null` (mesmo padrão da Fase 6).
+- `barcode` e `notes` opcionais; em branco são persistidos como `null` (mesmo padrão da Fase 6);
+- `installmentCount` é propriedade oficialmente aceita na criação: omitido = `1`; se informado, deve ser `> 0`. Não é propriedade desconhecida. A geração N>1 é o contrato da Fase 8 (seção 47); o código da Fase 7 ainda opera 1/1.
 
 Response **201**.
 
@@ -983,9 +984,9 @@ Endpoint:
 
 PUT /api/v1/expenses/{id}
 
-Somente despesa `OPEN`. Body: os mesmos campos do contrato de criação (substituição).
+Somente despesa `OPEN`. Body: os mesmos campos cadastrais do contrato de criação (substituição), **exceto** `installmentCount` — a quantidade de parcelas é imutável; enviar `installmentCount` no `PUT` é propriedade inválida (**400**).
 
-A parcela 1/1 é atualizada para permanecer consistente (`amount`, `due_date`).
+A parcela 1/1 é atualizada para permanecer consistente (`amount`, `due_date`). Este `PUT` é cadastral, não financeiro (RN217, RN245). Enquanto a despesa estiver `OPEN` e for 1/1, o total pode ser alterado. N>1: não redistribuir; quantidade imutável; `amount` de parcela segue RN227.
 
 `PARTIALLY_PAID`, `PAID`, `CANCELLED`, `REFUNDED`: rejeitar (**400**, `BUSINESS_RULE_VIOLATION`). Correção após pagamento: `POST /refund` (terminal `REFUNDED`) e, se necessário, nova despesa.
 
@@ -1016,7 +1017,7 @@ Regras:
 - `amount` > 0; soma dos pagamentos da despesa + `amount` ≤ valor devido;
 - não pode deixar o saldo da conta negativo;
 - `NONE`: `accountId` obrigatório (conta do usuário, ativa); **não** preenche `expenses.account_id`; `payment_method` permanece `NONE`;
-- `ACCOUNT`: `accountId` opcional; se omitido, usa `expenses.account_id`; se informado, deve ser igual a `expenses.account_id`; conta diferente: **400**;
+- `ACCOUNT` (Fase 7 implementada): `accountId` opcional; se omitido, usa `expenses.account_id`; se informado, deve ser igual a `expenses.account_id`; conta diferente: **400**. Esta restrição é a RN210, **SUPERADA** no contrato da Fase 8 (RN228);
 - atômico; lock pessimista na despesa e na parcela 1/1 antes de somar e inserir;
 - `payments.type` permanece `null`.
 
@@ -1046,7 +1047,7 @@ Não volta a `OPEN`. Não apaga `payments`. O saldo deixa de subtrair esses paga
 
 Rejeitar `OPEN`, `CANCELLED` e `REFUNDED` (inclusive segundo refund).
 
-Não há `POST /api/v1/payments/{id}/reverse` nesta fase.
+Não há `POST /api/v1/payments/{id}/reverse` **nesta fase (Fase 7)**. O reverse entra no contrato da Fase 8 (seção 47).
 
 
 # 45. Pagamentos da despesa
@@ -1083,19 +1084,41 @@ GET /api/v1/payments/{id}
 Isolamento: **404** se o pagamento não existir ou não for do usuário autenticado.
 
 
-# 47. Fora da Fase 7 — Parcelas e pagamento por parcela
+# 47. Contrato da Fase 8 — Parcelas, payments, adjustments e reverse
 
-Os endpoints abaixo **não** fazem parte da implementação da Fase 7. Permanecem previstos para a Fase 8+ (parcelamento funcional):
+**Não implementado.** A Fase 7 permanece o comportamento em código até a autorização de implementação.
 
-GET /api/v1/expenses/{id}/installments
+O campo `installmentId` singular na response da despesa **não** representa uma despesa N>1. A response detalhada deverá suportar as parcelas quando o contrato HTTP da Fase 8 for implementado. Não inventar o JSON completo nesta consolidação além do que está abaixo.
 
-GET /api/v1/expenses/{expenseId}/installments/{installmentId}
+`installmentCount` na criação é propriedade **oficialmente aceita** (não é propriedade desconhecida): se omitido, `1`; se informado, deve ser `> 0`. Propriedades realmente desconhecidas continuam **400** (`FAIL_ON_UNKNOWN_PROPERTIES`). Propriedade JSON `installments` como array de criação manual pelo cliente **não** é o modo oficial (o backend gera as parcelas) e permanece rejeitada.
 
-PUT /api/v1/expenses/{expenseId}/installments/{installmentId}
+Listagem `GET /api/v1/expenses`: `startDate`/`endDate` consideram as datas das parcelas. A despesa entra no intervalo quando pelo menos uma parcela tem `due_date` no intervalo. Em N=1 o efeito é equivalente ao `dueDate` atual.
 
-POST /api/v1/expenses/{expenseId}/installments/{installmentId}/payments
+## Endpoints previstos
 
-A edição de parcela futura × `expenses.total_amount` continua bloqueada (docs/23 §269.2).
+| Método | Endpoint | Finalidade | Auth |
+|---|---|---|---|
+| `GET` | `/api/v1/expenses/{id}/installments` | Listar parcelas da despesa | Bearer |
+| `GET` | `/api/v1/expenses/{expenseId}/installments/{installmentId}` | Consultar parcela | Bearer |
+| `PUT` | `/api/v1/expenses/{expenseId}/installments/{installmentId}` | Edição cadastral `OPEN` (`amount`, `due_date`) | Bearer |
+| `POST` | `/api/v1/expenses/{expenseId}/installments/{installmentId}/payments` | Pagar a parcela identificada | Bearer |
+| `POST` | `/api/v1/payments/{id}/reverse` | `ACTIVE` → `REVERSED` | Bearer |
+| `POST` | `/api/v1/expenses/{id}/pay` | **Somente 1/1** (legado Fase 7) | Bearer |
+
+Para N>1, `POST /expenses/{id}/pay` **não** escolhe parcela implicitamente. A API deve exigir a identificação da parcela.
+
+Endpoints de **adjustment** (criar `DISCOUNT`/`SURCHARGE` `ACTIVE`; reverter `ACTIVE` → `REVERSED`) são necessários pelo modelo (RN232–RN234, RN239). Path e body **não** foram nomeados nesta consolidação — não inventar convenção. Quando payment e adjustment ocorrerem no mesmo ato, a transação é atômica (RN234).
+
+## Regras HTTP resumidas
+
+- Auth, 401, 404, UUID inválido, propriedades desconhecidas: iguais à Fase 7.
+- `PUT` da parcela: só `OPEN`; soma dos amounts = `total_amount` ou 400 + rollback; não `PARTIALLY_PAID`/`PAID`/`CANCELLED`/`REFUNDED`.
+- Payment: amount > 0; ≤ remaining (RN231); `payments.status = ACTIVE`; `payments.account_id` do usuário, ativa; **não** precisa igualar `expenses.account_id` (RN228).
+- Reverse de payment: rejeitar se já `REVERSED` ou se a despesa estiver `REFUNDED`/`CANCELLED`. Reverse de adjustment: mesma filosofia (RN239) — não apaga o fato; `ACTIVE` → `REVERSED`; proibido se a despesa estiver `CANCELLED` ou `REFUNDED`.
+- `payments.type` continua sem valores; não enviar estado em `type`.
+- Cartão / `invoice_id` / faturas: fora.
+
+A edição de parcela × total da despesa para ACCOUNT/NONE está **fechada** (docs/23 §269.2). Parcela já em fatura permanece **DEFERIDA**.
 
 
 # 52. Transferências
@@ -1618,7 +1641,7 @@ POST /api/v1/incomes/{id}/reverse
 
 POST /api/v1/incomes/{id}/cancel
 
-`POST /api/v1/payments/{id}/reverse` permanece previsto para fase futura (estorno por pagamento individual). Não faz parte da Fase 7.
+`POST /api/v1/payments/{id}/reverse` entra na Fase 8 (RN238). Não faz parte da Fase 7.
 
 DELETE somente pode existir para recurso não financeiro com regra explícita autorizando a remoção.
 
@@ -1946,7 +1969,7 @@ Fluxo:
 1. validar despesa e ownership (lock pessimista);
 2. validar status `OPEN` ou `PARTIALLY_PAID`;
 3. localizar a parcela 1/1 (lock pessimista);
-4. validar conta (ativa, do usuário; se `ACCOUNT`, igual a `expenses.account_id`);
+4. validar conta (ativa, do usuário). Na Fase 7, se `ACCOUNT`, igual a `expenses.account_id` (RN210). Na Fase 8 essa igualdade é **SUPERADA** (RN228);
 5. validar valor > 0 e soma ≤ devido;
 6. verificar que o saldo da conta não ficará negativo;
 7. criar `payments` (`installment_id` da parcela 1/1, `type` nulo);

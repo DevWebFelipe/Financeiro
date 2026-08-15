@@ -128,6 +128,8 @@ saldo inicial
 
 A partir da Fase 7, “despesas efetivamente realizadas” significa a soma dos `payments.amount` da conta cuja despesa **não** está em `CANCELLED` nem `REFUNDED` (RN216).
 
+A Fase 8 **emenda** essa fórmula: somente payments **`ACTIVE`** entram na soma; payments **`REVERSED`** não movimentam saldo; adjustments **não** movimentam saldo da conta (RN240). Refund da despesa continua excluindo os payments daquela despesa.
+
 As demais operações (transferências, ajustes) participam desse cálculo quando o respectivo domínio for implementado.
 
 Ajuste de saldo é movimentação própria de conciliação (RN204). Não é receita nem despesa. A funcionalidade de ajuste não pertence à Fase 6 nem à Fase 7 (RN206).
@@ -722,14 +724,11 @@ OPEN representa obrigação ainda não quitada.
 
 OVERDUE NÃO deve ser armazenado como status principal.
 
-Uma despesa é considerada vencida quando:
+**1/1 (Fase 7 e Fase 8):** a despesa é overdue quando status é `OPEN` ou `PARTIALLY_PAID` e `dueDate` < data atual (`America/Sao_Paulo`) — RN218.
 
-- status é OPEN ou PARTIALLY_PAID; e
-- dueDate < data atual (timezone da aplicação).
+**N>1 (Fase 8):** a despesa é overdue quando existe **pelo menos uma** parcela overdue segundo RN241. Não usar somente `expenses.due_date`.
 
-A interface poderá apresentar "VENCIDA" sem alterar o status persistido.
-
-A API da Fase 7 expõe o derivado `overdue` (boolean) na resposta da despesa (RN218). Não existe coluna nem valor de status `OVERDUE`.
+A interface poderá apresentar "VENCIDA" sem alterar o status persistido. Não existe coluna nem valor de status `OVERDUE`.
 
 Status oficiais persistidos: OPEN, PARTIALLY_PAID, PAID, CANCELLED, REFUNDED.
 
@@ -794,6 +793,8 @@ Toda despesa deve possuir pelo menos uma parcela.
 
 Quantidade de parcelas deve ser maior que zero.
 
+Definida na criação (RN223). Não alterável depois.
+
 
 ## RN065 — Valores
 
@@ -809,10 +810,14 @@ O sistema deve permitir valores diferentes para parcelas diferentes.
 
 Ao criar um parcelamento, a soma das parcelas deve ser igual ao valor total da despesa.
 
+A mesma invariável vale após edição cadastral de parcela `OPEN` (RN227). Payments, adjustments, reverse, refund e cancel **não** alteram `installment.amount` nem recalculam `expenses.total_amount`.
+
 
 ## RN068 — Arredondamento
 
-Diferenças de centavos devem ser ajustadas na última parcela.
+Diferenças de centavos devem ser ajustadas na **primeira** parcela.
+
+A redação anterior (“última parcela absorve o residual”) está **substituída**. O exemplo canônico (RN069) permanece: R$ 100 / 3 → 33,34 + 33,33 + 33,33.
 
 
 ## RN069 — Exemplo
@@ -828,12 +833,16 @@ R$ 33,33
 
 ## RN070 — Parcela paga
 
-Uma parcela totalmente paga não pode ser alterada diretamente.
+Uma parcela `PAID` não pode ser alterada cadastralmente (`amount` / `due_date`).
+
+Parcelas `PARTIALLY_PAID`, `CANCELLED` e `REFUNDED` também não podem ser alteradas dessa forma (RN227).
 
 
 ## RN071 — Parcela aberta
 
-Uma parcela OPEN pode ser alterada conforme as regras da aplicação.
+Uma parcela `OPEN` pode ter `amount` e `due_date` alterados por operação própria da parcela, desde que a soma de todos os `expense_installments.amount` permaneça igual a `expenses.total_amount` (RN227).
+
+Essa alteração é cadastral: não é payment, adjustment, refund nem reverse.
 
 
 ## RN072 — Parcela cancelada
@@ -850,12 +859,14 @@ Pagamento representa saída financeira real.
 
 ## RN074 — Conta
 
-Todo pagamento deve indicar a conta utilizada.
+Todo pagamento deve indicar a conta utilizada (`payments.account_id`).
 
 Na Fase 7:
 
 - `NONE`: a conta é informada no `POST /pay` e gravada só em `payments.account_id`;
-- `ACCOUNT`: a conta do pagamento **deve** ser a mesma de `expenses.account_id` (RN210).
+- `ACCOUNT`: a RN210 exigia a mesma conta da despesa.
+
+A RN210 foi **SUPERADA** na Fase 8 (RN228): `expenses.account_id` é preferência; `payments.account_id` pode ser outra conta do mesmo usuário.
 
 
 ## RN075 — Valor
@@ -865,7 +876,7 @@ Pagamento deve ser maior que zero.
 
 ## RN076 — Limite
 
-A soma dos pagamentos não pode ultrapassar o valor devido.
+A soma dos payments **ACTIVE** não pode ultrapassar o valor devido da parcela (obrigação líquida: original + surcharges ACTIVE − discounts ACTIVE).
 
 
 ## RN076A — Saldo da conta
@@ -1312,7 +1323,11 @@ Ter conta associada não significa estar paga. Exemplo: aluguel com conta corren
 - `payment_method` continua `NONE`.
 
 
-## RN210 — Pagamento de despesa ACCOUNT
+## RN210 — Pagamento de despesa ACCOUNT (Fase 7 — SUPERADA na Fase 8)
+
+**Vigência:** contrato da Fase 7. **SUPERADA** por RN228 na Fase 8.
+
+Texto histórico da Fase 7:
 
 Para despesa `ACCOUNT`, todo pagamento deve usar a mesma conta da despesa:
 
@@ -1321,6 +1336,8 @@ payments.account_id == expenses.account_id
 ```
 
 Rejeitar pagamento com conta diferente. Se o request omitir `accountId`, o backend utiliza `expenses.account_id`. Se informar `accountId`, o valor deve coincidir.
+
+A implementação atual (Fase 7) ainda aplica esta regra. A implementação da Fase 8 deve deixá-la de aplicar e seguir RN228.
 
 
 ## RN211 — Parcela 1/1 (Fase 7)
@@ -1342,7 +1359,7 @@ A API **não** expõe CRUD de parcelas nem campo `installments` na criação. O 
 
 A resposta da despesa inclui `installmentId` apenas para rastreabilidade. Pagamentos usam `POST /api/v1/expenses/{id}/pay`; o Service localiza a parcela única.
 
-A Fase 8 poderá expor parcelas N>1. A Fase 7 não implementa edição independente de parcela (docs/23 §269.2 permanece bloqueada). Se a despesa `OPEN` for editada, a parcela 1/1 é atualizada para permanecer consistente com `total_amount` e `due_date` — isso não é edição de parcela futura da Fase 8.
+A Fase 8 expõe parcelas N>1, pagamento por parcela, edição cadastral de parcela `OPEN` e reverse de payment (seção 19.2). A Fase 7 não implementa esses comportamentos: o `PUT` da despesa `OPEN` atualiza a parcela 1/1 em conjunto com `total_amount` e `due_date` (RN217). Isso permanece o comportamento 1/1; não é a edição independente da Fase 8 (RN227).
 
 
 ## RN212 — Pagamento da Fase 7
@@ -1415,9 +1432,13 @@ Rejeitar estorno de `OPEN`, `CANCELLED` e `REFUNDED` (incluindo segundo `refund`
 
 Resultado terminal: `REFUNDED`. A despesa **não** volta a `OPEN`.
 
-A parcela 1/1 também passa a `REFUNDED`.
+A parcela 1/1 também passa a `REFUNDED`. **Este efeito na parcela aplica-se somente à despesa 1/1 da Fase 7.**
 
-Não existe `POST /api/v1/payments/{id}/reverse` na Fase 7. Estorno é da despesa inteira (todos os pagamentos da parcela 1/1). O reverse por pagamento individual permanece previsto para fase futura (docs/23 §89).
+Para N>1 aplicar **exclusivamente** RN237: despesa → `REFUNDED`; parcela com payment `ACTIVE` → `REFUNDED`; parcela sem payment `ACTIVE` → permanece `OPEN` (somente consultável). Nenhuma parcela sem payment ACTIVE é marcada `REFUNDED` só porque a despesa foi refundada.
+
+Não existe `POST /api/v1/payments/{id}/reverse` **na Fase 7**. O estorno da Fase 7 é da despesa inteira (todos os pagamentos da parcela 1/1).
+
+A previsão de “fase futura” para reverse por pagamento foi **SUPERADA**: o reverse entra no contrato da Fase 8 (RN238). Não usar `payments.type`. Não replicar `Income.reverse()`.
 
 
 ## RN215 — Histórico de pagamentos no estorno
@@ -1439,6 +1460,8 @@ Consulta `GET /expenses/{id}/payments` continua devolvendo os pagamentos origina
 
 ## RN216 — Saldo da conta a partir da Fase 7
 
+Fórmula da Fase 7 (código atual):
+
 ```text
 saldo atual =
   initial_balance
@@ -1449,16 +1472,16 @@ saldo atual =
 
 Pagamento de despesa reduz o saldo.
 
-Estorno de despesa desfaz o efeito desses pagamentos no saldo (deixam de ser subtraídos).
+Estorno de despesa (`REFUNDED`) desfaz o efeito desses pagamentos no saldo (deixam de ser subtraídos).
 
-Transferências e ajustes entram quando implementados. Não persistir `current_balance`.
+A Fase 8 **emenda** esta fórmula (RN240): o subtraendo restringe-se a payments **`ACTIVE`**. Payments **`REVERSED`** não entram. Adjustments não entram. Refund continua excluindo os payments da despesa `REFUNDED`. Transferências e ajustes de conciliação (RN204) entram quando implementados. Não persistir `current_balance`.
 
 
 ## RN217 — Edição de despesa (Fase 7)
 
 Somente despesa `OPEN` pode ser editada (`PUT /api/v1/expenses/{id}`).
 
-Campos do contrato de criação (substituição): `categoryId`, `description`, `totalAmount`, `expenseDate`, `dueDate`, `paymentMethod`, `accountId`, `responsibleType`, `responsibleName`, `barcode`, `notes`.
+Campos do contrato de criação (substituição): `categoryId`, `description`, `totalAmount`, `expenseDate`, `dueDate`, `paymentMethod`, `accountId`, `responsibleType`, `responsibleName`, `barcode`, `notes`. `installmentCount` **não** faz parte do `PUT` (quantidade imutável).
 
 Regras no `PUT` de `OPEN`:
 
@@ -1473,19 +1496,32 @@ Rejeitar `PUT` de `PARTIALLY_PAID`, `PAID`, `CANCELLED` e `REFUNDED`. Não alter
 
 Não alterar `status`, `id`, `userId`, `createdAt` via body. Propriedades desconhecidas: 400.
 
+Este `PUT` é cadastral, **não** é operação financeira. Payment, adjustment, reverse, refund e cancel **não** alteram o total original.
+
+Exceção cadastral 1/1: enquanto a despesa estiver `OPEN` e for 1/1, o `PUT` pode alterar `totalAmount` (e a parcela única, para a soma continuar igual) — RN245. N>1: não redistribuir automaticamente; quantidade imutável; alteração de `amount` de parcela segue RN227.
+
 
 ## RN218 — OVERDUE derivado na API
 
-`OVERDUE` não é status persistido nem valor de CHECK.
+`OVERDUE` não é status persistido nem valor de CHECK. Timezone: `America/Sao_Paulo`.
 
-`overdue = true` quando:
+**Despesa 1/1** (Fase 7 e Fase 8):
 
 ```text
-status IN (OPEN, PARTIALLY_PAID)
-AND dueDate < data atual no timezone America/Sao_Paulo
+overdue = true quando
+  status IN (OPEN, PARTIALLY_PAID)
+  AND expenses.dueDate < hoje
 ```
 
-Caso contrário, `overdue = false` (`PAID`, `CANCELLED`, `REFUNDED`, ou ainda no prazo).
+Equivale à única parcela (RN241). `PAID`, `CANCELLED` e `REFUNDED` nunca são overdue.
+
+**Despesa N>1** (Fase 8):
+
+```text
+overdue = true quando existe pelo menos uma parcela overdue segundo RN241
+```
+
+Não determinar overdue de N>1 somente por `expenses.due_date`.
 
 A resposta HTTP da despesa inclui `overdue` (boolean). Não criar coluna.
 
@@ -1506,7 +1542,265 @@ O enum/CHECK físico `CREDIT_CARD` permanece no banco; a API da Fase 7 não o op
 
 ## RN221 — payments.type na Fase 7
 
-O campo `payments.type` permanece sem valores oficiais. Na Fase 7 é persistido como `null`. Não criar enum, CHECK, constante nem regra. Pendência: docs/23 §269.1.
+O campo `payments.type` permanece sem valores oficiais. Na Fase 7 é persistido como `null`. Não criar enum, CHECK, constante nem regra sobre `type`. Pendência: docs/23 §269.1.
+
+O estado ACTIVE/REVERSED do payment **não** usa `type`. Na Fase 8 o estado é `payments.status` (RN230).
+
+
+# 19.2 Contrato da Fase 8 — Parcelamento, payments, adjustments e reverse
+
+Contrato oficial da Fase 8. **Não implementado** até autorização explícita.
+
+A Fase 8 não é só geração de parcelas. Abrange: despesas parceladas; geração determinística; vencimentos mensais; edição cadastral de parcela `OPEN`; pagamento por parcela; múltiplos payments; payments em contas diferentes; discounts e surcharges; reverse de payment e de adjustment; status persistido de payment e de adjustment; status agregado persistido da despesa; cancelamento; refund (incluindo refund misto); overdue da parcela; preservação de fatos; preparação dos fatos para relatórios futuros.
+
+Fora da Fase 8: `CREDIT_CARD`, fatura, ciclo, rateio, valores de `payments.type`, dashboards, gráficos, PDF e relatórios de apresentação.
+
+Modelo conceitual:
+
+```text
+EXPENSE (obrigação)
+  └── INSTALLMENTS (partes da obrigação)
+        ├── PAYMENTS (movimentação financeira)
+        └── ADJUSTMENTS (alteração da obrigação)
+```
+
+Obrigação ≠ movimentação financeira ≠ ajuste da obrigação.
+
+O código da Fase 7 (parcela 1/1) permanece válido quando `installmentCount` é 1. Regras da Fase 7 que assumem exclusivamente `installmentNumber = 1` são generalizadas abaixo. Regras SUPERADAS estão marcadas (RN210, reverse “futuro”, fórmula RN216 sem `payments.status`).
+
+
+## RN222 — Escopo e fatos da Fase 8
+
+A implementação da Fase 8 reutiliza `expenses`, `expense_installments` e `payments`. Introduz adjustments da parcela e `payments.status`. Não cria colunas derivadas (`paid_amount`, `remaining_amount`, `discount_total`, `surcharge_total`, `current_balance`, `early_payment_savings`). `status` de despesa, parcela, payment e adjustment é persistido.
+
+Relatórios futuros devem poder calcular, a partir dos fatos: total original; descontos; acréscimos; valor pago; saldo; payments por conta; facts revertidos; valores por período e categoria. A Fase 8 não implementa as telas nem os endpoints de relatório.
+
+
+## RN223 — Quantidade de parcelas
+
+A quantidade é definida na criação (`installmentCount`). Se omitido: `installmentCount = 1` (compatível com a Fase 7). Se informado: deve ser `> 0`. Não é propriedade JSON desconhecida.
+
+Após a criação: não alterar a quantidade; não redistribuir automaticamente; não criar nem excluir parcelas automaticamente.
+
+
+## RN224 — Geração dos valores
+
+Na criação, a soma dos `expense_installments.amount` deve ser exatamente `expenses.total_amount`.
+
+Residual de centavos: **primeira** parcela. `RoundingMode.HALF_UP`, escala 2.
+
+Exemplo: R$ 1.000,00 / 3 → 333,34 + 333,33 + 333,33.
+
+
+## RN225 — Vencimentos mensais
+
+A primeira parcela usa a `dueDate` informada na criação. As seguintes são mensais. A data da compra (`expense_date`) **não** participa do vencimento.
+
+Dia-base = dia da `dueDate` original. Se o mês não tiver esse dia, usar o último dia **daquele** mês. Não carregar o dia ajustado para os meses seguintes.
+
+Exemplo, dia-base 31: 31/01, 28/02, 31/03, 30/04, 31/05.
+
+
+## RN226 — `expenses.due_date`
+
+É o vencimento da **primeira** parcela. Os vencimentos reais ficam em `expense_installments.due_date`. Em 1/1 os dois coincidem. Não usar `expenses.due_date` como vencimento de todas as parcelas.
+
+Na listagem `GET /expenses`, `startDate`/`endDate` consideram as datas das parcelas: a despesa entra no intervalo quando **pelo menos uma** parcela tem `due_date` no intervalo. Em 1/1 o efeito é equivalente a filtrar por `expenses.due_date`.
+
+
+## RN227 — Edição cadastral da parcela
+
+Somente parcela `OPEN`. Operação própria da parcela (não é o `PUT` da despesa N>1).
+
+Campos permitidos: `amount`, `due_date`.
+
+Alterar `amount` só se `SUM(all installment.amount) = expenses.total_amount`. Caso contrário: rejeitar, rollback, nenhum valor parcial.
+
+Sem redistribuição automática. Alterar `due_date` de uma parcela não altera as demais.
+
+`PAID`, `PARTIALLY_PAID`, `CANCELLED` e `REFUNDED` não podem ser editadas assim.
+
+Essa edição não é payment, adjustment, refund nem reverse.
+
+
+## RN228 — Conta de referência (substitui RN210)
+
+`expenses.account_id` é conta de **referência/preferência** quando aplicável (`ACCOUNT`). **Não** obriga os payments a usar a mesma conta.
+
+Cada payment tem `payments.account_id` da conta que movimentou o dinheiro. A conta deve pertencer ao usuário autenticado e estar ativa.
+
+Uma despesa ou uma parcela pode ter payments de contas diferentes.
+
+RN210 (Fase 7) está **SUPERADA** por esta regra.
+
+
+## RN229 — Pagamento por parcela
+
+Payment pertence obrigatoriamente a uma parcela (`payments.installment_id`). Uma parcela pode ter múltiplos payments. Payment não altera `installment.amount` nem `expenses.total_amount`.
+
+N>1: o pagamento deve identificar a parcela. `POST /api/v1/expenses/{id}/pay` permanece para **1/1**. Para N>1 não escolher parcela implicitamente.
+
+Overpayment (valor > remaining da parcela) é rejeitado antes de persistir.
+
+
+## RN230 — `payments.status`
+
+Não usar `payments.type` para estado.
+
+Coluna de contrato: `payments.status`. Valores oficiais: `ACTIVE`, `REVERSED`.
+
+Novo payment: `ACTIVE`. Reverse: `ACTIVE` → `REVERSED`. `REVERSED` permanece no histórico; não se edita; não se exclui; não movimenta saldo. `ACTIVE` participa do saldo.
+
+`payments.type` permanece sem semântica na Fase 8 (§269.1).
+
+
+## RN231 — Obrigação e saldo da parcela
+
+`installment.amount` é o valor **original**.
+
+```text
+obligation =
+    installment.amount
+  + SUM(active surcharges)
+  − SUM(active discounts)
+
+remaining =
+    obligation
+  − SUM(active payments)
+```
+
+Somente fatos `ACTIVE`. Remaining nunca negativo. Payment não pode exceder remaining.
+
+
+## RN232 — Adjustment
+
+Relacionamento: `expense_installments` 1:N adjustments.
+
+Adjustment altera a **obrigação**. Não movimenta saldo de conta. Não é payment. Nunca representar desconto como payment negativo.
+
+Tipos oficiais iniciais: `DISCOUNT` (reduz), `SURCHARGE` (aumenta). O `amount` do adjustment é sempre positivo.
+
+Desconto por antecipação = `DISCOUNT`. Acréscimo por atraso = `SURCHARGE`. Subclassificação adicional de motivo (juros vs multa vs outros) **não** foi definida; não inventar categorias.
+
+Tabela física: plural snake_case, filha da parcela, com `user_id` e FK composta de ownership. O nome exato segue a convenção do projeto na migration da implementação; não criar módulo genérico `adjustments` desligado de `expenses`.
+
+
+## RN233 — Status do adjustment
+
+Fato histórico. Não apagar nem editar o valor. Estados persistidos: `ACTIVE`, `REVERSED`. Nasce `ACTIVE`. Reverse: `ACTIVE` → `REVERSED`. `REVERSED` não participa da obrigação e não pode ser revertido de novo.
+
+
+## RN234 — Payment e adjustment atômicos
+
+Quando a operação exigir adjustment + payment no mesmo ato (ex.: DISCOUNT 40 + PAYMENT 550), ambos na mesma transação. Não persistir metade.
+
+
+## RN235 — Status persistido da parcela e da despesa
+
+Parcela e despesa mantêm status persistido. Recalcular e gravar na mesma transação do fato. Não depender só de calcular o status em cada SELECT.
+
+Agregação da despesa (estados financeiros normais):
+
+- todas as parcelas `OPEN` → despesa `OPEN`;
+- alguma quitada e alguma pendente → `PARTIALLY_PAID`;
+- todas quitadas → `PAID`.
+
+Terminais: `CANCELLED`, `REFUNDED` (conforme RN236 e RN237).
+
+
+## RN236 — Cancelamento (Fase 8)
+
+Somente despesa `OPEN` → `CANCELLED`. Não movimenta dinheiro. Todas as parcelas (necessariamente `OPEN`, sem payment) passam a `CANCELLED` na mesma transação.
+
+`PARTIALLY_PAID` e `PAID` **não** podem ser canceladas. Havendo movimentação financeira, a operação é refund.
+
+
+## RN237 — Refund misto
+
+Refund é da despesa inteira. Sem refund individual de parcela na Fase 8.
+
+Havendo payment **ACTIVE**: despesa → `REFUNDED`. Parcelas com payment ativo → `REFUNDED`. Parcelas sem payment → permanecem `OPEN` **somente como histórico**.
+
+Payments não são apagados nem editados. A despesa `REFUNDED` não produz efeito no saldo da conta.
+
+Parcela `OPEN` de despesa `REFUNDED`: não recebe payment; não recebe adjustment; não é alterada; não é cancelada; apenas consulta. Nenhuma parcela sem payment `ACTIVE` é marcada `REFUNDED` só porque a despesa foi refundada.
+
+
+## RN238 — Reverse de payment
+
+Endpoint: `POST /api/v1/payments/{id}/reverse`.
+
+`ACTIVE` → `REVERSED`. Já `REVERSED`: rejeitar. Não apagar. Desfaz o efeito daquele payment no saldo da conta e no remaining da parcela. Atualizar status da parcela e da despesa na mesma transação.
+
+Não altera `installment.amount` nem `expenses.total_amount`.
+
+**Proibido** se a despesa estiver `REFUNDED` ou `CANCELLED`.
+
+A menção documental anterior a reverse como “fase futura” está **SUPERADA**.
+
+
+## RN239 — Reverse de adjustment
+
+`ACTIVE` → `REVERSED`. Já `REVERSED`: rejeitar. Não apaga o adjustment nem altera o valor original; o histórico permanece. Remove o efeito da obrigação. Atualizar status da parcela e da despesa quando necessário.
+
+Mesma filosofia de RN238: permitido somente enquanto a despesa estiver ativa. **Proibido** se a despesa estiver `CANCELLED` ou `REFUNDED`.
+
+Endpoint de adjustment: necessidade contratual; path/body **não** foram nomeados nesta consolidação — não inventar convenção.
+
+
+## RN240 — Saldo da conta (emenda da RN216)
+
+```text
+saldo atual =
+  initial_balance
++ SUM(incomes.amount WHERE status = RECEIVED AND account_id = conta)
+− SUM(payments.amount WHERE account_id = conta
+      AND payments.status = ACTIVE
+      AND a despesa do pagamento NÃO está em CANCELLED nem REFUNDED)
+```
+
+Somente payments `ACTIVE` movimentam saldo. `REVERSED` não movimenta. Adjustments não movimentam. Refund remove o efeito dos payments daquela despesa. Sem `current_balance` persistido em expense/installment.
+
+
+## RN241 — Overdue da parcela
+
+Não persistir `OVERDUE`. Condição derivada:
+
+```text
+status da parcela IN (OPEN, PARTIALLY_PAID)
+AND remaining > 0
+AND due_date < reference_date
+AND despesa NOT IN (CANCELLED, REFUNDED)
+```
+
+`PAID`, `CANCELLED` e `REFUNDED` nunca são overdue. Timezone: `America/Sao_Paulo`. A API operacional usa a data atual como `reference_date`. Recortes históricos explícitos ficam para relatórios futuros.
+
+Overdue da **despesa** N>1: `true` quando existe pelo menos uma parcela overdue segundo esta regra (RN218). Não usar somente `expenses.due_date`.
+
+
+## RN242 — Integridade de parcelas
+
+Na implementação: `UNIQUE (expense_id, installment_number)` em **nova** migration. Não alterar V8–V10. UUID v7; `NUMERIC(19,2)`; Flyway; `ddl-auto=validate`; ownership; FKs compostas; sem `ON DELETE CASCADE` nas relações financeiras atuais; `payments.installment_id` obrigatório.
+
+
+## RN243 — Cartão fora da Fase 8
+
+Rejeitar `CREDIT_CARD` como na Fase 7 (RN220). Não criar faturas, não preencher `invoice_id`, não implementar ciclo nem rateio. A pergunta do §269.2 sobre parcela já em fatura permanece **DEFERIDA**.
+
+
+## RN244 — Concorrência (Fase 8)
+
+Operações sobre a mesma parcela são transacionais. Dois pagamentos concorrentes não ultrapassam o remaining. Proteger consistência entre payments, adjustments, status da parcela e da despesa. Proteger a conta contra saldo negativo (RN076A). Não enfraquecer locking para “passar teste”.
+
+
+## RN245 — `total_amount` após a criação
+
+`expenses.total_amount` é o original histórico. **Não** é operação financeira. Payment, adjustment, reverse, refund e cancel **não** o alteram.
+
+Exceção cadastral já existente (não é fato financeiro):
+
+- enquanto a despesa estiver `OPEN` **e** for 1/1, o `PUT` da despesa (RN217) pode alterar o total (e a parcela única, para a soma continuar igual);
+- N>1: quantidade imutável; sem redistribuição automática; alteração de `amount` de parcela segue RN227 (`SUM = total_amount`).
 
 
 # 20. Metas
@@ -1891,7 +2185,7 @@ Valores monetários devem ser normalizados para escala 2 quando aplicável.
 
 Nenhum Service pode escolher outro `RoundingMode`.
 
-Em parcelamentos, o residual de centavos é absorvido pela última parcela.
+Em parcelamentos, o residual de centavos é absorvido pela **primeira** parcela (RN068, RN224).
 
 
 # 33. Calendário

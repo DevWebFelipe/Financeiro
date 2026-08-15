@@ -305,6 +305,8 @@ authenticatedUserId
 
 do contexto de segurança.
 
+Recursos da Fase 8 (parcelas, payments, reverse, adjustments) seguem a mesma regra: `userId` só do SecurityContext; recurso de outro usuário → **404**; sem token → **401**. Adjustment e payment não mudam essa fronteira.
+
 
 # 36. Queries
 

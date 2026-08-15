@@ -250,7 +250,7 @@ Implementado: despesas simples `ACCOUNT` e `NONE`, sem cartão e sem parcelament
 | `GET` | `/api/v1/expenses/{id}/payments` | Bearer | `200` array; histórico permanece após `REFUNDED` |
 | `GET` | `/api/v1/payments/{id}` | Bearer | `200`; `404` se não for do usuário |
 
-`CREDIT_CARD`, parcelas N>1, faturas e `POST /payments/{id}/reverse` ficam para fases posteriores. `payments.type` permanece sem valores oficiais. Detalhes: `docs/25-api.md`.
+`CREDIT_CARD`, faturas e valores oficiais de `payments.type` ficam para fases posteriores. Parcelas N>1, reverse de payment e adjustments estão no **contrato da Fase 8** (não implementados). Detalhes: `docs/25-api.md`.
 
 ---
 
@@ -265,11 +265,11 @@ Implementado: despesas simples `ACCOUNT` e `NONE`, sem cartão e sem parcelament
 | Vencida | Derivada (`OVERDUE` não persistido) |
 | Cartão | `holderName` textual; compra não reduz saldo bancário; respeita limite disponível; compra no dia do fechamento vai para a próxima fatura; dia inexistente no mês → último dia do mês |
 | Fatura | `OPEN`, `CLOSED`, `PARTIALLY_PAID`, `PAID`; pagamento não cria despesa nova |
-| Parcelas | Valores podem diferir; soma = total; arredondamento determinístico |
+| Parcelas | Soma = total; residual na **primeira** parcela; quantidade imutável após criação; vencimentos mensais (dia-base); edição somente parcela `OPEN` (RN227); pagamento por parcela; `payments.status` ACTIVE/REVERSED; adjustments DISCOUNT/SURCHARGE; reverse na Fase 8; cartão e relatórios de apresentação fora |
 | Transferência | Atômica; não é receita/despesa; sem saldo insuficiente |
 | Saldo | Derivado de movimentações, a partir do saldo inicial; sem `current_balance` como fonte de verdade |
 | Receita | `EXPECTED` / `RECEIVED` / `CANCELLED`; cancelar inutiliza (`EXPECTED` → `CANCELLED`); estornar desfaz recebimento e mantém ativa (`RECEIVED` → `EXPECTED`); limpa `account_id` e `received_date`; pode deixar saldo negativo; sem `REVERSED`; sem responsável na Fase 6 (`responsible_type` nullable) |
-| Despesa (Fase 7) | `ACCOUNT` e `NONE`; criação `OPEN` sem payment; parcela 1/1 interna; `POST /expenses/{id}/pay`; cancelar só `OPEN`; estornar `PARTIALLY_PAID`/`PAID` → `REFUNDED` (não apaga `payments`, não volta a `OPEN`); `overdue` derivado na API; cartão fora desta fase |
+| Despesa (Fase 7) | `ACCOUNT` e `NONE`; criação `OPEN` sem payment; parcela 1/1 interna; `POST /expenses/{id}/pay`; cancelar só `OPEN`; estornar `PARTIALLY_PAID`/`PAID` → `REFUNDED`; `overdue` derivado; cartão fora. A RN210 (payment na mesma conta) foi **SUPERADA** no contrato da Fase 8. |
 | Pagamentos | Sem saldo negativo em operações normais; fatura parcial limitada ao saldo da conta |
 | PDF / gráficos | OpenPDF / Apache ECharts |
 
@@ -448,6 +448,6 @@ Fase 7 — Despesas — CONCLUÍDA
 
 Estado atual do backend (Fases 1–7): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas e despesas simples.
 
-Próxima fase: **Fase 8 — Parcelamento de despesas**. Não implementar sem autorização explícita.
+Próxima fase: **Fase 8 — Parcelamento de despesas** (contrato documental fechado; **não implementada**). Não implementar sem autorização explícita após auditoria do contrato.
 
-Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend de autenticação nem módulos financeiros da Fase 8+ sem autorização.
+Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend de autenticação, cartão/fatura nem a implementação da Fase 8 sem autorização.

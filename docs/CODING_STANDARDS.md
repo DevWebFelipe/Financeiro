@@ -418,7 +418,7 @@ Frontend validation is never sufficient for financial rules.
 - Official rounding: `RoundingMode.HALF_UP`
 - Normalize monetary values to scale 2 when applicable
 - No Service may choose a different rounding mode
-- Installments: the last installment absorbs residual cents
+- Installments: the **first** installment absorbs residual cents
 - Percentages stored as fractions: `5.25%` = `0.0525`  
   `100.00 × 0.0525 = 5.25`
 
@@ -603,7 +603,7 @@ POST /api/v1/expenses/{id}/pay
 POST /api/v1/expenses/{id}/cancel
 POST /api/v1/expenses/{id}/refund
 POST /api/v1/incomes/{id}/reverse
-POST /api/v1/payments/{id}/reverse   (future; not Phase 7)
+POST /api/v1/payments/{id}/reverse   (Phase 8 contract; not implemented in Phase 7)
 ```
 
 Default successful mutation response: `200 OK` with the updated resource, or `201 Created` for creation.

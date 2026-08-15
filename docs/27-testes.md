@@ -39,7 +39,7 @@ Regra indefinida não deve ter teste que cristalize uma suposição.
 TESTE NÃO DEFINIDO → REGRA NÃO DEFINIDA → IMPLEMENTAÇÃO BLOQUEADA
 ```
 
-Pendências oficiais (`AGENTS.md` §28.3 / `docs/23` §269): `payments.type`; edição de parcela futura × total da despesa; rateio do pagamento parcial da fatura.
+Pendências oficiais (`AGENTS.md` §28.3 / `docs/23` §269): `payments.type`; edição de parcela **já em fatura** (269.2 deferido); rateio do pagamento parcial da fatura. A edição ACCOUNT/NONE e o reverse de payment estão no contrato da Fase 8 — testar só após a implementação autorizada.
 
 Depois da decisão: documentação → teste → implementação.
 
@@ -243,7 +243,7 @@ Deve ser rejeitado.
 
 # 18. Teste de edição
 
-Parcela aberta pode ser alterada conforme as regras.
+Parcela `OPEN`: `amount` e `due_date` por operação da parcela; soma deve permanecer igual a `expenses.total_amount`; senão rejeitar + rollback. Sem redistribuição. Não editar `PARTIALLY_PAID` / `PAID` / `CANCELLED` / `REFUNDED`.
 
 
 # 19. Teste
@@ -271,7 +271,7 @@ CANCELLED
 REFUNDED
 
 
-OVERDUE é derivado (não persistido): status OPEN ou PARTIALLY_PAID e dueDate < hoje em `America/Sao_Paulo`. A API da Fase 7 expõe `overdue` (boolean). PAID, CANCELLED e REFUNDED nunca são overdue.
+OVERDUE é derivado (não persistido). **1/1:** status OPEN ou PARTIALLY_PAID e dueDate < hoje em `America/Sao_Paulo`. **N>1:** a despesa é overdue quando existe pelo menos uma parcela overdue segundo RN241. A API expõe `overdue` (boolean). PAID, CANCELLED e REFUNDED nunca são overdue.
 
 
 # 22. Receita
@@ -710,7 +710,7 @@ Padrão: `ExpenseServiceTest` (unidade) + `ExpenseApiTest` (API + Testcontainers
 - saldo insuficiente: rejeitado (não deixa saldo negativo);
 - conta inexistente / de outro usuário: 404;
 - conta inativa: 400;
-- `ACCOUNT` paga com conta diferente de `expenses.account_id`: rejeitado;
+- `ACCOUNT` paga com conta diferente de `expenses.account_id`: rejeitado **na Fase 7** (RN210). O contrato da Fase 8 **SUPERA** essa restrição (RN228) — os testes da Fase 8 devem passar a aceitar contas diferentes do mesmo usuário;
 - `ACCOUNT` sem `accountId` no body: usa a conta da despesa;
 - `NONE` paga com conta válida: `payments.account_id` preenchido; `expenses.account_id` permanece `null`; `paymentMethod` permanece `NONE`;
 - `PAID` / `CANCELLED` / `REFUNDED`: pagamento rejeitado;
@@ -765,6 +765,39 @@ Padrão: `ExpenseServiceTest` (unidade) + `ExpenseApiTest` (API + Testcontainers
 - conta de outro usuário no pagamento: **404**;
 - pagamento de outro usuário: **404**;
 - sem token: **401**.
+
+
+# 47.2 Fase 8 — Parcelamento, payments, adjustments e reverse
+
+Contrato: `docs/24` seção 19.2 e `docs/25` seção 47. **Não implementar nem escrever estes testes até a autorização da Fase 8.** Não testar `CREDIT_CARD`, faturas, `payments.type` nem relatórios de apresentação.
+
+Cenários obrigatórios:
+
+- `installmentCount` omitido = 1 (regressão Fase 7);
+- 3 e 12 parcelas; soma = total; residual na **primeira** (1000/3 → 333,34 + 333,33 + 333,33);
+- dia-base 31: 31/01, 28/02, 31/03 (não carregar 28);
+- `expenses.due_date` = primeira parcela;
+- quantidade imutável após criação;
+- PUT parcela `OPEN` com soma correta vs rejeição + rollback;
+- PUT parcela `PAID` / `PARTIALLY_PAID` rejeitado;
+- pagamento por parcela; múltiplos payments; overpayment rejeitado;
+- payments da mesma parcela em contas diferentes do usuário;
+- `POST /expenses/{id}/pay` só 1/1; N>1 exige identificação da parcela;
+- `payments.status` ACTIVE; reverse → REVERSED; segundo reverse rejeitado;
+- reverse após REFUNDED/CANCELLED rejeitado;
+- payment REVERSED não movimenta saldo da conta;
+- DISCOUNT + PAYMENT atômicos; SURCHARGE + PAYMENT atômicos; adjustment não movimenta conta;
+- reverse de adjustment; segundo reverse rejeitado;
+- refund misto: parcelas com payment ACTIVE → REFUNDED; sem payment → OPEN bloqueada (sem pay/adjust/edit/cancel);
+- cancel só OPEN; PARTIALLY_PAID e PAID rejeitados;
+- status agregado da despesa persistido;
+- overdue da parcela: remaining > 0, OPEN/PARTIALLY_PAID, due_date < hoje, despesa não CANCELLED/REFUNDED (RN241);
+- overdue da despesa N>1: true se pelo menos uma parcela estiver overdue segundo RN241 (não usar somente expenses.due_date);
+- listagem startDate/endDate: despesa no intervalo se pelo menos uma parcela tiver due_date no intervalo;
+- reverse de adjustment: ACTIVE → REVERSED; rejeitar se despesa CANCELLED/REFUNDED;
+- UNIQUE (expense_id, installment_number);
+- isolamento 404; concorrência na mesma parcela;
+- `payments.type` permanece sem valores oficiais.
 
 
 # 48. Testes de cartão
