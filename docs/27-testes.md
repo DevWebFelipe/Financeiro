@@ -39,7 +39,7 @@ Regra indefinida não deve ter teste que cristalize uma suposição.
 TESTE NÃO DEFINIDO → REGRA NÃO DEFINIDA → IMPLEMENTAÇÃO BLOQUEADA
 ```
 
-Pendências oficiais (`AGENTS.md` §28.3 / `docs/23` §269): `payments.type`; edição de parcela **já em fatura** (269.2 deferido); rateio do pagamento parcial da fatura. A edição ACCOUNT/NONE e o reverse de payment estão no contrato da Fase 8 — testar só após a implementação autorizada.
+Pendências oficiais (`AGENTS.md` §28.3 / `docs/23` §269): `payments.type`; edição de parcela **já em fatura** (269.2 deferido); rateio do pagamento parcial da fatura. A edição ACCOUNT/NONE, reverse de payment e adjustments HTTP da Fase 8 estão implementados — manter os testes verdes.
 
 Depois da decisão: documentação → teste → implementação.
 
@@ -769,7 +769,7 @@ Padrão: `ExpenseServiceTest` (unidade) + `ExpenseApiTest` (API + Testcontainers
 
 # 47.2 Fase 8 — Parcelamento, payments, adjustments e reverse
 
-Contrato: `docs/24` seção 19.2 e `docs/25` seção 47. **Não implementar nem escrever estes testes até a autorização da Fase 8.** Não testar `CREDIT_CARD`, faturas, `payments.type` nem relatórios de apresentação.
+Contrato: `docs/24` seção 19.2 e `docs/25` seção 47. Domínio e HTTP de adjustment estão implementados; os cenários abaixo devem permanecer verdes. Não testar `CREDIT_CARD`, faturas, `payments.type` nem relatórios de apresentação.
 
 Cenários obrigatórios:
 
@@ -786,18 +786,61 @@ Cenários obrigatórios:
 - `payments.status` ACTIVE; reverse → REVERSED; segundo reverse rejeitado;
 - reverse após REFUNDED/CANCELLED rejeitado;
 - payment REVERSED não movimenta saldo da conta;
-- DISCOUNT + PAYMENT atômicos; SURCHARGE + PAYMENT atômicos; adjustment não movimenta conta;
-- reverse de adjustment; segundo reverse rejeitado;
+- DISCOUNT + PAYMENT atômicos (domínio); SURCHARGE + PAYMENT atômicos (domínio); adjustment não movimenta conta;
 - refund misto: parcelas com payment ACTIVE → REFUNDED; sem payment → OPEN bloqueada (sem pay/adjust/edit/cancel);
 - cancel só OPEN; PARTIALLY_PAID e PAID rejeitados;
 - status agregado da despesa persistido;
 - overdue da parcela: remaining > 0, OPEN/PARTIALLY_PAID, due_date < hoje, despesa não CANCELLED/REFUNDED (RN241);
 - overdue da despesa N>1: true se pelo menos uma parcela estiver overdue segundo RN241 (não usar somente expenses.due_date);
 - listagem startDate/endDate: despesa no intervalo se pelo menos uma parcela tiver due_date no intervalo;
-- reverse de adjustment: ACTIVE → REVERSED; rejeitar se despesa CANCELLED/REFUNDED;
 - UNIQUE (expense_id, installment_number);
 - isolamento 404; concorrência na mesma parcela;
-- `payments.type` permanece sem valores oficiais.
+- `payments.type` permanece sem valores oficiais;
+- **cenários documentados pós-auditoria (cobrir na implementação/ajuste se ainda não verdes):**
+  - A) 1/1 `OPEN` + `DISCOUNT` ACTIVE + `PUT` que produziria `obligation < 0` → rejeição + rollback (RN231 / RN245);
+  - B) 1/1 `OPEN` + `DISCOUNT` ACTIVE + `PUT` com `obligation` resultante válida → alteração permitida;
+  - C) parcelamento `0,01` / 3 → `0,01` + `0,00` + `0,00`, soma = total (RN067 / RN068);
+  - D) `GET` saldo derivado sem exigir lock explícito de conta para leitura (RN240).
+
+**HTTP Adjustment** (`docs/25` §47) — cenários implementados (manter verdes):
+
+CREATE (`POST .../installments/{installmentId}/adjustments`):
+
+1. DISCOUNT válido → 201 + `status ACTIVE`;
+2. SURCHARGE válido → 201;
+3. `amount` ≤ 0 rejeitado (400);
+4. `type` inválido / propriedade desconhecida rejeitado (400);
+5. ownership inválido / UUID de outro usuário → 404;
+6. parcela não elegível (`CANCELLED`/`REFUNDED` da parcela) → 400;
+7. despesa `REFUNDED` / `CANCELLED` → 400;
+8. (opcional regressão) parcela `PARTIALLY_PAID`/`PAID` com obligation válida pode receber adjustment (não exige `OPEN`).
+
+GET (`GET .../adjustments`):
+
+9. retorna ACTIVE + REVERSED;
+10. ordenação `createdAt ASC`, `id ASC`;
+11. ownership → 404; histórico consultável após terminal da despesa.
+
+REVERSE (`POST .../adjustments/{adjustmentId}/reverse`):
+
+12. ACTIVE → REVERSED (200); body vazio;
+13. já REVERSED → 400;
+14. despesa REFUNDED → 400;
+15. despesa CANCELLED → 400;
+16. ownership / adjustment de outra parcela → 404;
+17. histórico preservado (mesmo `id`, `amount`, `type`, `createdAt`).
+
+FINANCEIRO:
+
+18. DISCOUNT reduz obligation / remaining derivado;
+19. SURCHARGE aumenta obligation;
+20. reverse restaura obligation anterior;
+21. adjustment não altera saldo de conta.
+
+CONCORRÊNCIA:
+
+22. dois creates concorrentes respeitam lock / obligation;
+23. dois reverses concorrentes: apenas um aplica `REVERSED`.
 
 
 # 48. Testes de cartão

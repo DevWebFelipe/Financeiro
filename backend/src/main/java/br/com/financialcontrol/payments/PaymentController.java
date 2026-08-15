@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -38,5 +39,18 @@ public class PaymentController {
   public PaymentResponse get(
       @AuthenticationPrincipal AuthenticatedUser authenticatedUser, @PathVariable UUID id) {
     return expenseService.getPayment(authenticatedUser, id);
+  }
+
+  @PostMapping("/{id}/reverse")
+  @Operation(summary = "Estornar pagamento ACTIVE")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Pagamento estornado"),
+    @ApiResponse(responseCode = "400", description = "Transição inválida"),
+    @ApiResponse(responseCode = "401", description = "Não autenticado"),
+    @ApiResponse(responseCode = "404", description = "Pagamento não encontrado")
+  })
+  public PaymentResponse reverse(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser, @PathVariable UUID id) {
+    return expenseService.reversePayment(authenticatedUser, id);
   }
 }

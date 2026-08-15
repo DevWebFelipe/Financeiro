@@ -12,6 +12,34 @@ import org.springframework.data.repository.query.Param;
 
 public interface ExpenseInstallmentRepository extends JpaRepository<ExpenseInstallment, UUID> {
 
+  List<ExpenseInstallment> findAllByExpense_IdAndUserIdOrderByInstallmentNumberAsc(
+      UUID expenseId, UUID userId);
+
+  List<ExpenseInstallment> findAllByExpense_IdInAndUserIdOrderByExpense_IdAscInstallmentNumberAsc(
+      Collection<UUID> expenseIds, UUID userId);
+
+  Optional<ExpenseInstallment> findByIdAndExpense_IdAndUserId(UUID id, UUID expenseId, UUID userId);
+
+  Optional<ExpenseInstallment> findByExpense_IdAndUserIdAndInstallmentNumber(
+      UUID expenseId, UUID userId, int installmentNumber);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      SELECT i FROM ExpenseInstallment i
+      WHERE i.id = :installmentId
+        AND i.expense.id = :expenseId
+        AND i.userId = :userId
+      """)
+  Optional<ExpenseInstallment> findByIdAndExpense_IdAndUserIdForUpdate(
+      @Param("installmentId") UUID installmentId,
+      @Param("expenseId") UUID expenseId,
+      @Param("userId") UUID userId);
+
+  /**
+   * Phase 7 lock for the single 1/1 installment. Kept for existing pay/cancel/refund flows until
+   * Phase 8 Service migrates to {@link #findByIdAndExpense_IdAndUserIdForUpdate}.
+   */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query(
       """
@@ -32,7 +60,4 @@ public interface ExpenseInstallmentRepository extends JpaRepository<ExpenseInsta
       """)
   List<ExpenseInstallment> findSingleByExpenseIdsAndUserId(
       @Param("expenseIds") Collection<UUID> expenseIds, @Param("userId") UUID userId);
-
-  Optional<ExpenseInstallment> findByExpense_IdAndUserIdAndInstallmentNumber(
-      UUID expenseId, UUID userId, int installmentNumber);
 }

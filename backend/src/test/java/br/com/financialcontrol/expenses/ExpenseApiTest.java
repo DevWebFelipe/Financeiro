@@ -415,8 +415,9 @@ class ExpenseApiTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(tokenA))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(payJson(otherAccount.id(), "10.00", "2026-08-12")))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("BUSINESS_RULE_VIOLATION"));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("PARTIALLY_PAID"));
+    assertThat(balance(tokenA, otherAccount.id())).isEqualByComparingTo("890.00");
     mockMvc
         .perform(
             post("/api/v1/expenses/" + inactiveExpense.id() + "/pay")
@@ -425,7 +426,7 @@ class ExpenseApiTest {
                 .content(payJson(inactive.id(), "10.00", "2026-08-12")))
         .andExpect(status().isBadRequest());
 
-    pay(tokenA, expense.id(), account.id(), "100.00");
+    pay(tokenA, expense.id(), account.id(), "90.00");
     mockMvc
         .perform(
             post("/api/v1/expenses/" + expense.id() + "/pay")

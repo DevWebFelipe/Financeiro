@@ -43,7 +43,7 @@ Do not repeat the same assertion at unit + API + E2E without a reason.
 
 ## 3. What must be tested
 
-- Financial rules: amounts, status transitions, transfers, payments, installments, rounding (`HALF_UP`, last installment absorbs residual)
+- Financial rules: amounts, status transitions, transfers, payments, installments, rounding (`HALF_UP`, **first** installment absorbs residual)
 - User isolation: user A cannot read/change user B; client-supplied `userId` is ignored
 - Authorization and authentication
 - Atomic operations roll back on failure
@@ -60,7 +60,7 @@ Do not repeat the same assertion at unit + API + E2E without a reason.
 - Spring Data `save()` itself
 - Angular / Java / BigDecimal framework internals
 - A test whose only job is to raise coverage
-- Behavior that would crystallize an undefined business rule (`payments.type`, installment edit vs total, invoice partial-payment allocation). Undefined rule → no test → implementation blocked. See `AGENTS.md` §28.
+- Behavior that would crystallize an undefined business rule (`payments.type`, installment already on an invoice vs total, invoice partial-payment allocation). Undefined rule → no test → implementation blocked. See `AGENTS.md` §28. Phase 8 ACCOUNT/NONE installment edit, payments status, adjustments HTTP and related rules are implemented — keep those tests green; do not invent tests for deferred §269 items.
 
 ---
 

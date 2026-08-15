@@ -624,6 +624,8 @@ toda a operação deve ser revertida.
 
 Operações financeiras devem considerar concorrência.
 
+Leitura de saldo derivado (`GET /accounts/{id}/balance`) **não** exige lock pessimista da conta. Locks pessimistas aplicam-se às operações de escrita financeira (despesa, parcela, payment), conforme as RNs de pagamento e a Fase 8 (RN244 / RN240).
+
 
 # 53. Pagamentos
 
@@ -1583,7 +1585,7 @@ Criar endpoints de domínio claros.
 POST /expenses
 
 
-Na Fase 7 cria despesa simples (`OPEN`, parcela 1/1 interna). Parcelamento funcional (N>1), payments por parcela, adjustments e reverse são o **contrato da Fase 8** (não implementar sem autorização).
+Na Fase 7 cria despesa simples (`OPEN`, parcela 1/1 interna). Parcelamento funcional (N>1), payments por parcela, adjustments e reverse estão **implementados na Fase 8** (`docs/25` §47).
 
 
 # 176. Resultado

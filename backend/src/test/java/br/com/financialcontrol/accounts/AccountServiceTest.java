@@ -189,7 +189,7 @@ class AccountServiceTest {
     when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
     when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
         .thenReturn(BigDecimal.ZERO);
-    when(paymentRepository.sumValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+    when(paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
         .thenReturn(BigDecimal.ZERO);
 
     AccountBalanceResponse response =
@@ -206,7 +206,7 @@ class AccountServiceTest {
     when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
     when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
         .thenReturn(new BigDecimal("5400.00"));
-    when(paymentRepository.sumValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+    when(paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
         .thenReturn(BigDecimal.ZERO);
 
     AccountBalanceResponse response =
@@ -221,7 +221,7 @@ class AccountServiceTest {
     when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
     when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
         .thenReturn(new BigDecimal("1000.00"));
-    when(paymentRepository.sumValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+    when(paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
         .thenReturn(new BigDecimal("300.00"));
 
     AccountBalanceResponse response =
@@ -271,7 +271,7 @@ class AccountServiceTest {
     assertThat(response.active()).isFalse();
     when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
         .thenReturn(BigDecimal.ZERO);
-    when(paymentRepository.sumValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+    when(paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
         .thenReturn(BigDecimal.ZERO);
     assertThat(accountService.getBalance(new AuthenticatedUser(USER_A), ACCOUNT_ID).balance())
         .isEqualByComparingTo("1500.00");

@@ -614,24 +614,27 @@ A Fase 7 está concluída. Os itens abaixo **não** são pendências da fase, **
 - testes adicionais de autenticação 401;
 - possível redução de N+1 na listagem de despesas.
 
-Permanecem fora da Fase 7: cartão, fatura e ciclo; valores oficiais de `payments.type`. Reverse de payment e parcelamento N>1 pertencem à **Fase 8** (contrato documental; não implementar sem autorização).
+Permanecem fora da Fase 7: cartão, fatura e ciclo; valores oficiais de `payments.type`. Reverse de payment e parcelamento N>1 pertencem à **Fase 8**.
+
+O item de lock pessimista da conta **não** foi promovido a requisito na Fase 8 para `GET` de saldo (RN240): a leitura continua derivada sem `SELECT FOR UPDATE` da conta.
 
 
 # 47. Fase 8 — Parcelamento de despesas
 
 Status:
 
-CONTRATO DOCUMENTAL FECHADO — NÃO IMPLEMENTADA
+IMPLEMENTAÇÃO CONCLUÍDA (pendência deliberada restante: JSON aninhado completo da despesa N>1; itens §269.1 / fatura / rateio / cartão permanecem deferidos)
 
 
 Objetivo:
 
 Implementar despesas parceladas (N≥1), pagamento por parcela, adjustments, reverse de payment/adjustment e refund misto, reutilizando `expenses` / `expense_installments` / `payments`.
 
+**Status:** concluído.
 
 # 48. Fase 8 — Escopo
 
-Implementar (após autorização):
+Escopo implementado:
 
 - `installmentCount` (omitido = 1);
 - geração automática de valores (residual na **primeira** parcela) e vencimentos mensais (dia-base);
@@ -639,12 +642,13 @@ Implementar (após autorização):
 - pagamento por parcela; múltiplos payments; contas diferentes (RN228);
 - `payments.status` `ACTIVE` / `REVERSED` (não usar `payments.type`);
 - adjustments `DISCOUNT` / `SURCHARGE` com status `ACTIVE` / `REVERSED`;
-- reverse de payment (`POST /payments/{id}/reverse`) e reverse de adjustment;
+- reverse de payment (`POST /payments/{id}/reverse`) e reverse de adjustment (`POST .../installments/{installmentId}/adjustments/{adjustmentId}/reverse`);
+- HTTP create/list/reverse de adjustment (`docs/25` §47);
 - status agregado persistido da despesa;
 - cancelamento só `OPEN`; refund misto; parcela `OPEN` em despesa `REFUNDED` só consulta;
 - overdue da parcela (derivado) e overdue da despesa N>1 (pelo menos uma parcela RN241);
 - listagem `startDate`/`endDate` pelas datas das parcelas;
-- `UNIQUE (expense_id, installment_number)` em nova migration;
+- `UNIQUE (expense_id, installment_number)` em migration V17;
 - fatos necessários a relatórios futuros (sem implementar relatórios).
 
 
@@ -664,7 +668,16 @@ Não implementar nesta fase:
 
 Ver `docs/24` seção 19.2 (RN222–RN245) e `docs/25` seção 47.
 
-Invariáveis: soma das parcelas = `total_amount`; payment/adjustment/reverse/refund/cancel **não** alteram o total; quantidade imutável; `expenses.due_date` = primeira parcela. Exceção cadastral: `PUT` de despesa `OPEN` 1/1 pode alterar o total (RN217/RN245). Overdue N>1: pelo menos uma parcela RN241.
+Invariáveis: soma das parcelas = `total_amount`; payment/adjustment/reverse/refund/cancel **não** alteram o total; quantidade imutável; `expenses.due_date` = primeira parcela. Exceção cadastral: `PUT` de despesa `OPEN` 1/1 pode alterar o total (RN217/RN245), **desde que** o `obligation` resultante permaneça válido (RN231). Overdue N>1: pelo menos uma parcela RN241. Parcelas `0.00` permitidas se forem consequência da divisão em centavos (RN067/RN068). `GET` de saldo: leitura derivada sem lock de conta (RN240).
+
+
+# 50.1 Fase 8 — Ressalvas de auditoria (fechadas)
+
+Decisões documentais pós-auditoria (sem inventar produto novo):
+
+1. **Lock de conta / GET saldo:** mantido o padrão Fase 7 — leitura derivada; sem `SELECT FOR UPDATE` só para GET; escrita protegida pelos locks das entidades financeiras (RN240, RN244).
+2. **PUT 1/1 + DISCOUNT ACTIVE:** permitido se `obligation` resultante `>= 0` (e `>=` payments ACTIVE); caso contrário rejeição + rollback; adjustments não são alterados (RN231, RN245).
+3. **Parcelas 0,00:** permitidas quando inevitáveis na divisão; sem mínimo artificial por parcela (RN067, RN068).
 
 
 # 51. Fase 8 — Dependências
@@ -674,14 +687,14 @@ Fases 0–7. Contas, categorias, receitas, despesas 1/1, JWT, Flyway v16, saldo 
 
 # 52. Testes
 
-Ver `docs/27-testes.md` (Fase 8). Incluir geração 1/3/12, residual na primeira, dia-base 31, soma, edição OPEN, pagamento por parcela, contas diferentes, overpayment, discount+payment atômico, reverse, refund misto, overdue, isolamento, concorrência.
+Ver `docs/27-testes.md` (Fase 8). Incluir geração 1/3/12, residual na primeira, dia-base 31, soma, edição OPEN, pagamento por parcela, contas diferentes, overpayment, discount/surcharge HTTP, reverse payment/adjustment, refund misto, overdue, isolamento, concorrência.
 
 
 # 53. Critério de conclusão
 
-Usuário consegue criar despesa parcelada (compromissos futuros gerados), pagar parcela a parcela, registrar desconto/acréscimo, reverter payment, refundir a despesa, com saldo e status corretos — sem cartão e sem relatórios de apresentação.
+Usuário consegue criar despesa parcelada (compromissos futuros gerados), pagar parcela a parcela, registrar desconto/acréscimo via HTTP, reverter payment e adjustment, refundir a despesa, com saldo e status corretos — sem cartão e sem relatórios de apresentação.
 
-A IA não deve implementar a Fase 8 sem autorização explícita após auditoria do contrato.
+**Critério atendido.** Ressalvas de auditoria (lock de conta no GET de saldo; PUT 1/1 × obligation; parcelas 0,00) estão **fechadas** em `docs/24` (RN067/RN068, RN231, RN240, RN244, RN245) e `docs/28` §50.1. A IA **não** deve iniciar a Fase 9 sem autorização explícita.
 
 
 # 54. Fase 9 — Cartões
@@ -1601,6 +1614,6 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 7: CONCLUÍDAS.
+Fases 0 a 8: CONCLUÍDAS.
 
-Próxima fase: Fase 8 — Parcelamento de despesas (**contrato documental fechado; não implementar** sem autorização explícita após auditoria do contrato). A IA não deve implementar a Fase 8, Refresh Token, logout backend nem módulos financeiros posteriores (cartão/fatura) sem autorização explícita.
+Próxima fase: Fase 9 — Cartões (**não implementar** sem autorização explícita). A IA não deve implementar Refresh Token, logout backend nem módulos financeiros posteriores (cartão/fatura) sem autorização explícita. Itens deferidos da Fase 8 (`payments.type`, parcela em fatura, rateio, JSON aninhado N>1, endpoint composto payment+adjustment) permanecem fora do escopo até decisão.

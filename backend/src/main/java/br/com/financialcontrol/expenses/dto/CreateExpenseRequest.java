@@ -4,6 +4,7 @@ import br.com.financialcontrol.expenses.PaymentMethod;
 import br.com.financialcontrol.expenses.ResponsibleType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
@@ -27,13 +28,19 @@ public record CreateExpenseRequest(
     @NotNull(message = "O responsável é obrigatório.") ResponsibleType responsibleType,
     String responsibleName,
     String barcode,
-    String notes) {
+    String notes,
+    @Min(value = 1, message = "A quantidade de parcelas deve ser maior que zero.")
+        Integer installmentCount) {
 
   public CreateExpenseRequest {
     description = description == null ? null : description.trim();
     responsibleName = blankToNull(responsibleName);
     barcode = blankToNull(barcode);
     notes = blankToNull(notes);
+  }
+
+  public int resolvedInstallmentCount() {
+    return installmentCount == null ? 1 : installmentCount;
   }
 
   private static String blankToNull(String value) {

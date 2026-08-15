@@ -1,8 +1,5 @@
-package br.com.financialcontrol.payments;
+package br.com.financialcontrol.expenses;
 
-import br.com.financialcontrol.accounts.Account;
-import br.com.financialcontrol.expenses.Expense;
-import br.com.financialcontrol.expenses.ExpenseInstallment;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -14,18 +11,17 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "payments")
+@Table(name = "expense_installment_adjustments")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Payment {
+public class ExpenseInstallmentAdjustment {
 
   @Id
   @Column(name = "id", nullable = false, updatable = false)
@@ -35,37 +31,19 @@ public class Payment {
   private UUID userId;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "expense_id", nullable = false)
-  private Expense expense;
-
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "installment_id", nullable = false)
   private ExpenseInstallment installment;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "account_id", nullable = false)
-  private Account account;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "type", nullable = false)
+  private AdjustmentType type;
 
   @Column(name = "amount", nullable = false, precision = 19, scale = 2)
   private BigDecimal amount;
 
-  @Column(name = "payment_date", nullable = false)
-  private LocalDate paymentDate;
-
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false)
-  private PaymentStatus status = PaymentStatus.ACTIVE;
-
-  /**
-   * Official values are not defined (docs/23 §269.1). No Java enum, CHECK, or validation. May be
-   * null until a business decision is made. Do not use for ACTIVE/REVERSED — that is {@link
-   * #status}.
-   */
-  @Column(name = "type")
-  private String type;
-
-  @Column(name = "notes")
-  private String notes;
+  private AdjustmentStatus status;
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;

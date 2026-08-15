@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,6 +25,7 @@ import br.com.financialcontrol.expenses.dto.PayExpenseRequest;
 import br.com.financialcontrol.expenses.dto.UpdateExpenseRequest;
 import br.com.financialcontrol.payments.Payment;
 import br.com.financialcontrol.payments.PaymentRepository;
+import br.com.financialcontrol.payments.PaymentStatus;
 import br.com.financialcontrol.payments.dto.PaymentResponse;
 import br.com.financialcontrol.security.AuthenticatedUser;
 import java.math.BigDecimal;
@@ -66,6 +68,7 @@ class ExpenseServiceTest {
 
   @Mock private ExpenseRepository expenseRepository;
   @Mock private ExpenseInstallmentRepository expenseInstallmentRepository;
+  @Mock private ExpenseInstallmentAdjustmentRepository adjustmentRepository;
   @Mock private PaymentRepository paymentRepository;
   @Mock private AccountService accountService;
   @Mock private CategoryService categoryService;
@@ -154,6 +157,7 @@ class ExpenseServiceTest {
                         ResponsibleType.MINE,
                         null,
                         null,
+                        null,
                         null)))
         .isInstanceOf(BusinessRuleException.class)
         .hasMessage(ExpenseService.ACCOUNT_REQUIRED_FOR_ACCOUNT_METHOD);
@@ -180,6 +184,7 @@ class ExpenseServiceTest {
                         ResponsibleType.MINE,
                         null,
                         null,
+                        null,
                         null)))
         .isInstanceOf(BusinessRuleException.class)
         .hasMessage(ExpenseService.ACCOUNT_NOT_ALLOWED_FOR_NONE);
@@ -204,6 +209,7 @@ class ExpenseServiceTest {
                         PaymentMethod.CREDIT_CARD,
                         null,
                         ResponsibleType.MINE,
+                        null,
                         null,
                         null,
                         null)))
@@ -234,6 +240,7 @@ class ExpenseServiceTest {
                         ResponsibleType.OTHER,
                         null,
                         null,
+                        null,
                         null)))
         .isInstanceOf(BusinessRuleException.class)
         .hasMessage(ExpenseService.OTHER_REQUIRES_NAME);
@@ -257,6 +264,7 @@ class ExpenseServiceTest {
             ResponsibleType.OTHER,
             "Vizinho",
             null,
+            null,
             null));
 
     assertThat(captureSavedExpense().getResponsibleName()).isEqualTo("Vizinho");
@@ -265,10 +273,9 @@ class ExpenseServiceTest {
   @Test
   void shouldGetOwnedExpense() {
     Expense expense = openAccountExpense();
+    ExpenseInstallment installment = singleInstallment(expense);
     when(expenseRepository.findByIdAndUserId(EXPENSE_ID, USER_A)).thenReturn(Optional.of(expense));
-    when(expenseInstallmentRepository.findByExpense_IdAndUserIdAndInstallmentNumber(
-            EXPENSE_ID, USER_A, 1))
-        .thenReturn(Optional.of(singleInstallment(expense)));
+    stubInstallments(expense, installment);
 
     ExpenseResponse response = expenseService.get(new AuthenticatedUser(USER_A), EXPENSE_ID);
 
@@ -295,7 +302,9 @@ class ExpenseServiceTest {
                 List.of(expense),
                 PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "createdAt")),
                 1));
-    when(expenseInstallmentRepository.findSingleByExpenseIdsAndUserId(any(), eq(USER_A)))
+    when(expenseInstallmentRepository
+            .findAllByExpense_IdInAndUserIdOrderByExpense_IdAscInstallmentNumberAsc(
+                any(), eq(USER_A)))
         .thenReturn(List.of(singleInstallment(expense)));
 
     ExpensePageResponse response =
@@ -329,6 +338,7 @@ class ExpenseServiceTest {
     ExpenseInstallment installment = singleInstallment(expense);
     when(expenseRepository.findByIdAndUserIdForUpdate(EXPENSE_ID, USER_A))
         .thenReturn(Optional.of(expense));
+    stubInstallments(expense, installment);
     when(expenseInstallmentRepository.findSingleByExpenseIdAndUserIdForUpdate(EXPENSE_ID, USER_A))
         .thenReturn(Optional.of(installment));
     when(categoryService.requireActiveOwnedExpenseCategory(USER_A, CATEGORY_ID))
@@ -403,6 +413,7 @@ class ExpenseServiceTest {
     assertThat(payment.getAccount().getId()).isEqualTo(ACCOUNT_ID);
     assertThat(payment.getAmount()).isEqualByComparingTo("150.00");
     assertThat(payment.getType()).isNull();
+    assertThat(payment.getStatus()).isEqualTo(PaymentStatus.ACTIVE);
     assertThat(expense.getStatus()).isEqualTo(ExpenseStatus.PAID);
     assertThat(installment.getStatus()).isEqualTo(ExpenseStatus.PAID);
     assertThat(response.status()).isEqualTo(ExpenseStatus.PAID);
@@ -462,22 +473,37 @@ class ExpenseServiceTest {
   }
 
   @Test
-  void shouldRejectAccountPaymentOnDifferentAccount() {
+  void shouldAllowAccountPaymentOnDifferentAccount() {
     Expense expense = openAccountExpense();
+    ExpenseInstallment installment = singleInstallment(expense);
+    Account otherAccount = activeAccount();
+    otherAccount.setId(OTHER_ACCOUNT_ID);
     when(expenseRepository.findByIdAndUserIdForUpdate(EXPENSE_ID, USER_A))
         .thenReturn(Optional.of(expense));
-    when(expenseInstallmentRepository.findSingleByExpenseIdAndUserIdForUpdate(EXPENSE_ID, USER_A))
-        .thenReturn(Optional.of(singleInstallment(expense)));
+    stubInstallments(expense, installment);
+    when(expenseInstallmentRepository.findByIdAndExpense_IdAndUserIdForUpdate(
+            INSTALLMENT_ID, EXPENSE_ID, USER_A))
+        .thenReturn(Optional.of(installment));
+    stubZeroAdjustments(INSTALLMENT_ID);
+    when(paymentRepository.sumActiveAmountByInstallmentIdAndUserId(INSTALLMENT_ID, USER_A))
+        .thenReturn(BigDecimal.ZERO)
+        .thenReturn(new BigDecimal("150.00"));
+    when(accountService.requireActiveOwnedAccount(USER_A, OTHER_ACCOUNT_ID))
+        .thenReturn(otherAccount);
+    when(accountService.calculateCurrentBalance(otherAccount))
+        .thenReturn(new BigDecimal("1500.00"));
+    when(paymentRepository.save(any(Payment.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    stubSaves();
 
-    assertThatThrownBy(
-            () ->
-                expenseService.pay(
-                    new AuthenticatedUser(USER_A),
-                    EXPENSE_ID,
-                    payRequest(OTHER_ACCOUNT_ID, "150.00")))
-        .isInstanceOf(BusinessRuleException.class)
-        .hasMessage(ExpenseService.ACCOUNT_MUST_MATCH_EXPENSE);
-    verify(paymentRepository, never()).save(any());
+    ExpenseResponse response =
+        expenseService.pay(
+            new AuthenticatedUser(USER_A), EXPENSE_ID, payRequest(OTHER_ACCOUNT_ID, "150.00"));
+
+    Payment payment = captureSavedPayment();
+    assertThat(payment.getAccount().getId()).isEqualTo(OTHER_ACCOUNT_ID);
+    assertThat(payment.getStatus()).isEqualTo(PaymentStatus.ACTIVE);
+    assertThat(response.status()).isEqualTo(ExpenseStatus.PAID);
   }
 
   @Test
@@ -503,10 +529,13 @@ class ExpenseServiceTest {
   @Test
   void shouldRequireAccountWhenPayingNoneExpense() {
     Expense expense = openNoneExpense();
+    ExpenseInstallment installment = singleInstallment(expense);
     when(expenseRepository.findByIdAndUserIdForUpdate(EXPENSE_ID, USER_A))
         .thenReturn(Optional.of(expense));
-    when(expenseInstallmentRepository.findSingleByExpenseIdAndUserIdForUpdate(EXPENSE_ID, USER_A))
-        .thenReturn(Optional.of(singleInstallment(expense)));
+    stubInstallments(expense, installment);
+    when(expenseInstallmentRepository.findByIdAndExpense_IdAndUserIdForUpdate(
+            INSTALLMENT_ID, EXPENSE_ID, USER_A))
+        .thenReturn(Optional.of(installment));
 
     assertThatThrownBy(
             () ->
@@ -540,8 +569,7 @@ class ExpenseServiceTest {
     ExpenseInstallment installment = singleInstallment(expense);
     when(expenseRepository.findByIdAndUserIdForUpdate(EXPENSE_ID, USER_A))
         .thenReturn(Optional.of(expense));
-    when(expenseInstallmentRepository.findSingleByExpenseIdAndUserIdForUpdate(EXPENSE_ID, USER_A))
-        .thenReturn(Optional.of(installment));
+    stubInstallments(expense, installment);
     stubSaves();
 
     ExpenseResponse response = expenseService.cancel(new AuthenticatedUser(USER_A), EXPENSE_ID);
@@ -580,8 +608,9 @@ class ExpenseServiceTest {
       installment.setStatus(status);
       when(expenseRepository.findByIdAndUserIdForUpdate(EXPENSE_ID, USER_A))
           .thenReturn(Optional.of(expense));
-      when(expenseInstallmentRepository.findSingleByExpenseIdAndUserIdForUpdate(EXPENSE_ID, USER_A))
-          .thenReturn(Optional.of(installment));
+      stubInstallments(expense, installment);
+      when(paymentRepository.sumActiveAmountByInstallmentIdAndUserId(INSTALLMENT_ID, USER_A))
+          .thenReturn(new BigDecimal("50.00"));
       stubSaves();
 
       ExpenseResponse response = expenseService.refund(new AuthenticatedUser(USER_A), EXPENSE_ID);
@@ -664,14 +693,14 @@ class ExpenseServiceTest {
   void shouldMarkOpenAndPartiallyPaidAsOverdueAfterDueDate() {
     Expense open = openAccountExpense();
     open.setDueDate(PAST_DUE);
+    ExpenseInstallment installment = singleInstallment(open);
     when(expenseRepository.findByIdAndUserId(EXPENSE_ID, USER_A)).thenReturn(Optional.of(open));
-    when(expenseInstallmentRepository.findByExpense_IdAndUserIdAndInstallmentNumber(
-            EXPENSE_ID, USER_A, 1))
-        .thenReturn(Optional.of(singleInstallment(open)));
+    stubInstallments(open, installment);
 
     assertThat(expenseService.get(new AuthenticatedUser(USER_A), EXPENSE_ID).overdue()).isTrue();
 
     open.setStatus(ExpenseStatus.PARTIALLY_PAID);
+    installment.setStatus(ExpenseStatus.PARTIALLY_PAID);
     assertThat(expenseService.get(new AuthenticatedUser(USER_A), EXPENSE_ID).overdue()).isTrue();
   }
 
@@ -679,14 +708,14 @@ class ExpenseServiceTest {
   void shouldNotMarkPaidCancelledOrRefundedAsOverdue() {
     Expense expense = openAccountExpense();
     expense.setDueDate(PAST_DUE);
+    ExpenseInstallment installment = singleInstallment(expense);
     when(expenseRepository.findByIdAndUserId(EXPENSE_ID, USER_A)).thenReturn(Optional.of(expense));
-    when(expenseInstallmentRepository.findByExpense_IdAndUserIdAndInstallmentNumber(
-            EXPENSE_ID, USER_A, 1))
-        .thenReturn(Optional.of(singleInstallment(expense)));
+    stubInstallments(expense, installment);
 
     for (ExpenseStatus status :
         List.of(ExpenseStatus.PAID, ExpenseStatus.CANCELLED, ExpenseStatus.REFUNDED)) {
       expense.setStatus(status);
+      installment.setStatus(status);
       assertThat(expenseService.get(new AuthenticatedUser(USER_A), EXPENSE_ID).overdue()).isFalse();
     }
   }
@@ -695,10 +724,9 @@ class ExpenseServiceTest {
   void shouldNotMarkOpenExpenseAsOverdueOnDueDate() {
     Expense expense = openAccountExpense();
     expense.setDueDate(LocalDate.of(2026, 8, 14));
+    ExpenseInstallment installment = singleInstallment(expense);
     when(expenseRepository.findByIdAndUserId(EXPENSE_ID, USER_A)).thenReturn(Optional.of(expense));
-    when(expenseInstallmentRepository.findByExpense_IdAndUserIdAndInstallmentNumber(
-            EXPENSE_ID, USER_A, 1))
-        .thenReturn(Optional.of(singleInstallment(expense)));
+    stubInstallments(expense, installment);
 
     assertThat(expenseService.get(new AuthenticatedUser(USER_A), EXPENSE_ID).overdue()).isFalse();
   }
@@ -709,14 +737,14 @@ class ExpenseServiceTest {
         serviceWith(Clock.fixed(Instant.parse("2026-08-14T02:00:00Z"), ZoneOffset.UTC));
     Expense expense = openAccountExpense();
     expense.setDueDate(LocalDate.of(2026, 8, 13));
+    ExpenseInstallment installment = singleInstallment(expense);
     when(expenseRepository.findByIdAndUserId(EXPENSE_ID, USER_A)).thenReturn(Optional.of(expense));
-    when(expenseInstallmentRepository.findByExpense_IdAndUserIdAndInstallmentNumber(
-            EXPENSE_ID, USER_A, 1))
-        .thenReturn(Optional.of(singleInstallment(expense)));
+    stubInstallments(expense, installment);
 
     assertThat(zoned.get(new AuthenticatedUser(USER_A), EXPENSE_ID).overdue()).isFalse();
 
     expense.setDueDate(LocalDate.of(2026, 8, 12));
+    installment.setDueDate(LocalDate.of(2026, 8, 12));
     assertThat(zoned.get(new AuthenticatedUser(USER_A), EXPENSE_ID).overdue()).isTrue();
   }
 
@@ -724,6 +752,7 @@ class ExpenseServiceTest {
     return new ExpenseService(
         expenseRepository,
         expenseInstallmentRepository,
+        adjustmentRepository,
         paymentRepository,
         accountService,
         categoryService,
@@ -738,19 +767,46 @@ class ExpenseServiceTest {
   }
 
   private void stubSaves() {
-    when(expenseRepository.save(any(Expense.class)))
+    lenient()
+        .when(expenseRepository.save(any(Expense.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
-    when(expenseInstallmentRepository.save(any(ExpenseInstallment.class)))
+    lenient()
+        .when(expenseInstallmentRepository.save(any(ExpenseInstallment.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
+    lenient()
+        .when(expenseInstallmentRepository.saveAll(any()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+  }
+
+  private void stubInstallments(Expense expense, ExpenseInstallment installment) {
+    when(expenseInstallmentRepository.findAllByExpense_IdAndUserIdOrderByInstallmentNumberAsc(
+            expense.getId(), USER_A))
+        .thenReturn(List.of(installment));
+  }
+
+  private void stubZeroAdjustments(UUID installmentId) {
+    lenient()
+        .when(
+            adjustmentRepository.sumActiveDiscountAmountByInstallmentIdAndUserId(
+                installmentId, USER_A))
+        .thenReturn(BigDecimal.ZERO);
+    lenient()
+        .when(
+            adjustmentRepository.sumActiveSurchargeAmountByInstallmentIdAndUserId(
+                installmentId, USER_A))
+        .thenReturn(BigDecimal.ZERO);
   }
 
   private void stubPayLookup(
       Expense expense, ExpenseInstallment installment, BigDecimal alreadyPaid) {
     when(expenseRepository.findByIdAndUserIdForUpdate(EXPENSE_ID, USER_A))
         .thenReturn(Optional.of(expense));
-    when(expenseInstallmentRepository.findSingleByExpenseIdAndUserIdForUpdate(EXPENSE_ID, USER_A))
+    stubInstallments(expense, installment);
+    when(expenseInstallmentRepository.findByIdAndExpense_IdAndUserIdForUpdate(
+            INSTALLMENT_ID, EXPENSE_ID, USER_A))
         .thenReturn(Optional.of(installment));
-    when(paymentRepository.sumAmountByInstallmentIdAndUserId(INSTALLMENT_ID, USER_A))
+    stubZeroAdjustments(INSTALLMENT_ID);
+    when(paymentRepository.sumActiveAmountByInstallmentIdAndUserId(INSTALLMENT_ID, USER_A))
         .thenReturn(alreadyPaid);
     if (expense.getPaymentMethod() == PaymentMethod.ACCOUNT) {
       when(accountService.requireActiveOwnedAccount(USER_A, ACCOUNT_ID))
@@ -764,7 +820,14 @@ class ExpenseServiceTest {
     when(accountService.calculateCurrentBalance(any(Account.class)))
         .thenReturn(new BigDecimal(balance));
     when(paymentRepository.save(any(Payment.class)))
-        .thenAnswer(invocation -> invocation.getArgument(0));
+        .thenAnswer(
+            invocation -> {
+              Payment payment = invocation.getArgument(0);
+              when(paymentRepository.sumActiveAmountByInstallmentIdAndUserId(
+                      INSTALLMENT_ID, USER_A))
+                  .thenReturn(alreadyPaid.add(payment.getAmount()));
+              return payment;
+            });
     stubSaves();
   }
 
@@ -775,9 +838,11 @@ class ExpenseServiceTest {
   }
 
   private ExpenseInstallment captureSavedInstallment() {
-    ArgumentCaptor<ExpenseInstallment> captor = ArgumentCaptor.forClass(ExpenseInstallment.class);
-    verify(expenseInstallmentRepository).save(captor.capture());
-    return captor.getValue();
+    ArgumentCaptor<List> captor = ArgumentCaptor.forClass(List.class);
+    verify(expenseInstallmentRepository).saveAll(captor.capture());
+    @SuppressWarnings("unchecked")
+    List<ExpenseInstallment> saved = captor.getValue();
+    return saved.getFirst();
   }
 
   private Payment captureSavedPayment() {
@@ -798,6 +863,7 @@ class ExpenseServiceTest {
         ResponsibleType.MINE,
         "texto ignorado",
         "23793381286000000000000000000000000000000000",
+        null,
         null);
   }
 
@@ -811,6 +877,7 @@ class ExpenseServiceTest {
         PaymentMethod.NONE,
         null,
         ResponsibleType.MINE,
+        null,
         null,
         null,
         null);

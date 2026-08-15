@@ -35,6 +35,7 @@ import br.com.financialcontrol.incomes.IncomeRepository;
 import br.com.financialcontrol.incomes.IncomeStatus;
 import br.com.financialcontrol.payments.Payment;
 import br.com.financialcontrol.payments.PaymentRepository;
+import br.com.financialcontrol.payments.PaymentStatus;
 import br.com.financialcontrol.transfers.Transfer;
 import br.com.financialcontrol.transfers.TransferRepository;
 import br.com.financialcontrol.users.User;
@@ -115,8 +116,11 @@ class OwnershipAndPersistenceTest {
         .isNull();
     assertThat(paymentRepository.findById(payment.getId()))
         .get()
-        .extracting(Payment::getType)
-        .isNull();
+        .satisfies(
+            saved -> {
+              assertThat(saved.getType()).isNull();
+              assertThat(saved.getStatus()).isEqualTo(PaymentStatus.ACTIVE);
+            });
   }
 
   @Test

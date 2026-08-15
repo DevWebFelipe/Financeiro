@@ -102,8 +102,9 @@ public class AccountService {
   }
 
   /**
-   * Saldo derivado: saldo inicial + receitas RECEIVED − pagamentos de despesas que não estão
-   * CANCELLED nem REFUNDED (RN216). Não consulta IncomeService/ExpenseService (evita ciclo).
+   * Saldo derivado (RN240 / RN216 emendada): saldo inicial + receitas RECEIVED − payments ACTIVE de
+   * despesas que não estão CANCELLED nem REFUNDED. Adjustments não entram. Não consulta
+   * IncomeService/ExpenseService (evita ciclo).
    */
   public BigDecimal calculateCurrentBalance(Account account) {
     BigDecimal received =
@@ -113,7 +114,7 @@ public class AccountService {
       received = BigDecimal.ZERO;
     }
     BigDecimal paid =
-        paymentRepository.sumValidExpensePaymentsByAccountIdAndUserId(
+        paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserId(
             account.getId(), account.getUserId());
     if (paid == null) {
       paid = BigDecimal.ZERO;

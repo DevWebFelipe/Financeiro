@@ -812,12 +812,16 @@ Ao criar um parcelamento, a soma das parcelas deve ser igual ao valor total da d
 
 A mesma invariável vale após edição cadastral de parcela `OPEN` (RN227). Payments, adjustments, reverse, refund e cancel **não** alteram `installment.amount` nem recalculam `expenses.total_amount`.
 
+Não existe regra de valor mínimo por parcela (`amount > 0` em cada linha). Se a divisão em centavos, com residual na primeira (RN068), produzir uma ou mais parcelas `0.00`, isso é **permitido** desde que a soma continue igual a `expenses.total_amount`. Não rejeitar o parcelamento só porque alguma parcela resultou em `0.00`.
+
 
 ## RN068 — Arredondamento
 
 Diferenças de centavos devem ser ajustadas na **primeira** parcela.
 
 A redação anterior (“última parcela absorve o residual”) está **substituída**. O exemplo canônico (RN069) permanece: R$ 100 / 3 → 33,34 + 33,33 + 33,33.
+
+Exemplo de total mínimo: R$ 0,01 / 3 → `0,01` + `0,00` + `0,00` (soma = total; sem perda de centavo).
 
 
 ## RN069 — Exemplo
@@ -1671,6 +1675,10 @@ remaining =
 
 Somente fatos `ACTIVE`. Remaining nunca negativo. Payment não pode exceder remaining.
 
+**Invariável de obligation:** `obligation` não pode ser negativa. Criar `DISCOUNT` (ou reverter `SURCHARGE`) que deixaria `obligation < 0`, ou `obligation < SUM(active payments)`, deve ser rejeitado com rollback. Não “corrigir” silenciosamente o total, o `installment.amount` nem o adjustment.
+
+**Alteração cadastral e obligation (Fase 8):** o `PUT` da despesa `OPEN` 1/1 (RN217 / RN245) e a edição cadastral de `amount` de parcela `OPEN` (RN227) continuam cadastrais — não apagam nem redistribuem adjustments. Porém, após a alteração, o `obligation` resultante **deve** permanecer `>= 0` e `>= SUM(active payments)`. Se a alteração produzir `obligation` inválida, rejeitar a operação com rollback integral. Nenhum adjustment é alterado, removido ou compensado automaticamente.
+
 
 ## RN232 — Adjustment
 
@@ -1680,9 +1688,13 @@ Adjustment altera a **obrigação**. Não movimenta saldo de conta. Não é paym
 
 Tipos oficiais iniciais: `DISCOUNT` (reduz), `SURCHARGE` (aumenta). O `amount` do adjustment é sempre positivo.
 
-Desconto por antecipação = `DISCOUNT`. Acréscimo por atraso = `SURCHARGE`. Subclassificação adicional de motivo (juros vs multa vs outros) **não** foi definida; não inventar categorias.
+Desconto por antecipação = `DISCOUNT`. Acréscimo por atraso = `SURCHARGE`. Subclassificação adicional de motivo (juros vs multa vs outros) **não** foi definida; não inventar categorias. Request HTTP: somente `type` e `amount` — sem `reason`, `subtype`, juros, multa, antecipação, `description`.
 
 Tabela física: plural snake_case, filha da parcela, com `user_id` e FK composta de ownership. O nome exato segue a convenção do projeto na migration da implementação; não criar módulo genérico `adjustments` desligado de `expenses`.
+
+**Criação (elegibilidade):** despesa **não** `CANCELLED`/`REFUNDED`; parcela **não** `CANCELLED`/`REFUNDED`. **Não** se exige parcela `OPEN`: `PARTIALLY_PAID` e `PAID` podem receber adjustment enquanto a despesa estiver ativa, desde que a invariável de `obligation` (RN231) seja respeitada. Parcela `OPEN` de despesa `REFUNDED` não recebe adjustment (RN237).
+
+HTTP: `POST` / `GET` em `/api/v1/expenses/{expenseId}/installments/{installmentId}/adjustments` — detalhe em `docs/25` seção 47.
 
 
 ## RN233 — Status do adjustment
@@ -1693,6 +1705,8 @@ Fato histórico. Não apagar nem editar o valor. Estados persistidos: `ACTIVE`, 
 ## RN234 — Payment e adjustment atômicos
 
 Quando a operação exigir adjustment + payment no mesmo ato (ex.: DISCOUNT 40 + PAYMENT 550), ambos na mesma transação. Não persistir metade.
+
+**HTTP:** não há endpoint composto nesta consolidação. Cada `POST .../adjustments` e cada pagamento são atômicos isoladamente. Endpoint composto, se necessário no futuro, exige decisão explícita.
 
 
 ## RN235 — Status persistido da parcela e da despesa
@@ -1741,11 +1755,19 @@ A menção documental anterior a reverse como “fase futura” está **SUPERADA
 
 ## RN239 — Reverse de adjustment
 
-`ACTIVE` → `REVERSED`. Já `REVERSED`: rejeitar. Não apaga o adjustment nem altera o valor original; o histórico permanece. Remove o efeito da obrigação. Atualizar status da parcela e da despesa quando necessário.
+Endpoint:
+
+```text
+POST /api/v1/expenses/{expenseId}/installments/{installmentId}/adjustments/{adjustmentId}/reverse
+```
+
+Body: vazio. Response: fato com `status = REVERSED` (mesmo shape da criação; sem `reversedAt` — campo inexistente no modelo).
+
+`ACTIVE` → `REVERSED`. Já `REVERSED`: rejeitar. Não apaga o adjustment nem altera `amount`, `type` ou `createdAt`; o histórico permanece. Remove o efeito da obrigação. Atualizar status da parcela e da despesa quando necessário. Não movimenta saldo de conta.
 
 Mesma filosofia de RN238: permitido somente enquanto a despesa estiver ativa. **Proibido** se a despesa estiver `CANCELLED` ou `REFUNDED`.
 
-Endpoint de adjustment: necessidade contratual; path/body **não** foram nomeados nesta consolidação — não inventar convenção.
+Ownership: adjustment do usuário e da parcela/despesa do path; mismatch → **404** (sem distinguir). A consulta do histórico (`GET .../adjustments`) permanece permitida após terminal da despesa.
 
 
 ## RN240 — Saldo da conta (emenda da RN216)
@@ -1760,6 +1782,8 @@ saldo atual =
 ```
 
 Somente payments `ACTIVE` movimentam saldo. `REVERSED` não movimenta. Adjustments não movimentam. Refund remove o efeito dos payments daquela despesa. Sem `current_balance` persistido em expense/installment.
+
+**Leitura do saldo (`GET /accounts/{id}/balance`):** é cálculo derivado sob demanda. O contrato **não** exige `SELECT FOR UPDATE` da conta apenas para essa leitura. A proteção contra saldo negativo (RN076A) e a concorrência de escrita (RN244) aplicam-se às **operações** que criam/reverterem facts financeiros (pay, reverse, etc.), com locks nas entidades financeiras envolvidas (despesa/parcela/payment), no padrão da Fase 7. Não introduzir lock explícito de conta só para GET de saldo sem decisão arquitetural futura.
 
 
 ## RN241 — Overdue da parcela
@@ -1792,6 +1816,8 @@ Rejeitar `CREDIT_CARD` como na Fase 7 (RN220). Não criar faturas, não preenche
 
 Operações sobre a mesma parcela são transacionais. Dois pagamentos concorrentes não ultrapassam o remaining. Proteger consistência entre payments, adjustments, status da parcela e da despesa. Proteger a conta contra saldo negativo (RN076A). Não enfraquecer locking para “passar teste”.
 
+Locks previstos nas operações de escrita sobre a parcela: despesa → parcela → consultar fatos ACTIVE → persistir. Em reverse de adjustment: despesa → parcela → adjustment → validar `ACTIVE` → persistir `REVERSED`. O `GET` de saldo da conta permanece leitura derivada sem lock de conta (RN240). Race teórica entre pagamentos de **despesas diferentes** na mesma conta sem lock de conta é a mesma ressalva não bloqueante já registrada na Fase 7 (`docs/28` §46.1); não reabre decisão nesta fase.
+
 
 ## RN245 — `total_amount` após a criação
 
@@ -1802,6 +1828,7 @@ Exceção cadastral já existente (não é fato financeiro):
 - enquanto a despesa estiver `OPEN` **e** for 1/1, o `PUT` da despesa (RN217) pode alterar o total (e a parcela única, para a soma continuar igual);
 - N>1: quantidade imutável; sem redistribuição automática; alteração de `amount` de parcela segue RN227 (`SUM = total_amount`).
 
+Quando existirem adjustments `ACTIVE` na parcela 1/1, o `PUT` que altera o total deve respeitar a invariável de `obligation` (RN231): rejeitar se o total novo produzir `obligation < 0` (ou `obligation < SUM(active payments)`). Não alterar, apagar nem redistribuir adjustments para “fazer fechar”.
 
 # 20. Metas
 

@@ -250,8 +250,26 @@ Implementado: despesas simples `ACCOUNT` e `NONE`, sem cartão e sem parcelament
 | `GET` | `/api/v1/expenses/{id}/payments` | Bearer | `200` array; histórico permanece após `REFUNDED` |
 | `GET` | `/api/v1/payments/{id}` | Bearer | `200`; `404` se não for do usuário |
 
-`CREDIT_CARD`, faturas e valores oficiais de `payments.type` ficam para fases posteriores. Parcelas N>1, reverse de payment e adjustments estão no **contrato da Fase 8** (não implementados). Detalhes: `docs/25-api.md`.
+`CREDIT_CARD`, faturas e valores oficiais de `payments.type` ficam para fases posteriores. Parcelas N>1, reverse de payment e adjustments estão **implementados na Fase 8**. Detalhes: `docs/25-api.md` §47.
 
+---
+
+## Parcelamento e adjustments (Fase 8)
+
+Implementado: despesas parceladas (`installmentCount`), pagamento por parcela, `payments.status` (`ACTIVE` / `REVERSED`), reverse de payment, adjustments `DISCOUNT` / `SURCHARGE` (create/list/reverse), refund misto, overdue N>1, filtro de listagem pelas datas das parcelas.
+
+| Método | Caminho | Autenticação | Resposta |
+|--------|---------|--------------|----------|
+| `GET` | `/api/v1/expenses/{id}/installments` | Bearer | `200` array |
+| `GET` | `/api/v1/expenses/{expenseId}/installments/{installmentId}` | Bearer | `200` |
+| `PUT` | `/api/v1/expenses/{expenseId}/installments/{installmentId}` | Bearer | `200`; somente parcela `OPEN` |
+| `POST` | `/api/v1/expenses/{expenseId}/installments/{installmentId}/payments` | Bearer | `200` |
+| `POST` | `/api/v1/expenses/{expenseId}/installments/{installmentId}/adjustments` | Bearer | `201` |
+| `GET` | `/api/v1/expenses/{expenseId}/installments/{installmentId}/adjustments` | Bearer | `200` array (ACTIVE + REVERSED) |
+| `POST` | `.../adjustments/{adjustmentId}/reverse` | Bearer | `200` |
+| `POST` | `/api/v1/payments/{id}/reverse` | Bearer | `200` |
+
+Fora da Fase 8: cartão, fatura, rateio, semântica de `payments.type`, JSON aninhado completo da despesa N>1, endpoint composto payment+adjustment.
 ---
 
 ## Regras financeiras (resumo)
@@ -265,7 +283,7 @@ Implementado: despesas simples `ACCOUNT` e `NONE`, sem cartão e sem parcelament
 | Vencida | Derivada (`OVERDUE` não persistido) |
 | Cartão | `holderName` textual; compra não reduz saldo bancário; respeita limite disponível; compra no dia do fechamento vai para a próxima fatura; dia inexistente no mês → último dia do mês |
 | Fatura | `OPEN`, `CLOSED`, `PARTIALLY_PAID`, `PAID`; pagamento não cria despesa nova |
-| Parcelas | Soma = total; residual na **primeira** parcela; quantidade imutável após criação; vencimentos mensais (dia-base); edição somente parcela `OPEN` (RN227); pagamento por parcela; `payments.status` ACTIVE/REVERSED; adjustments DISCOUNT/SURCHARGE; reverse na Fase 8; cartão e relatórios de apresentação fora |
+| Parcelas | Soma = total; residual na **primeira** parcela; quantidade imutável após criação; vencimentos mensais (dia-base); edição somente parcela `OPEN` (RN227); pagamento por parcela; `payments.status` ACTIVE/REVERSED; adjustments DISCOUNT/SURCHARGE; reverse de payment/adjustment; cartão e relatórios de apresentação fora |
 | Transferência | Atômica; não é receita/despesa; sem saldo insuficiente |
 | Saldo | Derivado de movimentações, a partir do saldo inicial; sem `current_balance` como fonte de verdade |
 | Receita | `EXPECTED` / `RECEIVED` / `CANCELLED`; cancelar inutiliza (`EXPECTED` → `CANCELLED`); estornar desfaz recebimento e mantém ativa (`RECEIVED` → `EXPECTED`); limpa `account_id` e `received_date`; pode deixar saldo negativo; sem `REVERSED`; sem responsável na Fase 6 (`responsible_type` nullable) |
@@ -444,10 +462,11 @@ Fase 4 — Contas — CONCLUÍDA
 Fase 5 — Categorias — CONCLUÍDA
 Fase 6 — Receitas — CONCLUÍDA
 Fase 7 — Despesas — CONCLUÍDA
+Fase 8 — Parcelamento de despesas — CONCLUÍDA
 ```
 
-Estado atual do backend (Fases 1–7): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas e despesas simples.
+Estado atual do backend (Fases 1–8): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas, despesas e parcelamento (Fase 8).
 
-Próxima fase: **Fase 8 — Parcelamento de despesas** (contrato documental fechado; **não implementada**). Não implementar sem autorização explícita após auditoria do contrato.
+Próxima fase: **Fase 9 — Cartões** (**não implementar** sem autorização explícita).
 
-Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend de autenticação, cartão/fatura nem a implementação da Fase 8 sem autorização.
+Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend de autenticação nem cartão/fatura sem autorização. Itens deferidos da Fase 8 (`payments.type`, parcela em fatura, rateio, JSON aninhado N>1, endpoint composto) permanecem fora do escopo.

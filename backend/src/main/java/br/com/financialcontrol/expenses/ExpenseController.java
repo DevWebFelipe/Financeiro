@@ -1,10 +1,14 @@
 package br.com.financialcontrol.expenses;
 
 import br.com.financialcontrol.config.OpenApiConfig;
+import br.com.financialcontrol.expenses.dto.AdjustmentResponse;
+import br.com.financialcontrol.expenses.dto.CreateAdjustmentRequest;
 import br.com.financialcontrol.expenses.dto.CreateExpenseRequest;
+import br.com.financialcontrol.expenses.dto.ExpenseInstallmentResponse;
 import br.com.financialcontrol.expenses.dto.ExpensePageResponse;
 import br.com.financialcontrol.expenses.dto.ExpenseResponse;
 import br.com.financialcontrol.expenses.dto.PayExpenseRequest;
+import br.com.financialcontrol.expenses.dto.UpdateExpenseInstallmentRequest;
 import br.com.financialcontrol.expenses.dto.UpdateExpenseRequest;
 import br.com.financialcontrol.payments.dto.PaymentResponse;
 import br.com.financialcontrol.security.AuthenticatedUser;
@@ -112,8 +116,116 @@ public class ExpenseController {
     return expenseService.update(authenticatedUser, id, request);
   }
 
+  @GetMapping("/{id}/installments")
+  @Operation(summary = "Listar parcelas da despesa")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Parcelas da despesa"),
+    @ApiResponse(responseCode = "401", description = "Não autenticado"),
+    @ApiResponse(responseCode = "404", description = "Despesa não encontrada")
+  })
+  public List<ExpenseInstallmentResponse> listInstallments(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser, @PathVariable UUID id) {
+    return expenseService.listInstallments(authenticatedUser, id);
+  }
+
+  @GetMapping("/{expenseId}/installments/{installmentId}")
+  @Operation(summary = "Consultar parcela da despesa")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Parcela encontrada"),
+    @ApiResponse(responseCode = "401", description = "Não autenticado"),
+    @ApiResponse(responseCode = "404", description = "Despesa ou parcela não encontrada")
+  })
+  public ExpenseInstallmentResponse getInstallment(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+      @PathVariable UUID expenseId,
+      @PathVariable UUID installmentId) {
+    return expenseService.getInstallment(authenticatedUser, expenseId, installmentId);
+  }
+
+  @PutMapping("/{expenseId}/installments/{installmentId}")
+  @Operation(summary = "Editar parcela aberta")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Parcela atualizada"),
+    @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+    @ApiResponse(responseCode = "401", description = "Não autenticado"),
+    @ApiResponse(responseCode = "404", description = "Despesa ou parcela não encontrada")
+  })
+  public ExpenseInstallmentResponse updateInstallment(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+      @PathVariable UUID expenseId,
+      @PathVariable UUID installmentId,
+      @Valid @RequestBody UpdateExpenseInstallmentRequest request) {
+    return expenseService.updateInstallment(authenticatedUser, expenseId, installmentId, request);
+  }
+
+  @PostMapping("/{expenseId}/installments/{installmentId}/payments")
+  @Operation(summary = "Pagar parcela identificada")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Pagamento registrado"),
+    @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+    @ApiResponse(responseCode = "401", description = "Não autenticado"),
+    @ApiResponse(responseCode = "404", description = "Despesa ou parcela não encontrada")
+  })
+  public ExpenseResponse payInstallment(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+      @PathVariable UUID expenseId,
+      @PathVariable UUID installmentId,
+      @Valid @RequestBody PayExpenseRequest request) {
+    return expenseService.payInstallment(authenticatedUser, expenseId, installmentId, request);
+  }
+
+  @PostMapping("/{expenseId}/installments/{installmentId}/adjustments")
+  @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary = "Criar adjustment da parcela")
+  @ApiResponses({
+    @ApiResponse(responseCode = "201", description = "Adjustment criado"),
+    @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+    @ApiResponse(responseCode = "401", description = "Não autenticado"),
+    @ApiResponse(responseCode = "404", description = "Despesa ou parcela não encontrada")
+  })
+  public AdjustmentResponse createAdjustment(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+      @PathVariable UUID expenseId,
+      @PathVariable UUID installmentId,
+      @Valid @RequestBody CreateAdjustmentRequest request) {
+    return expenseService.createAdjustment(authenticatedUser, expenseId, installmentId, request);
+  }
+
+  @GetMapping("/{expenseId}/installments/{installmentId}/adjustments")
+  @Operation(summary = "Listar adjustments da parcela")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Histórico de adjustments"),
+    @ApiResponse(responseCode = "401", description = "Não autenticado"),
+    @ApiResponse(responseCode = "404", description = "Despesa ou parcela não encontrada")
+  })
+  public List<AdjustmentResponse> listAdjustments(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+      @PathVariable UUID expenseId,
+      @PathVariable UUID installmentId) {
+    return expenseService.listAdjustments(authenticatedUser, expenseId, installmentId);
+  }
+
+  @PostMapping("/{expenseId}/installments/{installmentId}/adjustments/{adjustmentId}/reverse")
+  @Operation(summary = "Estornar adjustment ACTIVE")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Adjustment estornado"),
+    @ApiResponse(responseCode = "400", description = "Transição inválida"),
+    @ApiResponse(responseCode = "401", description = "Não autenticado"),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Despesa, parcela ou adjustment não encontrado")
+  })
+  public AdjustmentResponse reverseAdjustment(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+      @PathVariable UUID expenseId,
+      @PathVariable UUID installmentId,
+      @PathVariable UUID adjustmentId) {
+    return expenseService.reverseAdjustment(
+        authenticatedUser, expenseId, installmentId, adjustmentId);
+  }
+
   @PostMapping("/{id}/pay")
-  @Operation(summary = "Pagar despesa")
+  @Operation(summary = "Pagar despesa 1/1")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Pagamento registrado"),
     @ApiResponse(responseCode = "400", description = "Dados inválidos"),

@@ -1035,6 +1035,8 @@ Resultado:
 
 Nunca perder centavos no parcelamento.
 
+Não há exigência contratual de `amount > 0` em **cada** parcela. Parcelas `0.00` podem resultar da divisão em centavos com residual na primeira (ex.: `0,01` / 3 → `0,01` + `0,00` + `0,00`), desde que `SUM(amount) = expenses.total_amount`.
+
 
 # 77. Regra
 
@@ -1056,6 +1058,8 @@ Status persistido: `ACTIVE`, `REVERSED`.
 Não persistir totais derivados de discount/surcharge/remaining. Fórmulas: RN231.
 
 Tabela física e FKs compostas na migration da implementação (RN232, RN242). Sem `ON DELETE CASCADE`. Sem usar `payments` negativos.
+
+Modelo físico: sem `reversedAt` / subclassificação. Contrato HTTP (create/list/reverse): `docs/25` seção 47.
 
 
 # 78. Pagamento

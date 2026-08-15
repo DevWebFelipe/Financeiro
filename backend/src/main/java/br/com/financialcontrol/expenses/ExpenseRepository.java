@@ -28,8 +28,16 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
         AND (:accountId IS NULL OR e.account.id = :accountId)
         AND (:responsibleType IS NULL OR e.responsibleType = :responsibleType)
         AND (:paymentMethod IS NULL OR e.paymentMethod = :paymentMethod)
-        AND (CAST(:startDate AS LocalDate) IS NULL OR e.dueDate >= :startDate)
-        AND (CAST(:endDate AS LocalDate) IS NULL OR e.dueDate <= :endDate)
+        AND (
+              (CAST(:startDate AS LocalDate) IS NULL AND CAST(:endDate AS LocalDate) IS NULL)
+           OR EXISTS (
+                SELECT 1 FROM ExpenseInstallment i
+                WHERE i.expense = e
+                  AND i.userId = :userId
+                  AND (CAST(:startDate AS LocalDate) IS NULL OR i.dueDate >= :startDate)
+                  AND (CAST(:endDate AS LocalDate) IS NULL OR i.dueDate <= :endDate)
+              )
+            )
       """)
   Page<Expense> searchByUser(
       @Param("userId") UUID userId,

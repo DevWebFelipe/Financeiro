@@ -1,6 +1,7 @@
 package br.com.financialcontrol.payments.dto;
 
 import br.com.financialcontrol.payments.Payment;
+import br.com.financialcontrol.payments.PaymentStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -13,6 +14,7 @@ public record PaymentResponse(
     UUID accountId,
     BigDecimal amount,
     LocalDate paymentDate,
+    PaymentStatus status,
     String notes,
     Instant createdAt) {
 
@@ -24,6 +26,7 @@ public record PaymentResponse(
         payment.getAccount().getId(),
         payment.getAmount(),
         payment.getPaymentDate(),
+        payment.getStatus(),
         payment.getNotes(),
         payment.getCreatedAt());
   }

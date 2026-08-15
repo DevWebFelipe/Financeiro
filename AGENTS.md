@@ -353,7 +353,7 @@ Contrato da Fase 7 (`ACCOUNT` e `NONE` apenas) — implementado:
 
 A RN210 da Fase 7 (pagamento `ACCOUNT` obrigatoriamente na mesma conta da despesa) foi **SUPERADA** pelo contrato da Fase 8: `expenses.account_id` é preferência; a conta efetivamente movimentada é `payments.account_id` e pode diferir. Detalhe: `docs/24` RN228.
 
-Contrato da Fase 8 (documentado; **não implementado** sem autorização): despesas parceladas, pagamento por parcela, `payments.status` (`ACTIVE` / `REVERSED`), adjustments (`DISCOUNT` / `SURCHARGE`), reverse de payment e de adjustment, refund misto. Cartão, fatura e relatórios de apresentação permanecem fora. Detalhe: `docs/24` seção 19.2.
+Contrato da Fase 8 (**implementado**): despesas parceladas, pagamento por parcela, `payments.status` (`ACTIVE` / `REVERSED`), adjustments (`DISCOUNT` / `SURCHARGE`) com HTTP create/list/reverse (`docs/25` §47), reverse de payment e de adjustment, refund misto. Cartão, fatura e relatórios de apresentação permanecem fora. Detalhe: `docs/24` seção 19.2.
 
 ### 11.3 Cancelamento e estorno
 
@@ -364,7 +364,7 @@ Sem exclusão física. Em despesas:
 - cancelar: somente `OPEN` → `CANCELLED` (`POST /expenses/{id}/cancel`); sem impacto de saldo; `PARTIALLY_PAID` e `PAID` **não** se cancelam (usar refund);
 - estornar a despesa: `PARTIALLY_PAID` ou `PAID` → `REFUNDED` (`POST /expenses/{id}/refund`); **não** volta a `OPEN`; **não** apaga `payments`; o saldo deixa de subtrair esses pagamentos; refund é da despesa inteira (Fase 8: parcelas com payment ativo → `REFUNDED`; sem payment → `OPEN` somente para consulta);
 - reverse de payment: `POST /api/v1/payments/{id}/reverse` entra na **Fase 8** (`ACTIVE` → `REVERSED`); não apaga o fato; não é permitido se a despesa estiver `REFUNDED` ou `CANCELLED`. A menção anterior a “fase futura” está **SUPERADA**;
-- reverse de adjustment: mesma filosofia (RN239) — `ACTIVE` → `REVERSED`; não apaga o fato; proibido se a despesa estiver `CANCELLED` ou `REFUNDED`;
+- reverse de adjustment: `POST /api/v1/expenses/{expenseId}/installments/{installmentId}/adjustments/{adjustmentId}/reverse` (RN239) — `ACTIVE` → `REVERSED`; não apaga o fato; proibido se a despesa estiver `CANCELLED` ou `REFUNDED`; create/list em `.../installments/{installmentId}/adjustments` (`docs/25` §47);
 - `CANCELLED` / `REFUNDED` não impactam saldo, projeções, totais, gráficos nem contas a pagar.
 
 Não copiar o estorno de receita (`RECEIVED` → `EXPECTED`) para despesa. Reverse de payment **não** usa `payments.type` e **não** replica `Income.reverse()`.
@@ -376,7 +376,7 @@ Em receitas (ver 11.1):
 
 Receitas não possuem `REFUNDED` nem `REVERSED`.
 
-Não utilizar `DELETE` HTTP como operação padrão para dados financeiros. Preferir ações explícitas (`POST /expenses/{id}/pay`, `POST /expenses/{id}/cancel`, `POST /expenses/{id}/refund`, `POST /incomes/{id}/receive`, `POST /incomes/{id}/reverse`, `POST /incomes/{id}/cancel`, `POST /payments/{id}/reverse` na Fase 8). `DELETE` só pode existir para recurso não financeiro com regra explícita.
+Não utilizar `DELETE` HTTP como operação padrão para dados financeiros. Preferir ações explícitas (`POST /expenses/{id}/pay`, `POST /expenses/{id}/cancel`, `POST /expenses/{id}/refund`, `POST /incomes/{id}/receive`, `POST /incomes/{id}/reverse`, `POST /incomes/{id}/cancel`, `POST /payments/{id}/reverse`, `POST .../adjustments/{id}/reverse` na Fase 8). `DELETE` só pode existir para recurso não financeiro com regra explícita.
 
 ### 11.4 Compra no cartão
 
@@ -411,6 +411,8 @@ Não usar: `CHECKING`, `SAVINGS`, `PERSONAL_WALLET`, `OTHER`.
 Fonte de verdade: movimentações. Saldo derivado delas, a partir do saldo inicial.
 
 Conceitualmente: saldo inicial + receitas recebidas − despesas efetivadas + transferências de entrada − transferências de saída + ajustes de saldo.
+
+A partir da Fase 8 (RN240): o subtraendo de despesas usa somente payments `ACTIVE` de despesas não `CANCELLED`/`REFUNDED`. `GET /accounts/{id}/balance` é leitura derivada; o contrato não exige lock pessimista da conta só para essa leitura.
 
 Cache/`current_balance` só se mantido transacionalmente consistente com as movimentações — nunca duas fontes independentes.
 
@@ -480,7 +482,7 @@ Gerar automaticamente todas as parcelas futuras.
 
 Parcelas podem ter valores diferentes; a soma deve ser exatamente `expenses.total_amount` na criação e após edição cadastral de parcela `OPEN`.
 
-Arredondamento determinístico; residual de centavos na **primeira** parcela. Sem perda de centavos.
+Arredondamento determinístico; residual de centavos na **primeira** parcela. Sem perda de centavos. Não há mínimo contratual por parcela: `0.00` é permitido se for consequência inevitável da divisão (ex.: `0,01` / 3).
 
 `expenses.due_date` é o vencimento da primeira parcela. Demais vencimentos: mensais, dia-base da `dueDate` original; mês sem aquele dia → último dia daquele mês (sem “carregar” o dia ajustado).
 
@@ -488,7 +490,7 @@ Pagamento de N>1 é **por parcela**. `POST /expenses/{id}/pay` permanece para 1/
 
 Edição cadastral de parcela `OPEN`: `amount` e `due_date`; alterar `amount` exige que a soma continue igual ao total; sem redistribuição automática.
 
-Payment, adjustment, reverse, refund e cancel **não** alteram `expenses.total_amount`. Exceção cadastral (não é fato financeiro): enquanto a despesa estiver `OPEN` e for 1/1, o `PUT` da despesa (RN217) pode alterar o total. N>1: quantidade imutável; sem redistribuição automática; alteração de `amount` de parcela segue RN227.
+Payment, adjustment, reverse, refund e cancel **não** alteram `expenses.total_amount`. Exceção cadastral (não é fato financeiro): enquanto a despesa estiver `OPEN` e for 1/1, o `PUT` da despesa (RN217) pode alterar o total — desde que o `obligation` resultante permaneça válido (RN231 / RN245). N>1: quantidade imutável; sem redistribuição automática; alteração de `amount` de parcela segue RN227.
 
 Em compra no cartão (Fases 9+), cada parcela referencia a fatura do respectivo ciclo (`expense_installments.invoice_id`). A despesa original não possui `invoice_id`. Cartão permanece **fora da Fase 8**.
 

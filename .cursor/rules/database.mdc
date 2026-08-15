@@ -108,9 +108,13 @@ Same-user ownership is enforced with composite FKs `(referenced_id, user_id) →
 
 Do not persist invoice `total_amount`, `paid_amount`, or `remaining_amount`. They are derived.
 
-Do not add `payments.type` enum, CHECK, or a silent omit/keep of that column until `AGENTS.md` §28.3 / `docs/23` §269.1 is decided.
+Do not add `payments.type` enum, CHECK, or a silent omit/keep of that column until `AGENTS.md` §28.3 / `docs/23` §269.1 is decided. Do **not** store ACTIVE/REVERSED in `type`; Phase 8 uses `payments.status`.
 
 Do not add per-installment “invoice paid amount” columns to anticipate §269.3.
+
+Do not persist `paid_amount`, `remaining_amount`, `discount_total`, `surcharge_total`, or `early_payment_savings` on expenses/installments.
+
+`UNIQUE (expense_id, installment_number)` is required for Phase 8 and is present in **V17**. Do not alter V8–V10.
 
 If a column, CHECK, enum, or FK depends on an open business decision, do not create that migration.
 

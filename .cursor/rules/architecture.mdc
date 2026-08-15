@@ -20,7 +20,7 @@ If this file conflicts with a higher document, follow the higher document and re
 
 If a technical decision is not defined above, stop. Do not invent it silently.
 
-Business gaps: `AGENTS.md` seção 28. Official blockers: `payments.type`; edição de parcela futura × `expenses.total_amount`; pagamento parcial de fatura × status/rateio das parcelas. Details: `docs/23-modelo-de-dados.md` seção 269.
+Business gaps: `AGENTS.md` seção 28. Official blockers: `payments.type`; edição de parcela **já em fatura** (`docs/23` §269.2 deferido); pagamento parcial de fatura × status/rateio das parcelas. Phase 8 installment edit for ACCOUNT/NONE is closed in `docs/24` §19.2. Details: `docs/23-modelo-de-dados.md` seção 269.
 
 ---
 

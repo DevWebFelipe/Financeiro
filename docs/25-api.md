@@ -436,7 +436,7 @@ Response:
 }
 ```
 
-Na Fase 4 o saldo derivado é igual ao `initialBalance`. A partir da Fase 6, receitas `RECEIVED` passam a somar. A partir da Fase 7, pagamentos de despesas cuja despesa **não** está `CANCELLED` nem `REFUNDED` passam a subtrair (RN216). Transferências e ajustes entram nas fases dos respectivos domínios. Não existe coluna `current_balance`.
+Na Fase 4 o saldo derivado é igual ao `initialBalance`. A partir da Fase 6, receitas `RECEIVED` passam a somar. A partir da Fase 7, pagamentos de despesas cuja despesa **não** está `CANCELLED` nem `REFUNDED` passam a subtrair (RN216). A Fase 8 **emenda** a fórmula (RN240): somente payments **`ACTIVE`** entram no subtraendo. Transferências e ajustes entram nas fases dos respectivos domínios. Não existe coluna `current_balance`. Este endpoint é **leitura derivada**; não exige lock pessimista da conta.
 
 
 # 20. Extrato da conta
@@ -839,7 +839,7 @@ Contrato da Fase 7. Não implementar cartão, fatura, ciclo nem parcelamento fun
 
 A Fase 7 opera despesas simples (`ACCOUNT` e `NONE`). Internamente toda despesa possui parcela 1/1 (`expense_installments`); `payments.installment_id` continua obrigatório. `installmentCount` é propriedade oficialmente aceita na criação (omitido = 1). O consumidor da Fase 7 **não** informa `installmentId` nas operações desta fase. A geração N>1 é o contrato da Fase 8 (seção 47).
 
-`CREDIT_CARD` está fora do contrato operacional da Fase 7 e da Fase 8. O contrato da Fase 8 (parcelas N>1, pagamento por parcela, reverse, adjustments) está na seção 47; **não está implementado**.
+`CREDIT_CARD` está fora do contrato operacional da Fase 7 e da Fase 8. O contrato da Fase 8 (parcelas N>1, pagamento por parcela, reverse, adjustments) está na seção 47; os endpoints HTTP da tabela da seção 47 — incluindo adjustments — estão **implementados**.
 
 Todos os endpoints de despesa e pagamento exigem JWT Bearer. Sem token, token inválido, expirado ou usuário desativado: **401** (`UNAUTHORIZED`). Proprietário = usuário autenticado. Recurso de outro usuário ou UUID inexistente: **404** (`NOT_FOUND`). UUID inválido no path: **400**. Propriedades JSON desconhecidas — inclusive `userId`, `id`, `status`, `overdue`, `installmentId`, `createdAt`, `updatedAt`, `creditCardId`, `installments` — são rejeitadas (**400**, `VALIDATION_ERROR`). `installmentCount` **não** é propriedade desconhecida: é propriedade oficialmente aceita na criação (omitido = 1; se informado, deve ser `> 0`). `FAIL_ON_UNKNOWN_PROPERTIES` continua rejeitando o que não pertence ao contrato.
 
@@ -1056,7 +1056,7 @@ Endpoint:
 
 GET /api/v1/expenses/{id}/payments
 
-Lista os pagamentos da despesa (array; inclui os originais após `REFUNDED`). Não inclui `type`.
+Lista os pagamentos da despesa (array; inclui os originais após `REFUNDED` e após reverse). Não inclui `type`. Inclui `status` (`ACTIVE` / `REVERSED`) — estado do payment na Fase 8 (`payments.status`; não usar `payments.type`).
 
 
 Item:
@@ -1069,11 +1069,13 @@ Item:
   "accountId": "...",
   "amount": 200.00,
   "paymentDate": "2026-08-10",
+  "status": "ACTIVE",
   "notes": null,
   "createdAt": "..."
 }
 ```
 
+`status` valores oficiais: `ACTIVE`, `REVERSED`. Payment novo: `ACTIVE`. Após `POST /api/v1/payments/{id}/reverse`: `REVERSED`. O fato permanece no histórico.
 
 # 46. Consultar pagamento
 
@@ -1086,13 +1088,13 @@ Isolamento: **404** se o pagamento não existir ou não for do usuário autentic
 
 # 47. Contrato da Fase 8 — Parcelas, payments, adjustments e reverse
 
-**Não implementado.** A Fase 7 permanece o comportamento em código até a autorização de implementação.
+**Implementação concluída** para parcelas, pagamento por parcela, reverse de payment e adjustments (domínio + HTTP). O contrato HTTP de adjustment está nesta seção. A Fase 7 permanece compatível para 1/1 (`POST /expenses/{id}/pay`).
 
-O campo `installmentId` singular na response da despesa **não** representa uma despesa N>1. A response detalhada deverá suportar as parcelas quando o contrato HTTP da Fase 8 for implementado. Não inventar o JSON completo nesta consolidação além do que está abaixo.
+O campo `installmentId` singular na response da despesa **não** representa uma despesa N>1. A consulta das parcelas é pelos endpoints `GET .../installments` (lista) e `GET .../installments/{installmentId}` (detalhe da parcela, com `amount`, `remainingAmount` derivado, `dueDate`, `status`, `overdue`). O JSON aninhado completo da despesa N>1 (array de parcelas + payments/adjustments embutidos no GET da despesa) **não** foi fechado nesta consolidação — não inventar schema além do já previsto pelos endpoints de parcela e de adjustment.
 
 `installmentCount` na criação é propriedade **oficialmente aceita** (não é propriedade desconhecida): se omitido, `1`; se informado, deve ser `> 0`. Propriedades realmente desconhecidas continuam **400** (`FAIL_ON_UNKNOWN_PROPERTIES`). Propriedade JSON `installments` como array de criação manual pelo cliente **não** é o modo oficial (o backend gera as parcelas) e permanece rejeitada.
 
-Listagem `GET /api/v1/expenses`: `startDate`/`endDate` consideram as datas das parcelas. A despesa entra no intervalo quando pelo menos uma parcela tem `due_date` no intervalo. Em N=1 o efeito é equivalente ao `dueDate` atual.
+Listagem `GET /api/v1/expenses`: `startDate`/`endDate` consideram as datas das parcelas (`expense_installments.due_date`). A despesa entra no intervalo quando pelo menos uma parcela tem `due_date` no intervalo. Em N=1 o efeito é equivalente ao `dueDate` atual.
 
 ## Endpoints previstos
 
@@ -1102,20 +1104,142 @@ Listagem `GET /api/v1/expenses`: `startDate`/`endDate` consideram as datas das p
 | `GET` | `/api/v1/expenses/{expenseId}/installments/{installmentId}` | Consultar parcela | Bearer |
 | `PUT` | `/api/v1/expenses/{expenseId}/installments/{installmentId}` | Edição cadastral `OPEN` (`amount`, `due_date`) | Bearer |
 | `POST` | `/api/v1/expenses/{expenseId}/installments/{installmentId}/payments` | Pagar a parcela identificada | Bearer |
-| `POST` | `/api/v1/payments/{id}/reverse` | `ACTIVE` → `REVERSED` | Bearer |
+| `POST` | `/api/v1/expenses/{expenseId}/installments/{installmentId}/adjustments` | Criar adjustment (`DISCOUNT` / `SURCHARGE`) | Bearer |
+| `GET` | `/api/v1/expenses/{expenseId}/installments/{installmentId}/adjustments` | Histórico de adjustments da parcela | Bearer |
+| `POST` | `/api/v1/expenses/{expenseId}/installments/{installmentId}/adjustments/{adjustmentId}/reverse` | `ACTIVE` → `REVERSED` | Bearer |
+| `POST` | `/api/v1/payments/{id}/reverse` | Payment `ACTIVE` → `REVERSED` | Bearer |
 | `POST` | `/api/v1/expenses/{id}/pay` | **Somente 1/1** (legado Fase 7) | Bearer |
 
 Para N>1, `POST /expenses/{id}/pay` **não** escolhe parcela implicitamente. A API deve exigir a identificação da parcela.
 
-Endpoints de **adjustment** (criar `DISCOUNT`/`SURCHARGE` `ACTIVE`; reverter `ACTIVE` → `REVERSED`) são necessários pelo modelo (RN232–RN234, RN239). Path e body **não** foram nomeados nesta consolidação — não inventar convenção. Quando payment e adjustment ocorrerem no mesmo ato, a transação é atômica (RN234).
+## Adjustments — contrato HTTP (fechado)
+
+Adjustment pertence à **parcela** (`expense_installments` 1:N), não à despesa como recurso raiz. Paths aninhados sob a parcela seguem o mesmo padrão de `.../installments/{installmentId}/payments`. Reverse de payment permanece em `/api/v1/payments/{id}/reverse` porque `payments` já é recurso de primeiro nível; reverse de adjustment usa a cadeia aninhada para validar `expenseId` + `installmentId` + `adjustmentId` (ownership composto), análogo ao `PUT` da parcela.
+
+Não existem campos oficiais de subclassificação (`reason`, `subtype`, juros, multa, antecipação, etc.) — RN232.
+
+### Criar adjustment
+
+```text
+POST /api/v1/expenses/{expenseId}/installments/{installmentId}/adjustments
+```
+
+Auth: Bearer. Response **201 Created**.
+
+Request:
+
+```json
+{
+  "type": "DISCOUNT",
+  "amount": 10.00
+}
+```
+
+- `type` obrigatório: somente `DISCOUNT` ou `SURCHARGE`.
+- `amount` obrigatório: `> 0` (escala monetária do projeto).
+- Propriedades desconhecidas: **400** `VALIDATION_ERROR`.
+- Não enviar: `userId`, `id`, `status`, `createdAt`, `expenseId`, `installmentId`, `reason`, subclassificações.
+
+Response (fato persistido):
+
+```json
+{
+  "id": "...",
+  "expenseId": "...",
+  "installmentId": "...",
+  "type": "DISCOUNT",
+  "amount": 10.00,
+  "status": "ACTIVE",
+  "createdAt": "..."
+}
+```
+
+Não expor `userId`. Não existe `reversedAt` no modelo físico — não inventar. Novo fato: `status = ACTIVE`.
+
+Regras:
+
+- ownership: usuário autenticado; `expenseId` / `installmentId` / cadeia composta; cross-user ou inexistente → **404** `NOT_FOUND` (sem distinguir);
+- despesa **não** `CANCELLED` nem `REFUNDED`;
+- parcela **não** `CANCELLED` nem `REFUNDED` (RN237: parcela `OPEN` de despesa `REFUNDED` não recebe adjustment);
+- **não** se exige parcela `OPEN` para criar adjustment: `PARTIALLY_PAID` e `PAID` podem receber `DISCOUNT`/`SURCHARGE` enquanto a despesa estiver ativa, desde que a invariável de `obligation` (RN231) seja respeitada;
+- não altera `installment.amount`, `expenses.total_amount` nem saldo de conta;
+- altera `obligation` / `remaining` derivados; recalcula status persistido da parcela e da despesa na mesma transação;
+- `obligation` resultante deve permanecer `>= 0` e `>= SUM(active payments)`; caso contrário **400** `BUSINESS_RULE_VIOLATION` + rollback;
+- atômico; locks: despesa → parcela → consultar fatos ACTIVE → persistir (RN244).
+
+Erros (padrão existente):
+
+| Situação | HTTP | code |
+|---|---|---|
+| JSON inválido / amount ≤ 0 / type inválido / propriedades desconhecidas | 400 | `VALIDATION_ERROR` |
+| despesa/parcela terminal; obligation inválida; parcela não elegível | 400 | `BUSINESS_RULE_VIOLATION` |
+| não autenticado | 401 | `UNAUTHORIZED` |
+| expense/installment inexistente ou de outro usuário | 404 | `NOT_FOUND` |
+
+### Listar adjustments
+
+```text
+GET /api/v1/expenses/{expenseId}/installments/{installmentId}/adjustments
+```
+
+Auth: Bearer. Response **200**.
+
+Retorna **array JSON** (mesmo padrão de `GET /expenses/{id}/payments` — **sem** envelope `{ "items": ... }` e **sem** paginação neste histórico).
+
+Inclui fatos `ACTIVE` **e** `REVERSED`. Ordenação: `createdAt ASC`, `id ASC`.
+
+Cada item usa o mesmo shape da response de criação (`id`, `expenseId`, `installmentId`, `type`, `amount`, `status`, `createdAt`).
+
+Ownership / 404: iguais à criação. Consulta do histórico **permanece** permitida se a despesa estiver `CANCELLED` ou `REFUNDED` (fatos não são apagados).
+
+### Reverse de adjustment
+
+```text
+POST /api/v1/expenses/{expenseId}/installments/{installmentId}/adjustments/{adjustmentId}/reverse
+```
+
+Auth: Bearer. Response **200**. Body: **vazio** (sem `reason` nem outros campos) — mesmo padrão de `POST /payments/{id}/reverse`.
+
+Comportamento: `ACTIVE` → `REVERSED`. Não apaga; não altera `amount`, `type` nem `createdAt`; não cria adjustment compensatório. Remove o efeito do fato no `obligation` / `remaining`; recalcula status da parcela e da despesa. Não movimenta saldo de conta.
+
+Permitido somente se:
+
+- adjustment do usuário, da parcela e da despesa informadas;
+- `status = ACTIVE`;
+- despesa **não** `CANCELLED` nem `REFUNDED` (RN239).
+
+Proibido: já `REVERSED`; despesa terminal; ownership inválido (**404**).
+
+Se o reverse deixar `obligation` inválida face aos payments ACTIVE (ex.: reverter `SURCHARGE` necessário à cobertura dos payments), **400** `BUSINESS_RULE_VIOLATION` + rollback (RN231).
+
+Locks: despesa → parcela → adjustment → validar → persistir.
+
+Response: mesmo shape do fato, com `"status": "REVERSED"`.
+
+| Situação | HTTP | code |
+|---|---|---|
+| já REVERSED; despesa CANCELLED/REFUNDED; obligation inválida | 400 | `BUSINESS_RULE_VIOLATION` |
+| não autenticado | 401 | `UNAUTHORIZED` |
+| expense/installment/adjustment inexistente ou de outro usuário / adjustment não pertence à parcela | 404 | `NOT_FOUND` |
+
+### Obligation, saldo e RN234
+
+```text
+obligation = installment.amount + ACTIVE SURCHARGES − ACTIVE DISCOUNTS
+remaining  = obligation − ACTIVE PAYMENTS
+```
+
+Adjustment **nunca** entra no saldo da conta (RN232, RN240). Somente payments `ACTIVE` válidos.
+
+RN234 (payment + adjustment no mesmo ato): permanece regra de domínio. **Não** há endpoint HTTP composto nesta consolidação; cada `POST .../adjustments` e cada pagamento são atômicos isoladamente. Endpoint composto, se necessário no futuro, exige decisão explícita.
 
 ## Regras HTTP resumidas
 
 - Auth, 401, 404, UUID inválido, propriedades desconhecidas: iguais à Fase 7.
 - `PUT` da parcela: só `OPEN`; soma dos amounts = `total_amount` ou 400 + rollback; não `PARTIALLY_PAID`/`PAID`/`CANCELLED`/`REFUNDED`.
 - Payment: amount > 0; ≤ remaining (RN231); `payments.status = ACTIVE`; `payments.account_id` do usuário, ativa; **não** precisa igualar `expenses.account_id` (RN228).
-- Reverse de payment: rejeitar se já `REVERSED` ou se a despesa estiver `REFUNDED`/`CANCELLED`. Reverse de adjustment: mesma filosofia (RN239) — não apaga o fato; `ACTIVE` → `REVERSED`; proibido se a despesa estiver `CANCELLED` ou `REFUNDED`.
-- `payments.type` continua sem valores; não enviar estado em `type`.
+- Reverse de payment: rejeitar se já `REVERSED` ou se a despesa estiver `REFUNDED`/`CANCELLED`. Reverse de adjustment: mesma filosofia (RN239) — path na tabela acima.
+- `payments.type` continua sem valores; não enviar estado em `type`. O estado do payment é `status` (`ACTIVE` / `REVERSED`).
 - Cartão / `invoice_id` / faturas: fora.
 
 A edição de parcela × total da despesa para ACCOUNT/NONE está **fechada** (docs/23 §269.2). Parcela já em fatura permanece **DEFERIDA**.

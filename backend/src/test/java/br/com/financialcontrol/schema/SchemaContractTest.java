@@ -37,6 +37,7 @@ class SchemaContractTest {
             "incomes",
             "expenses",
             "expense_installments",
+            "expense_installment_adjustments",
             "payments",
             "transfers",
             "credit_card_invoices",
@@ -69,7 +70,7 @@ class SchemaContractTest {
 
   @Test
   void shouldKeepPaymentsTypeAsUnconstrainedVarchar() {
-    assertThat(columnsOf("payments")).contains("type");
+    assertThat(columnsOf("payments")).contains("type", "status");
     Integer checkCount =
         jdbcTemplate.queryForObject(
             """
@@ -78,9 +79,16 @@ class SchemaContractTest {
             WHERE conrelid = 'payments'::regclass
               AND contype = 'c'
               AND pg_get_constraintdef(oid) ILIKE '%type%'
+              AND conname <> 'ck_payments_status'
             """,
             Integer.class);
     assertThat(checkCount).isZero();
+  }
+
+  @Test
+  void shouldEnforceUniqueInstallmentNumberPerExpense() {
+    assertThat(constraintNames("expense_installments"))
+        .contains("uq_expense_installments_expense_number");
   }
 
   @Test

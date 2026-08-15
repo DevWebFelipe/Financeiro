@@ -23,8 +23,8 @@ Do not create provisional code, preparatory migrations, presumed enums/CHECKs, o
 
 ## 2. Official blockers (do not implement until explicit decision)
 
-1. `payments.type` — field exists; official values do not. No enum, CHECK, constants, or rules.
-2. Future installment edit vs `expenses.total_amount` — creation rule (RN067) exists; edit behavior does not.
+1. `payments.type` — field exists; official values do not. No enum, CHECK, constants, or rules. Do **not** use `type` for ACTIVE/REVERSED (`payments.status` is the Phase 8 column).
+2. Installment already on an invoice vs `expenses.total_amount` — ACCOUNT/NONE edit is **closed** in the Phase 8 contract; the invoice question in `docs/23` §269.2 is **deferred**.
 3. Partial invoice payment vs installment status/allocation — invoice payments exist; allocation rule does not.
 
 Mandatory questions: `docs/23-modelo-de-dados.md` seção 269.
