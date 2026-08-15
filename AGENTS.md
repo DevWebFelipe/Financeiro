@@ -339,17 +339,30 @@ EXPECTED
 - `CANCELLED`
 - `REFUNDED`
 
-`OVERDUE` **não** é status persistido. É derivado quando status é `OPEN` ou `PARTIALLY_PAID` e `dueDate` < data atual. A UI pode exibir "VENCIDA".
+`OVERDUE` **não** é status persistido. É derivado quando status é `OPEN` ou `PARTIALLY_PAID` e `dueDate` < data atual em `America/Sao_Paulo`. A API da Fase 7 expõe `overdue` (boolean). A UI pode exibir "VENCIDA".
 
 Formas de pagamento: `ACCOUNT`, `CREDIT_CARD`, `NONE`.
 
-`NONE` = despesa sem cartão (pode permanecer aberta até o pagamento).
+Contrato da Fase 7 (`ACCOUNT` e `NONE` apenas):
+
+- criação sempre `OPEN`; não gera `payments`; não altera saldo;
+- `ACCOUNT` exige `account_id`; pagamento posterior na **mesma** conta (`POST /expenses/{id}/pay`);
+- `NONE` mantém `expenses.account_id` nulo; a conta do pagamento fica em `payments.account_id`; `payment_method` não muda;
+- internamente parcela 1/1; a API não exige `installmentId` no pagamento;
+- `CREDIT_CARD` fora desta fase;
+- `payments.type` permanece sem valores oficiais (`null`).
 
 ### 11.3 Cancelamento e estorno
 
 Cancelamento e estorno **não são sinônimos**.
 
-Sem exclusão física. Em despesas, `CANCELLED` / `REFUNDED` preservam histórico e não impactam saldo, projeções, totais, gráficos nem contas a pagar.
+Sem exclusão física. Em despesas (Fase 7):
+
+- cancelar: somente `OPEN` → `CANCELLED` (`POST /expenses/{id}/cancel`); sem impacto de saldo;
+- estornar: somente `PARTIALLY_PAID` ou `PAID` → `REFUNDED` (`POST /expenses/{id}/refund`); **não** volta a `OPEN`; **não** apaga `payments`; o saldo deixa de subtrair esses pagamentos;
+- `CANCELLED` / `REFUNDED` não impactam saldo, projeções, totais, gráficos nem contas a pagar.
+
+Não copiar o estorno de receita (`RECEIVED` → `EXPECTED`) para despesa.
 
 Em receitas (ver 11.1):
 
@@ -358,7 +371,7 @@ Em receitas (ver 11.1):
 
 Receitas não possuem `REFUNDED` nem `REVERSED`.
 
-Não utilizar `DELETE` HTTP como operação padrão para dados financeiros. Preferir ações explícitas (`POST /expenses/{id}/cancel`, `POST /incomes/{id}/receive`, `POST /incomes/{id}/reverse`, `POST /incomes/{id}/cancel`, `POST /payments/{id}/reverse`). `DELETE` só pode existir para recurso não financeiro com regra explícita.
+Não utilizar `DELETE` HTTP como operação padrão para dados financeiros. Preferir ações explícitas (`POST /expenses/{id}/pay`, `POST /expenses/{id}/cancel`, `POST /expenses/{id}/refund`, `POST /incomes/{id}/receive`, `POST /incomes/{id}/reverse`, `POST /incomes/{id}/cancel`). `POST /payments/{id}/reverse` é fase futura (estorno por pagamento). `DELETE` só pode existir para recurso não financeiro com regra explícita.
 
 ### 11.4 Compra no cartão
 
@@ -377,6 +390,8 @@ Operação própria, atômica: saída na origem + entrada no destino. Não é re
 Operações normais não permitem saldo negativo (transferências, pagamento de despesas, pagamento de fatura limitado ao saldo da conta).
 
 Estorno de receita recebida é correção: não é bloqueado se o saldo resultante for negativo.
+
+Estorno de despesa **não** herda essa exceção: devolve o valor dos pagamentos à fórmula de saldo (RN216) e não autoriza pagamento que deixe saldo negativo.
 
 ### 11.8 Contas
 
@@ -622,7 +637,7 @@ Implementação existente nunca justifica regra de negócio conflitante com a do
 Até decisão explícita, **não** implementar Flyway, entidade, enum, CHECK, teste ou regra dependente de:
 
 1. `payments.type` — o campo existe no modelo; valores oficiais não existem. Não criar enum, CHECK, constantes, validações nem regras. Perguntar: o campo permanece? quais valores? enum aplicativo e/ou CHECK? significado de cada valor?
-2. Edição de parcela futura × `expenses.total_amount` — RN067 vale na criação; a edição posterior não está definida. Não escolher sozinho: alterar total, redistribuir, rejeitar, permitir divergência, etc.
+2. Edição de parcela futura × `expenses.total_amount` — RN067 vale na criação; a edição **independente** de parcela (Fase 8+) não está definida. Não escolher sozinho: alterar total, redistribuir, rejeitar, permitir divergência, etc. A Fase 7 **não** expõe edição de parcela: o `PUT` da despesa `OPEN` atualiza a parcela 1/1 em conjunto (RN211, RN217). Isso não resolve nem antecipa esta pendência.
 3. Pagamento parcial da fatura × status/rateio das parcelas — pagamentos em `credit_card_invoice_payments`; não há regra de rateio. Não assumir FIFO, proporcional, manter tudo `OPEN`, etc.
 
 Detalhe das perguntas obrigatórias: `docs/23-modelo-de-dados.md` seção 269.

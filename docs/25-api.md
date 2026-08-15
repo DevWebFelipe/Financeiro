@@ -436,7 +436,7 @@ Response:
 }
 ```
 
-Na Fase 4 o saldo derivado é igual ao `initialBalance`. A partir da Fase 6, receitas `RECEIVED` passam a compor o cálculo. Demais entradas e saídas (despesas, transferências, ajustes) entram quando os respectivos domínios forem implementados. Não existe coluna `current_balance`.
+Na Fase 4 o saldo derivado é igual ao `initialBalance`. A partir da Fase 6, receitas `RECEIVED` passam a somar. A partir da Fase 7, pagamentos de despesas cuja despesa **não** está `CANCELLED` nem `REFUNDED` passam a subtrair (RN216). Transferências e ajustes entram nas fases dos respectivos domínios. Não existe coluna `current_balance`.
 
 
 # 20. Extrato da conta
@@ -658,7 +658,7 @@ Response **200** com a categoria (`active = false`). A operação é idempotente
 
 # 32. Receitas
 
-Contrato da Fase 6. Não implementar nesta atualização documental.
+Contrato da Fase 6 — implementado.
 
 O registro em `incomes` é a duplicata. Cancelamento (`/cancel`) e estorno (`/reverse`) são operações diferentes.
 
@@ -833,7 +833,16 @@ Não há `RECEIVED` → `CANCELLED` nesta fase. Não há reativação de receita
 **DECISÃO PENDENTE DO DESENVOLVEDOR:** cancelamento direto de receita já `RECEIVED`. A Fase 6 rejeita essa transição. O caminho composto estornar e depois cancelar já é possível. Não implementar até decisão explícita.
 
 
-# 38. Despesas
+# 38. Despesas — Contrato da Fase 7
+
+Contrato da Fase 7. Não implementar cartão, fatura, ciclo nem parcelamento funcional nesta fase.
+
+A Fase 7 opera despesas simples (`ACCOUNT` e `NONE`). Internamente toda despesa possui parcela 1/1 (`expense_installments`); `payments.installment_id` continua obrigatório. O consumidor **não** informa quantidade de parcelas nem `installmentId` nas operações desta fase.
+
+`CREDIT_CARD` está fora do contrato operacional da Fase 7. Endpoints de parcelas (listar/editar/pagar por `installmentId`) pertencem a fases posteriores.
+
+Todos os endpoints de despesa e pagamento exigem JWT Bearer. Sem token, token inválido, expirado ou usuário desativado: **401** (`UNAUTHORIZED`). Proprietário = usuário autenticado. Recurso de outro usuário ou UUID inexistente: **404** (`NOT_FOUND`). UUID inválido no path: **400**. Propriedades JSON desconhecidas — inclusive `userId`, `id`, `status`, `overdue`, `installmentId`, `createdAt`, `updatedAt`, `creditCardId`, `installments` — são rejeitadas (**400**, `VALIDATION_ERROR`).
+
 
 Endpoint:
 
@@ -842,25 +851,62 @@ GET /api/v1/expenses
 
 Filtros:
 
-startDate
+startDate — inclusive, aplicado a `dueDate`
 
-endDate
+endDate — inclusive, aplicado a `dueDate`
 
-status
+status — status persistido (`OPEN`, `PARTIALLY_PAID`, `PAID`, `CANCELLED`, `REFUNDED`); não filtrar por `OVERDUE`
 
 categoryId
 
-accountId
-
-creditCardId
+accountId — `expenses.account_id` (despesas `ACCOUNT`; despesas `NONE` não entram neste filtro, mesmo após pagamento)
 
 responsibleType
 
-paymentMethod
+paymentMethod — nesta fase: `ACCOUNT` ou `NONE`
 
-page
+page — padrão `0`
 
-size
+size — padrão `20`
+
+Ordenação fixa: `createdAt` crescente (mesmo padrão da Fase 6). Não há `sort`/`direction` nesta fase. Não há filtro `creditCardId` nesta fase.
+
+
+Response de listagem paginada: `items`, `page`, `size`, `totalItems`, `totalPages`. Não expor `content` / `totalElements` do Spring Data.
+
+
+Response de item (criação, consulta, listagem, edição e ações):
+
+```json
+{
+  "id": "...",
+  "categoryId": "...",
+  "accountId": "...",
+  "description": "Aluguel",
+  "totalAmount": 1500.00,
+  "expenseDate": "2026-08-01",
+  "dueDate": "2026-08-05",
+  "paymentMethod": "ACCOUNT",
+  "status": "OPEN",
+  "responsibleType": "MINE",
+  "responsibleName": null,
+  "barcode": null,
+  "notes": null,
+  "overdue": false,
+  "installmentId": "...",
+  "createdAt": "...",
+  "updatedAt": "..."
+}
+```
+
+Regras do item:
+
+- `accountId` é obrigatório em `ACCOUNT` e `null` em `NONE` (permanece `null` após o pagamento);
+- `responsibleName` é obrigatório quando `responsibleType = OTHER`; nos demais casos é `null` ou omitível na entrada;
+- `barcode` é opcional (número de boleto; o sistema não gera boletos);
+- `overdue` é derivado (RN218): `true` somente se status é `OPEN` ou `PARTIALLY_PAID` e `dueDate` < hoje em `America/Sao_Paulo`; `PAID`, `CANCELLED` e `REFUNDED` nunca são overdue;
+- `installmentId` identifica a parcela interna 1/1 (rastreabilidade); a Fase 7 não expõe CRUD de parcelas;
+- a lista de pagamentos **não** vem neste response; usar `GET /api/v1/expenses/{id}/payments`.
 
 
 # 39. Criar despesa
@@ -870,41 +916,9 @@ Endpoint:
 POST /api/v1/expenses
 
 
-Request:
+Request (`ACCOUNT`):
 
-{
-  "categoryId": "...",
-  "description": "Mercado",
-  "totalAmount": 500.00,
-  "expenseDate": "2026-08-10",
-  "dueDate": "2026-08-10",
-  "paymentMethod": "CREDIT_CARD",
-  "creditCardId": "...",
-  "installments": 5,
-  "responsibleType": "MINE",
-  "notes": ""
-}
-
-
-# 40. Despesa sem cartão
-
-Request:
-
-{
-  "categoryId": "...",
-  "description": "Internet",
-  "totalAmount": 120.00,
-  "expenseDate": "2026-08-01",
-  "dueDate": "2026-08-10",
-  "paymentMethod": "NONE",
-  "responsibleType": "MINE"
-}
-
-
-# 41. Despesa em conta
-
-Request:
-
+```json
 {
   "categoryId": "...",
   "description": "Aluguel",
@@ -913,98 +927,175 @@ Request:
   "dueDate": "2026-08-05",
   "paymentMethod": "ACCOUNT",
   "accountId": "...",
-  "responsibleType": "MINE"
+  "responsibleType": "MINE",
+  "barcode": "123456789",
+  "notes": ""
 }
+```
 
 
-# 42. Despesa
+Request (`NONE`):
+
+```json
+{
+  "categoryId": "...",
+  "description": "Internet",
+  "totalAmount": 120.00,
+  "expenseDate": "2026-08-01",
+  "dueDate": "2026-08-10",
+  "paymentMethod": "NONE",
+  "responsibleType": "OTHER",
+  "responsibleName": "Condomínio",
+  "barcode": "23791...",
+  "notes": ""
+}
+```
+
+Regras da Fase 7:
+
+- status inicial sempre `OPEN`;
+- criação **não** gera `payments` e **não** altera saldo;
+- o backend cria a parcela 1/1 (`installmentNumber = 1`, `totalInstallments = 1`, `amount = totalAmount`, `dueDate` da despesa, `invoiceId` nulo);
+- `paymentMethod` somente `ACCOUNT` ou `NONE`; `CREDIT_CARD` é rejeitado (**400**, `BUSINESS_RULE_VIOLATION`);
+- `ACCOUNT`: `accountId` obrigatório; conta do usuário e ativa;
+- `NONE`: `accountId` ausente ou `null`; se enviado com valor, rejeitar;
+- categoria obrigatória, do usuário, ativa, tipo `EXPENSE`;
+- `totalAmount` > 0;
+- `responsibleType` obrigatório (`MINE`, `GIULIA`, `EDERSON`, `ELISIANE`, `OTHER`);
+- `OTHER` exige `responsibleName`;
+- `barcode` e `notes` opcionais; em branco são persistidos como `null` (mesmo padrão da Fase 6).
+
+Response **201**.
+
+
+# 40. Consultar despesa
 
 Endpoint:
 
 GET /api/v1/expenses/{id}
 
+Isolamento: **404** se a despesa não existir ou não for do usuário autenticado.
 
-# 43. Atualizar despesa
+
+# 41. Atualizar despesa
 
 Endpoint:
 
 PUT /api/v1/expenses/{id}
 
+Somente despesa `OPEN`. Body: os mesmos campos do contrato de criação (substituição).
 
-# 44. Cancelar despesa
+A parcela 1/1 é atualizada para permanecer consistente (`amount`, `due_date`).
 
-Endpoint:
-
-POST /api/v1/expenses/{id}/cancel
-
-
-# 45. Estornar despesa
-
-Endpoint:
-
-POST /api/v1/expenses/{id}/refund
+`PARTIALLY_PAID`, `PAID`, `CANCELLED`, `REFUNDED`: rejeitar (**400**, `BUSINESS_RULE_VIOLATION`). Correção após pagamento: `POST /refund` (terminal `REFUNDED`) e, se necessário, nova despesa.
 
 
-# 46. Parcelas
+# 42. Pagar despesa
 
 Endpoint:
 
-GET /api/v1/expenses/{id}/installments
-
-
-# 47. Parcela
-
-Endpoint:
-
-GET /api/v1/expenses/{expenseId}/installments/{installmentId}
-
-
-# 48. Atualizar parcela
-
-Endpoint:
-
-PUT /api/v1/expenses/{expenseId}/installments/{installmentId}
-
-
-Permitir alterar:
-
-amount
-
-dueDate
-
-
-quando a regra de negócio permitir.
-
-
-# 49. Pagamento de parcela
-
-Endpoint:
-
-POST /api/v1/expenses/{expenseId}/installments/{installmentId}/payments
+POST /api/v1/expenses/{id}/pay
 
 
 Request:
 
+```json
 {
   "accountId": "...",
   "amount": 200.00,
   "paymentDate": "2026-08-10",
   "notes": ""
 }
+```
+
+O consumidor **não** envia `installmentId`. O Service localiza a parcela 1/1, cria o `payment` associado e atualiza status da parcela e da despesa.
+
+Regras:
+
+- somente `OPEN` ou `PARTIALLY_PAID`;
+- `amount` > 0; soma dos pagamentos da despesa + `amount` ≤ valor devido;
+- não pode deixar o saldo da conta negativo;
+- `NONE`: `accountId` obrigatório (conta do usuário, ativa); **não** preenche `expenses.account_id`; `payment_method` permanece `NONE`;
+- `ACCOUNT`: `accountId` opcional; se omitido, usa `expenses.account_id`; se informado, deve ser igual a `expenses.account_id`; conta diferente: **400**;
+- atômico; lock pessimista na despesa e na parcela 1/1 antes de somar e inserir;
+- `payments.type` permanece `null`.
+
+Response **200** com a despesa atualizada (`PARTIALLY_PAID` ou `PAID`).
 
 
-# 50. Pagamentos
+# 43. Cancelar despesa
+
+Endpoint:
+
+POST /api/v1/expenses/{id}/cancel
+
+Somente `OPEN` → `CANCELLED`. Sem efeito de saldo. Despesa e parcela 1/1 passam a `CANCELLED`.
+
+Rejeitar `PARTIALLY_PAID`, `PAID`, `CANCELLED`, `REFUNDED`.
+
+
+# 44. Estornar despesa
+
+Endpoint:
+
+POST /api/v1/expenses/{id}/refund
+
+Somente `PARTIALLY_PAID` ou `PAID` → `REFUNDED`.
+
+Não volta a `OPEN`. Não apaga `payments`. O saldo deixa de subtrair esses pagamentos.
+
+Rejeitar `OPEN`, `CANCELLED` e `REFUNDED` (inclusive segundo refund).
+
+Não há `POST /api/v1/payments/{id}/reverse` nesta fase.
+
+
+# 45. Pagamentos da despesa
 
 Endpoint:
 
 GET /api/v1/expenses/{id}/payments
 
+Lista os pagamentos da despesa (array; inclui os originais após `REFUNDED`). Não inclui `type`.
 
-# 51. Pagamento
+
+Item:
+
+```json
+{
+  "id": "...",
+  "expenseId": "...",
+  "installmentId": "...",
+  "accountId": "...",
+  "amount": 200.00,
+  "paymentDate": "2026-08-10",
+  "notes": null,
+  "createdAt": "..."
+}
+```
+
+
+# 46. Consultar pagamento
 
 Endpoint:
 
 GET /api/v1/payments/{id}
+
+Isolamento: **404** se o pagamento não existir ou não for do usuário autenticado.
+
+
+# 47. Fora da Fase 7 — Parcelas e pagamento por parcela
+
+Os endpoints abaixo **não** fazem parte da implementação da Fase 7. Permanecem previstos para a Fase 8+ (parcelamento funcional):
+
+GET /api/v1/expenses/{id}/installments
+
+GET /api/v1/expenses/{expenseId}/installments/{installmentId}
+
+PUT /api/v1/expenses/{expenseId}/installments/{installmentId}
+
+POST /api/v1/expenses/{expenseId}/installments/{installmentId}/payments
+
+A edição de parcela futura × `expenses.total_amount` continua bloqueada (docs/23 §269.2).
 
 
 # 52. Transferências
@@ -1515,7 +1606,11 @@ Não utilizar DELETE como operação padrão para dados financeiros.
 
 Preferir ações explícitas:
 
+POST /api/v1/expenses/{id}/pay
+
 POST /api/v1/expenses/{id}/cancel
+
+POST /api/v1/expenses/{id}/refund
 
 POST /api/v1/incomes/{id}/receive
 
@@ -1523,7 +1618,7 @@ POST /api/v1/incomes/{id}/reverse
 
 POST /api/v1/incomes/{id}/cancel
 
-POST /api/v1/payments/{id}/reverse
+`POST /api/v1/payments/{id}/reverse` permanece previsto para fase futura (estorno por pagamento individual). Não faz parte da Fase 7.
 
 DELETE somente pode existir para recurso não financeiro com regra explícita autorizando a remoção.
 
@@ -1842,20 +1937,47 @@ Fluxo:
 8. confirmar transação.
 
 
-# 120. Pagamento de despesa
+# 120. Pagamento de despesa (Fase 7)
+
+Endpoint: `POST /api/v1/expenses/{id}/pay`.
 
 Fluxo:
 
-1. validar despesa;
-2. validar parcela;
-3. validar conta;
-4. validar valor;
-5. verificar saldo;
-6. criar pagamento;
-7. atualizar parcela;
-8. atualizar despesa;
-9. registrar saída;
-10. confirmar transação.
+1. validar despesa e ownership (lock pessimista);
+2. validar status `OPEN` ou `PARTIALLY_PAID`;
+3. localizar a parcela 1/1 (lock pessimista);
+4. validar conta (ativa, do usuário; se `ACCOUNT`, igual a `expenses.account_id`);
+5. validar valor > 0 e soma ≤ devido;
+6. verificar que o saldo da conta não ficará negativo;
+7. criar `payments` (`installment_id` da parcela 1/1, `type` nulo);
+8. atualizar status da parcela e da despesa;
+9. confirmar transação.
+
+O saldo é derivado: não há coluna a debitar. A inserção do pagamento passa a entrar na fórmula da RN216.
+
+Não exigir `installmentId` no request.
+
+
+# 120.1 Cancelamento de despesa (Fase 7)
+
+Endpoint: `POST /api/v1/expenses/{id}/cancel`.
+
+Fluxo: validar `OPEN` → `CANCELLED` na despesa e na parcela 1/1. Sem `payments`. Sem efeito de saldo.
+
+
+# 120.2 Estorno de despesa (Fase 7)
+
+Endpoint: `POST /api/v1/expenses/{id}/refund`.
+
+Fluxo:
+
+1. validar despesa e ownership (lock pessimista);
+2. validar status `PARTIALLY_PAID` ou `PAID`;
+3. lock da parcela 1/1;
+4. alterar despesa e parcela para `REFUNDED`;
+5. confirmar transação.
+
+Não apagar `payments`. O saldo deixa de subtrair esses pagamentos. Não voltar a `OPEN`. Não usar `Income.reverse()` como modelo.
 
 
 # 121. Idempotência

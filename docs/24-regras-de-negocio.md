@@ -126,9 +126,11 @@ saldo inicial
 + ajustes de saldo
 ```
 
-As operações futuras participam desse cálculo conforme o respectivo significado financeiro, quando o domínio correspondente for implementado.
+A partir da Fase 7, “despesas efetivamente realizadas” significa a soma dos `payments.amount` da conta cuja despesa **não** está em `CANCELLED` nem `REFUNDED` (RN216).
 
-Ajuste de saldo é movimentação própria de conciliação (RN204). Não é receita nem despesa. A funcionalidade de ajuste não pertence à Fase 6 (RN206).
+As demais operações (transferências, ajustes) participam desse cálculo quando o respectivo domínio for implementado.
+
+Ajuste de saldo é movimentação própria de conciliação (RN204). Não é receita nem despesa. A funcionalidade de ajuste não pertence à Fase 6 nem à Fase 7 (RN206).
 
 
 ## RN012 — Saldo negativo
@@ -139,7 +141,9 @@ Inclui: transferências, pagamento de despesas e pagamento de fatura (limitado a
 
 Esta regra **não** se aplica ao estorno de receita recebida. O estorno é operação de correção (RN200), não despesa, não pagamento, não transferência e não consumo normal de saldo.
 
-O cancelamento de receita prevista (RN207) também não consome saldo: parte de `EXPECTED`, que já não alterava o saldo.
+Esta exceção **não** se estende ao pagamento nem ao estorno de despesa. Pagamento de despesa não pode deixar saldo negativo (RN076A). O estorno de despesa (RN214, RN215) desfaz débitos já registrados e, portanto, devolve valor à conta; não usa a permissão de saldo negativo da Fase 6.
+
+O cancelamento de receita prevista (RN207) também não consome saldo: parte de `EXPECTED`, que já não alterava o saldo. O cancelamento de despesa `OPEN` (RN213) igualmente não consome saldo.
 
 
 ## RN013 — Pagamento
@@ -678,12 +682,9 @@ NONE
 
 ## RN050 — ACCOUNT
 
-Quando a forma for:
+Quando a forma for `ACCOUNT`, a despesa deve possuir `account_id` obrigatório.
 
-ACCOUNT
-
-
-a despesa deve possuir conta.
+Na Fase 7, `ACCOUNT` **não** significa despesa já paga. A criação resulta em `OPEN`, sem linha em `payments` e sem alteração de saldo (RN208). O pagamento é operação posterior (`POST /api/v1/expenses/{id}/pay`).
 
 
 ## RN051 — CREDIT_CARD
@@ -698,12 +699,13 @@ a despesa deve possuir cartão.
 
 ## RN052 — NONE
 
-Quando a forma for:
+Quando a forma for `NONE`:
 
-NONE
+- `credit_card_id` é nulo;
+- `account_id` é nulo na despesa (permanece nulo após o pagamento);
+- a forma original `NONE` não muda quando o pagamento informa a conta.
 
-
-a despesa não possui cartão.
+A conta efetivamente usada fica em `payments.account_id` (RN209).
 
 
 ## RN053 — Conta e cartão
@@ -726,6 +728,8 @@ Uma despesa é considerada vencida quando:
 - dueDate < data atual (timezone da aplicação).
 
 A interface poderá apresentar "VENCIDA" sem alterar o status persistido.
+
+A API da Fase 7 expõe o derivado `overdue` (boolean) na resposta da despesa (RN218). Não existe coluna nem valor de status `OVERDUE`.
 
 Status oficiais persistidos: OPEN, PARTIALLY_PAID, PAID, CANCELLED, REFUNDED.
 
@@ -754,20 +758,24 @@ não deve aparecer como conta a pagar;
 
 não deve participar da projeção futura.
 
+Na Fase 7 o cancelamento parte somente de `OPEN` (RN213). Não há pagamentos a desfazer.
+
 
 ## RN059 — Histórico
 
-Despesa cancelada continua armazenada.
+Despesa cancelada continua armazenada. Não há exclusão física.
 
 
 ## RN060 — Estorno
 
-Despesa estornada permanece armazenada.
+Despesa estornada permanece armazenada. As linhas de `payments` **não** são apagadas (RN215).
 
 
 ## RN061 — Estorno
 
-Despesa estornada não deve continuar representando obrigação financeira ativa.
+Despesa estornada (`REFUNDED`) não deve continuar representando obrigação financeira ativa.
+
+Não volta a `OPEN`. Não replica o estorno de receita (`RECEIVED` → `EXPECTED`).
 
 
 # 10. Parcelamento
@@ -843,6 +851,11 @@ Pagamento representa saída financeira real.
 ## RN074 — Conta
 
 Todo pagamento deve indicar a conta utilizada.
+
+Na Fase 7:
+
+- `NONE`: a conta é informada no `POST /pay` e gravada só em `payments.account_id`;
+- `ACCOUNT`: a conta do pagamento **deve** ser a mesma de `expenses.account_id` (RN210).
 
 
 ## RN075 — Valor
@@ -1248,6 +1261,8 @@ O número deve poder ser copiado para facilitar o pagamento.
 
 Despesas sem cartão podem permanecer abertas.
 
+`expenses.account_id` permanece `null`. O pagamento posterior não altera `payment_method` nem preenche `expenses.account_id`.
+
 
 ## RN123 — Conta a pagar
 
@@ -1256,14 +1271,242 @@ Despesas NONE devem aparecer em contas a pagar quando estiverem abertas.
 
 ## RN124 — Pagamento
 
-Quando forem pagas:
-
-o usuário informa a conta utilizada.
+Quando despesas `NONE` forem pagas, o usuário informa a conta utilizada no `POST /pay`. Essa conta é gravada em `payments.account_id`.
 
 
 ## RN125 — Histórico
 
-A forma original da despesa deve permanecer rastreável.
+A forma original da despesa deve permanecer rastreável (`payment_method` não muda no pagamento).
+
+
+# 19.1 Contrato da Fase 7 — Despesas simples
+
+A Fase 7 implementa despesas **sem parcelamento funcional** e **sem cartão**. Formas operacionais: `ACCOUNT` e `NONE`.
+
+O modelo físico já existente (`expenses`, `expense_installments`, `payments`) é reutilizado. Não criar tabela, coluna, enum, CHECK nem migration para esta fase.
+
+`CREDIT_CARD`, faturas e parcelas N>1 permanecem para fases posteriores.
+
+
+## RN208 — ACCOUNT na criação
+
+`paymentMethod = ACCOUNT`:
+
+- `account_id` obrigatório (conta do usuário, ativa);
+- status inicial `OPEN`;
+- **não** cria `payments`;
+- **não** altera saldo;
+- a parcela interna 1/1 nasce `OPEN`.
+
+Ter conta associada não significa estar paga. Exemplo: aluguel com conta corrente e vencimento futuro permanece `OPEN` até o `POST /pay`.
+
+
+## RN209 — NONE na criação e no pagamento
+
+`paymentMethod = NONE`:
+
+- `account_id` da despesa é `null` na criação e **permanece** `null` após o pagamento;
+- `credit_card_id` é `null`;
+- criação não altera saldo e não cria `payments`;
+- no pagamento, `payments.account_id` identifica a conta usada;
+- `payment_method` continua `NONE`.
+
+
+## RN210 — Pagamento de despesa ACCOUNT
+
+Para despesa `ACCOUNT`, todo pagamento deve usar a mesma conta da despesa:
+
+```text
+payments.account_id == expenses.account_id
+```
+
+Rejeitar pagamento com conta diferente. Se o request omitir `accountId`, o backend utiliza `expenses.account_id`. Se informar `accountId`, o valor deve coincidir.
+
+
+## RN211 — Parcela 1/1 (Fase 7)
+
+Toda despesa possui pelo menos uma parcela (RN063, docs/23 §§185–186).
+
+Na Fase 7 o backend cria internamente:
+
+```text
+installment_number = 1
+total_installments = 1
+amount = expenses.total_amount
+due_date = expenses.due_date
+invoice_id = null
+status = OPEN
+```
+
+A API **não** expõe CRUD de parcelas nem campo `installments` na criação. O consumidor não precisa conhecer o ciclo de parcelamento.
+
+A resposta da despesa inclui `installmentId` apenas para rastreabilidade. Pagamentos usam `POST /api/v1/expenses/{id}/pay`; o Service localiza a parcela única.
+
+A Fase 8 poderá expor parcelas N>1. A Fase 7 não implementa edição independente de parcela (docs/23 §269.2 permanece bloqueada). Se a despesa `OPEN` for editada, a parcela 1/1 é atualizada para permanecer consistente com `total_amount` e `due_date` — isso não é edição de parcela futura da Fase 8.
+
+
+## RN212 — Pagamento da Fase 7
+
+Endpoint: `POST /api/v1/expenses/{id}/pay`.
+
+Regras:
+
+- somente despesas `OPEN` ou `PARTIALLY_PAID`;
+- valor > 0;
+- soma dos pagamentos da despesa (parcela 1/1) + novo valor ≤ valor devido (`expense_installments.amount`, igual a `total_amount` na Fase 7);
+- conta do usuário, ativa;
+- pagamento não pode deixar o saldo da conta negativo;
+- operação atômica (`@Transactional`);
+- lock pessimista (`PESSIMISTIC_WRITE`) na despesa e na parcela 1/1 **antes** de somar pagamentos e inserir o novo;
+- ownership pelo SecurityContext; recurso de outro usuário: 404;
+- internamente: inserir `payments` com `installment_id` da parcela 1/1; `payments.type` permanece `null` (sem significado nesta fase).
+
+Status após o pagamento (despesa e parcela 1/1, juntos):
+
+```text
+OPEN → PARTIALLY_PAID   (0 < pago < devido)
+OPEN → PAID             (pago = devido)
+PARTIALLY_PAID → PAID   (pago acumulado = devido)
+```
+
+Múltiplos pagamentos parciais são permitidos enquanto a soma não ultrapassar o devido.
+
+Rejeitar pagamento de `PAID`, `CANCELLED` ou `REFUNDED`.
+
+
+## RN213 — Cancelamento de despesa (Fase 7)
+
+Endpoint: `POST /api/v1/expenses/{id}/cancel`.
+
+Permitido somente:
+
+```text
+OPEN → CANCELLED
+```
+
+Rejeitar cancelamento de `PARTIALLY_PAID`, `PAID`, `CANCELLED` e `REFUNDED`.
+
+Despesa parcialmente paga ou paga não se “cancela”: o caminho de correção financeira é o estorno (RN214).
+
+Efeitos:
+
+- despesa e parcela 1/1 passam a `CANCELLED`;
+- não existem pagamentos a desfazer (não havia `payments`);
+- saldo inalterado;
+- registro permanece.
+
+Não há reativação nesta fase.
+
+
+## RN214 — Estorno de despesa (Fase 7)
+
+Endpoint: `POST /api/v1/expenses/{id}/refund`.
+
+O estorno reverte movimentação financeira já realizada. **Não** é cancelamento e **não** replica `Income.reverse()`.
+
+Permitido:
+
+```text
+PARTIALLY_PAID → REFUNDED
+PAID → REFUNDED
+```
+
+Rejeitar estorno de `OPEN`, `CANCELLED` e `REFUNDED` (incluindo segundo `refund` sobre a mesma despesa).
+
+Resultado terminal: `REFUNDED`. A despesa **não** volta a `OPEN`.
+
+A parcela 1/1 também passa a `REFUNDED`.
+
+Não existe `POST /api/v1/payments/{id}/reverse` na Fase 7. Estorno é da despesa inteira (todos os pagamentos da parcela 1/1). O reverse por pagamento individual permanece previsto para fase futura (docs/23 §89).
+
+
+## RN215 — Histórico de pagamentos no estorno
+
+O estorno **não apaga** linhas de `payments`.
+
+Identificação dos pagamentos originais: todas as linhas de `payments` da despesa (parcela 1/1), identificadas por `expense_id` / `installment_id`.
+
+Registro da reversão: o fato de estorno é o status `REFUNDED` da despesa e da parcela. Não se cria pagamento negativo. Não se usa `payments.type` (valores oficiais inexistentes — docs/23 §269.1). Não se adiciona coluna de estorno nesta fase.
+
+Recálculo do saldo: pagamentos cuja despesa está `REFUNDED` (ou `CANCELLED`) **não** entram na soma que reduz o saldo (RN216). O efeito financeiro do débito original deixa de ser considerado; o saldo da conta volta ao valor que teria sem aqueles pagamentos.
+
+Duplo estorno: despesa já `REFUNDED` rejeita novo `refund`.
+
+Atomicidade: a mesma transação valida o status, aplica `REFUNDED` na despesa e na parcela e confirma. Falha em qualquer etapa implica rollback. Lock pessimista na despesa e na parcela.
+
+Consulta `GET /expenses/{id}/payments` continua devolvendo os pagamentos originais após o estorno.
+
+
+## RN216 — Saldo da conta a partir da Fase 7
+
+```text
+saldo atual =
+  initial_balance
++ SUM(incomes.amount WHERE status = RECEIVED AND account_id = conta)
+− SUM(payments.amount WHERE account_id = conta
+      AND a despesa do pagamento NÃO está em CANCELLED nem REFUNDED)
+```
+
+Pagamento de despesa reduz o saldo.
+
+Estorno de despesa desfaz o efeito desses pagamentos no saldo (deixam de ser subtraídos).
+
+Transferências e ajustes entram quando implementados. Não persistir `current_balance`.
+
+
+## RN217 — Edição de despesa (Fase 7)
+
+Somente despesa `OPEN` pode ser editada (`PUT /api/v1/expenses/{id}`).
+
+Campos do contrato de criação (substituição): `categoryId`, `description`, `totalAmount`, `expenseDate`, `dueDate`, `paymentMethod`, `accountId`, `responsibleType`, `responsibleName`, `barcode`, `notes`.
+
+Regras no `PUT` de `OPEN`:
+
+- `paymentMethod` somente `ACCOUNT` ou `NONE`;
+- `ACCOUNT` exige `accountId` (conta ativa do usuário); `NONE` exige `accountId` ausente/nulo;
+- troca `ACCOUNT` ↔ `NONE` é permitida enquanto não houver pagamento, respeitando a regra de conta;
+- categoria `EXPENSE`, ativa, do usuário;
+- valor > 0;
+- a parcela 1/1 é atualizada (`amount`, `due_date`) para permanecer igual à despesa.
+
+Rejeitar `PUT` de `PARTIALLY_PAID`, `PAID`, `CANCELLED` e `REFUNDED`. Não alterar silenciosamente valor, conta ou forma depois que existir pagamento. Correção de despesa já paga: `refund` (terminal `REFUNDED`) e nova despesa, se necessário.
+
+Não alterar `status`, `id`, `userId`, `createdAt` via body. Propriedades desconhecidas: 400.
+
+
+## RN218 — OVERDUE derivado na API
+
+`OVERDUE` não é status persistido nem valor de CHECK.
+
+`overdue = true` quando:
+
+```text
+status IN (OPEN, PARTIALLY_PAID)
+AND dueDate < data atual no timezone America/Sao_Paulo
+```
+
+Caso contrário, `overdue = false` (`PAID`, `CANCELLED`, `REFUNDED`, ou ainda no prazo).
+
+A resposta HTTP da despesa inclui `overdue` (boolean). Não criar coluna.
+
+
+## RN219 — Concorrência de pagamento
+
+Dois `POST /pay` simultâneos não podem fazer a soma ultrapassar o devido (RN167, RN168).
+
+A verificação `pago_acumulado + novo_pagamento <= devido` ocorre **dentro** da transação, após o lock pessimista da despesa e da parcela 1/1.
+
+
+## RN220 — CREDIT_CARD fora da Fase 7
+
+A Fase 7 rejeita `paymentMethod = CREDIT_CARD` na criação e na edição. Cartão, fatura e ciclo pertencem às Fases 9+.
+
+O enum/CHECK físico `CREDIT_CARD` permanece no banco; a API da Fase 7 não o opera.
+
+
+## RN221 — payments.type na Fase 7
+
+O campo `payments.type` permanece sem valores oficiais. Na Fase 7 é persistido como `null`. Não criar enum, CHECK, constante nem regra. Pendência: docs/23 §269.1.
 
 
 # 20. Metas
@@ -1862,13 +2105,13 @@ Não deve ser lançado como despesa (ajuste negativo) nem como receita (ajuste p
 Futuramente, um relatório poderá apresentar receitas, despesas, transferências, ajustes, movimentação líquida e saldo de forma separada.
 
 
-## RN206 — Ajuste fora da Fase 6
+## RN206 — Ajuste fora da Fase 6 e da Fase 7
 
-A funcionalidade de ajuste de saldo não pertence à Fase 6.
+A funcionalidade de ajuste de saldo não pertence à Fase 6 nem à Fase 7.
 
-Não criar endpoint, DTO, entidade, service, controller, migration nem testes funcionais de ajuste nesta fase.
+Não criar endpoint, DTO, entidade, service, controller, migration nem testes funcionais de ajuste nestas fases.
 
-A arquitetura da Fase 6 não pode impedir a futura existência de ajustes.
+A arquitetura não pode impedir a futura existência de ajustes.
 
 
 # 42. Regra final

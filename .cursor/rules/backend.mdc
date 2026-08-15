@@ -91,7 +91,7 @@ No DAO layer on top.
 
 - Errors: format in `docs/25-api.md`. Not RFC 7807 in this phase.
 - Pagination: `items`, `totalItems`, `totalPages`. Do not expose Spring Data `Page` (`content`, `totalElements`).
-- No `DELETE` as default for financial data. Use `POST /expenses/{id}/cancel` or `POST /payments/{id}/reverse`.
+- No `DELETE` as default for financial data. Use `POST /expenses/{id}/pay`, `POST /expenses/{id}/cancel`, `POST /expenses/{id}/refund`. `POST /payments/{id}/reverse` is future (not Phase 7).
 - `GET` read, `POST` create or business action, `PUT` full replace, `PATCH` partial update. Do not add a verb just because it exists.
 
 ---

@@ -464,7 +464,18 @@ Forma:
 ACCOUNT
 
 
-## Resultado
+Status na criação:
+
+OPEN
+
+
+A criação **não** reduz o saldo e **não** gera pagamento. `account_id` identifica a conta que deverá ser usada no pagamento.
+
+
+Em seguida o usuário registra o pagamento (`POST /api/v1/expenses/{id}/pay`).
+
+
+## Resultado após o pagamento
 
 Despesa:
 
@@ -474,6 +485,9 @@ PAID
 Nubank:
 
 - R$ 300
+
+
+Pagamento registrado. A conta do pagamento é obrigatoriamente a mesma da despesa (`ACCOUNT`).
 
 
 # 22. Fluxo — Compra no cartão
@@ -1029,47 +1043,57 @@ Internet:
 R$ 100
 
 
-Mas a cobrança foi cancelada.
+Forma:
+
+NONE
 
 
-Usuário marca:
+Status:
 
-CANCELLED
+OPEN
+
+
+Ainda **não** houve pagamento. A cobrança foi indevida.
+
+
+Usuário cancela (`POST /api/v1/expenses/{id}/cancel`).
 
 
 # 51. Resultado
 
-Despesa continua no banco.
+Despesa:
+
+CANCELLED
 
 
-Não aparece mais como:
+Continua no banco. Não aparece como conta a pagar nem compromisso futuro. Saldo inalterado (não havia `payments`).
 
-conta a pagar;
-
-
-nem:
-
-compromisso futuro.
+Não é permitido cancelar `PARTIALLY_PAID` nem `PAID`. Nesses casos o caminho é o estorno (`/refund`).
 
 
-# 52. Fluxo — Estorno
+# 52. Fluxo — Estorno de despesa paga (Fase 7)
 
-Usuário comprou:
+Usuário pagou:
 
-Produto:
+Aluguel:
 
-R$ 500
-
-
-no cartão.
+R$ 1.500
 
 
-A compra foi efetivada.
+Forma:
+
+ACCOUNT
 
 
-Posteriormente:
+Status:
 
-produto devolvido.
+PAID
+
+
+Posteriormente a cobrança foi revertida.
+
+
+Usuário estorna (`POST /api/v1/expenses/{id}/refund`).
 
 
 # 53. Resultado
@@ -1079,10 +1103,16 @@ Despesa:
 REFUNDED
 
 
-Histórico continua disponível.
+As linhas de `payments` permanecem. O saldo da conta deixa de considerar aqueles pagamentos. A despesa **não** volta a `OPEN`.
+
+O mesmo vale para `PARTIALLY_PAID` → `REFUNDED`. `OPEN` não se estorna (não houve movimentação); usa-se `/cancel`.
 
 
-O compromisso deve ser revertido.
+# 53.1 Fluxo — Estorno de compra no cartão (fases posteriores)
+
+Usuário comprou produto no cartão. A compra foi efetivada. Posteriormente o produto foi devolvido.
+
+Resultado previsto na V1: `REFUNDED`, histórico preservado, comprometimento ajustado (RN117). Fora da Fase 7.
 
 
 # 54. Diferença

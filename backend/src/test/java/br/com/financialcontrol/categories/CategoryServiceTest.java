@@ -299,6 +299,28 @@ class CategoryServiceTest {
   }
 
   @Test
+  void shouldAcceptActiveOwnedExpenseCategoryForNewLaunch() {
+    Category category = ownedCategory(true, CategoryType.EXPENSE, "Mercado");
+    when(categoryRepository.findByIdAndUserId(CATEGORY_ID, USER_A))
+        .thenReturn(Optional.of(category));
+
+    Category result = categoryService.requireActiveOwnedExpenseCategory(USER_A, CATEGORY_ID);
+
+    assertThat(result.getType()).isEqualTo(CategoryType.EXPENSE);
+  }
+
+  @Test
+  void shouldRejectIncomeCategoryForExpenseLaunch() {
+    Category category = ownedCategory(true, CategoryType.INCOME, "Salário");
+    when(categoryRepository.findByIdAndUserId(CATEGORY_ID, USER_A))
+        .thenReturn(Optional.of(category));
+
+    assertThatThrownBy(() -> categoryService.requireActiveOwnedExpenseCategory(USER_A, CATEGORY_ID))
+        .isInstanceOf(BusinessRuleException.class)
+        .hasMessage(CategoryService.CATEGORY_NOT_EXPENSE);
+  }
+
+  @Test
   void shouldRejectDeactivateOfAnotherUser() {
     when(categoryRepository.findByIdAndUserId(CATEGORY_ID, USER_B)).thenReturn(Optional.empty());
 

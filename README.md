@@ -193,7 +193,7 @@ Implementado: criar, listar, consultar, editar (`name` e `type`), desativar, rea
 | `POST` | `/api/v1/accounts/{id}/activate` | Bearer | `200` |
 | `GET` | `/api/v1/accounts/{id}/balance` | Bearer | `200` `{ accountId, balance }` |
 
-Na Fase 4 o saldo consultado é o saldo inicial. Não existe `current_balance` persistido. Extrato (`/statement`) não foi implementado: depende de movimentações reais das fases seguintes.
+O saldo é derivado (sem `current_balance`). A partir da Fase 6 soma receitas `RECEIVED`; a partir da Fase 7 subtrai pagamentos de despesas que não estão `CANCELLED` nem `REFUNDED`. Extrato (`/statement`) não foi implementado.
 
 Não existe `DELETE` de conta.
 
@@ -216,6 +216,44 @@ Não existe `GET` por id, reativação nem `DELETE` de categoria nesta fase.
 
 ---
 
+## Receitas (Fase 6)
+
+Implementado: criar prevista, listar (paginado), consultar, editar (`EXPECTED`), receber, estornar e cancelar. Sem responsável nesta fase.
+
+| Método | Caminho | Autenticação | Resposta |
+|--------|---------|--------------|----------|
+| `GET` | `/api/v1/incomes` | Bearer | `200` página (`items`, `page`, `size`, `totalItems`, `totalPages`) |
+| `GET` | `/api/v1/incomes/{id}` | Bearer | `200`; `404` se não for do usuário |
+| `POST` | `/api/v1/incomes` | Bearer | `201` (`EXPECTED`; `accountId` e `receivedDate` nulos) |
+| `PUT` | `/api/v1/incomes/{id}` | Bearer | `200`; somente `EXPECTED` |
+| `POST` | `/api/v1/incomes/{id}/receive` | Bearer | `200` (`RECEIVED`) |
+| `POST` | `/api/v1/incomes/{id}/reverse` | Bearer | `200` (`EXPECTED`; limpa conta e data) |
+| `POST` | `/api/v1/incomes/{id}/cancel` | Bearer | `200` (`CANCELLED`; somente `EXPECTED`) |
+
+Estorno e cancelamento são operações distintas. O estorno pode deixar saldo negativo. Detalhes: `docs/25-api.md`.
+
+---
+
+## Despesas (Fase 7)
+
+Implementado: despesas simples `ACCOUNT` e `NONE`, sem cartão e sem parcelamento funcional. Toda despesa nasce `OPEN`, com parcela interna 1/1; o cliente não informa `installmentId` no pagamento.
+
+| Método | Caminho | Autenticação | Resposta |
+|--------|---------|--------------|----------|
+| `GET` | `/api/v1/expenses` | Bearer | `200` página (`items`, `page`, `size`, `totalItems`, `totalPages`) |
+| `POST` | `/api/v1/expenses` | Bearer | `201` (`OPEN`; sem payment) |
+| `GET` | `/api/v1/expenses/{id}` | Bearer | `200`; `404` se não for do usuário |
+| `PUT` | `/api/v1/expenses/{id}` | Bearer | `200`; somente `OPEN` |
+| `POST` | `/api/v1/expenses/{id}/pay` | Bearer | `200` (`PARTIALLY_PAID` ou `PAID`) |
+| `POST` | `/api/v1/expenses/{id}/cancel` | Bearer | `200` (`CANCELLED`; somente `OPEN`) |
+| `POST` | `/api/v1/expenses/{id}/refund` | Bearer | `200` (`REFUNDED`; somente `PARTIALLY_PAID` ou `PAID`) |
+| `GET` | `/api/v1/expenses/{id}/payments` | Bearer | `200` array; histórico permanece após `REFUNDED` |
+| `GET` | `/api/v1/payments/{id}` | Bearer | `200`; `404` se não for do usuário |
+
+`CREDIT_CARD`, parcelas N>1, faturas e `POST /payments/{id}/reverse` ficam para fases posteriores. `payments.type` permanece sem valores oficiais. Detalhes: `docs/25-api.md`.
+
+---
+
 ## Regras financeiras (resumo)
 
 | Tema | Regra |
@@ -231,6 +269,7 @@ Não existe `GET` por id, reativação nem `DELETE` de categoria nesta fase.
 | Transferência | Atômica; não é receita/despesa; sem saldo insuficiente |
 | Saldo | Derivado de movimentações, a partir do saldo inicial; sem `current_balance` como fonte de verdade |
 | Receita | `EXPECTED` / `RECEIVED` / `CANCELLED`; cancelar inutiliza (`EXPECTED` → `CANCELLED`); estornar desfaz recebimento e mantém ativa (`RECEIVED` → `EXPECTED`); limpa `account_id` e `received_date`; pode deixar saldo negativo; sem `REVERSED`; sem responsável na Fase 6 (`responsible_type` nullable) |
+| Despesa (Fase 7) | `ACCOUNT` e `NONE`; criação `OPEN` sem payment; parcela 1/1 interna; `POST /expenses/{id}/pay`; cancelar só `OPEN`; estornar `PARTIALLY_PAID`/`PAID` → `REFUNDED` (não apaga `payments`, não volta a `OPEN`); `overdue` derivado na API; cartão fora desta fase |
 | Pagamentos | Sem saldo negativo em operações normais; fatura parcial limitada ao saldo da conta |
 | PDF / gráficos | OpenPDF / Apache ECharts |
 
@@ -354,7 +393,8 @@ financial-control/
 │   ├── start.ps1
 │   └── stop.ps1
 ├── backend/          (Fase 1+)
-└── frontend/         (Fase 1+)
+├── frontend/         (Fase 1+)
+└── postman/          (collection e environment locais)
 ```
 
 Portas típicas: Angular `4200`, Spring Boot `8080`, PostgreSQL `5432`.
@@ -389,6 +429,8 @@ Ver `docs/26-seguranca.md`.
 
 Unitários, integração, API e segurança. Testcontainers com PostgreSQL. Ver `docs/27-testes.md`.
 
+Coleção Postman para testes manuais: `postman/Financial Control API.postman_collection.json` (instruções em `postman/README.md`). A collection acompanha as fases já implementadas; a pasta da Fase 7 (despesas) ainda não foi adicionada à collection.
+
 ---
 
 ## Status
@@ -401,10 +443,11 @@ Fase 3 — Autenticação e segurança — CONCLUÍDA
 Fase 4 — Contas — CONCLUÍDA
 Fase 5 — Categorias — CONCLUÍDA
 Fase 6 — Receitas — CONCLUÍDA
+Fase 7 — Despesas — CONCLUÍDA
 ```
 
-Estado atual do backend (Fases 1–6): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias e receitas.
+Estado atual do backend (Fases 1–7): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas e despesas simples.
 
-Próxima fase: **Fase 7 — Despesas simples**. Não iniciar sem autorização explícita.
+Próxima fase: **Fase 8 — Parcelamento de despesas**. Não implementar sem autorização explícita.
 
-Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend de autenticação nem módulos financeiros da Fase 7+ sem autorização.
+Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend de autenticação nem módulos financeiros da Fase 8+ sem autorização.

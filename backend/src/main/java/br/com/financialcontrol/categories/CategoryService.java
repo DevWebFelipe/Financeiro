@@ -24,6 +24,7 @@ public class CategoryService {
   static final String CATEGORY_INACTIVE =
       "Somente categorias ativas devem ser utilizadas em novos lançamentos.";
   static final String CATEGORY_NOT_INCOME = "A categoria deve ser do tipo receita.";
+  static final String CATEGORY_NOT_EXPENSE = "A categoria deve ser do tipo despesa.";
 
   private final CategoryRepository categoryRepository;
   private final Clock clock;
@@ -107,6 +108,17 @@ public class CategoryService {
     }
     if (category.getType() != CategoryType.INCOME) {
       throw new BusinessRuleException(CATEGORY_NOT_INCOME);
+    }
+    return category;
+  }
+
+  public Category requireActiveOwnedExpenseCategory(UUID userId, UUID categoryId) {
+    Category category = requireOwnedCategory(userId, categoryId);
+    if (!category.isActive()) {
+      throw new BusinessRuleException(CATEGORY_INACTIVE);
+    }
+    if (category.getType() != CategoryType.EXPENSE) {
+      throw new BusinessRuleException(CATEGORY_NOT_EXPENSE);
     }
     return category;
   }

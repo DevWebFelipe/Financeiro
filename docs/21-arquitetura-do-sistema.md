@@ -168,7 +168,11 @@ GET /api/v1/accounts/{id}
 
 PUT /api/v1/accounts/{id}
 
+POST /api/v1/expenses/{id}/pay
+
 POST /api/v1/expenses/{id}/cancel
+
+POST /api/v1/expenses/{id}/refund
 
 Não utilizar `DELETE` como operação padrão para dados financeiros.
 
@@ -395,11 +399,13 @@ A implementação concreta ocorre por domínio (`incomes`, `expenses`, `transfer
 
 Na Fase 6, receita `RECEIVED` passa a participar positivamente do saldo da conta informada (`+ amount`). Receita `EXPECTED` ou `CANCELLED` não participa do saldo efetivo.
 
-O estorno desfaz exatamente essa movimentação (`− amount`), devolve a duplicata a `EXPECTED` (ativa, não cancelada), limpa `account_id` e `received_date`, e não é bloqueado se o saldo ficar negativo.
+A partir da Fase 7, pagamentos de despesa cuja despesa não está `CANCELLED` nem `REFUNDED` participam negativamente (`− payments.amount`). Criação de despesa não altera saldo. Estorno de despesa (`REFUNDED`) faz esses pagamentos deixarem de ser subtraídos; as linhas de `payments` permanecem.
 
-O cancelamento (`EXPECTED` → `CANCELLED`) inutiliza a duplicata e não altera saldo. Cancelamento e estorno não são a mesma operação.
+O estorno de receita desfaz exatamente a movimentação (`− amount`), devolve a duplicata a `EXPECTED` (ativa, não cancelada), limpa `account_id` e `received_date`, e não é bloqueado se o saldo ficar negativo. Essa exceção **não** se aplica a despesa.
 
-Ajuste de saldo é conceito oficial e requisito futuro. Não implementar na Fase 6. A arquitetura da Fase 6 não pode impedir essa funcionalidade.
+O cancelamento (`EXPECTED` → `CANCELLED` em receita; `OPEN` → `CANCELLED` em despesa) não altera saldo. Cancelamento e estorno não são a mesma operação.
+
+Ajuste de saldo é conceito oficial e requisito futuro. Não implementar na Fase 6 nem na Fase 7. A arquitetura não pode impedir essa funcionalidade.
 
 
 # 29.2 Saldo em datas e períodos
@@ -1023,7 +1029,7 @@ Listagens devem permitir filtros relevantes.
 
 Exemplo:
 
-GET /api/v1/expenses?from=2026-08-01&to=2026-08-31
+GET /api/v1/expenses?startDate=2026-08-01&endDate=2026-08-31
 
 
 # 107. Busca
@@ -1509,6 +1515,10 @@ Exemplo:
 
 POST /invoices/{id}/payments
 
+POST /expenses/{id}/pay
+
+POST /expenses/{id}/refund
+
 
 # 167. Pagamento
 
@@ -1522,6 +1532,8 @@ Estorno deve ser tratado como operação própria.
 Em receitas, estorno (`POST /incomes/{id}/reverse`) desfaz o recebimento (`RECEIVED` → `EXPECTED`) e **não** cancela a duplicata.
 
 Cancelamento de receita (`POST /incomes/{id}/cancel`) é operação distinta (`EXPECTED` → `CANCELLED`).
+
+Em despesas (Fase 7), pagamento é `POST /expenses/{id}/pay`; cancelamento é `POST /expenses/{id}/cancel` (`OPEN` → `CANCELLED`); estorno é `POST /expenses/{id}/refund` (`PARTIALLY_PAID` / `PAID` → `REFUNDED`). Não usar `POST /payments/{id}/reverse` nesta fase.
 
 
 # 169. Transferência
@@ -1570,7 +1582,7 @@ Criar endpoints de domínio claros.
 POST /expenses
 
 
-pode criar uma despesa parcelada.
+Na Fase 7 cria despesa simples (`OPEN`, parcela 1/1 interna). Parcelamento funcional (N>1) é a Fase 8.
 
 
 # 176. Resultado

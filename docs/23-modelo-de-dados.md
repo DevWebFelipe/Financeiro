@@ -746,6 +746,8 @@ NONE
 
 Despesa vinculada diretamente a uma conta.
 
+Vinculação **não** implica pagamento. Na Fase 7 a despesa `ACCOUNT` nasce `OPEN`, com `account_id` obrigatório, sem linha em `payments`. O débito ocorre só no pagamento (RN208, RN210).
+
 
 # 50. CREDIT_CARD
 
@@ -754,7 +756,9 @@ Despesa vinculada a cartão de crédito.
 
 # 51. NONE
 
-Despesa sem cartão e ainda não vinculada a uma conta para pagamento.
+Despesa sem cartão e **sem** `account_id` na própria despesa.
+
+`expenses.account_id` permanece `null` depois do pagamento. A conta usada fica em `payments.account_id`. `payment_method` continua `NONE` (RN209, RN125).
 
 
 # 52. Despesa
@@ -784,7 +788,9 @@ Quando:
 payment_method = NONE
 
 
-credit_card_id deve ser nulo.
+credit_card_id deve ser nulo e account_id deve ser nulo.
+
+Na Fase 7 essa regra é aplicada pela API/Service (RN209). O CHECK físico `ck_expenses_payment_targets` é mais permissivo (permite `account_id` em `NONE`). Não alterar a migration. Não persistir `account_id` em despesa `NONE`.
 
 
 # 55. Despesa
@@ -841,6 +847,8 @@ Uma despesa é considerada vencida quando:
 - `due_date` < data atual (timezone da aplicação).
 
 A interface poderá apresentar "VENCIDA" sem alterar o status persistido.
+
+A API da Fase 7 expõe o boolean derivado `overdue`. Não há coluna `overdue`.
 
 
 # 61. REFUNDED
@@ -1152,12 +1160,18 @@ A soma dos pagamentos não pode ultrapassar o valor devido, salvo operação exp
 
 # 89. Estorno de pagamento
 
-O sistema deve prever futuramente uma forma de registrar estorno de pagamento.
+O sistema deve prever futuramente uma forma de registrar estorno **por pagamento** (`POST /api/v1/payments/{id}/reverse`).
+
+Essa operação **não** pertence à Fase 7.
 
 
-# 90. V1
+# 90. V1 — Estorno de despesa na Fase 7
 
-A implementação detalhada de estornos financeiros pode ser simplificada, mas o modelo não deve impedir sua evolução.
+Na Fase 7 o estorno é da despesa inteira (`POST /api/v1/expenses/{id}/refund`): `PARTIALLY_PAID` ou `PAID` → `REFUNDED`.
+
+As linhas de `payments` permanecem. Não há pagamento negativo. Não se usa `payments.type`. O saldo deixa de subtrair pagamentos cuja despesa está `REFUNDED` (RN214, RN215, RN216).
+
+O modelo não impede a evolução para reverse individual de pagamento.
 
 
 # 91. Fatura
@@ -2140,7 +2154,9 @@ Uma expense pode possuir:
 
 # 185. Despesa não parcelada
 
-Mesmo uma despesa à vista pode possuir uma única parcela, caso essa seja a estratégia adotada pela implementação.
+Mesmo uma despesa à vista possui uma única parcela.
+
+A Fase 7 adota essa estratégia de forma obrigatória: parcela 1/1 interna. A API não expõe parcelamento funcional (RN211).
 
 
 # 186. Decisão
@@ -2148,6 +2164,8 @@ Mesmo uma despesa à vista pode possuir uma única parcela, caso essa seja a est
 A implementação deve preferir um modelo consistente:
 
 toda despesa possui pelo menos uma parcela.
+
+`payments.installment_id` é obrigatório. Não criar pagamento sem parcela. Não criar tabela paralela para despesa “simples”.
 
 
 # 187. Motivo
@@ -3178,6 +3196,8 @@ A tabela `payments` (demais colunas já definidas) não deve ser migrada com `ty
 ## 269.2 Edição de parcela futura × `expenses.total_amount`
 
 RN067 vale **na criação** do parcelamento. O fluxo de edição de parcela futura (`docs/20`) não define o efeito sobre o total.
+
+A Fase 7 **não** implementa edição independente de parcela. O `PUT` da despesa `OPEN` atualiza a única parcela 1/1 em conjunto com `total_amount` e `due_date` (RN211, RN217). Isso não antecipa nem resolve esta pendência.
 
 Não decidir sozinho entre: alterar `expenses.total_amount`; redistribuir; manter o total original; rejeitar; permitir divergência; recalcular demais parcelas.
 

@@ -599,8 +599,11 @@ Do not create an endpoint only because a verb exists.
 Named business actions:
 
 ```text
+POST /api/v1/expenses/{id}/pay
 POST /api/v1/expenses/{id}/cancel
-POST /api/v1/payments/{id}/reverse
+POST /api/v1/expenses/{id}/refund
+POST /api/v1/incomes/{id}/reverse
+POST /api/v1/payments/{id}/reverse   (future; not Phase 7)
 ```
 
 Default successful mutation response: `200 OK` with the updated resource, or `201 Created` for creation.

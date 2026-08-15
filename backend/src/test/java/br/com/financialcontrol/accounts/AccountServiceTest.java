@@ -14,6 +14,7 @@ import br.com.financialcontrol.accounts.dto.UpdateAccountRequest;
 import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.NotFoundException;
 import br.com.financialcontrol.incomes.IncomeRepository;
+import br.com.financialcontrol.payments.PaymentRepository;
 import br.com.financialcontrol.security.AuthenticatedUser;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -39,13 +40,18 @@ class AccountServiceTest {
 
   @Mock private AccountRepository accountRepository;
   @Mock private IncomeRepository incomeRepository;
+  @Mock private PaymentRepository paymentRepository;
 
   private AccountService accountService;
 
   @BeforeEach
   void setUp() {
     accountService =
-        new AccountService(accountRepository, incomeRepository, Clock.fixed(NOW, ZoneOffset.UTC));
+        new AccountService(
+            accountRepository,
+            incomeRepository,
+            paymentRepository,
+            Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
   @Test
@@ -183,6 +189,8 @@ class AccountServiceTest {
     when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
     when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
         .thenReturn(BigDecimal.ZERO);
+    when(paymentRepository.sumValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+        .thenReturn(BigDecimal.ZERO);
 
     AccountBalanceResponse response =
         accountService.getBalance(new AuthenticatedUser(USER_A), ACCOUNT_ID);
@@ -198,11 +206,28 @@ class AccountServiceTest {
     when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
     when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
         .thenReturn(new BigDecimal("5400.00"));
+    when(paymentRepository.sumValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+        .thenReturn(BigDecimal.ZERO);
 
     AccountBalanceResponse response =
         accountService.getBalance(new AuthenticatedUser(USER_A), ACCOUNT_ID);
 
     assertThat(response.balance()).isEqualByComparingTo("6900.00");
+  }
+
+  @Test
+  void shouldSubtractValidExpensePaymentsFromDerivedBalance() {
+    Account account = ownedAccount(true);
+    when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
+    when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+        .thenReturn(new BigDecimal("1000.00"));
+    when(paymentRepository.sumValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+        .thenReturn(new BigDecimal("300.00"));
+
+    AccountBalanceResponse response =
+        accountService.getBalance(new AuthenticatedUser(USER_A), ACCOUNT_ID);
+
+    assertThat(response.balance()).isEqualByComparingTo("2200.00");
   }
 
   @Test
@@ -245,6 +270,8 @@ class AccountServiceTest {
 
     assertThat(response.active()).isFalse();
     when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+        .thenReturn(BigDecimal.ZERO);
+    when(paymentRepository.sumValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
         .thenReturn(BigDecimal.ZERO);
     assertThat(accountService.getBalance(new AuthenticatedUser(USER_A), ACCOUNT_ID).balance())
         .isEqualByComparingTo("1500.00");

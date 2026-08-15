@@ -271,7 +271,7 @@ CANCELLED
 REFUNDED
 
 
-OVERDUE é derivado (não persistido): status OPEN ou PARTIALLY_PAID e dueDate < hoje.
+OVERDUE é derivado (não persistido): status OPEN ou PARTIALLY_PAID e dueDate < hoje em `America/Sao_Paulo`. A API da Fase 7 expõe `overdue` (boolean). PAID, CANCELLED e REFUNDED nunca são overdue.
 
 
 # 22. Receita
@@ -303,36 +303,47 @@ PAID
 OVERDUE é derivado da data de vencimento (não persistido).
 
 
-# 24. Testes de transição
+# 24. Testes de transição (Fase 7)
 
 Testar:
 
-OPEN -> PAID
-
+OPEN -> PAID (pagamento integral)
 
 OPEN -> CANCELLED
 
-
-OPEN -> REFUNDED
-
-
 OPEN -> PARTIALLY_PAID
 
-
 PARTIALLY_PAID -> PAID
+
+PARTIALLY_PAID -> REFUNDED
+
+PAID -> REFUNDED
+
+
+Não testar `OPEN -> REFUNDED` como transição válida. `OPEN` não se estorna (RN214).
 
 
 # 25. Testes inválidos
 
 Testar transições que devem ser rejeitadas.
 
-
-Exemplo:
+Exemplos da Fase 7:
 
 PAID -> OPEN
 
+OPEN -> REFUNDED
 
-sem operação explícita de correção.
+PARTIALLY_PAID -> CANCELLED
+
+PAID -> CANCELLED
+
+CANCELLED -> OPEN
+
+REFUNDED -> OPEN
+
+segundo refund sobre REFUNDED
+
+PUT sobre PARTIALLY_PAID, PAID, CANCELLED ou REFUNDED.
 
 
 # 26. Testes de pagamento
@@ -470,6 +481,8 @@ saldo insuficiente;
 recusa de operação normal que geraria saldo negativo (transferência, pagamento de despesa, pagamento de fatura);
 
 estorno de receita mesmo quando o saldo resultante for negativo;
+
+estorno de despesa restaura o saldo (pagamentos de despesa `REFUNDED` deixam de ser subtraídos) e **não** usa a exceção de saldo negativo da receita;
 
 transferências;
 
@@ -665,6 +678,93 @@ não pode ser recebida nesta fase;
 não pode ser editada nesta fase.
 
 O cancelamento não deve produzir os efeitos do estorno (não há movimentação financeira a desfazer).
+
+
+# 47.1 Fase 7 — Despesas simples
+
+Contrato: `docs/25` (Fase 7) e RN208–RN221. Não testar `CREDIT_CARD`, parcelas N>1, faturas nem `payments.type`.
+
+Padrão: `ExpenseServiceTest` (unidade) + `ExpenseApiTest` (API + Testcontainers), no mesmo estilo de `IncomeServiceTest` / `IncomeApiTest`. Clock injetável para `overdue`.
+
+
+## Criação
+
+- `ACCOUNT` nasce `OPEN`; exige `accountId`; não cria `payments`; não altera saldo; gera parcela 1/1 (`installmentNumber = 1`, `totalInstallments = 1`, `amount = totalAmount`);
+- `NONE` nasce `OPEN`; `accountId` nulo; rejeitar `accountId` informado; não cria `payments`; gera parcela 1/1;
+- `CREDIT_CARD` rejeitado;
+- ownership: `userId` do SecurityContext;
+- categoria `EXPENSE` ativa do usuário;
+- categoria `INCOME`, inativa ou de outro usuário: rejeitar (404 se de outro usuário);
+- `responsibleType` obrigatório; `OTHER` exige `responsibleName`;
+- `barcode` opcional persistido;
+- UUID v7 no id da despesa e da parcela.
+
+
+## Pagamento (`POST /expenses/{id}/pay`)
+
+- pagamento integral: `OPEN` → `PAID`; saldo reduzido; parcela 1/1 `PAID`;
+- pagamento parcial: `OPEN` → `PARTIALLY_PAID`;
+- múltiplos pagamentos até quitar: último leva a `PAID`; soma = total;
+- pagamento acima do devido: rejeitado;
+- valor zero ou negativo: rejeitado;
+- saldo insuficiente: rejeitado (não deixa saldo negativo);
+- conta inexistente / de outro usuário: 404;
+- conta inativa: 400;
+- `ACCOUNT` paga com conta diferente de `expenses.account_id`: rejeitado;
+- `ACCOUNT` sem `accountId` no body: usa a conta da despesa;
+- `NONE` paga com conta válida: `payments.account_id` preenchido; `expenses.account_id` permanece `null`; `paymentMethod` permanece `NONE`;
+- `PAID` / `CANCELLED` / `REFUNDED`: pagamento rejeitado;
+- dois pagamentos concorrentes não ultrapassam o devido;
+- `payments.type` permanece `null`.
+
+
+## Cancelamento
+
+- `OPEN` → `CANCELLED`; parcela 1/1 `CANCELLED`; saldo inalterado; registro permanece;
+- `PARTIALLY_PAID` rejeitado;
+- `PAID` rejeitado;
+- `CANCELLED` rejeitado;
+- `REFUNDED` rejeitado.
+
+
+## Refund
+
+- `PARTIALLY_PAID` → `REFUNDED`;
+- `PAID` → `REFUNDED`;
+- `OPEN` rejeitado;
+- `CANCELLED` rejeitado;
+- `REFUNDED` rejeitado (duplo refund);
+- saldo restaurado (pagamentos deixam de ser subtraídos);
+- linhas de `payments` permanecem e continuam listáveis;
+- despesa não volta a `OPEN`;
+- parcela 1/1 também `REFUNDED`.
+
+
+## Edição (`PUT`)
+
+- `OPEN`: campos do contrato alteráveis; parcela 1/1 acompanha `totalAmount` e `dueDate`;
+- `PARTIALLY_PAID`, `PAID`, `CANCELLED`, `REFUNDED`: rejeitar.
+
+
+## Overdue
+
+- `OPEN` com `dueDate` ≥ hoje: `overdue = false`;
+- `OPEN` com `dueDate` < hoje: `overdue = true`;
+- `PARTIALLY_PAID` vencida: `overdue = true`;
+- `PAID` nunca overdue;
+- `CANCELLED` nunca overdue;
+- `REFUNDED` nunca overdue;
+- “hoje” em `America/Sao_Paulo`, não no timezone do JVM/navegador.
+
+
+## Segurança
+
+- usuário B não lê, edita, paga, cancela nem estorna despesa de A: **404**;
+- listagem de B não inclui itens de A;
+- categoria de outro usuário na criação: **404**;
+- conta de outro usuário no pagamento: **404**;
+- pagamento de outro usuário: **404**;
+- sem token: **401**.
 
 
 # 48. Testes de cartão

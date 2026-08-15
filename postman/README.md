@@ -10,18 +10,30 @@ A coleção é mantida junto ao código-fonte e deve acompanhar a evolução do 
 
 A coleção segue a seguinte organização:
 
-Financial Control  
+Financial Control API  
 ├── 00 - Sistema  
 │   └── Health  
 │  
 ├── 01 - Cadastros  
-│   ├── Contas  
-│   └── Usuários  
+│   ├── Cartões          (pasta reservada; vazia — fases posteriores)  
+│   ├── Categorias       (pasta reservada; vazia nesta collection)  
+│   ├── Contas           (Fase 4 — implementado)  
+│   └── Usuários         (cadastro)  
 │  
 ├── 02 - Processos  
-│   └── Autenticação  
+│   ├── Autenticação     (Fase 3 — implementado)  
+│   └── Transferências   (pasta reservada; vazia — fases posteriores)  
 │  
-└── 99 - Cenários de Teste
+└── 99 - Cenários de testes
+
+Estado da collection em relação às fases:
+
+- Fases 3 e 4: presentes (health, auth, usuários, contas).
+- Fase 5 (categorias): API implementada; a pasta `Categorias` na collection ainda está vazia — preencher na manutenção da collection, sem inventar contrato.
+- Fase 6 (receitas): API implementada; **ainda não há pasta de Receitas** nesta collection. Adicionar na manutenção da collection, alinhada a `docs/25`.
+- Fase 7 (despesas simples): API implementada (`/api/v1/expenses`, `GET /api/v1/payments/{id}`). **Ainda não há pasta de Despesas** nesta collection. Adicionar na manutenção da collection, alinhada a `docs/25`.
+
+Não adicionar requests de endpoints que ainda não existem no backend.
 
 ### Regras de organização
 
@@ -51,7 +63,7 @@ Exemplos de nomes de requests:
 No Postman:
 
 1. Selecione **Import**.
-2. Escolha o arquivo `Financial Control.postman_collection.json`.
+2. Escolha o arquivo `Financial Control API.postman_collection.json`.
 3. Confirme a importação.
 
 A Collection contém:
@@ -72,11 +84,11 @@ A Collection contém:
 
 Importe o arquivo:
 
-`Financial Control - Local.postman_environment.json`
+`Financial Control — Local.postman_environment.json`
 
 Depois selecione o ambiente:
 
-`Financial Control - Local`
+`Financial Control — Local`
 
 O Environment versionado contém somente a estrutura das variáveis.
 
@@ -131,7 +143,7 @@ Antes de executar os testes da API, certifique-se de que:
 
 - PostgreSQL está em execução;
 - backend está em execução;
-- o ambiente `Financial Control - Local` está selecionado no Postman.
+- o ambiente `Financial Control — Local` está selecionado no Postman.
 
 O backend local utiliza:
 

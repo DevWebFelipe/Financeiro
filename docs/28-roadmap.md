@@ -330,6 +330,11 @@ Usuário consegue:
 
 # 24. Fase 4 — Contas
 
+Status:
+
+CONCLUÍDA
+
+
 Objetivo:
 
 Implementar contas financeiras.
@@ -509,40 +514,64 @@ Estorno e cancelamento devem comportar-se como operações distintas: estornar v
 
 # 40. Fase 7 — Despesas simples
 
+Status:
+
+CONCLUÍDA
+
+Despesas `ACCOUNT` e `NONE`; parcela interna 1/1; pagamento, cancelamento e refund; saldo derivado (RN216); `overdue` derivado; ownership; testes (`ExpenseServiceTest`, `ExpenseApiTest`); API `/api/v1/expenses` e `GET /api/v1/payments/{id}`. Contrato RN208–RN221 permanece fechado.
+
 Objetivo:
 
-Implementar despesas sem parcelamento inicialmente.
+Implementar despesas sem parcelamento funcional e sem cartão, reutilizando `expenses`, `expense_installments` (parcela 1/1) e `payments`.
 
 
 # 41. Fase 7
 
-Formas:
+Formas operacionais:
 
 ACCOUNT
 
 NONE
 
 
+CREDIT_CARD, faturas e parcelas N>1: fora desta fase.
+
+
 # 42. Fase 7
 
 Implementar:
 
-- criação;
-- edição;
-- consulta;
-- pagamento;
-- cancelamento;
-- estorno.
-
-
-# 43. Fase 7
-
-Implementar:
-
+- criação (`OPEN`; sem payment; sem alteração de saldo);
+- edição somente em `OPEN`;
+- consulta e listagem paginada;
+- pagamento (`POST /api/v1/expenses/{id}/pay`);
+- cancelamento (`OPEN` → `CANCELLED`);
+- estorno (`PARTIALLY_PAID` / `PAID` → `REFUNDED`);
 - responsável;
-- boleto;
-- categoria;
-- vencimento.
+- boleto (`barcode`);
+- categoria `EXPENSE`;
+- vencimento;
+- `overdue` derivado na API;
+- impacto no saldo (RN216);
+- testes;
+- documentação.
+
+Não implementar nesta fase:
+
+- cartão / fatura / ciclo;
+- parcelamento funcional (N>1) nem CRUD de parcelas;
+- `POST /payments/{id}/reverse`;
+- valores de `payments.type`;
+- frontend.
+
+
+# 43. Fase 7 — Regras fechadas
+
+- `ACCOUNT` exige conta e nasce `OPEN`; pagamento posterior na mesma conta;
+- `NONE` mantém `account_id` nulo; a conta do pagamento fica só em `payments`;
+- parcela 1/1 interna; a API não exige `installmentId` no pagamento;
+- cancelar só `OPEN`; estornar só `PARTIALLY_PAID`/`PAID`; estorno não apaga `payments` e não volta a `OPEN`;
+- pagamento não deixa saldo negativo; estorno de despesa não usa a exceção de saldo negativo da receita.
 
 
 # 44. Estados
@@ -560,23 +589,32 @@ CANCELLED
 REFUNDED
 
 
-OVERDUE: derivado (não persistido).
+OVERDUE: derivado (não persistido); API expõe `overdue`.
 
 
 # 45. Testes
 
-Testar:
-
-- pagamento integral;
-- pagamento parcial;
-- múltiplos pagamentos;
-- cancelamento;
-- estorno.
+Ver `docs/27-testes.md` §47.1. Incluir criação ACCOUNT/NONE, parcela 1/1, pagamentos (integral, parcial, múltiplos, excedente, saldo insuficiente, conta errada), cancelamento, refund, overdue, isolamento.
 
 
 # 46. Critério de conclusão
 
-Usuário consegue controlar despesas simples sem cartão.
+Usuário consegue controlar despesas simples sem cartão, com impacto correto no saldo, sem conhecer parcela 1/1.
+
+
+# 46.1 Observações de manutenção (não bloqueantes)
+
+A Fase 7 está concluída. Os itens abaixo **não** são pendências da fase, **não** reabrem RN208–RN221 e **não** criam fase intermediária:
+
+- lock pessimista da conta para dois pagamentos concorrentes em despesas diferentes da mesma conta;
+- testes adicionais de filtros de data (`startDate` / `endDate`);
+- teste dedicado de PUT `ACCOUNT` ↔ `NONE`;
+- teste dedicado de PUT `CREDIT_CARD`;
+- teste dedicado de conta inválida/inativa na criação `ACCOUNT`;
+- testes adicionais de autenticação 401;
+- possível redução de N+1 na listagem de despesas.
+
+Permanecem fases futuras: parcelamento N>1 (Fase 8); cartão, fatura e ciclo; `POST /payments/{id}/reverse`; valores oficiais de `payments.type`.
 
 
 # 47. Fase 8 — Parcelamento de despesas
@@ -1547,8 +1585,6 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 6: CONCLUÍDAS.
+Fases 0 a 7: CONCLUÍDAS.
 
-Próxima fase: Fase 7 — Despesas simples.
-
-A IA não deve iniciar a Fase 7 nem implementar Refresh Token, logout backend ou módulos financeiros posteriores sem autorização explícita.
+Próxima fase: Fase 8 — Parcelamento de despesas. A IA não deve implementar a Fase 8, Refresh Token, logout backend nem módulos financeiros posteriores sem autorização explícita.

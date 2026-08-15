@@ -8,6 +8,7 @@ import br.com.financialcontrol.accounts.dto.UpdateAccountRequest;
 import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.NotFoundException;
 import br.com.financialcontrol.incomes.IncomeRepository;
+import br.com.financialcontrol.payments.PaymentRepository;
 import br.com.financialcontrol.security.AuthenticatedUser;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -27,12 +28,17 @@ public class AccountService {
 
   private final AccountRepository accountRepository;
   private final IncomeRepository incomeRepository;
+  private final PaymentRepository paymentRepository;
   private final Clock clock;
 
   public AccountService(
-      AccountRepository accountRepository, IncomeRepository incomeRepository, Clock clock) {
+      AccountRepository accountRepository,
+      IncomeRepository incomeRepository,
+      PaymentRepository paymentRepository,
+      Clock clock) {
     this.accountRepository = accountRepository;
     this.incomeRepository = incomeRepository;
+    this.paymentRepository = paymentRepository;
     this.clock = clock;
   }
 
@@ -96,17 +102,23 @@ public class AccountService {
   }
 
   /**
-   * Saldo derivado: saldo inicial + receitas RECEIVED da conta. Demais entradas e saídas entram
-   * quando os respectivos domínios forem implementados. Não consulta IncomeService (evita ciclo).
+   * Saldo derivado: saldo inicial + receitas RECEIVED − pagamentos de despesas que não estão
+   * CANCELLED nem REFUNDED (RN216). Não consulta IncomeService/ExpenseService (evita ciclo).
    */
-  BigDecimal calculateCurrentBalance(Account account) {
+  public BigDecimal calculateCurrentBalance(Account account) {
     BigDecimal received =
         incomeRepository.sumReceivedAmountByAccountIdAndUserId(
             account.getId(), account.getUserId());
     if (received == null) {
       received = BigDecimal.ZERO;
     }
-    return normalizeMoney(account.getInitialBalance().add(received));
+    BigDecimal paid =
+        paymentRepository.sumValidExpensePaymentsByAccountIdAndUserId(
+            account.getId(), account.getUserId());
+    if (paid == null) {
+      paid = BigDecimal.ZERO;
+    }
+    return normalizeMoney(account.getInitialBalance().add(received).subtract(paid));
   }
 
   Account requireOwnedAccount(UUID userId, UUID accountId) {
