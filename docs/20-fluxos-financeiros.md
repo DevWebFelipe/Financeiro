@@ -560,7 +560,7 @@ R$ 600,00
 
 Resultado:
 
-compra recusada pelo backend.
+compra **aceita** pelo backend (RN029A **SUPERADA**). Disponível passa a R$ −100,00. Eventual alerta visual é da apresentação (fora da Fase 9).
 
 
 # 24. Fluxo — Compra parcelada
@@ -728,6 +728,16 @@ Deve entrar no ciclo que fecha em:
 10/08
 
 
+# 31.1 Fluxo — Vencimento da fatura (`due_day` × `closing_day`)
+
+A `due_date` usa os dias **configurados** do cartão (RN099B), não o dia efetivo de `closing_date` após RN098.
+
+- fecha dia 10, vence dia 17, ciclo que fecha 10/08 → 17 > 10 → due 17/08 (mesmo mês);
+- fecha dia 25, vence dia 5, ciclo que fecha 25/08 → 5 ≤ 25 → due 05/09 (mês seguinte);
+- fecha dia 10, vence dia 10, ciclo que fecha 10/09 → 10 ≤ 10 → due 10/10;
+- fecha dia 31, vence dia 31, ciclo que fecha 28/02 (não bissexto) → 31 ≤ 31 → due 31/03.
+
+
 # 32. Fluxo — Fatura
 
 Cartão A:
@@ -806,7 +816,7 @@ e ainda houver saldo:
 
 A UI pode apresentar como VENCIDA.
 
-O status persistido permanece OPEN, CLOSED ou PARTIALLY_PAID conforme o ciclo.
+O status persistido permanece SCHEDULED, OPEN, CLOSED ou PAID conforme o ciclo. Pagamento parcial não cria status PARTIALLY_PAID na fatura.
 
 OVERDUE é derivado (não persistido).
 
@@ -861,7 +871,14 @@ R$ 1.200
 
 Fatura:
 
-PARTIALLY_PAID
+permanece OPEN se o ciclo ainda não fechou; permanece CLOSED se já estava fechada.
+
+Não existe status `PARTIALLY_PAID` de fatura.
+
+
+Pago:
+
+R$ 1.200
 
 
 Pago:
@@ -1117,11 +1134,16 @@ As linhas de `payments` permanecem. O saldo da conta deixa de considerar aqueles
 O mesmo vale para `PARTIALLY_PAID` → `REFUNDED`. `OPEN` não se estorna (não houve movimentação); usa-se `/cancel`.
 
 
-# 53.1 Fluxo — Estorno de compra no cartão (fases posteriores)
+# 53.1 Fluxo — Estorno de compra no cartão (Fase 9)
 
 Usuário comprou produto no cartão. A compra foi efetivada. Posteriormente o produto foi devolvido.
 
-Resultado previsto na V1: `REFUNDED`, histórico preservado, comprometimento ajustado (RN117). Fora da Fase 7.
+- se a despesa ainda está `OPEN` (nada liquidado na fatura): `POST /expenses/{id}/cancel` → `CANCELLED`; libera limite; sem crédito; sem movimento bancário;
+- se já houve liquidação (`PARTIALLY_PAID` ou `PAID`): `POST /expenses/{id}/refund` com `settlement`:
+  - `CARD_CREDIT` — gera crédito de cartão do valor liquidado;
+  - `ACCOUNT` — devolve à conta só o que saiu dela (`bankLiquidated`); a parte paga com crédito de cartão volta como crédito.
+
+Fatura `PAID` não muda. Pagamentos mistos da fatura não são revertidos. Histórico permanece (RN117).
 
 
 # 54. Diferença
@@ -1945,7 +1967,7 @@ Cada parcela de cartão é vinculada à fatura do respectivo ciclo (`expense_ins
 A despesa original não possui `invoice_id`.
 
 
-# 115. Fluxo — Compra cancelada antes da fatura
+# 115. Fluxo — Compra cancelada antes da liquidação
 
 Compra:
 
@@ -1955,37 +1977,42 @@ R$ 500
 Cartão A
 
 
+Despesa ainda `OPEN` (nenhuma alocação de pagamento/crédito nas parcelas).
+
+
 Depois:
 
-CANCELLED
+CANCELLED (`POST /expenses/{id}/cancel`)
 
 
 # 116. Resultado
 
-Não deve permanecer como compromisso.
+Não deve permanecer como compromisso. Limite liberado. Sem crédito. Sem movimento bancário. Histórico permanece.
 
 
-# 117. Fluxo — Compra estornada após fatura
+# 117. Fluxo — Compra estornada após liquidação
 
 Compra:
 
 R$ 500
 
 
-Fatura já fechada.
+Fatura já teve pagamento (ou crédito) alocado a essa compra. Despesa `PARTIALLY_PAID` ou `PAID`.
 
 
 Posteriormente:
 
-REFUNDED
+REFUNDED (`POST /expenses/{id}/refund`)
+
+
+O usuário escolhe `settlement`: `CARD_CREDIT` ou `ACCOUNT` (RN117).
 
 
 # 118. Resultado
 
-Histórico permanece.
+Histórico permanece. Fatura `PAID` não é alterada. Pagamentos de fatura mistos não são revertidos.
 
-
-O valor devido deve ser ajustado conforme a regra de estorno.
+O remaining operacional das faturas `OPEN`/`CLOSED` é recalculado pela soma dos remainings das parcelas não `CANCELLED`/`REFUNDED`.
 
 
 # 119. Fluxo — Fatura parcialmente paga e estorno
@@ -2005,20 +2032,12 @@ Depois uma compra de:
 R$ 500
 
 
-é estornada.
+é estornada (`refund` com `settlement`).
 
 
 # 120. Resultado
 
-O saldo da fatura deve ser recalculado corretamente.
-
-
-Não simplesmente subtrair:
-
-R$ 500
-
-
-de um valor sem considerar os pagamentos já realizados.
+O remaining da fatura deve ser recalculado pela soma dos remainings das parcelas restantes — não simplesmente subtrair R$ 500 de um total sem considerar as alocações já feitas (RN117, RN247).
 
 
 # 121. Fluxo — Várias contas
@@ -2714,9 +2733,9 @@ usuário paga R$ 1.200
 
 Then:
 
-fatura = PARTIALLY_PAID
+fatura permanece OPEN (se ainda não fechou) ou CLOSED (se já fechou); remaining = R$ 800
 
-saldo = R$ 800
+Pagamento parcial **não** gera status `PARTIALLY_PAID` na fatura.
 
 
 # 170. Exemplo

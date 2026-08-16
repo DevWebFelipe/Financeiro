@@ -281,6 +281,8 @@ Não introduzir sem decisão futura explícita:
 - Elasticsearch
 - event sourcing / CQRS
 
+Exceção aprovada na Fase 9: Spring `@Scheduled` **somente** para abertura/fechamento de faturas (RN096A). Não é autorização para mensageria nem job platform.
+
 
 # 26. Arquitetura tecnológica
 

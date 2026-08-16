@@ -321,6 +321,8 @@ public enum ExpenseStatus {
 
 API enums are strings (`"PAID"`), never ordinals (`2`).
 
+Invoice status (Fase 9): `SCHEDULED`, `OPEN`, `CLOSED`, `PAID`. Not `PARTIALLY_PAID`.
+
 ### 9.5 Booleans
 
 Java: `isActive`, `isClosed`, `hasBalance`, `canTransfer`
@@ -517,9 +519,9 @@ Ownership: every financial table has `user_id NOT NULL`. Relationships that must
 
 `invoice_id` belongs to `expense_installments`, never to `expenses`.
 
-Invoice `total_amount` / `paid_amount` / `remaining_amount` are derived, not columns.
+Invoice `total_amount` / `paid_amount` / `remaining_amount` are derived, not columns. Card `used_limit` / `available_limit` are derived, not columns.
 
-Do not add `payments.type` enum/CHECK, installment-edit compensation logic, or invoice-payment allocation columns until `AGENTS.md` §28.3 / `docs/23` §269 is decided. Do not write a preparatory migration to guess those answers.
+Do not add `payments.type` enum/CHECK until `docs/23` §269.1 is decided. Invoice-payment **allocation** (fato pagamento de fatura → parcela) is decided in §269.3 / RN247 — persist the allocation fact, not a derived `paid_amount` on the installment. Card-purchase refund to an account (RN117 `settlement = ACCOUNT`) is a persisted inflow fact (not `incomes`); physical table name is chosen in the Phase 9 migration. Do not alter V4/V7 in place: new Flyway version for nullable `last_four_digits`, invoice status `SCHEDULED`/`OPEN`/`CLOSED`/`PAID`, and related tables.
 
 ### 17.4 Other database rules
 

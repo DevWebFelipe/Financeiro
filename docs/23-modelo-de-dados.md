@@ -229,7 +229,7 @@ name
 
 holder_name
 
-last_four_digits
+last_four_digits (opcional; **não** obrigatório)
 
 credit_limit
 
@@ -246,14 +246,16 @@ updated_at
 
 `credit_limit` é o limite contratado (fato persistido).
 
-Limite disponível e comprometimento são derivados das compras/parcelas ativas do cartão. Não persistir como colunas independentes.
+`used_limit` e `available_limit` são derivados das compras/parcelas ainda não liquidadas. Não persistir como colunas.
+
+Não armazenar PAN, CVC, senha nem validade do plástico.
 
 
 # 19.1 Titular
 
-`holder_name` (holderName na API) é textual.
+`holder_name` (holderName na API) é textual e filtrável.
 
-O titular NÃO precisa ser um usuário do sistema.
+O titular NÃO precisa ser o usuário autenticado.
 
 Exemplos: Felipe, Giulia, Ederson, Elisiane.
 
@@ -1270,43 +1272,54 @@ Fonte de verdade e fórmulas: seções 194–199 e 263.
 
 # 94. Fatura
 
-Status persistidos V1:
+Status persistidos V1 (Fase 9):
+
+SCHEDULED
 
 OPEN
 
 CLOSED
 
-PARTIALLY_PAID
-
 PAID
+
+`PARTIALLY_PAID` **não** é status de fatura (redação anterior **SUPERADA**).
 
 
 # 95. Fatura
 
 OPEN:
 
-ciclo atual ainda recebendo compras.
+ciclo corrente ainda recebendo compras daquele ciclo (determinado pela data da compra, não só pelo status).
+
+No máximo uma fatura OPEN por cartão. Garantia física na Fase 9: unique parcial `(credit_card_id) WHERE status = 'OPEN'` (nova migration; não alterar V7 in-place). O CHECK de status vigente em V7 (`OPEN`,`CLOSED`,`PARTIALLY_PAID`,`PAID`) será substituído em nova migration por `SCHEDULED`,`OPEN`,`CLOSED`,`PAID`. `last_four_digits` passará a opcional em nova migration (V4 permanece intacta).
+
+
+# 95A. Fatura
+
+SCHEDULED:
+
+fatura futura já persistida porque uma parcela de compra parcelada pertence àquele ciclo. Ainda não é o ciclo corrente. Não recebe novas compras até virar OPEN.
 
 
 # 96. Fatura
 
 CLOSED:
 
-fatura fechada e aguardando pagamento.
+fatura fechada. remaining > 0 no momento do fechamento. Aguarda liquidação. Não reabre. Não recebe novas compras.
 
 
 # 97. Fatura
 
-PARTIALLY_PAID:
-
-parte da fatura foi paga.
+Pagamento parcial **não** gera status próprio. OPEN permanece OPEN; CLOSED permanece CLOSED.
 
 
 # 98. Fatura
 
 PAID:
 
-fatura totalmente paga.
+fatura já fechada **e** remaining = 0. Terminal. Nada altera PAID.
+
+OPEN + remaining 0 **não** é PAID até o fechamento.
 
 
 # 99. Fatura — OVERDUE (derivado)
@@ -1330,6 +1343,8 @@ due_date
 # 101. Regra
 
 Uma compra no cartão deve ser associada ao ciclo correto.
+
+A `due_date` da fatura segue RN099B: se `due_day` > `closing_day`, vencimento no mesmo mês da `closing_date`; se `due_day` ≤ `closing_day`, no mês seguinte. RN098 se o mês não tiver o dia.
 
 
 # 102. Regra
@@ -1411,7 +1426,7 @@ Não cria linha em `payments`.
 
 `payments` é o pagamento de despesa/parcela com dinheiro de conta (`ACCOUNT` / `NONE`).
 
-Compra no cartão não gera `payments` no momento da compra.
+Compra no cartão não gera `payments` no momento da compra. Despesa `CREDIT_CARD` não se liquida por `payments`.
 
 
 # 108. Regra
@@ -1479,7 +1494,55 @@ payment_date
 
 notes
 
+status (`ACTIVE` | `REVERSED`) — Fase 9; o pagamento não se apaga
+
 created_at
+
+
+# 113A. Alocação do rateio
+
+Tabela conceitual (Fase 9; nome físico na migration da implementação, plural snake_case):
+
+fato que liga `credit_card_invoice_payments` a `expense_installments`.
+
+Campos conceituais: id, user_id, invoice_payment_id, installment_id, amount, created_at.
+
+Ownership: FKs compostas. Não é coluna `paid_amount` na parcela. Não é linha em `payments`.
+
+O remaining da parcela considera essas alocações quando o pagamento da fatura está `ACTIVE`.
+
+
+# 113B. Crédito de cartão
+
+Crédito pertence ao cartão.
+
+Tabelas conceituais (Fase 9): fato de crédito (origem, amount, reason quando manual, status/histórico) e fato de aplicação (crédito → fatura, amount, FIFO).
+
+Não movimenta `accounts`. Não aumenta `credit_limit`. Não cria fatura. Nunca negativo.
+
+Aplicação automática usa o mesmo rateio RN247 sobre remaining das parcelas da fatura elegível, persistido como fato (não apagar).
+
+**Ordem:** créditos FIFO (`created_at` ASC, `id` ASC). Faturas elegíveis: `OPEN` ou `CLOSED` com `remaining > 0`, ordenadas por `due_date` ASC depois `id` ASC (`SCHEDULED` e `PAID` fora). Detalhe: RN246.
+
+
+# 113C. Ajuste de fatura
+
+Fato de adjustment na fatura: `DISCOUNT` | `SURCHARGE`, amount > 0, `reason` obrigatório, status `ACTIVE` | `REVERSED`.
+
+Rateado às parcelas com remaining > 0 (mesmo algoritmo RN247). Não permitido em fatura `PAID`. DISCOUNT não vira crédito.
+
+
+# 113D. Devolução à conta no estorno de compra no cartão
+
+Fato conceitual da Fase 9 (nome físico na migration da implementação, plural snake_case): entrada na conta quando o refund da despesa `CREDIT_CARD` usa `settlement = ACCOUNT` e `bankLiquidated > 0`.
+
+Não é receita (`incomes`). Não é reverse de `credit_card_invoice_payments`. Não usa `payments` da despesa.
+
+Campos conceituais: id, user_id, expense_id, account_id, amount (`bankLiquidated`), created_at.
+
+Ownership: FKs compostas. Entra na fórmula de saldo (RN240) como parcela positiva.
+
+Não criar a tabela até a migration da implementação da Fase 9.
 
 
 # 114. Regra
@@ -1505,6 +1568,8 @@ R$ 800
 
 
 # 116. Parcelamento de fatura
+
+**Fora da Fase 9.**
 
 Tabela:
 
@@ -1918,7 +1983,7 @@ Email de usuário deve ser único.
 
 # 158. Cartão
 
-last_four_digits não precisa ser único.
+`last_four_digits` é opcional e não precisa ser único.
 
 
 # 159. Conta
@@ -2309,7 +2374,10 @@ Evitar múltiplas fontes de verdade para o mesmo valor.
 Fatos persistidos da fatura:
 
 - parcelas vinculadas (`expense_installments.invoice_id`);
-- pagamentos realizados (`credit_card_invoice_payments`).
+- pagamentos realizados (`credit_card_invoice_payments`);
+- alocações de rateio (pagamento/crédito/ajuste de fatura → parcela);
+- créditos aplicados;
+- ajustes de fatura.
 
 Valores derivados:
 
@@ -2322,25 +2390,33 @@ Valores derivados:
 
 `paid_amount` NÃO é coluna persistida.
 
-É a soma de `credit_card_invoice_payments.amount` da fatura.
+É a soma de `credit_card_invoice_payments.amount` da fatura com `status = ACTIVE`. Pagamentos `REVERSED` não entram.
 
 
 # 197. Fatura — remaining_amount (derivado)
 
 `remaining_amount` NÃO é coluna persistida.
 
-Fórmula:
+Fórmula vigente (Fase 9):
 
-remaining_amount = total_amount − paid_amount
+remaining_amount = soma dos remainings das parcelas vinculadas à fatura (excluindo `CANCELLED` e `REFUNDED`).
+
+Remaining da parcela de cartão: obligation (RN231) − alocações ACTIVE de pagamentos de fatura − alocações ACTIVE de créditos − efeito ACTIVE de ajustes de fatura rateados. Despesa `CREDIT_CARD` não usa `payments` da despesa.
+
+A fórmula anterior (`sum(amount) − sum(invoice_payments)`) está **SUPERADA**: ignorava obligation, alocações, créditos e ajustes.
+
+Após estorno de compra (RN117), `paid_amount` (soma histórica dos pagamentos ACTIVE) **pode** deixar de coincidir com `total_amount − remaining_amount`. A dívida operacional é `remaining_amount`. Não “corrigir” essa divergência revertendo pagamentos mistos.
 
 
 # 198. Decisão V1
 
 Não persistir `total_amount`, `paid_amount` nem `remaining_amount` em `credit_card_invoices`.
 
+Não persistir `used_limit` nem `available_limit` em `credit_cards`.
+
 A API pode (e deve) expô-los no response, calculados na leitura.
 
-O `status` da fatura (`OPEN`, `CLOSED`, `PARTIALLY_PAID`, `PAID`) continua persistido: é ciclo/estado, não valor monetário.
+O `status` da fatura (`SCHEDULED`, `OPEN`, `CLOSED`, `PAID`) continua persistido: é ciclo/estado, não valor monetário.
 
 
 # 199. Parcelamento do saldo restante
@@ -2502,13 +2578,13 @@ Compra no cartão aumenta o comprometimento do cartão.
 
 # 213.1 Limite disponível
 
-Uma compra não pode ultrapassar o limite disponível do cartão.
+`used_limit` e `available_limit` são derivados. Não persistir.
 
-Exemplo:
+A RN029A (recusar compra acima do limite) está **SUPERADA**. A compra **deve ser permitida** mesmo que o disponível fique negativo.
 
-Limite R$ 5.000,00; comprometido R$ 4.500,00; disponível R$ 500,00; compra R$ 600,00 → recusada.
+Exemplo vigente: limite R$ 5.000,00; comprometido R$ 4.500,00; disponível R$ 500,00; compra R$ 600,00 → **aceita**; disponível R$ −100,00.
 
-Validação obrigatória no backend.
+Alterar `credit_limit` abaixo do usado também é permitido.
 
 
 # 214. Regra
@@ -3051,9 +3127,15 @@ total_amount =
 paid_amount =
     SUM(credit_card_invoice_payments.amount)
     WHERE invoice_id = :invoiceId
+      AND status = 'ACTIVE'
 
-remaining_amount = total_amount - paid_amount
+remaining_amount =
+    SUM(remaining de cada parcela vinculada)
+    WHERE invoice_id = :invoiceId
+      AND status NOT IN ('CANCELLED', 'REFUNDED')
 ```
+
+Remaining da parcela de cartão: ver RN231 + RN247 (obligation − alocações ACTIVE). A fórmula antiga `total_amount − paid_amount` está **SUPERADA**. Após RN117, `paid_amount` histórico pode divergir de `total_amount − remaining_amount`; a dívida operacional é `remaining_amount`.
 
 Não somar `expenses.total_amount` para obter o total da fatura.
 
@@ -3061,8 +3143,11 @@ Não persistir esses três valores. Se no futuro forem materializados por perfor
 
 O backend usa os valores derivados para:
 
-- validar que o pagamento não ultrapassa o devido (RN185);
-- transitar o status para `PARTIALLY_PAID` ou `PAID`.
+- validar que o pagamento não ultrapassa o remaining (RN185);
+- no fechamento, transitar OPEN → CLOSED (remaining > 0) ou OPEN → PAID (remaining = 0);
+- após CLOSED, transitar para PAID quando remaining = 0.
+
+Pagamento parcial **não** transita status da fatura para um estado “parcial”.
 
 A API expõe `totalAmount`, `paidAmount` e `remainingAmount` no response (docs/25). Isso não os torna colunas.
 
@@ -3220,7 +3305,9 @@ Governança: `AGENTS.md` seção 28.
 
 Nenhuma lacuna abaixo pode ser preenchida por suposição técnica.
 
-Itens **ainda bloqueados**: 269.1 (`payments.type`) e 269.3 (rateio de fatura). O item 269.2 está **fechado** para ACCOUNT/NONE na Fase 8; a pergunta sobre parcela em fatura está **DEFERIDA**.
+Itens **ainda bloqueados**: 269.1 (`payments.type`); 269.2.7 (edição de parcela já em fatura).
+
+O item 269.2 está **fechado** para ACCOUNT/NONE na Fase 8. O item **269.3 está fechado** na Fase 9 (rateio RN247; status da fatura RN090/RN091). O item **269.4 está fechado** na Fase 9 (RN117).
 
 Não criar migration, coluna, enum, CHECK, constante, validação, teste ou regra de Service/API dependente dos itens ainda bloqueados até decisão explícita.
 
@@ -3260,30 +3347,37 @@ A tabela `payments` (demais colunas já definidas, inclusive `status` da Fase 8)
 
 A Fase 7 **não** implementa edição independente: o `PUT` da despesa `OPEN` 1/1 atualiza a parcela única em conjunto e **pode alterar o total cadastralmente** (RN211, RN217, RN245). Isso não é payment, adjustment, reverse, refund nem cancel. Em N>1 o `PUT` da despesa não redistribui valores.
 
-**DEFERIDO (cartão/fatura — fora da Fase 8):**
+**DEFERIDO (cartão/fatura):**
 
-7. O comportamento quando uma ou mais parcelas já estão vinculadas a faturas (`invoice_id` preenchido). Não implementar lógica de fatura nesta fase. Não antecipar a resposta.
+7. O comportamento quando uma ou mais parcelas já estão vinculadas a faturas (`invoice_id` preenchido) e o usuário tenta editar cadastralmente `amount`/`due_date`. Não antecipar a resposta. A Fase 9 cria o vínculo `invoice_id`; esta pergunta de **edição** permanece aberta.
 
 
-## 269.3 Pagamento parcial da fatura × status das parcelas
+## 269.3 Pagamento parcial da fatura × status das parcelas — FECHADO (Fase 9)
 
-Pagamentos da fatura: `credit_card_invoice_payments`.
+Pagamentos da fatura: `credit_card_invoice_payments` (com `status` ACTIVE/REVERSED). Rateio persistido em fato de alocação para `expense_installments`.
 
-Não há regra oficial de rateio nem de efeito sobre `expense_installments.status`.
+Respostas oficiais:
 
-Não assumir: FIFO, LIFO, proporcional, quitação das menores, manter todas `OPEN`, status individual, ou outra estratégia.
+1. Sim: o remaining da parcela cai; o status persistido da parcela segue RN235 (`OPEN` / `PARTIALLY_PAID` / `PAID`) conforme remaining e obligation. A fatura **não** usa `PARTIALLY_PAID`.
+2. Rateio proporcional ao remaining aberto (RN247).
+3. Proporcional ao remaining; ordenação remaining ASC; empate: `due_date` ASC, depois `id` da parcela ASC; residual na última da ordenação.
+4. Sim: a parcela pode ficar parcialmente paga.
+5. Sim: o valor liquidado via fatura é o fato de alocação (não coluna `paid_amount` na parcela; não linha em `payments`).
+6. Não: as parcelas não ficam todas `OPEN` até a fatura `PAID`. Antecipação em fatura OPEN já reduz remaining e libera limite.
+7. Sim: o status da fatura é independente do status das parcelas no sentido de que pagamento parcial não muda o status da fatura (RN090). Agregação das parcelas continua RN235.
+8. A API da fatura expõe totais derivados e o histórico de pagamentos; o remaining por parcela continua no recurso da parcela. As alocações são fatos consultáveis no histórico do pagamento da fatura.
 
-Não implementar o efeito do pagamento parcial sobre parcelas até responder:
+Não persistir `paid_amount` na parcela. Totais da fatura continuam **derivados** (seção 263). Status da fatura continua persistido (`SCHEDULED` / `OPEN` / `CLOSED` / `PAID`).
 
-1. O pagamento parcial altera o status das parcelas?
-2. Se sim, qual regra de rateio?
-3. O rateio é FIFO, proporcional ou outro?
-4. Uma parcela pode ficar parcialmente paga?
-5. Existe valor pago individualmente por parcela?
-6. As parcelas permanecem `OPEN` enquanto a fatura não estiver `PAID`?
-7. O status da fatura é independente do status das parcelas?
-8. O pagamento parcial deve aparecer na API como valor da fatura apenas ou também como valor por parcela?
 
-Não criar coluna de “valor pago da parcela via fatura” para antecipar a resposta da pergunta 5.
+## 269.4 Cancelamento/estorno de compra no cartão com valor já liquidado — FECHADO (Fase 9)
 
-Totais da fatura continuam **derivados** (seção 263). Status da fatura continua persistido.
+Respostas oficiais (RN117):
+
+1. Sem liquidação (despesa `OPEN`): `POST /expenses/{id}/cancel`. Parcelas em fatura não `PAID` → `CANCELLED`. Sem crédito. Sem movimento bancário. Histórico permanece.
+2. Com liquidação (despesa `PARTIALLY_PAID` ou `PAID`): `POST /expenses/{id}/refund` com `settlement` obrigatório:
+   - `CARD_CREDIT` — crédito de cartão = `totalLiquidated`;
+   - `ACCOUNT` — exige `accountId`; devolve `bankLiquidated` à conta (fato próprio, não receita); restaura `creditLiquidated` como crédito de cartão.
+3. Fatura `PAID` é imutável; o benefício posterior é crédito e/ou devolução à conta.
+4. Não reverter pagamentos de fatura mistos. Crédito já utilizado impede desfazer a origem (RN246).
+5. Remaining operacional da fatura = soma dos remainings das parcelas não `CANCELLED`/`REFUNDED`.

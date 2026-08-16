@@ -39,7 +39,7 @@ Regra indefinida não deve ter teste que cristalize uma suposição.
 TESTE NÃO DEFINIDO → REGRA NÃO DEFINIDA → IMPLEMENTAÇÃO BLOQUEADA
 ```
 
-Pendências oficiais (`AGENTS.md` §28.3 / `docs/23` §269): `payments.type`; edição de parcela **já em fatura** (269.2 deferido); rateio do pagamento parcial da fatura. A edição ACCOUNT/NONE, reverse de payment e adjustments HTTP da Fase 8 estão implementados — manter os testes verdes.
+Pendências oficiais (`AGENTS.md` §28.3 / `docs/23` §269): `payments.type` (269.1); edição de parcela **já em fatura** (269.2.7 deferido). O **269.3 (rateio)** e o **269.4 (estorno no cartão)** estão **fechados** (RN247, RN117). A edição ACCOUNT/NONE, reverse de payment e adjustments HTTP da Fase 8 estão implementados — manter os testes verdes.
 
 Depois da decisão: documentação → teste → implementação.
 
@@ -845,21 +845,45 @@ CONCORRÊNCIA:
 
 # 48. Testes de cartão
 
+Contrato da Fase 9 (`docs/24` §19.3). Implementar estes testes **quando** a Fase 9 for autorizada — não agora.
+
 Testar:
 
 criação;
 
-edição;
+edição (`closingDay`/`dueDay` não reescrevem faturas existentes);
 
-desativação;
+desativação (bloqueia compra; não exclui);
 
 reativação;
 
-limite;
+filtro por `holderName`;
 
-compras;
+`lastFourDigits` omitido;
 
-faturas.
+limite derivado (available negativo permitido);
+
+compras (acima do limite aceita; cartão inativo recusada);
+
+ciclo RN095 / RN098;
+
+faturas `SCHEDULED` → `OPEN` → `CLOSED` → `PAID`;
+
+uma OPEN por cartão;
+
+rateio RN247 (remaining ASC; empate `due_date` ASC, `id` ASC; residual na última);
+
+crédito FIFO e ordem de faturas (`due_date` ASC, `id` ASC); crédito manual com `reason`;
+
+`due_date` da fatura RN099B (`due_day` ≤ `closing_day` → mês seguinte);
+
+cancelamento `OPEN` e refund com `settlement` `CARD_CREDIT` / `ACCOUNT` (RN117);
+
+pagamento de fatura não cria `payments`;
+
+fechamento idempotente do scheduler;
+
+PAID imutável.
 
 
 # 49. Limite
@@ -890,7 +914,7 @@ Disponível:
 3500
 
 
-# 50.1 Recusa por limite
+# 50.1 Compra acima do limite
 
 Limite: 5000
 
@@ -900,7 +924,7 @@ Disponível: 500
 
 Compra: 600
 
-Resultado esperado: compra recusada.
+Resultado esperado: compra **aceita** (RN029A **SUPERADA**). `availableLimit` = −100. Não recusar no backend.
 
 
 # 51. Teste

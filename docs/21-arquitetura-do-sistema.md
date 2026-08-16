@@ -562,7 +562,16 @@ Timestamps são persistidos em UTC (`TIMESTAMPTZ`).
 
 Regras de calendário financeiro ("hoje", vencimento, fechamento, atraso, ciclos) utilizam `America/Sao_Paulo`.
 
+O ciclo da compra no cartão usa a **data da compra** e o `closing_day`, não o fato de existir fatura OPEN.
+
 O frontend não deve usar o timezone do navegador para decidir regras financeiras.
+
+
+# 45A. Scheduler (Fase 9)
+
+A V1 admite **Spring `@Scheduled`** exclusivamente para o fechamento/abertura de faturas (RN096A): idempotente; não bloqueia o usuário.
+
+Não introduzir Redis, Kafka, fila nem plataforma genérica de jobs. Não criar sistema genérico de auditoria.
 
 
 # 46. Dinheiro
@@ -1524,6 +1533,8 @@ POST /expenses/{id}/pay
 
 POST /expenses/{id}/refund
 
+Fechamento de fatura **não** é ação normal do usuário (`POST /invoices/{id}/close` não é operação funcional da Fase 9). Scheduler Spring (RN096A).
+
 
 # 167. Pagamento
 
@@ -1539,6 +1550,8 @@ Em receitas, estorno (`POST /incomes/{id}/reverse`) desfaz o recebimento (`RECEI
 Cancelamento de receita (`POST /incomes/{id}/cancel`) é operação distinta (`EXPECTED` → `CANCELLED`).
 
 Em despesas (Fase 7), pagamento é `POST /expenses/{id}/pay`; cancelamento é `POST /expenses/{id}/cancel` (`OPEN` → `CANCELLED`); estorno é `POST /expenses/{id}/refund` (`PARTIALLY_PAID` / `PAID` → `REFUNDED`). `POST /payments/{id}/reverse` **não** pertence à Fase 7; entra no contrato da Fase 8.
+
+Na Fase 9, despesa `CREDIT_CARD` usa os mesmos paths de cancel/refund; o refund exige `settlement` `CARD_CREDIT` ou `ACCOUNT` (RN117).
 
 
 # 169. Transferência
@@ -1601,7 +1614,7 @@ parcelas;
 
 A API deve evitar múltiplas fontes de verdade.
 
-Totais de fatura (`totalAmount`, `paidAmount`, `remainingAmount`) são calculados pelo backend a partir de parcelas e pagamentos. Não são colunas.
+Totais de fatura (`totalAmount`, `paidAmount`, `remainingAmount`) são calculados pelo backend a partir de parcelas, pagamentos de fatura, alocações, créditos aplicados e ajustes de fatura. Não são colunas. Limite usado/disponível do cartão também é derivado.
 
 `invoice_id` vive na parcela, não na despesa. Modelo: `docs/23-modelo-de-dados.md`.
 

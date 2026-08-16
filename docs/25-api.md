@@ -461,9 +461,14 @@ Não implementado na Fase 4. Dependência futura: movimentações financeiras re
 
 # 21. Cartões
 
+Contrato da **Fase 9** (documentado; implementação ainda não iniciada).
+
 Endpoint:
 
 GET /api/v1/credit-cards
+
+
+Filtro oficial: `holderName` (titular; textual; não precisa ser o usuário).
 
 
 # 22. Cartão
@@ -490,6 +495,12 @@ Request:
   "closingDay": 10,
   "dueDay": 20
 }
+
+
+`lastFourDigits` é **opcional**. Não enviar PAN, CVC nem validade. Cartão nasce `active = true`. Não existe `DELETE` de cartão com histórico.
+
+
+# 24. Atualizar cartão
 
 
 # 24. Atualizar cartão
@@ -522,11 +533,25 @@ GET /api/v1/credit-cards/{id}/limit
 
 Response:
 
+```json
 {
   "creditLimit": 5000.00,
   "usedLimit": 1500.00,
   "availableLimit": 3500.00
 }
+```
+
+`creditLimit` persistido. `usedLimit` e `availableLimit` **derivados** (não colunas). `availableLimit` pode ser negativo. Crédito de cartão não entra neste cálculo como aumento de limite.
+
+
+# 27A. Créditos do cartão
+
+Endpoints conceituais da Fase 9:
+
+- `GET /api/v1/credit-cards/{id}/credits` — saldo disponível + histórico
+- `POST /api/v1/credit-cards/{id}/credits` — crédito manual (`amount`, `reason` obrigatório)
+
+Aplicação automática: sem endpoint de “aplicar crédito”. FIFO dos créditos (`created_at` ASC, `id` ASC). Faturas elegíveis (`OPEN` ou `CLOSED`, remaining > 0) por `due_date` ASC depois `id` ASC. Não movimenta conta. Não cria fatura. Detalhe: RN246.
 
 
 # 28. Categorias
@@ -839,9 +864,9 @@ Contrato da Fase 7. Não implementar cartão, fatura, ciclo nem parcelamento fun
 
 A Fase 7 opera despesas simples (`ACCOUNT` e `NONE`). Internamente toda despesa possui parcela 1/1 (`expense_installments`); `payments.installment_id` continua obrigatório. `installmentCount` é propriedade oficialmente aceita na criação (omitido = 1). O consumidor da Fase 7 **não** informa `installmentId` nas operações desta fase. A geração N>1 é o contrato da Fase 8 (seção 47).
 
-`CREDIT_CARD` está fora do contrato operacional da Fase 7 e da Fase 8. O contrato da Fase 8 (parcelas N>1, pagamento por parcela, reverse, adjustments) está na seção 47; os endpoints HTTP da tabela da seção 47 — incluindo adjustments — estão **implementados**.
+`CREDIT_CARD` está fora do contrato operacional da Fase 7 e da Fase 8. Entra na **Fase 9**. O contrato da Fase 8 (parcelas N>1, pagamento por parcela, reverse, adjustments) está na seção 47; os endpoints HTTP da tabela da seção 47 — incluindo adjustments — estão **implementados**.
 
-Todos os endpoints de despesa e pagamento exigem JWT Bearer. Sem token, token inválido, expirado ou usuário desativado: **401** (`UNAUTHORIZED`). Proprietário = usuário autenticado. Recurso de outro usuário ou UUID inexistente: **404** (`NOT_FOUND`). UUID inválido no path: **400**. Propriedades JSON desconhecidas — inclusive `userId`, `id`, `status`, `overdue`, `installmentId`, `createdAt`, `updatedAt`, `creditCardId`, `installments` — são rejeitadas (**400**, `VALIDATION_ERROR`). `installmentCount` **não** é propriedade desconhecida: é propriedade oficialmente aceita na criação (omitido = 1; se informado, deve ser `> 0`). `FAIL_ON_UNKNOWN_PROPERTIES` continua rejeitando o que não pertence ao contrato.
+Todos os endpoints de despesa e pagamento exigem JWT Bearer. Sem token, token inválido, expirado ou usuário desativado: **401** (`UNAUTHORIZED`). Proprietário = usuário autenticado. Recurso de outro usuário ou UUID inexistente: **404** (`NOT_FOUND`). UUID inválido no path: **400**. Propriedades JSON desconhecidas — inclusive `userId`, `id`, `status`, `overdue`, `installmentId`, `createdAt`, `updatedAt`, `installments` — são rejeitadas (**400**, `VALIDATION_ERROR`). Na Fase 7/8, `creditCardId` também é desconhecida. Na **Fase 9**, `creditCardId` é propriedade oficial quando `paymentMethod = CREDIT_CARD` (obrigatório nesse caso; cartão ativo do usuário). `installmentCount` **não** é propriedade desconhecida: é propriedade oficialmente aceita na criação (omitido = 1; se informado, deve ser `> 0`). `FAIL_ON_UNKNOWN_PROPERTIES` continua rejeitando o que não pertence ao contrato.
 
 
 Endpoint:
@@ -863,13 +888,13 @@ accountId — `expenses.account_id` (despesas `ACCOUNT`; despesas `NONE` não en
 
 responsibleType
 
-paymentMethod — nesta fase: `ACCOUNT` ou `NONE`
+paymentMethod — Fase 7/8: `ACCOUNT` ou `NONE`. Fase 9: também `CREDIT_CARD`
 
 page — padrão `0`
 
 size — padrão `20`
 
-Ordenação fixa: `createdAt` crescente (mesmo padrão da Fase 6). Não há `sort`/`direction` nesta fase. Não há filtro `creditCardId` nesta fase.
+Ordenação fixa: `createdAt` crescente (mesmo padrão da Fase 6). Não há `sort`/`direction` nesta fase. Fase 7/8: sem filtro `creditCardId`. Fase 9: filtro `creditCardId` permitido.
 
 
 Response de listagem paginada: `items`, `page`, `size`, `totalItems`, `totalPages`. Não expor `content` / `totalElements` do Spring Data.
@@ -882,6 +907,7 @@ Response de item (criação, consulta, listagem, edição e ações):
   "id": "...",
   "categoryId": "...",
   "accountId": "...",
+  "creditCardId": null,
   "description": "Aluguel",
   "totalAmount": 1500.00,
   "expenseDate": "2026-08-01",
@@ -1011,6 +1037,8 @@ Request:
 
 O consumidor **não** envia `installmentId`. O Service localiza a parcela 1/1, cria o `payment` associado e atualiza status da parcela e da despesa.
 
+Despesa `CREDIT_CARD` **não** pode ser paga por este endpoint nem por `POST .../installments/{installmentId}/payments`. Liquidação somente via `POST /api/v1/invoices/{id}/payments`.
+
 Regras:
 
 - somente `OPEN` ou `PARTIALLY_PAID`;
@@ -1048,6 +1076,31 @@ Não volta a `OPEN`. Não apaga `payments`. O saldo deixa de subtrair esses paga
 Rejeitar `OPEN`, `CANCELLED` e `REFUNDED` (inclusive segundo refund).
 
 Não há `POST /api/v1/payments/{id}/reverse` **nesta fase (Fase 7)**. O reverse entra no contrato da Fase 8 (seção 47).
+
+### Fase 9 — despesa `CREDIT_CARD`
+
+O mesmo path. Body **obrigatório**:
+
+```json
+{
+  "settlement": "CARD_CREDIT"
+}
+```
+
+ou
+
+```json
+{
+  "settlement": "ACCOUNT",
+  "accountId": "..."
+}
+```
+
+`settlement` valores oficiais: `CARD_CREDIT`, `ACCOUNT`. `ACCOUNT` exige `accountId` de conta ativa do usuário. Propriedades desconhecidas: **400**.
+
+Despesa `ACCOUNT`/`NONE`: body vazio como na Fase 7/8; enviar `settlement` é propriedade desconhecida (**400**).
+
+Efeitos: RN117. Fatura `PAID` não muda. Pagamentos de fatura não são revertidos.
 
 
 # 45. Pagamentos da despesa
@@ -1116,7 +1169,7 @@ Para N>1, `POST /expenses/{id}/pay` **não** escolhe parcela implicitamente. A A
 
 Adjustment pertence à **parcela** (`expense_installments` 1:N), não à despesa como recurso raiz. Paths aninhados sob a parcela seguem o mesmo padrão de `.../installments/{installmentId}/payments`. Reverse de payment permanece em `/api/v1/payments/{id}/reverse` porque `payments` já é recurso de primeiro nível; reverse de adjustment usa a cadeia aninhada para validar `expenseId` + `installmentId` + `adjustmentId` (ownership composto), análogo ao `PUT` da parcela.
 
-Não existem campos oficiais de subclassificação (`reason`, `subtype`, juros, multa, antecipação, etc.) — RN232.
+Não existem campos oficiais de subclassificação (`subtype`, juros vs multa vs tarifa como enum). A partir da Fase 9, `reason` (texto) é **obrigatório** em todo adjustment (parcela ou fatura) — RN232 emendada.
 
 ### Criar adjustment
 
@@ -1131,14 +1184,16 @@ Request:
 ```json
 {
   "type": "DISCOUNT",
-  "amount": 10.00
+  "amount": 10.00,
+  "reason": "Desconto concedido"
 }
 ```
 
 - `type` obrigatório: somente `DISCOUNT` ou `SURCHARGE`.
 - `amount` obrigatório: `> 0` (escala monetária do projeto).
+- `reason` obrigatório (Fase 9): texto de justificativa. Sem enum de motivos.
 - Propriedades desconhecidas: **400** `VALIDATION_ERROR`.
-- Não enviar: `userId`, `id`, `status`, `createdAt`, `expenseId`, `installmentId`, `reason`, subclassificações.
+- Não enviar: `userId`, `id`, `status`, `createdAt`, `expenseId`, `installmentId`.
 
 Response (fato persistido):
 
@@ -1149,6 +1204,7 @@ Response (fato persistido):
   "installmentId": "...",
   "type": "DISCOUNT",
   "amount": 10.00,
+  "reason": "Desconto concedido",
   "status": "ACTIVE",
   "createdAt": "..."
 }
@@ -1161,7 +1217,8 @@ Regras:
 - ownership: usuário autenticado; `expenseId` / `installmentId` / cadeia composta; cross-user ou inexistente → **404** `NOT_FOUND` (sem distinguir);
 - despesa **não** `CANCELLED` nem `REFUNDED`;
 - parcela **não** `CANCELLED` nem `REFUNDED` (RN237: parcela `OPEN` de despesa `REFUNDED` não recebe adjustment);
-- **não** se exige parcela `OPEN` para criar adjustment: `PARTIALLY_PAID` e `PAID` podem receber `DISCOUNT`/`SURCHARGE` enquanto a despesa estiver ativa, desde que a invariável de `obligation` (RN231) seja respeitada;
+- fatura do ciclo **não** `PAID` (ajuste de parcela em item de fatura PAID é bloqueado);
+- `reason` obrigatório;
 - não altera `installment.amount`, `expenses.total_amount` nem saldo de conta;
 - altera `obligation` / `remaining` derivados; recalcula status persistido da parcela e da despesa na mesma transação;
 - `obligation` resultante deve permanecer `>= 0` e `>= SUM(active payments)`; caso contrário **400** `BUSINESS_RULE_VIOLATION` + rollback;
@@ -1334,6 +1391,10 @@ Response conceitual:
 }
 
 
+`status` da fatura: `SCHEDULED` | `OPEN` | `CLOSED` | `PAID`. Não usar `PARTIALLY_PAID`.
+
+`dueDate` calculado na criação da fatura (RN099B): se `due_day` > `closing_day`, mesmo mês da `closingDate`; se `due_day` ≤ `closing_day`, mês seguinte; RN098 se o mês não tiver o dia. Não recalcular se o cartão mudar depois.
+
 `totalAmount`, `paidAmount` e `remainingAmount` são derivados na leitura.
 
 Não são colunas de `credit_card_invoices`. Fórmulas: `docs/23-modelo-de-dados.md` seção 263.
@@ -1355,9 +1416,9 @@ Uma despesa parcelada pode ter parcelas em outras faturas.
 
 # 60. Fechar fatura
 
-Endpoint:
+Fechamento **não** é operação funcional normal do usuário. **Não** expor `POST /api/v1/invoices/{id}/close` como ação da API da Fase 9.
 
-POST /api/v1/invoices/{id}/close
+O backend fecha via scheduler Spring (RN096A), idempotente. A determinação do ciclo da compra usa a data, não o status OPEN.
 
 
 # 61. Regra
@@ -1389,7 +1450,29 @@ Endpoint:
 GET /api/v1/invoices/{id}/payments
 
 
+# 63A. Reverse de pagamento de fatura
+
+Endpoint conceitual da Fase 9:
+
+POST /api/v1/invoices/{invoiceId}/payments/{paymentId}/reverse
+
+Não DELETE. Proibido se a fatura estiver `PAID`.
+
+
+# 63B. Ajustes de fatura
+
+Endpoints conceituais:
+
+- `POST /api/v1/invoices/{id}/adjustments` — `type`, `amount`, `reason`
+- `GET /api/v1/invoices/{id}/adjustments`
+- reverse aninhado do adjustment da fatura
+
+Proibido em fatura `PAID`. Rateio RN247A.
+
+
 # 64. Parcelamento de fatura
+
+**Fora da Fase 9.**
 
 Endpoint:
 
@@ -2049,12 +2132,14 @@ Fluxo:
 3. validar valor;
 4. verificar saldo;
 5. criar pagamento (`credit_card_invoice_payments`);
-6. recalcular totais derivados e atualizar o status persistido da fatura;
-7. registrar a saída na conta;
-8. confirmar transação.
+6. persistir alocações do rateio nas parcelas;
+7. recalcular remainings derivados; no fechamento (scheduler), não neste passo, transitar OPEN→CLOSED/PAID;
+8. registrar a saída na conta;
+9. aplicar créditos FIFO nas faturas elegíveis (RN246: créditos FIFO; faturas `due_date` ASC, `id` ASC);
+10. confirmar transação.
 
 
-Não gravar `total_amount` / `paid_amount` / `remaining_amount` como colunas. O status (`PARTIALLY_PAID` / `PAID`) é persistido.
+Não gravar `total_amount` / `paid_amount` / `remaining_amount` como colunas. Pagamento parcial **não** transita a fatura para `PARTIALLY_PAID`. Status persistido: `SCHEDULED` / `OPEN` / `CLOSED` / `PAID`. Rateio persistido em alocações. Atualizar remaining das parcelas e o limite usado na mesma transação.
 
 
 # 118. Transferência
@@ -2074,14 +2159,16 @@ Fluxo:
 
 Fluxo:
 
-1. validar cartão;
-2. determinar ciclo;
-3. localizar/criar fatura;
-4. criar despesa;
-5. criar parcelas;
-6. associar cada parcela à fatura do respectivo ciclo (`expense_installments.invoice_id`);
-7. atualizar comprometimento;
+1. validar cartão **ativo**;
+2. determinar ciclo pela **data da compra** e `closing_day` (`America/Sao_Paulo`; RN095) — não pelo status OPEN;
+3. localizar/criar fatura do ciclo (OPEN ou SCHEDULED); `due_date` da fatura nova segundo RN099B;
+4. criar despesa `CREDIT_CARD` (`creditCardId`; `dueDate` do request não define vencimento das parcelas — RN099A / RN099B);
+5. criar todas as parcelas; cada uma com `invoice_id` da fatura do respectivo ciclo;
+6. faturas futuras nascem `SCHEDULED`;
+7. atualizar comprometimento derivado (compra acima do limite **permitida**);
 8. confirmar transação.
+
+Não recusar por limite insuficiente. Não criar `payments`. Não reduzir saldo da conta.
 
 
 # 120. Pagamento de despesa (Fase 7)
@@ -2125,6 +2212,8 @@ Fluxo:
 5. confirmar transação.
 
 Não apagar `payments`. O saldo deixa de subtrair esses pagamentos. Não voltar a `OPEN`. Não usar `Income.reverse()` como modelo.
+
+Na Fase 9, despesa `CREDIT_CARD` usa o mesmo endpoint com body `settlement` (RN117). Não reverte pagamentos de fatura.
 
 
 # 121. Idempotência

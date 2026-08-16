@@ -106,13 +106,17 @@ Same-user ownership is enforced with composite FKs `(referenced_id, user_id) →
 
 `invoice_id` is on `expense_installments` only. Do not add `invoice_id` to `expenses`.
 
-Do not persist invoice `total_amount`, `paid_amount`, or `remaining_amount`. They are derived.
+Do not persist invoice `total_amount`, `paid_amount`, or `remaining_amount`. They are derived. Do not persist card `used_limit` / `available_limit`.
 
-Do not add `payments.type` enum, CHECK, or a silent omit/keep of that column until `AGENTS.md` §28.3 / `docs/23` §269.1 is decided. Do **not** store ACTIVE/REVERSED in `type`; Phase 8 uses `payments.status`.
+Do not add `payments.type` enum, CHECK, or a silent omit/keep of that column until `AGENTS.md` §28.3 / `docs/23` §269.1 is decided. Do **not** store ACTIVE/REVERSED in `type`; Phase 8 uses `payments.status`. Invoice payments use `credit_card_invoice_payments`, never `payments`.
 
-Do not add per-installment “invoice paid amount” columns to anticipate §269.3.
+Persist invoice-payment **allocation** as its own fact (RN247 / §269.3 closed). Do not add a derived `paid_amount` column on the installment.
 
 Do not persist `paid_amount`, `remaining_amount`, `discount_total`, `surcharge_total`, or `early_payment_savings` on expenses/installments.
+
+Invoice status CHECK (Phase 9 migration, do not alter V7 in place): `SCHEDULED`, `OPEN`, `CLOSED`, `PAID`. Not `PARTIALLY_PAID`. Partial unique: at most one `OPEN` invoice per card.
+
+`last_four_digits` is optional (Phase 9 migration may drop NOT NULL from V4). Do not alter V4 in place.
 
 `UNIQUE (expense_id, installment_number)` is required for Phase 8 and is present in **V17**. Do not alter V8–V10.
 

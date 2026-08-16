@@ -60,7 +60,7 @@ Do not repeat the same assertion at unit + API + E2E without a reason.
 - Spring Data `save()` itself
 - Angular / Java / BigDecimal framework internals
 - A test whose only job is to raise coverage
-- Behavior that would crystallize an undefined business rule (`payments.type`, installment already on an invoice vs total, invoice partial-payment allocation). Undefined rule → no test → implementation blocked. See `AGENTS.md` §28. Phase 8 ACCOUNT/NONE installment edit, payments status, adjustments HTTP and related rules are implemented — keep those tests green; do not invent tests for deferred §269 items.
+- Behavior that would crystallize an undefined business rule (`payments.type`, installment already on an invoice vs total). Undefined rule → no test → implementation blocked. See `AGENTS.md` §28. Invoice allocation (§269.3) and card-purchase refund (§269.4) are **closed** — tests for RN247, RN246, RN099B and RN117 are required when Phase 9 is implemented. Phase 8 ACCOUNT/NONE installment edit, payments status, adjustments HTTP and related rules are implemented — keep those tests green; do not invent tests for remaining deferred §269 items.
 
 ---
 

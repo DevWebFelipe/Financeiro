@@ -177,8 +177,9 @@ Criar estrutura inicial do PostgreSQL.
 Bloqueios oficiais (não migrar nem implementar a parte dependente até decisão):
 
 - `payments.type` (`docs/23` §269.1);
-- edição de parcela **já vinculada a fatura** × `expenses.total_amount` (`docs/23` §269.2) — a edição ACCOUNT/NONE da Fase 8 está fechada; a pergunta de fatura está DEFERIDA;
-- pagamento parcial da fatura × status/rateio das parcelas (`docs/23` §269.3) — não bloqueia a tabela de pagamentos da fatura; bloqueia rateio e efeito sobre parcelas.
+- edição de parcela **já vinculada a fatura** × `expenses.total_amount` (`docs/23` §269.2.7) — DEFERIDA.
+
+O antigo bloqueio 269.3 (rateio) está **fechado** na Fase 9. O antigo bloqueio 269.4 (estorno no cartão) está **fechado** na Fase 9 (RN117).
 
 Governança: `AGENTS.md` seção 28. O modelo já consolidado permanece fonte de verdade.
 
@@ -694,168 +695,87 @@ Ver `docs/27-testes.md` (Fase 8). Incluir geração 1/3/12, residual na primeira
 
 Usuário consegue criar despesa parcelada (compromissos futuros gerados), pagar parcela a parcela, registrar desconto/acréscimo via HTTP, reverter payment e adjustment, refundir a despesa, com saldo e status corretos — sem cartão e sem relatórios de apresentação.
 
-**Critério atendido.** Ressalvas de auditoria (lock de conta no GET de saldo; PUT 1/1 × obligation; parcelas 0,00) estão **fechadas** em `docs/24` (RN067/RN068, RN231, RN240, RN244, RN245) e `docs/28` §50.1. A IA **não** deve iniciar a Fase 9 sem autorização explícita.
+**Critério atendido.** Ressalvas de auditoria (lock de conta no GET de saldo; PUT 1/1 × obligation; parcelas 0,00) estão **fechadas** em `docs/24` (RN067/RN068, RN231, RN240, RN244, RN245) e `docs/28` §50.1.
+
+A Fase 9 tem contrato oficial expandido documentado. **Implementação ainda não iniciada** — não implementar código sem autorização explícita desta fase.
 
 
-# 54. Fase 9 — Cartões
-
-Objetivo:
-
-Implementar cartões de crédito.
-
-
-# 55. Fase 9
-
-Implementar:
-
-- cadastro;
-- edição;
-- limite;
-- fechamento;
-- vencimento;
-- ativação;
-- desativação.
-
-
-# 56. Fase 9
-
-Não implementar ainda:
-
-- fatura completa.
-
-
-Primeiro preparar o domínio do cartão.
-
-
-# 57. Fase 10 — Compras no cartão
+# 54. Fase 9 — Cartões de crédito (fase expandida)
 
 Objetivo:
 
-Permitir despesas com cartão.
+Implementar o domínio de cartão de crédito conforme o contrato consolidado: cadastro, limite, compras, ciclo, faturas, pagamento, rateio, créditos, ajustes, fechamento automático, reverse de pagamentos de fatura.
+
+As antigas Fases 10 (compras), 11 (faturas) e 12 (pagamento de fatura) deste roadmap foram **absorvidas** pela Fase 9. Não existe mais uma Fase 9 restrita a “somente cadastro de cartão”.
 
 
-# 58. Fase 10
+# 55. Fase 9 — Inclui
 
-Implementar:
+- cadastro, edição, ativação e desativação de cartões (`holderName` filtrável; `last_four_digits` opcional);
+- limite persistido; used/available derivados (available pode ser negativo; RN029A SUPERADA);
+- compras `CREDIT_CARD` (cartão ativo; acima do limite permitida);
+- parcelamento com todas as parcelas na criação; cada uma com `invoice_id`;
+- ciclo pela data da compra × `closing_day` (`America/Sao_Paulo`; RN095);
+- faturas `SCHEDULED` → `OPEN` → `CLOSED` → `PAID`; no máximo uma OPEN por cartão;
+- fechamento automático (Spring `@Scheduled`, idempotente);
+- pagamento de fatura (integral, parcial, múltiplo, antecipado) sem usar `payments`;
+- rateio persistido (RN247);
+- liberação de limite proporcional;
+- créditos de cartão (FIFO dos créditos; faturas elegíveis por `due_date` ASC, `id` ASC);
+- `due_date` da fatura (RN099B);
+- ajustes de parcela e de fatura com `reason`;
+- reverse de pagamento de fatura;
+- cancelamento de compra `OPEN` e refund com `settlement` `CARD_CREDIT` / `ACCOUNT` (RN117).
 
-- compra;
-- parcelamento;
-- vínculo com cartão;
-- determinação do ciclo.
-
-
-# 59. Fase 10
-
-Compra deve gerar parcelas futuras.
-
-
-# 60. Fase 10
-
-Parcelas devem ser associadas às respectivas faturas.
-
-
-# 61. Fase 10
-
-Testar:
-
-- compra antes do fechamento (ciclo atual);
-- compra depois do fechamento (próximo ciclo);
-- compra no dia do fechamento (próxima fatura — RN095);
-- dia 31 em mês curto (último dia do mês — RN098);
-- compra parcelada.
+Não incluir: parcelamento do saldo da fatura (Fase 13); relatórios/PDF; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição de parcela já em fatura (§269.2.7).
 
 
-# 62. Fase 11 — Faturas
-
-Objetivo:
-
-Implementar controle completo de faturas.
-
-
-# 63. Fase 11
-
-Implementar:
-
-- geração;
-- abertura;
-- fechamento;
-- vencimento;
-- consulta;
-- itens;
-- total.
-
-
-# 64. Fase 11
+# 56. Fase 9 — Status da fatura
 
 Status persistidos:
+
+SCHEDULED
 
 OPEN
 
 CLOSED
 
-PARTIALLY_PAID
-
 PAID
 
+`PARTIALLY_PAID` **não** é status de fatura.
 
 OVERDUE: derivado da data de vencimento (não persistido).
 
 
-# 65. Fase 11
+# 57. Fase 9 — Testes
 
-Implementar cálculo de:
+Além dos testes de cadastro de cartão:
 
-- total;
-- pago;
-- restante.
-
-
-# 66. Fase 11
-
-Testar fechamento e vencimento.
-
-
-# 67. Critério de conclusão
-
-Usuário consegue abrir uma fatura e visualizar exatamente o que deverá pagar.
-
-
-# 68. Fase 12 — Pagamento de fatura
-
-Objetivo:
-
-Permitir pagamento integral ou parcial.
+- compra antes / no dia / depois do fechamento (RN095);
+- dia 31 em mês curto (RN098);
+- compra parcelada com faturas SCHEDULED;
+- uma OPEN por cartão;
+- pagamento integral, parcial, múltiplo, antecipado;
+- rateio (soma exata, remaining como base, ASC, empate `due_date`/`id`, residual na última);
+- compra acima do limite aceita;
+- pagamento reduz saldo da conta; compra não reduz;
+- crédito FIFO; faturas por `due_date` ASC; crédito não movimenta conta;
+- `due_date` RN099B;
+- cancel/refund RN117 (`CARD_CREDIT` e `ACCOUNT`);
+- fechamento idempotente; PAID imutável;
+- isolamento e concorrência.
 
 
-# 69. Fase 12
+# 58. Critério de conclusão da Fase 9
 
-Implementar:
+Usuário consegue cadastrar cartão, lançar compra (inclusive parcelada e acima do limite), ver faturas e itens, pagar fatura (parcial/antecipado) com rateio e limite corretos, usar crédito e ajustes, cancelar/estornar compra no cartão (RN117), e o fechamento automático respeita o ciclo — sem parcelar saldo de fatura e sem relatórios.
 
-- pagamento;
-- pagamento parcial;
-- múltiplos pagamentos;
-- conta utilizada.
+**Implementação: não iniciada.**
 
 
-# 70. Fase 12
+# 59–72. Fases 10–12 — ABSORVIDAS
 
-Pagamento da fatura deve reduzir o saldo da conta.
-
-
-# 71. Fase 12
-
-Pagamento não deve duplicar despesas.
-
-
-# 72. Testes
-
-Testar:
-
-- pagamento integral;
-- pagamento parcial;
-- pagamento múltiplo;
-- saldo insuficiente;
-- concorrência.
+As seções anteriores “Fase 10 — Compras”, “Fase 11 — Faturas” e “Fase 12 — Pagamento de fatura” deixam de ser fases futuras independentes. O conteúdo está no contrato da Fase 9 (`docs/24` §19.3).
 
 
 # 73. Fase 13 — Parcelamento de fatura
@@ -1616,4 +1536,6 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 Fases 0 a 8: CONCLUÍDAS.
 
-Próxima fase: Fase 9 — Cartões (**não implementar** sem autorização explícita). A IA não deve implementar Refresh Token, logout backend nem módulos financeiros posteriores (cartão/fatura) sem autorização explícita. Itens deferidos da Fase 8 (`payments.type`, parcela em fatura, rateio, JSON aninhado N>1, endpoint composto payment+adjustment) permanecem fora do escopo até decisão.
+Próxima fase: Fase 9 — Cartões de crédito (fase expandida). Contrato oficial **fechado**. **Implementação ainda não iniciada** — não implementar código sem autorização explícita.
+
+A IA não deve implementar Refresh Token, logout backend, parcelamento do saldo da fatura, relatórios/PDF, frontend financeiro, `payments.type` nem auditoria genérica. Itens ainda deferidos: §269.1, §269.2.7. O rateio (§269.3) e o estorno no cartão (§269.4) estão **fechados**.

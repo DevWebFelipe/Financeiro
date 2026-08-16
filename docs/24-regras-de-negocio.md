@@ -216,10 +216,34 @@ Somente cartões ativos podem receber novas compras.
 
 Cartão desativado permanece disponível para consulta histórica.
 
+Inativação **não** exclui o cartão. Cartão com histórico financeiro **não** deve ser excluído. Cartão pode ser reativado.
+
+Inativo: não aceita novas compras nem novos movimentos de compra. Faturas, pagamentos, créditos e histórico existentes continuam válidos e acessíveis.
+
+
+## RN025A — Titular
+
+`holderName` é textual e informativo. Não precisa ser o usuário autenticado. É permitido titular de outra pessoa. O titular deve ser utilizável em filtros/consultas.
+
+
+## RN025B — Dados do plástico
+
+Não armazenar PAN completo, CVC/CVV, senha nem validade física do cartão. Não criar `expiration_date` para representar validade do plástico.
+
+`last_four_digits` **pode** existir e **não** é obrigatório.
+
 
 ## RN026 — Limite
 
-O limite do cartão representa o limite de crédito disponível contratado.
+`credit_limit` é o limite contratado **persistido**.
+
+`used_limit` e `available_limit` **não** são persistidos. São sempre calculados.
+
+O limite usado considera o valor ainda não liquidado das compras/parcelas do cartão. Uma compra de R$ 1.000 em 10× R$ 100 consome R$ 1.000. Cada parcela liquidada (pagamento de fatura rateado, crédito aplicado ou equivalente) libera o respectivo valor. Pagamento antecipado libera proporcionalmente.
+
+Crédito de cartão **não** aumenta o limite contratado nem o disponível.
+
+Alterar `credit_limit` é permitido (aumentar ou diminuir), inclusive para valor abaixo do já utilizado. Nesse caso `available_limit` pode ficar negativo. Não bloquear a alteração por isso.
 
 
 ## RN027 — Limite não é saldo
@@ -237,11 +261,15 @@ Uma compra no cartão não reduz imediatamente o saldo bancário.
 Uma compra no cartão aumenta o comprometimento do cartão.
 
 
-## RN029A — Limite disponível
+## RN029A — Limite disponível — SUPERADA
 
-Uma compra não pode ultrapassar o limite disponível do cartão.
+**SUPERADA** pelo contrato da Fase 9.
 
-Exemplo:
+A redação anterior recusava compra acima do limite disponível. Essa recusa **não** vale mais.
+
+A compra no cartão **deve ser permitida** mesmo que ultrapasse o limite disponível (`available_limit` negativo). O backend **não** bloqueia por limite insuficiente. Eventual alerta visual é responsabilidade futura da apresentação e não faz parte da Fase 9.
+
+Exemplo (comportamento vigente):
 
 Limite: R$ 5.000,00
 
@@ -251,9 +279,7 @@ Disponível: R$ 500,00
 
 Compra: R$ 600,00
 
-Resultado: compra recusada.
-
-Esta regra deve ser validada no backend.
+Resultado: compra **aceita**; disponível passa a R$ −100,00.
 
 
 ## RN030 — Estorno
@@ -973,42 +999,85 @@ Os itens da fatura são `expense_installments`, não `expenses`.
 
 ## RN087 — Fatura aberta
 
-OPEN permite novas compras pertencentes ao ciclo.
+OPEN permite novas compras cujo ciclo (data da compra × `closing_day`) pertence a essa fatura.
+
+O ciclo **não** se determina pela mera existência de uma fatura OPEN. Se o fechamento automático estiver atrasado, a data da compra continua mandando (RN095).
 
 
 ## RN088 — Fatura fechada
 
-CLOSED não deve receber novas compras do ciclo fechado.
+CLOSED não deve receber novas compras do ciclo fechado. Novas compras pertencem ao próximo ciclo. Fatura CLOSED não reabre.
 
 
 ## RN089 — Fatura vencida (derivada)
 
 OVERDUE NÃO é status persistido da fatura.
 
-Status persistidos: OPEN, CLOSED, PARTIALLY_PAID, PAID.
+Status persistidos da fatura (Fase 9): SCHEDULED, OPEN, CLOSED, PAID.
 
-Fatura não quitada após o vencimento pode ser apresentada como vencida na UI (derivado de dueDate e status ≠ PAID).
+`PARTIALLY_PAID` **não** é status de fatura (redação anterior **SUPERADA**).
+
+Fatura não `PAID` após o vencimento pode ser apresentada como vencida na UI (derivado de dueDate e status ≠ PAID). `SCHEDULED` não se apresenta como vencida.
 
 
-## RN090 — Fatura parcialmente paga
+## RN090 — Pagamento parcial da fatura — SUPERADA a transição de status
 
-Pagamento parcial gera:
+**SUPERADA** a regra de que pagamento parcial gera `PARTIALLY_PAID`.
 
-PARTIALLY_PAID
+Pagamento parcial **não** altera o status da fatura.
+
+Exemplos:
+
+- OPEN com remaining R$ 1.000; pagamento R$ 200 → continua OPEN (remaining R$ 800);
+- OPEN com remaining R$ 0 → continua OPEN até o fechamento;
+- CLOSED com remaining > 0; pagamento parcial → continua CLOSED;
+- CLOSED com remaining = 0 → PAID.
 
 
 ## RN091 — Fatura paga
 
-Quando o valor devido for totalmente quitado:
+`PAID` exige **as duas** condições:
 
-PAID
+1. a fatura já foi fechada (não está OPEN nem SCHEDULED);
+2. remaining = 0 (100% liquidado).
+
+OPEN + remaining 0 **não** é PAID.
+
+`PAID` é terminal. Nada pode alterar uma fatura PAID (novo pagamento, ajuste, compra, reabertura, alteração de histórico). Benefício financeiro posterior usa crédito do cartão.
+
+
+## RN091A — Estados da fatura
+
+Fluxo oficial:
+
+```text
+SCHEDULED → OPEN → CLOSED → PAID
+```
+
+No fechamento de uma OPEN:
+
+- remaining > 0 → CLOSED;
+- remaining = 0 → PAID.
+
+No máximo **uma** fatura OPEN por cartão (unique parcial na migration da Fase 9).
+
+Faturas futuras de compra parcelada nascem SCHEDULED. Quando o ciclo correspondente iniciar: SCHEDULED → OPEN.
+
+Não usar `invoice_id` nulo para representar fatura futura. A parcela vincula-se à fatura na criação.
 
 
 # 13. Fechamento de cartão
 
 ## RN092 — Data de fechamento
 
-A data de fechamento determina o ciclo da compra.
+A data de fechamento determina o ciclo da compra, em conjunto com a **data da compra**, no calendário `America/Sao_Paulo`.
+
+
+## RN092A — Alteração de dias do cartão
+
+`closingDay` e `dueDay` podem ser alterados. A alteração vale somente para **ciclos futuros**.
+
+Não reescrever faturas já existentes, parcelas já vinculadas, datas históricas nem pagamentos históricos.
 
 
 ## RN093 — Compra antes do fechamento
@@ -1017,10 +1086,14 @@ Compra realizada **antes** do dia de fechamento deve pertencer ao ciclo atual.
 
 O dia do fechamento não faz parte deste caso (ver RN095).
 
+Exemplo: fechamento dia 10; compra dia 09 → ciclo que fecha dia 10.
+
 
 ## RN094 — Compra após fechamento
 
 Compra realizada após o dia de fechamento deve pertencer ao próximo ciclo.
+
+Exemplo: fechamento dia 10; compra dia 11 → próximo ciclo.
 
 
 ## RN095 — Dia do fechamento
@@ -1047,6 +1120,22 @@ O frontend não deve usar o timezone do navegador para essa decisão.
 
 # 14. Vencimento de cartão
 
+## RN096A — Fechamento automático
+
+Fechamento de fatura **não** é operação funcional normal do usuário.
+
+Adotar scheduler Spring, idempotente. O processo deve:
+
+- abrir faturas SCHEDULED cujo ciclo iniciou — o ciclo inicia na `closing_date` da fatura anterior do mesmo cartão (nesse dia as compras já pertencem a este ciclo, RN095); a primeira fatura do cartão nasce OPEN;
+- fechar faturas OPEN cuja `closing_date` chegou (remaining > 0 → CLOSED; remaining = 0 → PAID);
+- marcar CLOSED com remaining = 0 como PAID;
+- poder executar de novo sem duplicar efeitos.
+
+Não reabrir fatura fechada. Não fechar novamente fatura já fechada. Não alterar PAID.
+
+Se o scheduler atrasar, o ciclo da compra continua baseado na data (RN095), não no status OPEN.
+
+
 ## RN097 — Dia de vencimento
 
 O cartão possui dia configurado para vencimento.
@@ -1067,14 +1156,48 @@ Abril: 30/04
 
 ## RN099 — Regra
 
-RN095 e RN098 devem ser cobertas por testes automatizados.
+RN095, RN098 e RN099B devem ser cobertas por testes automatizados.
 
 
 # 15. Pagamento de fatura
 
+## RN099A — Vencimento da parcela no cartão
+
+A primeira parcela de uma compra `CREDIT_CARD` recebe como vencimento a `due_date` da fatura à qual a compra pertence.
+
+Exemplo: compra 11/08; fechamento dia 10; vencimento da fatura dia 20 → a compra pertence à fatura seguinte; primeira parcela vence em 20/09.
+
+As demais parcelas seguem as respectivas faturas futuras (cada uma com o due da sua fatura).
+
+Para `CREDIT_CARD`, o `dueDate` informado na criação da despesa **não** define o vencimento das parcelas. O backend calcula. `expenses.due_date` persistido = vencimento da primeira parcela.
+
+
+## RN099B — `due_date` da fatura quando `due_day` ≤ `closing_day`
+
+A `due_date` da fatura é calculada a partir da `closing_date` já determinada (RN098 no dia de fechamento) e do `due_day` do cartão **no momento em que a fatura nasce**. Não recalcular se o cartão mudar depois (RN092A).
+
+Regra:
+
+A comparação usa os **dias configurados** do cartão (`due_day` e `closing_day`), não o dia-do-mês efetivo de `closing_date` após RN098.
+
+- se `due_day` > `closing_day`: `due_date` cai no **mesmo mês** da `closing_date`, no dia `due_day` (se o mês não tiver esse dia: último dia do mês — RN098);
+- se `due_day` ≤ `closing_day`: `due_date` cai no **mês seguinte** ao da `closing_date`, no dia `due_day` (idem RN098).
+
+Exemplos:
+
+- fechamento dia 10, vencimento dia 20, ciclo que fecha 10/09 → 20 > 10 → due 20/09;
+- fechamento dia 25, vencimento dia 5, ciclo que fecha 25/08 → 5 ≤ 25 → due 05/09;
+- fechamento dia 10, vencimento dia 10, ciclo que fecha 10/09 → 10 ≤ 10 → due 10/10;
+- fechamento dia 31, vencimento dia 31, ciclo que fecha 28/02 (não bissexto) → 31 ≤ 31 → mês seguinte → due 31/03;
+- fechamento dia 31, vencimento dia 31, ciclo que fecha 31/01 → 31 ≤ 31 → mês seguinte → due 28/02 (RN098);
+- fechamento dia 31, vencimento dia 5, ciclo que fecha 31/01 → 5 ≤ 31 → due 05/02.
+
+
 ## RN100 — Pagamento
 
 Pagamento de fatura representa saída real de dinheiro da conta.
+
+Pode ser integral, parcial, múltiplo e antecipado. Antecipado é pagamento normal enquanto a fatura está OPEN. Não existe tipo separado de “pagamento antecipado”.
 
 
 ## RN101 — Não duplicação
@@ -1106,7 +1229,7 @@ R$ 2.000
 
 ## RN103 — Pagamento parcial
 
-Pagamento parcial é permitido.
+Pagamento parcial é permitido. Não altera o status da fatura (RN090).
 
 
 ## RN104 — Saldo
@@ -1121,14 +1244,17 @@ e pagamento:
 R$ 1.200
 
 
-saldo:
+remaining:
 
 R$ 800
 
 
+O pagamento não pode exceder o remaining da fatura.
+
+
 ## RN105 — Conta
 
-Pagamento de fatura deve indicar a conta utilizada.
+Pagamento de fatura deve indicar a conta utilizada. Qualquer conta **ativa** do usuário. Não precisa ser a conta originalmente associada à despesa.
 
 
 ## RN105A — Saldo da conta no pagamento de fatura
@@ -1150,10 +1276,71 @@ Resultado: saldo da conta R$ 0,00; fatura com R$ 500,00 restantes.
 
 ## RN106 — Atomicidade
 
-Pagamento e atualização da fatura devem ocorrer na mesma transação.
+Pagamento, rateio (alocações), atualização de remaining/status das parcelas, liberação de limite e débito da conta devem ocorrer na mesma transação.
+
+
+## RN106A — Sem `payments` da despesa
+
+Pagamento de fatura usa `credit_card_invoice_payments`. **Não** cria linha em `payments`.
+
+Despesa `CREDIT_CARD` **não** pode ser paga por `POST /expenses/{id}/pay` nem por `POST /expenses/{expenseId}/installments/{installmentId}/payments`. A liquidação é exclusivamente pela fatura.
+
+
+## RN106B — Reverse de pagamento de fatura
+
+Pagamento de fatura não se apaga. Reverse é operação explícita: o pagamento passa a `REVERSED` e deixa de participar do remaining, do saldo da conta e do limite. As alocações daquele pagamento permanecem persistidas e deixam de participar dos cálculos. Não usar DELETE.
+
+Proibido se a fatura estiver `PAID` (nada altera PAID).
+
+
+## RN247 — Rateio do pagamento da fatura
+
+O pagamento da fatura é um valor **global** do ciclo. Não pertence a uma única compra.
+
+Rateio proporcional ao **saldo aberto** (`remaining`) de cada parcela da fatura. Nunca usar o `amount` original como base se a parcela já estiver parcialmente liquidada.
+
+Somente parcelas com `remaining > 0` participam.
+
+Algoritmo oficial:
+
+1. selecionar parcelas com remaining > 0;
+2. ordenar por remaining ASC;
+3. empate: `due_date` ASC, depois `id` da parcela ASC (UUID v7 = ordem de criação; estável);
+4. proporção de cada parcela sobre a soma dos remainings;
+5. arredondar cada share para escala 2 com `RoundingMode.HALF_UP`;
+6. limitar cada share ao remaining da própria parcela e ao leftover;
+7. residual final na **última** parcela da ordenação (necessariamente uma das maiores bases; no empate, a de `due_date`/`id` maiores);
+8. invariantes: soma dos rateios = valor efetivamente rateado; nenhum rateio > remaining; nenhum remaining negativo.
+
+Implementação em Java com `BigDecimal`. Não usar `double`. Não copiar a classe Delphi `TRateioValor`.
+
+O resultado é **fato histórico** persistido: `credit_card_invoice_payment` → alocação → `expense_installment`. Não usar `payments`. Não persistir `paid_amount` na parcela.
+
+Remaining da parcela (Fase 9, cartão):
+
+```text
+obligation (RN231)
+− pagamentos próprios ACTIVE permitidos pela regra (ACCOUNT/NONE)
+− SUM(alocações de pagamentos de fatura ACTIVE)
+− SUM(alocações de créditos aplicados)
+− efeitos de alocação de ajustes de fatura ACTIVE
+```
+
+Despesa `CREDIT_CARD` não possui pagamento próprio via endpoint de despesa.
+
+
+## RN247A — Ajuste de fatura e rateio
+
+Ajuste de fatura (`DISCOUNT` / `SURCHARGE`) exige `reason`. Participa do **mesmo** algoritmo de rateio RN247 (remaining aberto, ASC, desempate `due_date` ASC depois `id` ASC, residual na última).
+
+Não criar ajuste em fatura `PAID`. Ajuste negativo (`DISCOUNT`) não pode ultrapassar o remaining disponível. Excedente **não** vira crédito automaticamente.
+
+Juros/multa de atraso são ajustes (`SURCHARGE` + `reason`), não cálculo automático.
 
 
 # 16. Parcelamento de fatura
+
+**Fora da Fase 9.** A tabela `credit_card_invoice_installments` permanece no modelo; esta operação não entra no contrato da Fase 9.
 
 ## RN107 — Parcelamento
 
@@ -1245,7 +1432,46 @@ Cancelamentos e estornos não devem apagar o registro original.
 
 ## RN117 — Estorno no cartão
 
-Estorno de compra no cartão deve ajustar o comprometimento correspondente.
+Estorno/cancelamento de compra `CREDIT_CARD` ajusta o comprometimento conforme a situação financeira real. Não apagar histórico. Não reverter pagamentos de fatura mistos (rateio com outras compras). Não reconstruir faturas retroativamente.
+
+Elegibilidade HTTP **igual** à das despesas `ACCOUNT`/`NONE` (RN236 / RN237), com status da despesa segundo RN235 (remaining das parcelas via fatura, não via `payments`):
+
+- `OPEN` → `POST /api/v1/expenses/{id}/cancel` (sem body de `settlement`);
+- `PARTIALLY_PAID` ou `PAID` → `POST /api/v1/expenses/{id}/refund` com `settlement` obrigatório;
+- `CANCELLED` / `REFUNDED` → rejeitar.
+
+**Valor liquidado** desta compra (não inclui ajustes de fatura; estes já estão na obligation):
+
+```text
+bankLiquidated   = SUM(alocações ACTIVE de pagamentos de fatura nas parcelas desta despesa)
+creditLiquidated = SUM(alocações ACTIVE de créditos nas parcelas desta despesa)
+totalLiquidated  = bankLiquidated + creditLiquidated
+```
+
+Invariável: despesa `OPEN` implica `totalLiquidated = 0`. Se `PARTIALLY_PAID`/`PAID` e `totalLiquidated = 0` (somente desconto de fatura), o refund ainda exige `settlement`; nenhum crédito e nenhum movimento bancário são gerados.
+
+### Cancelamento (`OPEN`)
+
+Efeitos: despesa `CANCELLED`; parcelas em faturas **não** `PAID` → `CANCELLED`; remaining das faturas `OPEN`/`CLOSED` recalculado (soma dos remainings); limite liberado; sem crédito novo; sem movimento bancário. Fatura `PAID` não é alterada.
+
+### Refund (`PARTIALLY_PAID` ou `PAID`) — opções de `settlement`
+
+1. `CARD_CREDIT` — gera crédito de cartão de `totalLiquidated` (`reason` do sistema: `estorno da compra`). Não movimenta conta. Se `totalLiquidated = 0`, não cria crédito.
+2. `ACCOUNT` — exige `accountId` de conta **ativa** do usuário. Devolve `bankLiquidated` à conta como **fato persistido de devolução** (não é receita; não é linha em `incomes`; não reverte o pagamento da fatura; entra na fórmula de saldo — RN240). A parte `creditLiquidated` é **sempre** restaurada como crédito de cartão (esse valor nunca saiu da conta). Se `bankLiquidated = 0`, não há movimento bancário. Se `creditLiquidated = 0`, não cria crédito.
+
+Efeitos comuns às duas opções:
+
+- despesa → `REFUNDED` (não volta a `OPEN`);
+- parcelas com liquidação, em fatura **não** `PAID` → `REFUNDED`;
+- parcelas sem liquidação, em fatura **não** `PAID` → `CANCELLED`;
+- parcelas em fatura `PAID` **não mudam de status** (fatura `PAID` é imutável); o benefício é só crédito e/ou devolução à conta;
+- pagamentos de fatura e suas alocações **permanecem** (não reverse);
+- aplicações de crédito já feitas **permanecem**; o novo crédito (se houver) é fato adicional e entra na aplicação automática RN246 na mesma transação;
+- limite: compromissos não liquidados são liberados; o já liquidado já tinha sido liberado;
+- remaining operacional da fatura `OPEN`/`CLOSED` = soma dos remainings das parcelas não `CANCELLED`/`REFUNDED`; se `CLOSED` e remaining = 0 → `PAID` na mesma transação (idempotente com o scheduler);
+- após estorno, `total_amount − paid_amount` da fatura **pode divergir** de `remaining_amount`: `remaining_amount` é a dívida operacional; `paid_amount` continua sendo a soma dos pagamentos `ACTIVE` da fatura (histórico, não reescrito).
+
+Proibido: refund de `OPEN`/`CANCELLED`/`REFUNDED`; cancel de `PARTIALLY_PAID`/`PAID`; `ACCOUNT` com conta inativa ou de outro usuário; alterar fatura `PAID`; usar `/pay` da despesa para liquidar `CREDIT_CARD`.
 
 
 ## RN118 — Estorno
@@ -1300,7 +1526,7 @@ A Fase 7 implementa despesas **sem parcelamento funcional** e **sem cartão**. F
 
 O modelo físico já existente (`expenses`, `expense_installments`, `payments`) é reutilizado. Não criar tabela, coluna, enum, CHECK nem migration para esta fase.
 
-`CREDIT_CARD`, faturas e parcelas N>1 permanecem para fases posteriores.
+`CREDIT_CARD`, faturas e parcelas N>1 permanecem **fora da Fase 7**. Cartão entra na Fase 9.
 
 
 ## RN208 — ACCOUNT na criação
@@ -1539,7 +1765,7 @@ A verificação `pago_acumulado + novo_pagamento <= devido` ocorre **dentro** da
 
 ## RN220 — CREDIT_CARD fora da Fase 7
 
-A Fase 7 rejeita `paymentMethod = CREDIT_CARD` na criação e na edição. Cartão, fatura e ciclo pertencem às Fases 9+.
+A Fase 7 rejeita `paymentMethod = CREDIT_CARD` na criação e na edição. Cartão, fatura e ciclo pertencem à Fase 9.
 
 O enum/CHECK físico `CREDIT_CARD` permanece no banco; a API da Fase 7 não o opera.
 
@@ -1553,11 +1779,11 @@ O estado ACTIVE/REVERSED do payment **não** usa `type`. Na Fase 8 o estado é `
 
 # 19.2 Contrato da Fase 8 — Parcelamento, payments, adjustments e reverse
 
-Contrato oficial da Fase 8. **Não implementado** até autorização explícita.
+Contrato oficial da Fase 8. **Implementado.**
 
 A Fase 8 não é só geração de parcelas. Abrange: despesas parceladas; geração determinística; vencimentos mensais; edição cadastral de parcela `OPEN`; pagamento por parcela; múltiplos payments; payments em contas diferentes; discounts e surcharges; reverse de payment e de adjustment; status persistido de payment e de adjustment; status agregado persistido da despesa; cancelamento; refund (incluindo refund misto); overdue da parcela; preservação de fatos; preparação dos fatos para relatórios futuros.
 
-Fora da Fase 8: `CREDIT_CARD`, fatura, ciclo, rateio, valores de `payments.type`, dashboards, gráficos, PDF e relatórios de apresentação.
+Fora da Fase 8: `CREDIT_CARD`, fatura, ciclo, rateio, valores de `payments.type`, dashboards, gráficos, PDF e relatórios de apresentação. Cartão, fatura, ciclo e rateio passam ao contrato da **Fase 9**.
 
 Modelo conceitual:
 
@@ -1688,11 +1914,13 @@ Adjustment altera a **obrigação**. Não movimenta saldo de conta. Não é paym
 
 Tipos oficiais iniciais: `DISCOUNT` (reduz), `SURCHARGE` (aumenta). O `amount` do adjustment é sempre positivo.
 
-Desconto por antecipação = `DISCOUNT`. Acréscimo por atraso = `SURCHARGE`. Subclassificação adicional de motivo (juros vs multa vs outros) **não** foi definida; não inventar categorias. Request HTTP: somente `type` e `amount` — sem `reason`, `subtype`, juros, multa, antecipação, `description`.
+Desconto por antecipação = `DISCOUNT`. Acréscimo por atraso = `SURCHARGE`. Não criar enumeração específica por motivo (juros vs multa vs tarifa vs outros). A partir da Fase 9, o request HTTP inclui `type`, `amount` e **`reason` obrigatório** (texto). A ausência de `reason` na Fase 8 (implementada) está **SUPERADA** no contrato vigente; a API em produção da Fase 8 ainda não envia `reason` até a implementação da Fase 9.
+
+Ajuste de **parcela** altera a obligation da parcela (RN231). Ajuste de **fatura** participa do rateio (RN247A).
 
 Tabela física: plural snake_case, filha da parcela, com `user_id` e FK composta de ownership. O nome exato segue a convenção do projeto na migration da implementação; não criar módulo genérico `adjustments` desligado de `expenses`.
 
-**Criação (elegibilidade):** despesa **não** `CANCELLED`/`REFUNDED`; parcela **não** `CANCELLED`/`REFUNDED`. **Não** se exige parcela `OPEN`: `PARTIALLY_PAID` e `PAID` podem receber adjustment enquanto a despesa estiver ativa, desde que a invariável de `obligation` (RN231) seja respeitada. Parcela `OPEN` de despesa `REFUNDED` não recebe adjustment (RN237).
+**Criação (elegibilidade):** despesa **não** `CANCELLED`/`REFUNDED`; parcela **não** `CANCELLED`/`REFUNDED`. **Não** se exige parcela `OPEN`: `PARTIALLY_PAID` e `PAID` podem receber adjustment enquanto a despesa estiver ativa **e**, se a parcela tiver `invoice_id`, a fatura **não** estiver `PAID`, desde que a invariável de `obligation` (RN231) seja respeitada. Parcela `OPEN` de despesa `REFUNDED` não recebe adjustment (RN237). Fatura `PAID`: nenhum ajuste (parcela ou fatura).
 
 HTTP: `POST` / `GET` em `/api/v1/expenses/{expenseId}/installments/{installmentId}/adjustments` — detalhe em `docs/25` seção 47.
 
@@ -1719,25 +1947,29 @@ Agregação da despesa (estados financeiros normais):
 - alguma quitada e alguma pendente → `PARTIALLY_PAID`;
 - todas quitadas → `PAID`.
 
-Terminais: `CANCELLED`, `REFUNDED` (conforme RN236 e RN237).
+Parcela **quitada** = `remaining = 0`. Em `CREDIT_CARD`, o remaining vem das alocações de fatura/crédito/ajuste (RN247), não de `payments` da despesa.
+
+Terminais: `CANCELLED`, `REFUNDED` (conforme RN236, RN237 e RN117).
 
 
 ## RN236 — Cancelamento (Fase 8)
 
-Somente despesa `OPEN` → `CANCELLED`. Não movimenta dinheiro. Todas as parcelas (necessariamente `OPEN`, sem payment) passam a `CANCELLED` na mesma transação.
+Somente despesa `OPEN` → `CANCELLED`. Não movimenta dinheiro. Em `ACCOUNT`/`NONE`: todas as parcelas (necessariamente `OPEN`, sem payment) passam a `CANCELLED` na mesma transação.
 
 `PARTIALLY_PAID` e `PAID` **não** podem ser canceladas. Havendo movimentação financeira, a operação é refund.
+
+Em `CREDIT_CARD`, o cancelamento de `OPEN` segue RN117 (parcelas em fatura não `PAID` → `CANCELLED`; sem crédito; sem movimento bancário).
 
 
 ## RN237 — Refund misto
 
-Refund é da despesa inteira. Sem refund individual de parcela na Fase 8.
+Refund é da despesa inteira. Sem refund individual de parcela.
 
-Havendo payment **ACTIVE**: despesa → `REFUNDED`. Parcelas com payment ativo → `REFUNDED`. Parcelas sem payment → permanecem `OPEN` **somente como histórico**.
+Em `ACCOUNT`/`NONE` (Fase 8): havendo payment **ACTIVE**, despesa → `REFUNDED`. Parcelas com payment ativo → `REFUNDED`. Parcelas sem payment → permanecem `OPEN` **somente como histórico**. Payments não são apagados nem editados. A despesa `REFUNDED` não produz efeito no saldo da conta (os payments deixam de ser subtraídos).
 
-Payments não são apagados nem editados. A despesa `REFUNDED` não produz efeito no saldo da conta.
+Parcela `OPEN` de despesa `REFUNDED` (`ACCOUNT`/`NONE`): não recebe payment; não recebe adjustment; não é alterada; não é cancelada; apenas consulta. Nenhuma parcela sem payment `ACTIVE` é marcada `REFUNDED` só porque a despesa foi refundada.
 
-Parcela `OPEN` de despesa `REFUNDED`: não recebe payment; não recebe adjustment; não é alterada; não é cancelada; apenas consulta. Nenhuma parcela sem payment `ACTIVE` é marcada `REFUNDED` só porque a despesa foi refundada.
+Em `CREDIT_CARD`, o refund segue RN117 (`settlement` `CARD_CREDIT` ou `ACCOUNT`). Não usa `payments` da despesa.
 
 
 ## RN238 — Reverse de payment
@@ -1776,12 +2008,15 @@ Ownership: adjustment do usuário e da parcela/despesa do path; mismatch → **4
 saldo atual =
   initial_balance
 + SUM(incomes.amount WHERE status = RECEIVED AND account_id = conta)
++ SUM(devoluções ACCOUNT de compra no cartão — RN117 — nesta conta)
 − SUM(payments.amount WHERE account_id = conta
       AND payments.status = ACTIVE
       AND a despesa do pagamento NÃO está em CANCELLED nem REFUNDED)
+− SUM(credit_card_invoice_payments.amount WHERE account_id = conta
+      AND status = ACTIVE)
 ```
 
-Somente payments `ACTIVE` movimentam saldo. `REVERSED` não movimenta. Adjustments não movimentam. Refund remove o efeito dos payments daquela despesa. Sem `current_balance` persistido em expense/installment.
+Somente payments `ACTIVE` de despesa `ACCOUNT`/`NONE` (despesa não `CANCELLED`/`REFUNDED`) e pagamentos `ACTIVE` de fatura movimentam o saldo da conta no sentido de saída. `REVERSED` não movimenta. Adjustments não movimentam. Crédito de cartão **não** movimenta conta. Refund de despesa `ACCOUNT`/`NONE` remove o efeito dos payments daquela despesa. Refund `CREDIT_CARD` com `settlement = ACCOUNT` **soma** o fato de devolução (`bankLiquidated`); **não** reverte os pagamentos da fatura. Sem `current_balance` persistido em expense/installment.
 
 **Leitura do saldo (`GET /accounts/{id}/balance`):** é cálculo derivado sob demanda. O contrato **não** exige `SELECT FOR UPDATE` da conta apenas para essa leitura. A proteção contra saldo negativo (RN076A) e a concorrência de escrita (RN244) aplicam-se às **operações** que criam/reverterem facts financeiros (pay, reverse, etc.), com locks nas entidades financeiras envolvidas (despesa/parcela/payment), no padrão da Fase 7. Não introduzir lock explícito de conta só para GET de saldo sem decisão arquitetural futura.
 
@@ -1809,7 +2044,9 @@ Na implementação: `UNIQUE (expense_id, installment_number)` em **nova** migrat
 
 ## RN243 — Cartão fora da Fase 8
 
-Rejeitar `CREDIT_CARD` como na Fase 7 (RN220). Não criar faturas, não preencher `invoice_id`, não implementar ciclo nem rateio. A pergunta do §269.2 sobre parcela já em fatura permanece **DEFERIDA**.
+Na Fase 8: rejeitar `CREDIT_CARD` como na Fase 7 (RN220). Não criar faturas, não preencher `invoice_id`, não implementar ciclo nem rateio.
+
+A Fase 9 **implementa** cartão, fatura, ciclo e rateio. A pergunta do §269.2 sobre edição cadastral de parcela **já em fatura** permanece **DEFERIDA**.
 
 
 ## RN244 — Concorrência (Fase 8)
@@ -1829,6 +2066,57 @@ Exceção cadastral já existente (não é fato financeiro):
 - N>1: quantidade imutável; sem redistribuição automática; alteração de `amount` de parcela segue RN227 (`SUM = total_amount`).
 
 Quando existirem adjustments `ACTIVE` na parcela 1/1, o `PUT` que altera o total deve respeitar a invariável de `obligation` (RN231): rejeitar se o total novo produzir `obligation < 0` (ou `obligation < SUM(active payments)`). Não alterar, apagar nem redistribuir adjustments para “fazer fechar”.
+
+
+# 19.3 Contrato da Fase 9 — Cartões de crédito (fase expandida)
+
+Contrato oficial da Fase 9. **Documentado; implementação ainda não iniciada.**
+
+A Fase 9 absorve o que o roadmap anterior distribuía entre as Fases 9–12, mais as decisões desta consolidação: cadastro e manutenção de cartões; limite derivado; compras `CREDIT_CARD`; parcelamento vinculado a faturas; ciclo; status `SCHEDULED`/`OPEN`/`CLOSED`/`PAID`; fechamento automático (scheduler Spring); pagamento de fatura; rateio persistido; liberação de limite; créditos de cartão; ajustes com `reason`; reverse de pagamentos de fatura; cancelamento/estorno de compra no cartão (RN117 / §269.4 **fechado**).
+
+Fora da Fase 9: parcelamento do saldo da fatura (RN107–RN113); relatórios/PDF; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição de parcela já em fatura (§269.2.7).
+
+A RN029A (recusar compra acima do limite) está **SUPERADA**. `PARTIALLY_PAID` como status de **fatura** está **SUPERADO**. O §269.3 (rateio) está **fechado** (RN247). O §269.4 (estorno de compra no cartão já liquidada) está **fechado** (RN117).
+
+Decisões finais da Fase 9 (fechadas nesta consolidação):
+
+1. cancelamento vs refund de compra no cartão, opções `CARD_CREDIT` / `ACCOUNT` e efeitos — RN117;
+2. ordem das faturas na aplicação automática de créditos (FIFO dos créditos inalterado) — RN246;
+3. mês do `due_date` da fatura quando `due_day` ≤ `closing_day` — RN099B;
+4. desempate do rateio: `due_date` ASC, depois `id` da parcela ASC — RN247 passo 3.
+
+
+## RN246 — Crédito de cartão
+
+Crédito pertence ao **cartão**, não à conta bancária e não à fatura.
+
+- não movimenta conta;
+- não aumenta `credit_limit` nem `available_limit`;
+- não cria fatura;
+- não expira automaticamente;
+- pode ser parcial;
+- nunca fica negativo;
+- possui histórico (não apagar);
+- pode originar-se de estorno de compra no cartão (`settlement = CARD_CREDIT`, ou a parte `creditLiquidated` de `ACCOUNT`) ou de lançamento manual;
+- crédito manual exige `amount` e `reason`.
+
+Aplicação: **automática**, na mesma transação da operação que cria remaining liquidável ou crédito disponível (pagamento de fatura, crédito novo, fechamento, estorno que gera crédito). O usuário não escolhe qual crédito aplicar.
+
+**FIFO dos créditos:** créditos disponíveis (ainda não totalmente aplicados), do mais antigo para o mais novo (`created_at` ASC, empate `id` ASC).
+
+**Ordem das faturas elegíveis:** status `OPEN` ou `CLOSED`, `remaining > 0`. `SCHEDULED` e `PAID` não são elegíveis. Ordenar por `due_date` ASC, depois `id` ASC.
+
+Percorrer créditos em FIFO; para cada crédito, percorrer faturas na ordem acima até esgotar o crédito ou as faturas. Cada aplicação usa o rateio RN247 sobre a fatura alvo. Crédito maior que o remaining da fatura: fatura remaining 0; sobra segue para a próxima fatura elegível ou permanece crédito. Nunca remaining negativo. Nunca cria fatura.
+
+Se o crédito **já foi utilizado** (qualquer aplicação ACTIVE), a origem **não** pode ser desfeita. Não reconstruir faturas retroativamente.
+
+Na Fase 9 **não há** reverse de crédito nem reverse do refund da despesa `CREDIT_CARD` (`REFUNDED` é terminal). Crédito não aplicado permanece disponível até ser consumido pela aplicação automática.
+
+
+## RN248 — Concorrência da Fase 9
+
+Operações críticas (compra no cartão, pagamento de fatura, aplicação de crédito, fechamento, ajuste de fatura, reverse, cancel/refund RN117) são transacionais. Locks pessimistas nas entidades envolvidas (cartão, fatura, parcelas, conta, créditos). Evitar dupla liquidação e duplo fechamento. Idempotência do scheduler (RN096A).
+
 
 # 20. Metas
 
@@ -2268,9 +2556,9 @@ Fórmulas e fatos persistidos: `docs/23-modelo-de-dados.md` (seções 194–199 
 
 A aplicação deve evitar múltiplas fontes de verdade para o mesmo valor.
 
-Fatos da fatura: parcelas vinculadas e pagamentos da fatura.
+Fatos da fatura: parcelas vinculadas, pagamentos da fatura, alocações de rateio, créditos aplicados e ajustes de fatura.
 
-Totais da fatura são calculados a partir desses fatos.
+Totais da fatura são calculados a partir desses fatos. Remaining da fatura = soma dos remainings das parcelas do ciclo (excluindo parcelas `CANCELLED` e `REFUNDED`). Não persistir `total_amount`, `paid_amount`, `remaining_amount`, `used_limit` nem `available_limit`.
 
 
 # 35. Regras de consistência

@@ -23,11 +23,12 @@ Do not create provisional code, preparatory migrations, presumed enums/CHECKs, o
 
 ## 2. Official blockers (do not implement until explicit decision)
 
-1. `payments.type` — field exists; official values do not. No enum, CHECK, constants, or rules. Do **not** use `type` for ACTIVE/REVERSED (`payments.status` is the Phase 8 column).
-2. Installment already on an invoice vs `expenses.total_amount` — ACCOUNT/NONE edit is **closed** in the Phase 8 contract; the invoice question in `docs/23` §269.2 is **deferred**.
-3. Partial invoice payment vs installment status/allocation — invoice payments exist; allocation rule does not.
+1. `payments.type` — field exists; official values do not. No enum, CHECK, constants, or rules. Do **not** use `type` for ACTIVE/REVERSED (`payments.status` is the Phase 8 column). Invoice payments do **not** use `payments`.
+2. Installment already on an invoice vs `expenses.total_amount` — ACCOUNT/NONE edit is **closed** in the Phase 8 contract; the invoice **edit** question in `docs/23` §269.2.7 is **deferred**.
 
-Mandatory questions: `docs/23-modelo-de-dados.md` seção 269.
+**Closed in Phase 9:** §269.3 invoice payment allocation (RN247, including tie-break `due_date` then installment `id`). Invoice statuses: `SCHEDULED`, `OPEN`, `CLOSED`, `PAID` — not `PARTIALLY_PAID`. RN029A (reject purchase over limit) is **SUPERSEDED**. §269.4 card-purchase cancel/refund (RN117: `CARD_CREDIT` / `ACCOUNT`). Credit auto-apply invoice order (RN246). Invoice `due_date` when `due_day` ≤ `closing_day` (RN099B).
+
+Mandatory remaining questions: `docs/23-modelo-de-dados.md` seção 269.
 
 Everything else already consolidated in `docs/23` remains the source of truth.
 
@@ -57,7 +58,7 @@ Existing code never overrides official docs.
 ## 5. Special cases
 
 - **DB:** if a column/FK/CHECK/enum/index depends on an open decision, do not create that migration (or that part of it).
-- **Derived:** do not persist invoice totals, goal `current_amount`, or card commitment.
+- **Derived:** do not persist invoice totals, goal `current_amount`, or card `used_limit` / `available_limit`. Allocation of invoice payments **is** a persisted fact (not a derived column on the installment).
 - **Ownership:** keep composite FKs; do not drop them to simplify JPA.
 - **Tests:** undefined rule → no test → implementation blocked.
 

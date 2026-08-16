@@ -353,7 +353,9 @@ Contrato da Fase 7 (`ACCOUNT` e `NONE` apenas) — implementado:
 
 A RN210 da Fase 7 (pagamento `ACCOUNT` obrigatoriamente na mesma conta da despesa) foi **SUPERADA** pelo contrato da Fase 8: `expenses.account_id` é preferência; a conta efetivamente movimentada é `payments.account_id` e pode diferir. Detalhe: `docs/24` RN228.
 
-Contrato da Fase 8 (**implementado**): despesas parceladas, pagamento por parcela, `payments.status` (`ACTIVE` / `REVERSED`), adjustments (`DISCOUNT` / `SURCHARGE`) com HTTP create/list/reverse (`docs/25` §47), reverse de payment e de adjustment, refund misto. Cartão, fatura e relatórios de apresentação permanecem fora. Detalhe: `docs/24` seção 19.2.
+Contrato da Fase 8 (**implementado**): despesas parceladas, pagamento por parcela, `payments.status` (`ACTIVE` / `REVERSED`), adjustments (`DISCOUNT` / `SURCHARGE`) com HTTP create/list/reverse (`docs/25` §47), reverse de payment e de adjustment, refund misto. Cartão e fatura entram na **Fase 9**. Relatórios de apresentação permanecem fora. Detalhe: `docs/24` seção 19.2.
+
+Contrato da Fase 9 (**documentado; implementação ainda não iniciada**): fase expandida de cartões de crédito — cadastro, limite, compra `CREDIT_CARD`, ciclo, faturas (`SCHEDULED` / `OPEN` / `CLOSED` / `PAID`), fechamento automático, pagamento de fatura com rateio persistido (desempate RN247), créditos de cartão (FIFO + ordem de faturas RN246), `due_date` da fatura (RN099B), ajustes com `reason`, reverse de pagamentos de fatura, cancelamento/estorno de compra no cartão (RN117). Fora da Fase 9: parcelamento do saldo da fatura, relatórios/PDF, frontend financeiro, Refresh Token, `payments.type`, auditoria genérica, edição cadastral de parcela já em fatura (§269.2.7). Detalhe: `docs/24` seção 19.3 e `docs/28`.
 
 ### 11.3 Cancelamento e estorno
 
@@ -361,10 +363,12 @@ Cancelamento e estorno **não são sinônimos**.
 
 Sem exclusão física. Em despesas:
 
-- cancelar: somente `OPEN` → `CANCELLED` (`POST /expenses/{id}/cancel`); sem impacto de saldo; `PARTIALLY_PAID` e `PAID` **não** se cancelam (usar refund);
-- estornar a despesa: `PARTIALLY_PAID` ou `PAID` → `REFUNDED` (`POST /expenses/{id}/refund`); **não** volta a `OPEN`; **não** apaga `payments`; o saldo deixa de subtrair esses pagamentos; refund é da despesa inteira (Fase 8: parcelas com payment ativo → `REFUNDED`; sem payment → `OPEN` somente para consulta);
+- cancelar: somente `OPEN` → `CANCELLED` (`POST /expenses/{id}/cancel`); sem impacto de saldo; `PARTIALLY_PAID` e `PAID` **não** se cancelam (usar refund). Em `CREDIT_CARD`, o cancelamento de `OPEN` segue RN117 (sem crédito; sem movimento bancário);
+- estornar a despesa: `PARTIALLY_PAID` ou `PAID` → `REFUNDED` (`POST /expenses/{id}/refund`); **não** volta a `OPEN`; **não** apaga `payments`; o saldo deixa de subtrair esses pagamentos; refund é da despesa inteira (Fase 8: parcelas com payment ativo → `REFUNDED`; sem payment → `OPEN` somente para consulta). Em `CREDIT_CARD`, o refund exige `settlement`: `CARD_CREDIT` (crédito de cartão = valor liquidado) ou `ACCOUNT` (devolve à conta só o que saiu dela; a parte paga com crédito de cartão volta como crédito) — RN117;
 - reverse de payment: `POST /api/v1/payments/{id}/reverse` entra na **Fase 8** (`ACTIVE` → `REVERSED`); não apaga o fato; não é permitido se a despesa estiver `REFUNDED` ou `CANCELLED`. A menção anterior a “fase futura” está **SUPERADA**;
 - reverse de adjustment: `POST /api/v1/expenses/{expenseId}/installments/{installmentId}/adjustments/{adjustmentId}/reverse` (RN239) — `ACTIVE` → `REVERSED`; não apaga o fato; proibido se a despesa estiver `CANCELLED` ou `REFUNDED`; create/list em `.../installments/{installmentId}/adjustments` (`docs/25` §47);
+- a partir da Fase 9, todo adjustment (parcela ou fatura) exige `reason`; tipos continuam `DISCOUNT` / `SURCHARGE` (RN232 emendada);
+- despesa `CREDIT_CARD` **não** se liquida por `POST /expenses/{id}/pay` nem por pagamento de parcela: a liquidação é só via fatura (`docs/25` faturas);
 - `CANCELLED` / `REFUNDED` não impactam saldo, projeções, totais, gráficos nem contas a pagar.
 
 Não copiar o estorno de receita (`RECEIVED` → `EXPECTED`) para despesa. Reverse de payment **não** usa `payments.type` e **não** replica `Income.reverse()`.
@@ -376,15 +380,29 @@ Em receitas (ver 11.1):
 
 Receitas não possuem `REFUNDED` nem `REVERSED`.
 
-Não utilizar `DELETE` HTTP como operação padrão para dados financeiros. Preferir ações explícitas (`POST /expenses/{id}/pay`, `POST /expenses/{id}/cancel`, `POST /expenses/{id}/refund`, `POST /incomes/{id}/receive`, `POST /incomes/{id}/reverse`, `POST /incomes/{id}/cancel`, `POST /payments/{id}/reverse`, `POST .../adjustments/{id}/reverse` na Fase 8). `DELETE` só pode existir para recurso não financeiro com regra explícita.
+Não utilizar `DELETE` HTTP como operação padrão para dados financeiros. Preferir ações explícitas (`POST /expenses/{id}/pay`, `POST /expenses/{id}/cancel`, `POST /expenses/{id}/refund`, `POST /incomes/{id}/receive`, `POST /incomes/{id}/reverse`, `POST /incomes/{id}/cancel`, `POST /payments/{id}/reverse`, `POST .../adjustments/{id}/reverse`, e na Fase 9 `POST /invoices/{id}/payments`, reverse de pagamento de fatura, créditos e ajustes de fatura). `DELETE` só pode existir para recurso não financeiro com regra explícita. Cartão com histórico financeiro **não** se exclui (inativar).
 
 ### 11.4 Compra no cartão
 
-Não reduz saldo bancário imediatamente; aumenta comprometimento; **não pode ultrapassar o limite disponível** (validação no backend).
+Não reduz saldo bancário imediatamente; aumenta o comprometimento (limite usado derivado).
+
+A RN029A (recusar compra acima do limite disponível) está **SUPERADA**. A compra **deve ser permitida** mesmo que `available_limit` fique negativo. Eventual alerta visual é da camada de apresentação (fora da Fase 9) e **não** bloqueia o backend.
+
+Cartão inativo não aceita novas compras. Histórico permanece. Compra no dia do fechamento pertence ao **próximo** ciclo (RN095). O ciclo usa a **data da compra** e o `closing_day` do cartão em `America/Sao_Paulo` — não o fato de existir fatura `OPEN` (o fechamento automático pode estar atrasado).
+
+Para `CREDIT_CARD`, o `dueDate` enviado na criação da despesa **não** define o vencimento das parcelas. O backend usa o vencimento da fatura de cada ciclo (RN099B: se `due_day` > `closing_day`, due no mesmo mês da `closing_date`; se `due_day` ≤ `closing_day`, no mês seguinte; RN098 se o mês não tiver o dia). `expenses.due_date` persistido = vencimento da primeira parcela (due da fatura do ciclo da compra).
 
 ### 11.5 Pagamento da fatura
 
-Gera saída na conta escolhida; **não** cria nova despesa de consumo; despesas originais permanecem; pagamento parcial permitido; valor não pode exceder saldo disponível da conta.
+Gera saída na conta escolhida; **não** cria nova despesa de consumo; **não** cria linha em `payments` (tabela da despesa `ACCOUNT`/`NONE`). Despesas originais permanecem. Pagamento parcial, múltiplo e antecipado (enquanto `OPEN`) são o mesmo tipo de pagamento.
+
+Valor não pode exceder o remaining da fatura nem o saldo disponível da conta. Qualquer conta **ativa** do usuário; não precisa ser a conta da despesa.
+
+O pagamento é rateado entre as parcelas com `remaining > 0` daquela fatura (proporcional ao remaining, ordenação remaining ASC, empate `due_date` ASC depois `id` ASC, residual na última). O rateio é fato persistido (`credit_card_invoice_payment` → alocação → `expense_installment`). Libera limite na mesma proporção.
+
+Créditos de cartão aplicam-se automaticamente: FIFO dos créditos; faturas elegíveis (`OPEN`/`CLOSED` com remaining > 0) por `due_date` ASC depois `id` ASC (RN246).
+
+Pagamento parcial **não** altera o status da fatura (`OPEN` permanece `OPEN`; `CLOSED` permanece `CLOSED` até remaining = 0 → `PAID`).
 
 ### 11.6 Transferência
 
@@ -396,7 +414,7 @@ Operações normais não permitem saldo negativo (transferências, pagamento de 
 
 Estorno de receita recebida é correção: não é bloqueado se o saldo resultante for negativo.
 
-Estorno de despesa **não** herda essa exceção: devolve o valor dos payments **ACTIVE** à fórmula de saldo (RN216, emendada na Fase 8 por RN240) e não autoriza pagamento que deixe saldo negativo. Reverse de payment (`REVERSED`) e refund da despesa também retiram o efeito daqueles payments do saldo.
+Estorno de despesa **não** herda essa exceção: devolve o valor dos payments **ACTIVE** à fórmula de saldo (RN216, emendada na Fase 8 por RN240) e não autoriza pagamento que deixe saldo negativo. Reverse de payment (`REVERSED`) e refund da despesa `ACCOUNT`/`NONE` também retiram o efeito daqueles payments do saldo. Refund `CREDIT_CARD` com `settlement = ACCOUNT` **soma** a devolução (`bankLiquidated`) e **não** reverte pagamentos de fatura (RN117).
 
 ### 11.8 Contas
 
@@ -412,7 +430,7 @@ Fonte de verdade: movimentações. Saldo derivado delas, a partir do saldo inici
 
 Conceitualmente: saldo inicial + receitas recebidas − despesas efetivadas + transferências de entrada − transferências de saída + ajustes de saldo.
 
-A partir da Fase 8 (RN240): o subtraendo de despesas usa somente payments `ACTIVE` de despesas não `CANCELLED`/`REFUNDED`. `GET /accounts/{id}/balance` é leitura derivada; o contrato não exige lock pessimista da conta só para essa leitura.
+A partir da Fase 8 (RN240): o subtraendo de despesas `ACCOUNT`/`NONE` usa somente payments `ACTIVE` de despesas não `CANCELLED`/`REFUNDED`. A partir da Fase 9, o saldo também subtrai pagamentos `ACTIVE` de fatura (`credit_card_invoice_payments`) na conta utilizada e **soma** devoluções `ACCOUNT` de compra no cartão (RN117). Crédito de cartão **não** movimenta conta. `GET /accounts/{id}/balance` é leitura derivada; o contrato não exige lock pessimista da conta só para essa leitura.
 
 Cache/`current_balance` só se mantido transacionalmente consistente com as movimentações — nunca duas fontes independentes.
 
@@ -441,36 +459,54 @@ Receitas não utilizam responsável na Fase 6. Esta seção não muda as regras 
 Campos essenciais incluem:
 
 - nome/apelido;
-- `holderName` (titular textual — não precisa ser usuário);
-- limite contratado (persistido);
-- limite disponível / comprometimento (derivados; não colunas independentes);
+- `holderName` (titular textual — não precisa ser o usuário autenticado; filtrável);
+- `last_four_digits` (opcional; **não** obrigatório);
+- limite contratado (`credit_limit`, persistido);
+- limite usado / disponível (derivados; **não** persistir `used_limit` / `available_limit`);
 - dia de fechamento;
 - dia de vencimento;
-- status;
+- `active` (nasce ativo; inativar/reativar; inativar impede novas compras);
 - usuário proprietário do registro.
 
+Não armazenar PAN completo, CVC, senha nem validade do plástico. Não criar `expiration_date` para validade física.
+
+Não excluir cartão que possua histórico financeiro.
+
 Um cartão pode ser usado por diferentes responsáveis nas despesas.
+
+Limite usado: valor ainda não liquidado das compras/parcelas do cartão. Compra de R$ 1.000 em 10× R$ 100 consome R$ 1.000; cada parcela liquidada (inclusive via rateio de pagamento/crédito/ajuste) libera o valor correspondente. Crédito de cartão **não** aumenta o limite. Alterar `credit_limit` é permitido mesmo que fique abaixo do usado (`available_limit` negativo).
+
+Alterar `closingDay` / `dueDay` vale só para **ciclos futuros**. Não reescrever faturas, parcelas nem pagamentos já existentes.
 
 Regras de ciclo:
 
 - compra no dia do fechamento pertence à próxima fatura (RN095);
-- dia configurado inexistente no mês → último dia daquele mês (RN098).
+- dia configurado inexistente no mês → último dia daquele mês (RN098);
+- `due_date` da fatura: se `due_day` > `closing_day`, mesmo mês da `closing_date`; se `due_day` ≤ `closing_day`, mês seguinte (RN099B).
 
 ---
 
 ## 14. Faturas
 
-Status persistidos: `OPEN`, `CLOSED`, `PARTIALLY_PAID`, `PAID`.
+Status persistidos da fatura (Fase 9): `SCHEDULED`, `OPEN`, `CLOSED`, `PAID`.
 
-`OVERDUE` derivado da data de vencimento.
+`PARTIALLY_PAID` **não** é status de fatura (a menção anterior está **SUPERADA**). Pagamento parcial não muda o status da fatura.
+
+`OVERDUE` derivado da data de vencimento (não persistido).
+
+Fluxo: `SCHEDULED` → `OPEN` → `CLOSED` → `PAID`. No máximo **uma** fatura `OPEN` por cartão. Faturas futuras de parcelamento nascem `SCHEDULED` (parcela já vinculada; **não** usar `invoice_id` nulo).
+
+`PAID` exige fatura já fechada **e** remaining = 0. `OPEN` com remaining 0 **não** é `PAID` até o fechamento. `PAID` é terminal: nada altera a fatura.
 
 Campos persistidos: cartão, período, fechamento, vencimento, status.
 
-Valor total, valor pago e saldo restante são **derivados** (não colunas): soma das parcelas do ciclo, soma dos pagamentos da fatura, e a diferença. Detalhe: `docs/23-modelo-de-dados.md`.
+Valor total, valor pago e saldo restante são **derivados** (não colunas). Remaining da fatura = soma dos remainings das parcelas do ciclo. Detalhe: `docs/23-modelo-de-dados.md`.
 
 Itens da fatura: `expense_installments` (`invoice_id` na parcela, nunca na despesa). Uma compra parcelada atravessa várias faturas (RN085).
 
-Pagamento parcial permitido. Parcelamento do saldo restante é operação separada e **não** apaga/modifica compras originais.
+Pagamento parcial permitido. Parcelamento do **saldo restante** da fatura (`credit_card_invoice_installments`) é operação **separada**, **fora da Fase 9**, e **não** apaga/modifica compras originais.
+
+Fechamento **não** é ação normal do usuário. Scheduler Spring, idempotente: abre `SCHEDULED` cujo ciclo iniciou; fecha `OPEN` cuja `closing_date` chegou (`remaining > 0` → `CLOSED`; `remaining = 0` → `PAID`); `CLOSED` com remaining 0 → `PAID`. Não reabrir. Não fechar de novo. Não alterar `PAID`.
 
 ---
 
@@ -484,15 +520,15 @@ Parcelas podem ter valores diferentes; a soma deve ser exatamente `expenses.tota
 
 Arredondamento determinístico; residual de centavos na **primeira** parcela. Sem perda de centavos. Não há mínimo contratual por parcela: `0.00` é permitido se for consequência inevitável da divisão (ex.: `0,01` / 3).
 
-`expenses.due_date` é o vencimento da primeira parcela. Demais vencimentos: mensais, dia-base da `dueDate` original; mês sem aquele dia → último dia daquele mês (sem “carregar” o dia ajustado).
+`expenses.due_date` é o vencimento da primeira parcela. Em `ACCOUNT`/`NONE`, demais vencimentos: mensais, dia-base da `dueDate` original; mês sem aquele dia → último dia daquele mês (sem “carregar” o dia ajustado). Em `CREDIT_CARD`, cada parcela vence na `due_date` da fatura do respectivo ciclo (calculada pelo backend).
 
-Pagamento de N>1 é **por parcela**. `POST /expenses/{id}/pay` permanece para 1/1.
+Pagamento de N>1 `ACCOUNT`/`NONE` é **por parcela**. `POST /expenses/{id}/pay` permanece para 1/1 `ACCOUNT`/`NONE`. Despesa `CREDIT_CARD` não usa esses endpoints de pagamento.
 
 Edição cadastral de parcela `OPEN`: `amount` e `due_date`; alterar `amount` exige que a soma continue igual ao total; sem redistribuição automática.
 
 Payment, adjustment, reverse, refund e cancel **não** alteram `expenses.total_amount`. Exceção cadastral (não é fato financeiro): enquanto a despesa estiver `OPEN` e for 1/1, o `PUT` da despesa (RN217) pode alterar o total — desde que o `obligation` resultante permaneça válido (RN231 / RN245). N>1: quantidade imutável; sem redistribuição automática; alteração de `amount` de parcela segue RN227.
 
-Em compra no cartão (Fases 9+), cada parcela referencia a fatura do respectivo ciclo (`expense_installments.invoice_id`). A despesa original não possui `invoice_id`. Cartão permanece **fora da Fase 8**.
+Em compra no cartão (Fase 9), cada parcela referencia a fatura do respectivo ciclo (`expense_installments.invoice_id`) desde a criação. A despesa original não possui `invoice_id`. Cartão permanece **fora da Fase 8** (implementação na Fase 9).
 
 ---
 
@@ -653,9 +689,12 @@ Implementação existente nunca justifica regra de negócio conflitante com a do
 
 Até decisão explícita, **não** implementar Flyway, entidade, enum, CHECK, teste ou regra dependente de:
 
-1. `payments.type` — o campo existe no modelo; valores oficiais **não** existem. **Não** usar `type` para `ACTIVE`/`REVERSED`. O estado do payment na Fase 8 é a coluna **`payments.status`**. Não criar enum, CHECK, constantes, validações nem regras sobre `type`.
-2. Edição de parcela já vinculada a fatura × `expenses.total_amount` — a edição cadastral de parcela `OPEN` **sem fatura** (ACCOUNT/NONE) está **fechada** no contrato da Fase 8 (RN227): `total_amount` não muda; soma das parcelas deve continuar igual ao total; sem redistribuição; rollback se não fechar. A pergunta do §269.2 sobre parcela **já pertencente a uma fatura** permanece **DEFERIDA** (cartão/fatura fora da Fase 8).
-3. Pagamento parcial da fatura × status/rateio das parcelas — pagamentos em `credit_card_invoice_payments`; não há regra de rateio. Não assumir FIFO, proporcional, manter tudo `OPEN`, etc.
+1. `payments.type` — o campo existe no modelo; valores oficiais **não** existem. **Não** usar `type` para `ACTIVE`/`REVERSED`. O estado do payment na Fase 8 é a coluna **`payments.status`**. Pagamento de fatura **não** usa `payments` nem `payments.type`. Não criar enum, CHECK, constantes, validações nem regras sobre `type`.
+2. Edição de parcela já vinculada a fatura × `expenses.total_amount` — a edição cadastral de parcela `OPEN` **sem fatura** (ACCOUNT/NONE) está **fechada** no contrato da Fase 8 (RN227): `total_amount` não muda; soma das parcelas deve continuar igual ao total; sem redistribuição; rollback se não fechar. A pergunta do §269.2 sobre parcela **já pertencente a uma fatura** permanece **DEFERIDA**.
+
+**SUPERADO (Fase 9):** o antigo item 269.3 (rateio). Rateio proporcional ao remaining, ordenação remaining ASC, empate `due_date` ASC depois `id` ASC, residual na última, persistido como alocação. Status da fatura **não** muda por pagamento parcial. Detalhe: `docs/23` §269.3 e `docs/24` RN247.
+
+**SUPERADO (Fase 9):** o antigo item 269.4 (estorno de compra no cartão já liquidada). Opções HTTP: cancel se `OPEN`; refund com `settlement` `CARD_CREDIT` ou `ACCOUNT` se `PARTIALLY_PAID`/`PAID`. Detalhe: `docs/23` §269.4 e `docs/24` RN117.
 
 Detalhe: `docs/23-modelo-de-dados.md` seção 269.
 
@@ -672,7 +711,7 @@ O restante do modelo já consolidado continua válido e é fonte de verdade.
 ### 28.5 Banco, derivados, ownership, JPA, testes
 
 - Migration: se entidade, FK, nullable, CHECK, enum, índice, derivado vs persistido, cascade ou exclusão depender de decisão em aberto, **não criar a migration**.
-- Não criar colunas para valores definidos como derivados (`total_amount` / `paid_amount` / `remaining_amount` da fatura; `current_amount` da meta; comprometimento do cartão; `paid_amount` / `remaining_amount` / `discount_total` / `surcharge_total` / `early_payment_savings` da despesa ou parcela). Otimização não autoriza segunda fonte de verdade. `status` de despesa, parcela, payment e adjustment **é** persistido por decisão explícita.
+- Não criar colunas para valores definidos como derivados (`total_amount` / `paid_amount` / `remaining_amount` da fatura; `used_limit` / `available_limit` do cartão; `current_amount` da meta; `paid_amount` / `remaining_amount` / `discount_total` / `surcharge_total` / `early_payment_savings` da despesa ou parcela). Otimização não autoriza segunda fonte de verdade. `status` de despesa, parcela, payment, adjustment, fatura e crédito **é** persistido por decisão explícita. Alocação de rateio **é** fato persistido (não é coluna derivada na parcela).
 - Ownership: FK composta `(referenced_id, user_id) → (parent.id, parent.user_id)`. Não trocar por FK simples só para facilitar o JPA. Service usa `user_id` do contexto autenticado; o banco também impede cruzamento.
 - JPA não altera o modelo físico. Constraint no banco + mapeamento JPA compatível.
 - Teste de regra indefinida é proibido (`TESTE NÃO DEFINIDO → REGRA NÃO DEFINIDA → IMPLEMENTAÇÃO BLOQUEADA`). Depois: decisão → documentação → teste → implementação.
