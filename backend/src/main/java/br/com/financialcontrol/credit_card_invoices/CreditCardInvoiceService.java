@@ -210,7 +210,8 @@ public class CreditCardInvoiceService {
                 card.getId(), card.getUserId(), reference.getYear(), reference.getMonthValue())
             .orElse(null);
     if (existing != null) {
-      if (existing.getStatus() == CreditCardInvoiceStatus.PAID) {
+      if (existing.getStatus() == CreditCardInvoiceStatus.PAID
+          || existing.getStatus() == CreditCardInvoiceStatus.SETTLED_BY_AGREEMENT) {
         throw new BusinessRuleException(INVOICE_PAID_IMMUTABLE);
       }
       if (existing.getStatus() == CreditCardInvoiceStatus.CLOSED) {
@@ -275,7 +276,7 @@ public class CreditCardInvoiceService {
       AuthenticatedUser authenticatedUser, UUID invoiceId, UUID paymentId) {
     UUID userId = authenticatedUser.userId();
     CreditCardInvoice invoice = requireOwnedForUpdate(userId, invoiceId);
-    if (invoice.getStatus() == CreditCardInvoiceStatus.PAID) {
+    if (isTerminalImmutable(invoice.getStatus())) {
       throw new BusinessRuleException(INVOICE_PAID_IMMUTABLE);
     }
     CreditCard card =
@@ -301,7 +302,7 @@ public class CreditCardInvoiceService {
       AuthenticatedUser authenticatedUser, UUID invoiceId, CreateInvoiceAdjustmentRequest request) {
     UUID userId = authenticatedUser.userId();
     CreditCardInvoice invoice = requireOwnedForUpdate(userId, invoiceId);
-    if (invoice.getStatus() == CreditCardInvoiceStatus.PAID) {
+    if (isTerminalImmutable(invoice.getStatus())) {
       throw new BusinessRuleException(INVOICE_PAID_IMMUTABLE);
     }
     CreditCard card =
@@ -337,7 +338,7 @@ public class CreditCardInvoiceService {
       AuthenticatedUser authenticatedUser, UUID invoiceId, UUID adjustmentId) {
     UUID userId = authenticatedUser.userId();
     CreditCardInvoice invoice = requireOwnedForUpdate(userId, invoiceId);
-    if (invoice.getStatus() == CreditCardInvoiceStatus.PAID) {
+    if (isTerminalImmutable(invoice.getStatus())) {
       throw new BusinessRuleException(INVOICE_PAID_IMMUTABLE);
     }
     CreditCard card =
@@ -424,7 +425,7 @@ public class CreditCardInvoiceService {
         continue;
       }
       for (CreditCardInvoice invoice : invoices) {
-        if (invoice.getStatus() == CreditCardInvoiceStatus.PAID) {
+        if (isTerminalImmutable(invoice.getStatus())) {
           continue;
         }
         BigDecimal invoiceRemaining = remainingAmount(invoice);
@@ -740,12 +741,17 @@ public class CreditCardInvoiceService {
   }
 
   private void assertInvoicePayable(CreditCardInvoice invoice) {
-    if (invoice.getStatus() == CreditCardInvoiceStatus.PAID) {
+    if (isTerminalImmutable(invoice.getStatus())) {
       throw new BusinessRuleException(INVOICE_PAID_IMMUTABLE);
     }
     if (invoice.getStatus() == CreditCardInvoiceStatus.SCHEDULED) {
       throw new BusinessRuleException(INVOICE_NOT_PAYABLE);
     }
+  }
+
+  private static boolean isTerminalImmutable(CreditCardInvoiceStatus status) {
+    return status == CreditCardInvoiceStatus.PAID
+        || status == CreditCardInvoiceStatus.SETTLED_BY_AGREEMENT;
   }
 
   private CreditCardInvoice requireOwned(UUID userId, UUID invoiceId) {

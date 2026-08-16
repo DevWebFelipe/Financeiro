@@ -1345,7 +1345,7 @@ Juros/multa de atraso são ajustes (`SURCHARGE` + `reason`), não cálculo autom
 
 # 16. Parcelamento de fatura
 
-**Status:** domínio da **Fase 13**. Contrato oficial: **§19.4** — `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`.
+**Status:** domínio da **Fase 13**. Contrato oficial: **§19.4** — `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA`.
 
 A tabela física `credit_card_invoice_installments` (V13) existe no schema e está **SUPERADA** como contrato de negócio (**D4=A**). Novas tabelas de Agreement na implementação.
 
@@ -1358,7 +1358,7 @@ Redação anterior: “uma fatura parcialmente paga pode ter seu saldo parcelado
 
 ## RN108 — Saldo parcelado — SUPERADA em parte pela Fase 13 (§19.4)
 
-O valor financiado/negociado é o remaining após a entrada (`remainingInvoiceAmount − entryAmount`). Esse valor **não** precisa igualar a soma das parcelas do Agreement (custo adicional do banco). Ver RN113 / §19.4.
+Na **nova negociação**, o valor financiado é `invoiceRemaining − entryAmount`. Na **renegociação**, o financed inclui também o líquido dos futuros (`anticipatedFuturesNetAmount`) — RN254. Em ambos, `contractedTotal` **não** precisa igualar o financed (custo adicional); deve ser `>= financedAmount`. Ver RN113 / §19.4.
 
 
 ## RN109 — Exemplo — SUPERADA pela Fase 13 (§19.4)
@@ -1391,11 +1391,13 @@ Redação anterior: “a soma das parcelas deve representar o valor parcelado.�
 
 **Vigente:** **não** exigir `installmentCount × installmentAmount == financedAmount` nem `SUM(parcelas) == financedAmount`.
 
+**Vigente (emenda):** exigir `contractedTotal >= financedAmount`; se menor → **400** `BUSINESS_RULE_VIOLATION`.
+
 O banco pode informar parcelas cujo total contratado seja **maior** que o saldo negociado. O sistema registra:
 
 - entrada (paga imediatamente);
-- saldo efetivamente negociado (`financedAmount`);
-- total contratado (`SUM` das parcelas do Agreement);
+- saldo efetivamente negociado (`financedAmount` — nova negociação: `invoiceRemaining − entryAmount`; renegociação: RN254);
+- total contratado (`installmentCount × installmentAmount`);
 - custo adicional = total contratado − financedAmount;
 - percentual de acréscimo derivado para exibição/relatórios.
 
@@ -2085,7 +2087,7 @@ Contrato oficial da Fase 9. **Implementado** e **concluído** (ver `docs/28`).
 
 A Fase 9 absorve o que o roadmap anterior distribuía entre as Fases 9–12, mais as decisões desta consolidação: cadastro e manutenção de cartões; limite derivado; compras `CREDIT_CARD`; parcelamento vinculado a faturas; ciclo; status `SCHEDULED`/`OPEN`/`CLOSED`/`PAID`; fechamento automático (scheduler Spring); pagamento de fatura; rateio persistido; liberação de limite; créditos de cartão; ajustes com `reason`; reverse de pagamentos de fatura; cancelamento/estorno de compra no cartão (RN117 / §269.4 **fechado**).
 
-Fora da Fase 9: parcelamento/negociação/renegociação de fatura (**Fase 13**, §19.4 — `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`); relatórios/PDF; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição de parcela já em fatura (§269.2.7); `POST /invoices/{id}/close`.
+Fora da Fase 9: parcelamento/negociação/renegociação de fatura (**Fase 13**, §19.4 — `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA`); relatórios/PDF; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição de parcela já em fatura (§269.2.7); `POST /invoices/{id}/close`.
 
 A RN029A (recusar compra acima do limite) está **SUPERADA**. `PARTIALLY_PAID` como status de **fatura** está **SUPERADO**. O §269.3 (rateio) está **fechado** (RN247). O §269.4 (estorno de compra no cartão já liquidada) está **fechado** (RN117).
 
@@ -2134,11 +2136,11 @@ Operações críticas (compra no cartão, pagamento de fatura, aplicação de cr
 
 # 19.4 Contrato da Fase 13 — Parcelamento, Negociação e Renegociação de Fatura
 
-**Status:** `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`.
+**Status:** `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA`.
 
-**Não implementado.** Código, migrations, endpoints, entidades e testes automatizados da Fase 13 ficam para a etapa de implementação (autorização explícita).
+A base da Fase 13 (D1–D11) e a **emenda de consolidação da renegociação** (RN254) estão implementadas no backend. Não marcar `CONCLUÍDA E APROVADA` até reauditoria explícita.
 
-Decisões D1–D11 **fechadas** pelo desenvolvedor (2026-08-16). Autoridade: `AGENTS.md` §28 → esta seção → `docs/23` §269.5 (FECHADO) → API/testes.
+Decisões D1–D11 **fechadas** (2026-08-16) — **não reabertas**. Autoridade: `AGENTS.md` §28 → esta seção → `docs/23` §269.5 → API/testes.
 
 ---
 
@@ -2148,10 +2150,10 @@ Controle pessoal de:
 
 - parcelamento de fatura **fechada**;
 - **nova negociação** (Agreement da fatura atual, sem antecipar Agreements anteriores);
-- **renegociação** (antecipação automática de todos os Agreements `ACTIVE` do cartão + novo Agreement);
+- **renegociação** (consolidação da fatura atual + futuros líquidos dos Agreements `ACTIVE` do cartão + novo Agreement) — RN254;
 - entrada imediata em conta;
 - nova obrigação `expenses` `CREDIT_CARD` + parcelas em faturas futuras;
-- antecipação de parcelas de Agreement (pagamento parcial / quitação com desconto);
+- antecipação individual de parcelas de Agreement (pagamento parcial / quitação com desconto);
 - histórico completo (fatura → Agreement → renegociação → …).
 
 Fora do escopo: IOF, composição bancária de juros, plano de contas, DRE, contabilização bancária, cálculo “real” de juros do emissor, cancelamento de Agreement (`CANCELLED` reservado — D10).
@@ -2168,21 +2170,30 @@ Parcelar **não** transforma compras/parcelas originais. A fatura é liquidada p
 
 ---
 
-## 19.4.3 Elegibilidade e entrada
+## 19.4.3 Elegibilidade, entrada e plano (comum)
 
-- Somente fatura **`CLOSED`** com `remaining > 0`.
-- `OPEN` / `SCHEDULED` / `PAID` / `SETTLED_BY_AGREEMENT` → rejeitar negociação.
-- Entrada: paga imediatamente na conta informada; **não** é parcela 0/N; **não** reentra no Agreement.
-- `0 <= entryAmount < remainingInvoiceAmount`.
-- `entryAmount == remainingInvoiceAmount` → **400** `BUSINESS_RULE_VIOLATION` (usar `POST /api/v1/invoices/{id}/payments`) — **D6=A**.
-- `entryAmount > remainingInvoiceAmount` → rejeitar.
-- `financedAmount = remainingInvoiceAmount − entryAmount` (derivado).
-- Plano (**D9=A**): `installmentCount` (> 0) + `installmentAmount` (> 0); parcelas **iguais**; `due_date` pelo ciclo do cartão (1ª na **próxima** fatura).
-- `contractedTotal = installmentCount × installmentAmount` (pode ser `>` financedAmount).
-- Custo adicional = contractedTotal − financedAmount; % de acréscimo derivado (fração).
-- RN113 **SUPERADA**.
+- Somente fatura **`CLOSED`** com `remaining > 0` (`invoiceRemaining`).
+- `OPEN` / `SCHEDULED` / `PAID` / `SETTLED_BY_AGREEMENT` → rejeitar.
+- Entrada: paga imediatamente na conta; **não** é parcela 0/N; **não** reentra no Agreement.
+- `0 <= entryAmount < invoiceRemaining`.
+- `entryAmount == invoiceRemaining` → **400** `BUSINESS_RULE_VIOLATION` (usar `POST /api/v1/invoices/{id}/payments`) — **D6=A**.
+- `entryAmount > invoiceRemaining` → rejeitar.
+- Plano (**D9=A**): `installmentCount` (> 0) + `installmentAmount` (> 0); parcelas **iguais**; `due_date` pelo ciclo (1ª na **próxima** fatura).
+- `contractedTotal = installmentCount × installmentAmount`.
+- **Invariante (nova negociação e renegociação):** `contractedTotal >= financedAmount`. Se `contractedTotal < financedAmount` → **400** `BUSINESS_RULE_VIOLATION` (razão específica, ex. mensagem alinhada a `AGREEMENT_CONTRACTED_TOTAL_BELOW_FINANCED_AMOUNT`). Garante `additionalCost >= 0`.
+- Custo adicional = `contractedTotal − financedAmount`; % de acréscimo = fração `additionalCost / financedAmount` (exibição).
+- RN113 **SUPERADA** (contracted pode ser `>` financed; **não** pode ser `<`).
 
-Exemplo canônico: remaining 1.000; entrada 400; financed 600; 10 × 120 → contracted 1.200; custo 600; acréscimo 100%.
+### financedAmount — duas fórmulas
+
+| Operação | Fórmula |
+| --- | --- |
+| **Nova negociação** | `financedAmount = invoiceRemaining − entryAmount` |
+| **Renegociação** | `financedAmount = (invoiceRemaining − entryAmount) + anticipatedFuturesNetAmount` (RN254) |
+
+**Não** aplicar a fórmula da nova negociação à renegociação.
+
+Exemplo canônico (nova negociação): remaining 1.000; entrada 400; financed 600; 10 × 120 → contracted 1.200; custo 600; acréscimo 100%.
 
 ---
 
@@ -2202,24 +2213,21 @@ Parcela 1/N do Agreement **não** pertence à fatura negociada. Entra na **próx
 
 ## 19.4.6 Status da fatura e settlement (D1=A, D2=A)
 
-### Status persistidos (emenda Fase 9)
+### Status persistidos
 
 `SCHEDULED` | `OPEN` | `CLOSED` | `PAID` | `SETTLED_BY_AGREEMENT`
 
-- `PAID`: liquidação por pagamentos/créditos/ajustes até remaining 0 após fechamento (fluxo Fase 9). Terminal; imutável.
-- `SETTLED_BY_AGREEMENT`: liquidação por negociação/renegociação válida. Terminal; imutável; **não** reabre.
+- `PAID` / `SETTLED_BY_AGREEMENT`: terminais; imutáveis.
 - Ambos fora de elegibilidade de crédito (RN246) e de alteração.
 
-### Fato de settlement (D2=A)
+### Settlement da fatura
 
-Além da entrada (pagamento real de fatura na conta), o trecho negociado (`financedAmount`) é liquidado por um **fato de settlement do Agreement** que:
+Além da entrada (`credit_card_invoice_payments`), o valor **`invoiceSettlementAmount = invoiceRemaining − entryAmount`** é liquidado por um **fato de settlement** (D2) rateado às parcelas da **fatura atual** (espírito RN247), **sem** movimentar conta.
 
-- participa da fórmula de remaining das parcelas do ciclo (como alocação que reduz remaining), **sem** movimentar conta;
-- é rateado às parcelas com remaining > 0 da fatura negociada (mesmo espírito RN247; detalhe de desempate = RN247);
-- permanece no histórico (não apagar);
-- não é linha em `payments` da despesa nem substitui `credit_card_invoice_payments` da entrada.
+- Na **nova negociação**: `invoiceSettlementAmount = financedAmount`.
+- Na **renegociação**: `invoiceSettlementAmount` liquida **só a fatura**; o trecho dos futuros líquidos entra no `financedAmount` do Agreement **sem** passar pelo settlement da fatura (RN254).
 
-Após entrada + settlement: remaining da fatura = 0 → status `SETTLED_BY_AGREEMENT`. Compras originais **não** são reescritas como parcelas do Agreement; seus remainings no ciclo caem a 0 via alocações de entrada + settlement.
+Após entrada + settlement da fatura: remaining da fatura = 0 → `SETTLED_BY_AGREEMENT`. Compras originais **não** são reescritas como parcelas do Agreement; remainings do ciclo caem a 0 via alocações de entrada + settlement.
 
 ---
 
@@ -2227,27 +2235,27 @@ Após entrada + settlement: remaining da fatura = 0 → status `SETTLED_BY_AGREE
 
 ### Obrigação (D3=A)
 
-Na mesma transação da negociação:
+Na mesma transação:
 
 1. pagamento de entrada (`credit_card_invoice_payments`) + rateio;
-2. fato de settlement do financedAmount + rateio;
+2. fato de settlement de `invoiceSettlementAmount` + rateio;
 3. fatura → `SETTLED_BY_AGREEMENT`;
-4. cabeçalho **Agreement** (histórico/vínculos);
-5. nova `expenses` com `payment_method = CREDIT_CARD`, `total_amount = contractedTotal`, cartão da fatura;
-6. `expense_installments` 1..N (valores iguais a `installmentAmount`), vinculadas às faturas dos ciclos seguintes (1ª = próxima).
+4. (renegociação) tratamento dos futuros — RN254;
+5. cabeçalho **Agreement** (histórico/vínculos);
+6. nova `expenses` com `payment_method = CREDIT_CARD`, `total_amount = contractedTotal`, cartão da fatura;
+7. `expense_installments` 1..N (valores iguais a `installmentAmount`), 1ª na próxima fatura.
 
-Agreement **não** é cadastro CRUD genérico: é resultado da operação. Ligação obrigatória Agreement ↔ expense ↔ fatura de origem.
+Agreement **não** é cadastro CRUD genérico. Ligação obrigatória Agreement ↔ expense ↔ fatura de origem.
 
 ### Modelo legado V13 (D4=A)
 
-`credit_card_invoice_installments` está **SUPERADO** como contrato de negócio. Novas tabelas de Agreement (+ settlement). V13 permanece no schema sem uso de negócio na Fase 13 (não dropar nesta fase sem necessidade; não escrever regras sobre ela).
+`credit_card_invoice_installments` está **SUPERADO** como contrato de negócio. Novas tabelas de Agreement (+ settlement). V13 permanece no schema sem uso de negócio na Fase 13.
 
 ### Limite (D11 = total contratado)
 
-Na liquidação por Agreement:
-
 - remaining das compras do ciclo liberado (entrada + settlement) → reduz `used_limit`;
-- a nova despesa `CREDIT_CARD` do Agreement passa a comprometer o **`contractedTotal`** (soma dos remainings das novas parcelas), não apenas o financedAmount.
+- na renegociação, futuros encerrados também deixam de comprometer;
+- a nova despesa do Agreement compromete o **`contractedTotal`** (soma dos remainings das novas parcelas), **não** o `financedAmount`.
 
 RN029A inalterada (limite negativo permitido).
 
@@ -2261,16 +2269,23 @@ RN029A inalterada (limite negativo permitido).
 - **Não** antecipa Agreements anteriores.
 - Agreements `ACTIVE` do cartão continuam `ACTIVE`.
 - Coexistência permitida.
+- `financedAmount = invoiceRemaining − entryAmount`.
 
 ### Renegociação — `POST /api/v1/invoices/{invoiceId}/renegotiations`
 
-- Escopo elegível (**D8=A**): **todos** os Agreements `ACTIVE` do **mesmo cartão**.
-- Antecipa e encerra parcelas **futuras** dos Agreements elegíveis: cada parcela futura em aberto recebe `DISCOUNT` automático igual ao seu remaining (a obrigação econômica migra para o novo Agreement/`contractedTotal`; não há pagamento em conta por parcela futura nesta consolidação — a única saída em conta da operação é a **entrada** da fatura atual).
-- A parcela já incluída na fatura atual entra **uma vez** pelo contexto da fatura (entrada + settlement); **não** duplicar.
-- Registra entrada da fatura atual; settlement do financed; fatura → `SETTLED_BY_AGREEMENT`.
+Detalhe determinístico: **RN254**.
+
+Resumo:
+
+- Escopo (**D8=A**): **todos** os Agreements `ACTIVE` do **mesmo cartão**.
+- Request inclui `anticipatedFuturesNetAmount` (líquido dos futuros informado pelo banco). **Sem** lista de `agreementId`s.
+- Parcela já na fatura atual: **uma vez** (entrada + settlement); **não** duplicar.
+- Futuros: desconto financeiro (`futuresDiscountAmount`) ≠ incorporação do líquido (`anticipatedFuturesNetAmount`).
+- `financedAmount = (invoiceRemaining − entryAmount) + anticipatedFuturesNetAmount`.
+- Settlement da fatura = `invoiceSettlementAmount = invoiceRemaining − entryAmount` apenas.
 - Encerra Agreements elegíveis como `RENEGOTIATED`.
 - Cria novo Agreement + expense + parcelas; 1ª na próxima fatura.
-- Request **sem** lista de `agreementId`s.
+- `contractedTotal >= financedAmount` obrigatório.
 
 ---
 
@@ -2293,7 +2308,7 @@ Regras:
 - `amount > remaining` → rejeitar (sem crédito automático);
 - parcela já `PAID` → rejeitar.
 
-Como a despesa do Agreement é `CREDIT_CARD`, a liquidação **ordinária** das parcelas continua via pagamento da fatura em que elas aparecem (RN106A). A antecipação (D7) é operação **explícita** (conta + valor [+ settled]) sobre parcela de Agreement ainda em aberto, distinta do pay genérico de despesa ACCOUNT.
+Como a despesa do Agreement é `CREDIT_CARD`, a liquidação **ordinária** das parcelas continua via pagamento da fatura em que elas aparecem (RN106A). A antecipação (D7) é operação **explícita** (conta + valor [+ settled]) sobre parcela de Agreement ainda em aberto, distinta do pay genérico de despesa ACCOUNT e **distinta** da consolidação em lote da renegociação (RN254).
 
 ---
 
@@ -2329,13 +2344,11 @@ Nunca apagar Agreement.
 | `GET` | `/api/v1/agreements/{agreementId}` | Detalhe do Agreement |
 | `POST` | `/api/v1/agreements/{agreementId}/installments/{installmentId}/anticipate` | Antecipar parcela do Agreement (`amount`, `accountId`, `paymentDate`, `settled?`) |
 
-Request de nova negociação / renegociação (campos mínimos):
+Request mínima — nova negociação: `entryAmount`, `accountId`, `entryPaymentDate`, `installmentCount`, `installmentAmount`.
 
-- `entryAmount`, `accountId`, `entryPaymentDate` (ou `paymentDate` da entrada);
-- `installmentCount`, `installmentAmount`;
-- na renegociação: dados de antecipação/desconto das parcelas futuras conforme contrato de request em `docs/25` (sem lista de agreementIds).
+Request mínima — renegociação: os mesmos **+** `anticipatedFuturesNetAmount` (quando há futuros; senão `0`). **Sem** lista de `agreementId`s. Detalhe: `docs/25`.
 
-Response do Agreement deve permitir reconstruir: fatura de origem, entrada, financed, contractedTotal, custo/%, expenseId, status, cadeia (origem/renegociação), parcelas.
+Response do Agreement deve permitir reconstruir: fatura de origem, entrada, financed, contractedTotal, custo/%, expenseId, status, cadeia (origem/renegociação), parcelas; na renegociação, idealmente também original/desconto/líquido dos futuros (conceitual).
 
 Legado `POST/GET /api/v1/invoices/{id}/installments` (body lista amount/dueDate): **obsoleto**; não implementar.
 
@@ -2345,22 +2358,24 @@ Pagamento de fatura: `POST /api/v1/invoices/{id}/payments` (inalterado).
 
 ## RN249 — Agreement e fatura `SETTLED_BY_AGREEMENT`
 
-Somente fatura `CLOSED` com remaining > 0 pode gerar Agreement. Resultado terminal da fatura: `SETTLED_BY_AGREEMENT`. Entrada via `credit_card_invoice_payments`. Financed via fato de settlement (D2). Nova despesa `CREDIT_CARD` com `total_amount = contractedTotal`. V13 sem uso de negócio.
+Somente fatura `CLOSED` com remaining > 0 pode gerar Agreement. Resultado terminal da fatura: `SETTLED_BY_AGREEMENT`. Entrada via `credit_card_invoice_payments`. Settlement da fatura = `invoiceSettlementAmount` (D2). Nova despesa `CREDIT_CARD` com `total_amount = contractedTotal`. V13 sem uso de negócio.
 
 
 ## RN250 — Nova negociação vs renegociação
 
-Nova negociação não antecipa Agreements `ACTIVE`. Renegociação antecipa **todos** os `ACTIVE` do cartão, marca-os `RENEGOTIATED`, cria novo Agreement. Sem `agreementIds` no request. Parcela da fatura atual não é contada duas vezes.
+Nova negociação: não antecipa Agreements `ACTIVE`; `financedAmount = invoiceRemaining − entryAmount`.
+
+Renegociação: consolida fatura + futuros líquidos (RN254); marca anteriores `RENEGOTIATED`; cria novo Agreement. Sem `agreementIds` no request. Parcela da fatura atual não é contada duas vezes.
 
 
 ## RN251 — Antecipação de parcela de Agreement
 
-Endpoint de antecipação (§19.4.12). `settled` só nesse fluxo. Desconto automático quando `settled=true` e amount < remaining. Não alterar pay de fatura nem pay ACCOUNT/NONE.
+Endpoint de antecipação (§19.4.12). `settled` só nesse fluxo. Desconto automático quando `settled=true` e amount < remaining. Não alterar pay de fatura nem pay ACCOUNT/NONE. Distinto da consolidação em lote da renegociação (RN254).
 
 
 ## RN252 — Limite após Agreement
 
-Liquidação por Agreement libera o remaining das parcelas do ciclo. O Agreement compromete o **contractedTotal** no `used_limit` via remainings das novas `expense_installments`.
+Liquidação libera remaining das parcelas do ciclo (e futuros encerrados na renegociação). O novo Agreement compromete o **contractedTotal** no `used_limit`. `financedAmount` **não** define o comprometimento do limite.
 
 
 ## RN253 — Concorrência e atomicidade da Fase 13
@@ -2368,29 +2383,88 @@ Liquidação por Agreement libera o remaining das parcelas do ciclo. O Agreement
 Negociação, renegociação e antecipação são atômicas e com lock pessimista. Falha → rollback completo.
 
 
-## 19.4.13 Decisões D1–D11 — FECHADAS
+## RN254 — Consolidação da renegociação (emenda)
+
+Regra determinística da renegociação. **Implementada; aguardando reauditoria.**
+
+### Grandezas
+
+| Conceito | Definição |
+| --- | --- |
+| `invoiceRemaining` | Remaining da fatura atual antes da entrada |
+| `futureOriginalAmount` | Soma dos remainings das parcelas **futuras** elegíveis de todos os Agreements `ACTIVE` do cartão, **excluindo** parcelas da fatura atual (e excluindo `CANCELLED` / `REFUNDED` / `PAID`) |
+| `anticipatedFuturesNetAmount` | Valor líquido dos futuros informado pelo banco (request); `0 ≤ net ≤ futureOriginalAmount` |
+| `futuresDiscountAmount` | `futureOriginalAmount − anticipatedFuturesNetAmount` |
+| `consolidatedAmount` | `invoiceRemaining + anticipatedFuturesNetAmount` |
+| `invoiceSettlementAmount` | `invoiceRemaining − entryAmount` |
+| `financedAmount` | `consolidatedAmount − entryAmount` ≡ `(invoiceRemaining − entryAmount) + anticipatedFuturesNetAmount` |
+| `contractedTotal` | `installmentCount × installmentAmount` |
+
+### Desconto financeiro × incorporação
+
+```text
+futureOriginalAmount
+    ↓  desconto financeiro do banco (futuresDiscountAmount)
+anticipatedFuturesNetAmount
+    ↓  incorporação / transferência para a nova obrigação
+entra no financedAmount / consolidação;
+parcelas antigas deixam de comprometer o limite (remaining → 0)
+```
+
+- **`futuresDiscountAmount`:** desconto **financeiro** concedido pelo banco.
+- **`anticipatedFuturesNetAmount`:** dívida **líquida** incorporada — **não** é desconto financeiro.
+- Relatórios futuros **não** devem somar os dois como “dois descontos financeiros”.
+- Se a implementação física usar adjustment para zerar remaining das parcelas antigas após o desconto, a **semântica de negócio** da parte líquida é **liquidação/transferência**, não segundo desconto financeiro (reasons/fatos distintos).
+
+### Settlement
+
+Somente a fatura atual, valor `invoiceSettlementAmount`. Sem Payment sintético. Futuros não passam pelo settlement da fatura.
+
+### Invariante
+
+`contractedTotal >= financedAmount`; caso contrário **400** `BUSINESS_RULE_VIOLATION`.
+
+### Exemplo oficial
+
+Janeiro: fatura 1.500; entrada 500; Agreement #1 = 10×200.
+
+Fevereiro: compras 1.000 + parcela 1/10 (200) → fatura 1.200; futuros #1 = 1.800; banco `anticipatedFuturesNetAmount = 900` → `futuresDiscountAmount = 900`.
+
+| Grandeza | Valor |
+| --- | --- |
+| consolidatedAmount | 2.100 |
+| entryAmount | 500 |
+| financedAmount | **1.600** |
+| invoiceSettlementAmount | 700 |
+| contractedTotal (#2) | 3.200 |
+| additionalCost | 1.600 |
+| used_limit (novo Agreement) | **3.200** (D11) |
+
+Março: sem parcela 2/10 do #1; parcela 1/10 do #2 = 320; compras novas normais.
+
+
+## 19.4.13 Decisões D1–D11 — FECHADAS (não reabertas pela emenda)
 
 | ID | Decisão |
 | --- | --- |
 | D1 | **A** — status `SETTLED_BY_AGREEMENT` (terminal) |
-| D2 | **A** — fato de settlement do Agreement na fórmula de remaining |
-| D3 | **A** — `expenses` `CREDIT_CARD` + `expense_installments` + Agreement cabeçalho |
-| D4 | **A** — V13 SUPERADO; novas tabelas de Agreement |
-| D5 | **A** — paths sob `/api/v1/invoices/...` + `GET /api/v1/agreements/{id}` |
-| D6 | **A** — `entryAmount == remaining` → 400 `BUSINESS_RULE_VIOLATION` |
-| D7 | **B** — `settled` só na antecipação de parcelas de Agreement |
-| D8 | **A** — renegociação: todos os Agreements `ACTIVE` do cartão |
-| D9 | **A** — `installmentCount` + `installmentAmount` (iguais); due pelo ciclo |
-| D10 | **A** — `CANCELLED` reservado; sem cancelamento na Fase 13 |
-| D11 | **total contratado** compromete o `used_limit` |
+| D2 | **A** — fato de settlement (sem Payment sintético); na renegociação o settlement cobre `invoiceSettlementAmount` |
+| D3 | **A** — `expenses` `CREDIT_CARD` + parcelas + Agreement |
+| D4 | **A** — V13 SUPERADO |
+| D5 | **A** — paths sob `/api/v1/invoices/...` |
+| D6 | **A** — `entryAmount == invoiceRemaining` → 400 |
+| D7 | **B** — `settled` só em anticipate |
+| D8 | **A** — todos `ACTIVE` do cartão |
+| D9 | **A** — count × amount iguais |
+| D10 | **A** — `CANCELLED` reservado |
+| D11 | **contractedTotal** no `used_limit` |
 
----
+A emenda altera **somente** a semântica detalhada da **renegociação** (consolidação / financedAmount / futuros), não reabre D1–D11.
 
-## 19.4.14 Testes mínimos contratados (não implementados)
 
-L01–L32 + L33 imutabilidade `SETTLED_BY_AGREEMENT`; L34 1ª parcela na próxima fatura; L35 contractedTotal > financedAmount; L36 renegociação sem duplicar parcela da fatura atual.
+## 19.4.14 Testes
 
-Detalhe: `docs/27-testes.md`.
+Cenários L01–L36 permanecem a base. A emenda exige cobertura de L13–L16/L36, `financedAmount` consolidado, `contractedTotal >= financedAmount` e desconto × incorporação — cobertos em `CreditCardInvoiceAgreementPhase13ApiTest`. Detalhe: `docs/27-testes.md`.
 
 
 # 20. Metas

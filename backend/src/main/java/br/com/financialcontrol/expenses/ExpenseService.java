@@ -321,6 +321,81 @@ public class ExpenseService {
     return toResponse(expense, installments);
   }
 
+  /**
+   * Phase 13: creates the CREDIT_CARD expense that backs an invoice Agreement. Equal installment
+   * amounts; first installment on the next cycle via {@code expenseDate = source closingDate}
+   * (RN095).
+   */
+  @Transactional
+  public Expense createCreditCardAgreementExpense(
+      UUID userId,
+      CreditCard card,
+      Category category,
+      String description,
+      BigDecimal contractedTotal,
+      int installmentCount,
+      BigDecimal installmentAmount,
+      LocalDate expenseDate) {
+    if (installmentCount < 1) {
+      throw new BusinessRuleException("A quantidade de parcelas deve ser maior que zero.");
+    }
+    BigDecimal normalizedTotal = normalizeMoney(contractedTotal);
+    BigDecimal normalizedInstallment = normalizeMoney(installmentAmount);
+    BigDecimal expectedTotal =
+        normalizeMoney(normalizedInstallment.multiply(BigDecimal.valueOf(installmentCount)));
+    if (normalizedTotal.compareTo(expectedTotal) != 0) {
+      throw new BusinessRuleException(INSTALLMENT_SUM_MISMATCH);
+    }
+
+    Instant now = Instant.now(clock);
+    Expense expense = new Expense();
+    expense.setId(UuidV7.create());
+    expense.setUserId(userId);
+    expense.setCategory(category);
+    expense.setAccount(null);
+    expense.setCreditCard(card);
+    expense.setDescription(description);
+    expense.setTotalAmount(normalizedTotal);
+    expense.setExpenseDate(expenseDate);
+    expense.setDueDate(expenseDate);
+    expense.setPaymentMethod(PaymentMethod.CREDIT_CARD);
+    expense.setStatus(ExpenseStatus.OPEN);
+    expense.setResponsibleType(ResponsibleType.MINE);
+    expense.setResponsibleName(null);
+    expense.setBarcode(null);
+    expense.setNotes(null);
+    expense.setCreatedAt(now);
+    expense.setUpdatedAt(now);
+    expenseRepository.save(expense);
+
+    List<ExpenseInstallment> installments = new ArrayList<>(installmentCount);
+    LocalDate firstDueDate = expenseDate;
+    for (int number = 1; number <= installmentCount; number++) {
+      ExpenseInstallment installment = new ExpenseInstallment();
+      installment.setId(UuidV7.create());
+      installment.setUserId(userId);
+      installment.setExpense(expense);
+      installment.setInstallmentNumber(number);
+      installment.setTotalInstallments(installmentCount);
+      installment.setAmount(normalizedInstallment);
+      installment.setStatus(ExpenseStatus.OPEN);
+      installment.setCreatedAt(now);
+      installment.setUpdatedAt(now);
+      CreditCardInvoice invoice =
+          creditCardInvoiceService.requireInvoiceForPurchase(card, expenseDate, number);
+      installment.setInvoice(invoice);
+      installment.setDueDate(invoice.getDueDate());
+      if (number == 1) {
+        firstDueDate = invoice.getDueDate();
+      }
+      installments.add(installment);
+    }
+    expense.setDueDate(firstDueDate);
+    expenseRepository.save(expense);
+    expenseInstallmentRepository.saveAll(installments);
+    return expense;
+  }
+
   @Transactional
   public ExpenseResponse update(
       AuthenticatedUser authenticatedUser, UUID expenseId, UpdateExpenseRequest request) {
@@ -954,7 +1029,9 @@ public class ExpenseService {
     expense.setUpdatedAt(now);
     for (ExpenseInstallment installment : installments) {
       if (installment.getInvoice() != null
-          && installment.getInvoice().getStatus() == CreditCardInvoiceStatus.PAID) {
+          && (installment.getInvoice().getStatus() == CreditCardInvoiceStatus.PAID
+              || installment.getInvoice().getStatus()
+                  == CreditCardInvoiceStatus.SETTLED_BY_AGREEMENT)) {
         installment.setUpdatedAt(now);
         continue;
       }
@@ -1125,7 +1202,9 @@ public class ExpenseService {
       throw new BusinessRuleException(INSTALLMENT_NOT_ADJUSTABLE);
     }
     if (installment.getInvoice() != null
-        && installment.getInvoice().getStatus() == CreditCardInvoiceStatus.PAID) {
+        && (installment.getInvoice().getStatus() == CreditCardInvoiceStatus.PAID
+            || installment.getInvoice().getStatus()
+                == CreditCardInvoiceStatus.SETTLED_BY_AGREEMENT)) {
       throw new BusinessRuleException(INVOICE_PAID_NO_ADJUSTMENT);
     }
   }

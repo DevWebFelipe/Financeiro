@@ -898,26 +898,24 @@ O sistema não deve considerar os R$ 800 como pagos.
 
 # 41. Fluxo — Parcelamento / negociação do restante da fatura (Fase 13)
 
-**Status:** `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE` (`docs/24` §19.4).
+**Status:** `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA` (`docs/24` §19.4 / RN254).
 
 Somente fatura **`CLOSED`** com remaining > 0.
 
-Exemplo:
+### Nova negociação (exemplo)
 
 Fatura remaining: R$ 1.000  
 Entrada: R$ 400 (conta)  
-Saldo negociado: R$ 600  
-Banco: 10 × R$ 120 → contractedTotal R$ 1.200
+financedAmount: R$ 600 (`invoiceRemaining − entry`)  
+Banco: 10 × R$ 120 → contractedTotal R$ 1.200 (≥ financed)
 
-Resultado:
+Resultado: fatura → `SETTLED_BY_AGREEMENT`; Agreement + expense `CREDIT_CARD`; 1ª parcela na **próxima** fatura; `used_limit` compromete contractedTotal.
 
-- compras originais intactas (remainings zerados via entrada + settlement);
-- fatura → `SETTLED_BY_AGREEMENT`;
-- Agreement + expense `CREDIT_CARD` (`total_amount` 1.200) + parcelas iguais;
-- parcela 1/10 na **próxima** fatura;
-- `used_limit` passa a comprometer o contractedTotal das novas parcelas.
+### Renegociação (exemplo oficial — RN254)
 
-Nova negociação ≠ renegociação (esta antecipa todos os `ACTIVE` do cartão → `RENEGOTIATED`).
+Fevereiro: fatura 1.200; futuros brutos 1.800; banco informa líquido 900; entrada 500 → financed **1.600**; settlement fatura 700; novo plano 10×320 (contracted 3.200); anteriores `RENEGOTIATED`. Desconto financeiro dos futuros (900) ≠ incorporação do líquido (900).
+
+Nova negociação ≠ renegociação (esta consolida fatura + futuros líquidos — RN254).
 
 
 # 42. Resultado
@@ -934,14 +932,14 @@ Plano oficial: `installmentCount` × `installmentAmount` (iguais). Due dates pel
 
 # 44. Regra — SUPERADA
 
-A redação anterior (“a soma deve representar o saldo negociado”) está **SUPERADA** (RN113). Total contratado pode ser maior que o financedAmount.
+A redação anterior (“a soma deve representar o saldo negociado”) está **SUPERADA** (RN113). Total contratado pode ser maior que o financedAmount; **deve** ser `>= financedAmount` (senão 400).
 
 
 # 45. Fluxo — Custo adicional (conscientização)
 
-Registrar/derivar: financedAmount, contractedTotal, custo adicional, % de acréscimo.
+Registrar/derivar: financedAmount (fórmula conforme nova negociação vs renegociação — RN254), contractedTotal, custo adicional, % de acréscimo.
 
-Não modelar IOF nem juros bancários compostos nesta fase.
+Não modelar IOF nem juros bancários compostos nesta fase. Relatórios: não tratar `futuresDiscountAmount` e `anticipatedFuturesNetAmount` como dois descontos financeiros.
 
 
 ## V1

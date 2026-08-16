@@ -1490,7 +1490,9 @@ Proibido em fatura `PAID`. Rateio RN247A.
 
 # 64. Parcelamento / negociação de fatura (Fase 13)
 
-**Status:** `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE` (`docs/24` §19.4). **Não implementar** até autorização explícita da etapa de implementação.
+**Status:** `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA` (`docs/24` §19.4 / RN254).
+
+Invariante comum: `contractedTotal = installmentCount × installmentAmount` e `contractedTotal >= financedAmount`. Se `contractedTotal < financedAmount` → **400** `BUSINESS_RULE_VIOLATION` (razão específica, ex. alinhada a `AGREEMENT_CONTRACTED_TOTAL_BELOW_FINANCED_AMOUNT`).
 
 ## Nova negociação
 
@@ -1508,13 +1510,33 @@ Request:
 }
 ```
 
-Regras: fatura `CLOSED` com remaining > 0; `0 <= entryAmount < remaining`; `entryAmount == remaining` → **400** `BUSINESS_RULE_VIOLATION`; parcelas iguais; 1ª na próxima fatura; fatura → `SETTLED_BY_AGREEMENT`; cria Agreement + expense `CREDIT_CARD` (`total_amount = installmentCount × installmentAmount`).
+Regras: fatura `CLOSED` com remaining > 0; `0 <= entryAmount < invoiceRemaining`; `entryAmount == invoiceRemaining` → **400** `BUSINESS_RULE_VIOLATION`; **não** antecipa Agreements anteriores; `financedAmount = invoiceRemaining − entryAmount`; settlement da fatura = esse financed; parcelas iguais; 1ª na próxima fatura; fatura → `SETTLED_BY_AGREEMENT`; cria Agreement + expense `CREDIT_CARD` (`total_amount = contractedTotal`).
 
 ## Renegociação
 
 `POST /api/v1/invoices/{invoiceId}/renegotiations`
 
-Mesmos campos de entrada/plano (`entryAmount`, `accountId`, `entryPaymentDate`, `installmentCount`, `installmentAmount`). **Sem** lista de `agreementId`s. Antecipa automaticamente todos os Agreements `ACTIVE` do cartão: parcelas futuras encerradas com `DISCOUNT` = remaining (consolidação no novo `contractedTotal`); parcela da fatura atual não é duplicada.
+Request:
+
+```json
+{
+  "entryAmount": 500.00,
+  "accountId": "…",
+  "entryPaymentDate": "2026-02-10",
+  "installmentCount": 10,
+  "installmentAmount": 320.00,
+  "anticipatedFuturesNetAmount": 900.00
+}
+```
+
+- **Sem** lista de `agreementId`s (D8).
+- `anticipatedFuturesNetAmount`: líquido dos futuros informado pelo banco; `0 ≤ net ≤ futureOriginalAmount` (soma dos remainings futuros dos Agreements `ACTIVE` do cartão, excluindo parcelas da fatura atual). Se não houver futuros, enviar `0`.
+- `futuresDiscountAmount = futureOriginalAmount − anticipatedFuturesNetAmount` (desconto **financeiro**).
+- `anticipatedFuturesNetAmount` é **incorporação** na nova obrigação — **não** é segundo desconto financeiro (RN254).
+- `financedAmount = (invoiceRemaining − entryAmount) + anticipatedFuturesNetAmount`.
+- Settlement da fatura = `invoiceSettlementAmount = invoiceRemaining − entryAmount` (não inclui o líquido dos futuros).
+- Futuros: remaining → 0 após desconto financeiro + liquidação/transferência do líquido; parcela da fatura atual não duplicada.
+- Exemplo oficial e demais regras: `docs/24` RN254.
 
 ## Consultas
 

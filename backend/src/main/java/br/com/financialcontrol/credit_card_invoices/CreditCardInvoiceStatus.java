@@ -4,5 +4,6 @@ public enum CreditCardInvoiceStatus {
   SCHEDULED,
   OPEN,
   CLOSED,
-  PAID
+  PAID,
+  SETTLED_BY_AGREEMENT
 }

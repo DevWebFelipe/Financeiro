@@ -774,7 +774,7 @@ Além dos testes de cadastro de cartão:
 
 Usuário consegue cadastrar cartão, lançar compra (inclusive parcelada e acima do limite), ver faturas e itens, pagar fatura (parcial/antecipado) com rateio e limite corretos, usar crédito e ajustes, cancelar/estornar compra no cartão (RN117), e o fechamento automático respeita o ciclo — sem parcelar saldo de fatura e sem relatórios.
 
-**Critério atendido.** Fase 9 — **FECHADA E APROVADA**. RN246, RN247, RN247A (`SURCHARGE` exige remaining > 0; **400** / `BUSINESS_RULE_VIOLATION` / `SURCHARGE_REQUIRES_REMAINING`), settlement (`SETTLEMENT_NOT_ALLOWED`), credits (array + `remainingAmount`) e auditoria final de conformidade confirmados. Fora da Fase 9 (permanecem fora): parcelamento/negociação de fatura (Fase 13 — `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`); PDF/relatórios; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição cadastral de parcela já em fatura (§269.2.7); `POST /invoices/{id}/close`.
+**Critério atendido.** Fase 9 — **FECHADA E APROVADA**. RN246, RN247, RN247A (`SURCHARGE` exige remaining > 0; **400** / `BUSINESS_RULE_VIOLATION` / `SURCHARGE_REQUIRES_REMAINING`), settlement (`SETTLEMENT_NOT_ALLOWED`), credits (array + `remainingAmount`) e auditoria final de conformidade confirmados. Fora da Fase 9 (permanecem fora): parcelamento/negociação de fatura (Fase 13 — `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA`); PDF/relatórios; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição cadastral de parcela já em fatura (§269.2.7); `POST /invoices/{id}/close`.
 
 
 # 59–72. Fases 10–12 — ABSORVIDAS
@@ -786,27 +786,29 @@ As seções anteriores “Fase 10 — Compras”, “Fase 11 — Faturas” e �
 
 Status:
 
-`CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`
+`IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA`
 
 Objetivo:
 
-Permitir parcelar/negociar remaining de fatura **fechada**; distinguir nova negociação de renegociação; registrar Agreement, entrada, custo adicional; antecipação de parcelas de Agreement com desconto; histórico completo.
+Permitir parcelar/negociar remaining de fatura **fechada**; distinguir nova negociação de renegociação (RN254); registrar Agreement, entrada, custo adicional; antecipação individual de parcelas; histórico completo.
 
-**Não implementado** (sem Java/Angular/migrations/testes automatizados até autorização da etapa de implementação).
+Base (D1–D11) e emenda de renegociação (financed consolidado, `anticipatedFuturesNetAmount`, desconto × incorporação, `contractedTotal >= financedAmount`) **implementadas**. Aguardar reauditoria. Não marcar `CONCLUÍDA E APROVADA`.
 
 
 # 74. Fase 13 — Escopo contratado
 
 - somente `CLOSED` + remaining > 0;
-- `SETTLED_BY_AGREEMENT` (D1); settlement fact (D2);
+- `SETTLED_BY_AGREEMENT` (D1); settlement fact (D2) = `invoiceSettlementAmount`;
 - expense `CREDIT_CARD` + parcelas iguais; V13 SUPERADO (D3, D4, D9);
 - API `/api/v1/invoices/.../agreements|renegotiations` (D5);
+- nova negociação: `financedAmount = invoiceRemaining − entryAmount`;
+- renegociação: RN254 (`financedAmount = (invoiceRemaining − entry) + anticipatedFuturesNetAmount`);
 - `entryAmount == remaining` → 400 (D6);
-- `settled` só em anticipate de Agreement (D7);
+- `settled` só em anticipate (D7);
 - renegociação: todos `ACTIVE` do cartão (D8);
 - `CANCELLED` reservado (D10);
 - `used_limit` compromete contractedTotal (D11);
-- testes L01–L36 (`docs/27`).
+- testes L01–L36 com critérios de emenda (`docs/27`) — cobertos.
 
 Detalhe: `docs/24` §19.4.
 
@@ -818,9 +820,10 @@ Parcelamento/negociação de fatura ≠ compra parcelada. V13 sem uso de negóci
 
 # 76. Fase 13 — Próximo passo
 
-Aguardar autorização explícita: **IMPLEMENTAÇÃO DA FASE 13**.
+1. Reauditar a emenda (RN254) + regressão.
+2. Só então marcar `CONCLUÍDA E APROVADA`.
 
-A IA **não** inicia implementação sem essa autorização.
+Não marcar `CONCLUÍDA E APROVADA` sem reauditoria explícita.
 
 
 # 77. Fase 14 — Transferências
@@ -1556,6 +1559,6 @@ Fases 0 a 9: CONCLUÍDAS.
 
 Próxima fase: Fase 13 — Parcelamento / Negociação / Renegociação de fatura.
 
-Status da Fase 13: `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE` (`docs/24` §19.4; `docs/23` §269.5 **FECHADO**). Aguardar autorização explícita para implementar.
+Status da Fase 13: `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA` (`docs/24` §19.4 / RN254; `docs/23` §269.5 D1–D11 FECHADO).
 
-A IA não deve implementar Refresh Token, logout backend, Agreement/parcelamento de fatura, relatórios/PDF, frontend financeiro, `payments.type` nem auditoria genérica sem autorização. Itens ainda deferidos: §269.1, §269.2.7. Fechados: §269.3, §269.4, **§269.5**.
+A IA não deve implementar Refresh Token, logout backend, relatórios/PDF, frontend financeiro, `payments.type` nem auditoria genérica sem autorização. Itens ainda deferidos: §269.1, §269.2.7. Fechados: §269.3, §269.4, **§269.5**.

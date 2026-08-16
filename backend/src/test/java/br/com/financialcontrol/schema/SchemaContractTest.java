@@ -48,6 +48,9 @@ class SchemaContractTest {
             "credit_card_credit_applications",
             "credit_card_invoice_adjustments",
             "credit_card_invoice_adjustment_allocations",
+            "credit_card_invoice_agreements",
+            "credit_card_invoice_agreement_settlements",
+            "credit_card_invoice_agreement_settlement_allocations",
             "card_purchase_account_refunds",
             "financial_goals",
             "goal_contributions");
@@ -90,7 +93,7 @@ class SchemaContractTest {
   }
 
   @Test
-  void shouldUsePhase9InvoiceStatuses() {
+  void shouldUsePhase9AndPhase13InvoiceStatuses() {
     String check =
         jdbcTemplate.queryForObject(
             """
@@ -105,6 +108,7 @@ class SchemaContractTest {
     assertThat(check).contains("OPEN");
     assertThat(check).contains("CLOSED");
     assertThat(check).contains("PAID");
+    assertThat(check).contains("SETTLED_BY_AGREEMENT");
     assertThat(check).doesNotContain("PARTIALLY_PAID");
   }
 

@@ -487,6 +487,111 @@
           ]
         },
         {
+          "name": "Agreements (Fase 13)",
+          "item": [
+            {
+              "name": "Nova negociação",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"entryAmount\": 400.00,\n  \"accountId\": \"{{accountId}}\",\n  \"entryPaymentDate\": \"2026-08-16\",\n  \"installmentCount\": 10,\n  \"installmentAmount\": 120.00\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/agreements",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "invoices", "{{invoiceId}}", "agreements"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Renegociação",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"entryAmount\": 500.00,\n  \"accountId\": \"{{accountId}}\",\n  \"entryPaymentDate\": \"2026-08-16\",\n  \"installmentCount\": 10,\n  \"installmentAmount\": 320.00\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/renegotiations",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "invoices", "{{invoiceId}}", "renegotiations"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Listar Agreements da fatura",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/agreements",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "invoices", "{{invoiceId}}", "agreements"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Consultar Agreement",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/agreements/{{agreementId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "agreements", "{{agreementId}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Antecipar parcela",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"accountId\": \"{{accountId}}\",\n  \"amount\": 150.00,\n  \"paymentDate\": \"2026-08-16\",\n  \"settled\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/agreements/{{agreementId}}/installments/{{installmentId}}/anticipate",
+                  "host": ["{{baseUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "agreements",
+                    "{{agreementId}}",
+                    "installments",
+                    "{{installmentId}}",
+                    "anticipate"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
           "name": "Transferências",
           "item": []
         }

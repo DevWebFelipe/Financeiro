@@ -1,6 +1,10 @@
 package br.com.financialcontrol.credit_card_invoices;
 
 import br.com.financialcontrol.config.OpenApiConfig;
+import br.com.financialcontrol.credit_card_invoice_agreements.CreditCardInvoiceAgreementService;
+import br.com.financialcontrol.credit_card_invoice_agreements.dto.AgreementResponse;
+import br.com.financialcontrol.credit_card_invoice_agreements.dto.CreateAgreementRequest;
+import br.com.financialcontrol.credit_card_invoice_agreements.dto.RenegotiateAgreementRequest;
 import br.com.financialcontrol.credit_card_invoices.dto.CreateInvoiceAdjustmentRequest;
 import br.com.financialcontrol.credit_card_invoices.dto.CreditCardInvoiceResponse;
 import br.com.financialcontrol.credit_card_invoices.dto.InvoiceAdjustmentResponse;
@@ -33,9 +37,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class CreditCardInvoiceController {
 
   private final CreditCardInvoiceService creditCardInvoiceService;
+  private final CreditCardInvoiceAgreementService agreementService;
 
-  public CreditCardInvoiceController(CreditCardInvoiceService creditCardInvoiceService) {
+  public CreditCardInvoiceController(
+      CreditCardInvoiceService creditCardInvoiceService,
+      CreditCardInvoiceAgreementService agreementService) {
     this.creditCardInvoiceService = creditCardInvoiceService;
+    this.agreementService = agreementService;
   }
 
   @GetMapping("/{id}")
@@ -145,5 +153,49 @@ public class CreditCardInvoiceController {
       @PathVariable UUID invoiceId,
       @PathVariable UUID adjustmentId) {
     return creditCardInvoiceService.reverseAdjustment(authenticatedUser, invoiceId, adjustmentId);
+  }
+
+  @PostMapping("/{id}/agreements")
+  @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary = "Nova negociação de fatura fechada")
+  @ApiResponses({
+    @ApiResponse(responseCode = "201", description = "Negociação criada"),
+    @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+    @ApiResponse(responseCode = "401", description = "Não autenticado"),
+    @ApiResponse(responseCode = "404", description = "Fatura não encontrada")
+  })
+  public AgreementResponse createAgreement(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+      @PathVariable UUID id,
+      @Valid @RequestBody CreateAgreementRequest request) {
+    return agreementService.createAgreement(authenticatedUser, id, request);
+  }
+
+  @PostMapping("/{id}/renegotiations")
+  @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary = "Renegociação de fatura fechada")
+  @ApiResponses({
+    @ApiResponse(responseCode = "201", description = "Renegociação criada"),
+    @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+    @ApiResponse(responseCode = "401", description = "Não autenticado"),
+    @ApiResponse(responseCode = "404", description = "Fatura não encontrada")
+  })
+  public AgreementResponse renegotiate(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+      @PathVariable UUID id,
+      @Valid @RequestBody RenegotiateAgreementRequest request) {
+    return agreementService.renegotiate(authenticatedUser, id, request);
+  }
+
+  @GetMapping("/{id}/agreements")
+  @Operation(summary = "Listar negociações da fatura")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Negociações da fatura"),
+    @ApiResponse(responseCode = "401", description = "Não autenticado"),
+    @ApiResponse(responseCode = "404", description = "Fatura não encontrada")
+  })
+  public List<AgreementResponse> listAgreements(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser, @PathVariable UUID id) {
+    return agreementService.listByInvoice(authenticatedUser, id);
   }
 }

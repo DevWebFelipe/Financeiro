@@ -1,5 +1,6 @@
 package br.com.financialcontrol.expenses;
 
+import br.com.financialcontrol.credit_card_invoice_agreements.CreditCardInvoiceAgreementSettlementAllocationRepository;
 import br.com.financialcontrol.credit_card_invoices.CreditCardInvoiceAdjustmentAllocationRepository;
 import br.com.financialcontrol.credit_card_invoices.CreditCardInvoicePaymentAllocationRepository;
 import br.com.financialcontrol.credit_cards.CreditCardCreditApplicationRepository;
@@ -18,18 +19,22 @@ public class InstallmentBalanceService {
   private final CreditCardCreditApplicationRepository creditApplicationRepository;
   private final CreditCardInvoiceAdjustmentAllocationRepository
       invoiceAdjustmentAllocationRepository;
+  private final CreditCardInvoiceAgreementSettlementAllocationRepository
+      settlementAllocationRepository;
 
   public InstallmentBalanceService(
       PaymentRepository paymentRepository,
       ExpenseInstallmentAdjustmentRepository adjustmentRepository,
       CreditCardInvoicePaymentAllocationRepository invoicePaymentAllocationRepository,
       CreditCardCreditApplicationRepository creditApplicationRepository,
-      CreditCardInvoiceAdjustmentAllocationRepository invoiceAdjustmentAllocationRepository) {
+      CreditCardInvoiceAdjustmentAllocationRepository invoiceAdjustmentAllocationRepository,
+      CreditCardInvoiceAgreementSettlementAllocationRepository settlementAllocationRepository) {
     this.paymentRepository = paymentRepository;
     this.adjustmentRepository = adjustmentRepository;
     this.invoicePaymentAllocationRepository = invoicePaymentAllocationRepository;
     this.creditApplicationRepository = creditApplicationRepository;
     this.invoiceAdjustmentAllocationRepository = invoiceAdjustmentAllocationRepository;
+    this.settlementAllocationRepository = settlementAllocationRepository;
   }
 
   public BigDecimal obligation(ExpenseInstallment installment) {
@@ -72,6 +77,10 @@ public class InstallmentBalanceService {
             .subtract(
                 zeroIfNull(
                     creditApplicationRepository.sumAmountByInstallmentIdAndUserId(
+                        installmentId, userId)))
+            .subtract(
+                zeroIfNull(
+                    settlementAllocationRepository.sumAmountByInstallmentIdAndUserId(
                         installmentId, userId)));
     if (value.compareTo(BigDecimal.ZERO) < 0) {
       return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);

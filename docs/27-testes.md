@@ -1130,7 +1130,7 @@ Saldo:
 
 # 68. Testes de parcelamento / negociação de fatura (Fase 13)
 
-**Status:** cenários **contratados**; **não implementados**. Contrato: `docs/24` §19.4 (`CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`).
+**Status:** cenários L01–L36 **contratados e cobertos** em `CreditCardInvoiceAgreementPhase13ApiTest` (inclui emenda RN254 e cenário oficial Jan→Fev→Mar). Contrato: `docs/24` §19.4 / RN254 (`IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA`).
 
 Mínimo contratado:
 
@@ -1148,12 +1148,12 @@ Mínimo contratado:
 | L10 | nova obrigação (expense CREDIT_CARD do Agreement) é independente |
 | L11 | nova negociação não antecipa Agreements anteriores |
 | L12 | coexistência de Agreements ACTIVE |
-| L13 | renegociação automática (todos ACTIVE do cartão; sem lista de ids) |
-| L14 | antecipação de parcelas futuras |
+| L13 | renegociação automática (todos ACTIVE; sem lista de ids); `anticipatedFuturesNetAmount` no request |
+| L14 | futuros: `futureOriginalAmount` → desconto financeiro → `anticipatedFuturesNetAmount` (incorporação ≠ segundo desconto) |
 | L15 | encerramento automático `RENEGOTIATED` |
-| L16 | entrada da renegociação |
+| L16 | entrada + settlement fatura (`invoiceSettlementAmount`) + financed consolidado (RN254) |
 | L17 | antecipação individual com desconto automático (`settled=true`) |
-| L18 | percentual de desconto derivado |
+| L18 | percentual de desconto derivado (antecipação individual) |
 | L19 | pagamento parcial (antecipação) |
 | L20 | segundo pagamento completa obrigação |
 | L21 | quitação com desconto |
@@ -1161,7 +1161,7 @@ Mínimo contratado:
 | L23 | pagamento de parcela já quitada |
 | L24 | limite negativo permitido |
 | L25 | histórico da fatura parcelada |
-| L26 | histórico de renegociação |
+| L26 | histórico de renegociação (exemplo oficial Jan→Fev→Mar) |
 | L27 | ownership da fatura |
 | L28 | ownership do Agreement |
 | L29 | ownership da conta de pagamento |
@@ -1170,13 +1170,13 @@ Mínimo contratado:
 | L32 | rollback completo |
 | L33 | imutabilidade `SETTLED_BY_AGREEMENT` |
 | L34 | 1ª parcela na próxima fatura |
-| L35 | contractedTotal > financedAmount |
-| L36 | renegociação sem duplicar parcela da fatura atual |
+| L35 | contractedTotal > financedAmount (e rejeição se contractedTotal < financedAmount → 400) |
+| L36 | renegociação sem duplicar parcela da fatura atual; financed = (invoiceRemaining − entry) + anticipatedFuturesNetAmount |
 
 
 # 69. Exemplo (legado pré-Agreement)
 
-O exemplo “saldo 800 → duas parcelas 400+400 cuja soma = 800” ficou **SUPERADO** como regra geral (RN113). O exemplo canônico da Fase 13 admite total contratado **maior** que o financed (ex.: negociado 600, 10×120 = 1.200).
+O exemplo “saldo 800 → duas parcelas 400+400 cuja soma = 800” ficou **SUPERADO** como regra geral (RN113). O exemplo canônico da Fase 13 admite total contratado **maior** que o financed (ex.: negociado 600, 10×120 = 1.200). Exemplo oficial de **renegociação** consolidada: `docs/24` RN254 (financed 1.600; contracted 3.200).
 
 
 # 69. Exemplo (legado pré-Agreement)
