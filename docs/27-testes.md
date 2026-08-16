@@ -491,11 +491,23 @@ pagamento de despesa sem saldo;
 pagamento de fatura limitado ao saldo da conta.
 
 
-# 34. Transferência
+# 34. Transferência (Fase 14)
 
-Testar:
+Contrato: `docs/24` §19.5. Status: implementação pendente.
 
-conta A -> conta B.
+Testar quando implementar:
+
+conta A (`BANK_ACCOUNT`) -> conta B (`BANK_ACCOUNT`).
+
+Rejeitar `CASH` como origem ou destino.
+
+Rejeitar transferência futura.
+
+Aceitar transferência retroativa.
+
+Reversão `ACTIVE` → `REVERSED` com checagem de saldo na conta debitada.
+
+Sem desreversão.
 
 
 # 35. Transferência
@@ -551,7 +563,41 @@ Valor negativo deve ser rejeitado.
 
 # 40. Transferência
 
-Saldo insuficiente deve ser rejeitado.
+Saldo insuficiente deve ser rejeitado (criação e reversão).
+
+
+# 40A. Acerto de Saldos (Fase 14)
+
+Testar:
+
+- usuário informa `reportedBalance`; sistema calcula diferença;
+- `reportedBalance < 0` rejeitado;
+- acerto retroativo (as-of-date);
+- acerto futuro rejeitado;
+- múltiplos acertos independentes;
+- reversão com efeito inverso e checagem de saldo;
+- `BANK_ACCOUNT` e `CASH` permitidos; cartão não.
+
+
+# 40B. Saldo inicial (Fase 14)
+
+Testar:
+
+- criar conta sem `initialBalance` ⇒ `0,00`;
+- criar conta com `initialBalance` informado;
+- `PUT /accounts/{id}/initial-balance` sem movimentações;
+- rejeitar após primeira movimentação efetiva (RN010A);
+- rejeitar mesmo se a movimentação for depois cancelada/revertida/estornada;
+- não bloquear por despesa OPEN / receita EXPECTED / fatos só de cartão sem movimento na conta;
+- correção posterior via acerto.
+
+
+# 40C. Inativação com saldo (Fase 14)
+
+Testar:
+
+- saldo ≠ 0 → rejeitar deactivate;
+- saldo == 0 → permitir.
 
 
 # 41. Atomicidade

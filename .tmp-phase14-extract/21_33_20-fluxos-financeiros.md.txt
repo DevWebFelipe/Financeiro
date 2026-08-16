@@ -1,0 +1,25 @@
+PATH: d:\Financeiro\docs\20-fluxos-financeiros.md
+
+NEW:
+# 46. Fluxo — Transferência entre contas
+
+Usuário possui:
+
+Nubank (`BANK_ACCOUNT`):
+
+R$ 2.000
+
+
+Ailos (`BANK_ACCOUNT`):
+
+R$ 500
+
+
+Transfere:
+
+R$ 300
+
+
+Nubank → Ailos
+
+Somente `BANK_ACCOUNT` participa. `CASH` não. Contrato: `docs/24` §19.5.

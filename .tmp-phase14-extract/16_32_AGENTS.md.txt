@@ -1,0 +1,42 @@
+PATH: d:\Financeiro\AGENTS.md
+
+NEW:
+### 11.6 Transferência
+
+Operação própria, atômica: saída na origem + entrada no destino. Não é receita nem despesa.
+
+Somente contas `BANK_ACCOUNT` ativas do mesmo usuário; origem ≠ destino; `CASH` e cartões excluídos. Valor positivo; sem saldo insuficiente (criação e reversão). Status: `ACTIVE` / `REVERSED`. Retroativa permitida; futura não. Não editável — correção = reverter + criar nova.
+
+Contrato: `docs/24` §19.5. Status da Fase 14: `CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE`.
+
+### 11.7 Saldo negativo
+
+Operações normais não permitem saldo negativo (transferências e suas reversões, acertos de saldo e suas reversões quando o efeito for de saída, pagamento de despesas, pagamento de fatura limitado ao saldo da conta).
+
+Estorno de receita recebida é correção: não é bloqueado se o saldo resultante for negativo.
+
+Estorno de despesa **não** herda essa exceção: devolve o valor dos payments **ACTIVE** à fórmula de saldo (RN216, emendada na Fase 8 por RN240) e não autoriza pagamento que deixe saldo negativo. Reverse de payment (`REVERSED`) e refund da despesa `ACCOUNT`/`NONE` também retiram o efeito daqueles payments do saldo. Refund `CREDIT_CARD` com `settlement = ACCOUNT` **soma** a devolução (`bankLiquidated`) e **não** reverte pagamentos de fatura (RN117).
+
+### 11.8 Contas
+
+Tipos oficiais: `BANK_ACCOUNT`, `CASH`.
+
+Não usar: `CHECKING`, `SAVINGS`, `PERSONAL_WALLET`, `OTHER`.
+
+`CASH` = dinheiro em espécie (ex.: Carteira Felipe). Sem entidade separada de carteira.
+
+Conta com saldo derivado ≠ `0,00` **não** pode ser inativada (RN007A / Fase 14).
+
+Saldo inicial (RN010 / Fase 14): começa em `0,00`; pode ser definido/alterado só enquanto a conta nunca tiver tido movimentação; após a primeira movimentação (mesmo cancelada/revertida), correção = Acerto de Saldos.
+
+### 11.9 Saldo
+
+Fonte de verdade: movimentações. Saldo derivado delas, a partir do saldo inicial.
+
+Conceitualmente: saldo inicial + receitas recebidas − payments ACTIVE − pagamentos de fatura ACTIVE + devoluções ACCOUNT + transferências ACTIVE (entrada − saída) + acertos de saldo ACTIVE (`BALANCE_ADJUSTMENT`).
+
+A partir da Fase 8 (RN240): o subtraendo de despesas `ACCOUNT`/`NONE` usa somente payments `ACTIVE` de despesas não `CANCELLED`/`REFUNDED`. A partir da Fase 9, o saldo também subtrai pagamentos `ACTIVE` de fatura (`credit_card_invoice_payments`) na conta utilizada e **soma** devoluções `ACCOUNT` de compra no cartão (RN117). A Fase 14 inclui transferências e acertos `ACTIVE`. Crédito de cartão **não** movimenta conta. `GET /accounts/{id}/balance` é leitura derivada do saldo atual; as-of-date é capacidade interna (Fase 14); o contrato não exige lock pessimista da conta só para essa leitura.
+
+Cache/`current_balance` só se mantido transacionalmente consistente com as movimentações — nunca duas fontes independentes.
+
+**Acerto de Saldos** (nome conceitual; técnico `BALANCE_ADJUSTMENT`) é fato próprio de conciliação (não é receita, despesa, transferência nem adjustment de parcela/fatura). Contrato: `docs/24` §19.5. Não criar entidade genérica `Transaction`. Extrato unificado `/statement` fora da Fase 14.

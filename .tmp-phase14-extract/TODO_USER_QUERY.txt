@@ -1,0 +1,337 @@
+<timestamp>Sunday, Aug 16, 2026, 8:20 PM (UTC-3)</timestamp>
+<user_query>
+FASE 14 — FECHAMENTO DOS ÚLTIMOS TODOs CONTRATUAIS
+
+Esta execução é EXCLUSIVAMENTE DOCUMENTAL.
+
+O contrato principal da Fase 14 já foi consolidado.
+Restam apenas 5 TODOs documentais/estruturais identificados na auditoria do contrato.
+
+NÃO implementar código nesta etapa.
+
+NÃO criar migrations.
+
+NÃO alterar entidades.
+
+NÃO alterar services.
+
+NÃO alterar controllers.
+
+NÃO alterar repositories.
+
+NÃO alterar testes de implementação.
+
+NÃO alterar comportamento do sistema.
+
+O objetivo é somente incorporar as decisões abaixo à documentação oficial e realizar uma última auditoria de consistência.
+
+============================================================
+1. DECISÕES DEFINITIVAS DOS TODOs
+============================================================
+
+### TODO 1 — API DE SALDO INICIAL
+
+A operação de definição/alteração do saldo inicial utilizará:
+
+PUT /api/v1/accounts/{id}/initial-balance
+
+Motivação contratual:
+
+- saldo inicial é uma propriedade inicial da conta;
+- enquanto a conta não possuir movimentação, seu valor pode ser definido/alterado;
+- após a primeira movimentação financeira, torna-se definitivamente imutável.
+
+Não criar outros endpoints equivalentes.
+
+------------------------------------------------------------
+
+### TODO 2 — POST /accounts
+
+O campo:
+
+initialBalance
+
+passa a ser OPCIONAL na criação da conta.
+
+Quando omitido:
+
+initialBalance = 0.00
+
+Quando informado na criação:
+
+o valor informado será utilizado como saldo inicial.
+
+Exemplo válido:
+
+POST /api/v1/accounts
+
+{
+  "name": "Nubank",
+  "type": "BANK_ACCOUNT"
+}
+
+Resultado conceitual:
+
+initialBalance = 0.00
+
+Também continua válido:
+
+POST /api/v1/accounts
+
+{
+  "name": "Nubank",
+  "type": "BANK_ACCOUNT",
+  "initialBalance": 2000.00
+}
+
+A existência desse campo na criação NÃO elimina a possibilidade de definir/alterar o saldo inicial posteriormente, desde que a conta ainda não possua movimentação.
+
+Após a primeira movimentação:
+
+initialBalance não pode mais ser alterado.
+
+------------------------------------------------------------
+
+### TODO 3 — FILTRO DE STATUS EM TRANSFERÊNCIAS
+
+Não haverá filtro de status obrigatório no MVP da Fase 14.
+
+A listagem de transferências poderá retornar:
+
+ACTIVE
+REVERSED
+
+O status continuará sendo informado no recurso.
+
+Não criar parâmetro de filtro apenas por antecipação.
+
+------------------------------------------------------------
+
+### TODO 4 — NOME DA TABELA DE ACERTO
+
+O nome físico oficial da tabela será:
+
+account_balance_adjustments
+
+Esse nome deve ser utilizado na documentação de modelo de dados e considerado o nome contratado para a futura migration.
+
+Não reutilizar:
+
+adjustments
+expense_installment_adjustments
+
+ou qualquer nome genérico que possa causar ambiguidade.
+
+------------------------------------------------------------
+
+### TODO 5 — DEFINIÇÃO FORMAL DE "PRIMEIRA MOVIMENTAÇÃO"
+
+A regra de primeira movimentação deve ser formalizada como:
+
+"Primeira movimentação" é o primeiro fato financeiro efetivo da conta.
+
+Contam como movimentação:
+
+1. Receita RECEIVED;
+2. Payment ACTIVE de despesa que produza saída da conta;
+3. Pagamento ACTIVE de fatura que produza saída da conta;
+4. Refund de compra de cartão que produza entrada na conta;
+5. Transferência ACTIVE;
+6. Acerto de Saldos ACTIVE.
+
+Uma vez que qualquer desses fatos tenha ocorrido, a conta passa a ser considerada "já movimentada" definitivamente.
+
+Isso permanece verdadeiro mesmo que posteriormente o fato seja:
+
+- cancelado;
+- revertido;
+- estornado.
+
+O cancelamento/reversão NÃO reabre a possibilidade de definir ou alterar o saldo inicial.
+
+------------------------------------------------------------
+
+### NÃO contam como primeira movimentação
+
+Não devem bloquear o saldo inicial:
+
+- criação da conta;
+- alterações cadastrais;
+- definição/alteração do próprio saldo inicial;
+- criação de despesa OPEN sem pagamento;
+- criação de receita EXPECTED sem recebimento;
+- criação de parcela;
+- criação de fatura;
+- operações exclusivamente relacionadas ao cartão que não movimentem o saldo da conta.
+
+A regra deve ser baseada em movimentação financeira efetiva da conta, e não simplesmente na existência de registros relacionados à conta.
+
+============================================================
+2. DOCUMENTOS A ATUALIZAR
+============================================================
+
+Atualize os documentos necessários, preservando a organização atual:
+
+- AGENTS.md
+- README.md
+- docs/20-fluxos-financeiros.md
+- docs/21-arquitetura-do-sistema.md
+- docs/23-modelo-de-dados.md
+- docs/24-regras-de-negocio.md
+- docs/25-api.md
+- docs/27-testes.md
+- docs/28-roadmap.md
+- docs/CODING_STANDARDS.md
+- .cursor/rules/*
+
+Somente altere arquivos nos quais exista conteúdo afetado pelas decisões acima.
+
+Não faça alterações cosméticas.
+
+Não reorganize documentos sem necessidade.
+
+Não altere regras de outras fases.
+
+============================================================
+3. CONSISTÊNCIA ENTRE DOCUMENTOS
+============================================================
+
+Depois das alterações, procure novamente por:
+
+- initialBalance
+- initial_balance
+- saldo inicial
+- primeira movimentação
+- transfer status
+- ACTIVE
+- REVERSED
+- account_balance_adjustments
+- balance adjustment
+- ajuste de saldo
+- acerto de saldo
+- POST /accounts
+- PUT /accounts/{id}
+- initial-balance
+
+Verifique se existe qualquer regra antiga contradizendo as decisões acima.
+
+Corrija somente contradições relacionadas à Fase 14.
+
+Não altere código.
+
+============================================================
+4. ROADMAP
+============================================================
+
+A Fase 14 deve permanecer com:
+
+FASE 14 — TRANSFERÊNCIAS, ACERTO DE SALDOS E SALDO INICIAL
+
+Status:
+
+CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE
+
+NÃO marcar como concluída.
+
+============================================================
+5. API — CONTRATO FINAL
+
+O contrato deve deixar claro:
+
+### Criação
+
+POST /api/v1/accounts
+
+initialBalance:
+- opcional;
+- default 0.00.
+
+### Alteração do saldo inicial
+
+PUT /api/v1/accounts/{id}/initial-balance
+
+Permitido somente se a conta ainda não possuir movimentação financeira.
+
+Depois da primeira movimentação:
+
+operação rejeitada.
+
+### Transferências
+
+Status:
+
+ACTIVE
+REVERSED
+
+Sem filtro de status obrigatório no MVP.
+
+### Acerto
+
+Recurso:
+
+BALANCE_ADJUSTMENT
+
+Tabela contratada:
+
+account_balance_adjustments
+
+============================================================
+6. REGRA ABSOLUTA SOBRE IMPLEMENTAÇÃO
+
+Esta etapa continua sendo DOCUMENTAL.
+
+Se alguma alteração de código parecer necessária:
+
+NÃO faça.
+
+Apenas documente a regra contratual.
+
+============================================================
+7. RESULTADO FINAL
+
+Ao terminar, apresente:
+
+### 1. Resultado geral
+
+Informe se os 5 TODOs foram definitivamente fechados.
+
+### 2. Documentos alterados
+
+| Documento | Alteração |
+|---|---|
+
+### 3. Contrato final
+
+Confirme:
+
+- saldo inicial;
+- primeira movimentação;
+- API de saldo inicial;
+- transferência;
+- status;
+- acerto;
+- nome da tabela;
+- escopo da Fase 14.
+
+### 4. Auditoria final
+
+Informe se foram encontradas contradições documentais restantes.
+
+Se houver, liste-as claramente.
+
+### 5. Implementação
+
+Declare explicitamente:
+
+"Nenhum código, migration ou teste de implementação foi alterado nesta etapa."
+
+### 6. Status
+
+Declare:
+
+FASE 14 — CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE
+
+Após concluir, NÃO inicie implementação.
+
+Aguarde autorização explícita.
+</user_query>

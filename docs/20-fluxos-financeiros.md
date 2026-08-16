@@ -25,7 +25,7 @@ Cada fluxo deve representar uma operação financeira real.
 
 O sistema não deve criar ou remover dinheiro artificialmente.
 
-Ajuste de saldo (conceito futuro, RN204) é exceção explícita de conciliação: reconcilia o saldo calculado com o saldo real da conta. Não é receita nem despesa. Não substitui lançamentos econômicos. Não autoriza alterar `current_balance` de forma arbitrária.
+Acerto de Saldos (nome conceitual oficial; técnico `BALANCE_ADJUSTMENT`; tabela `account_balance_adjustments`; RN204 / Fase 14 §19.5) é exceção explícita de conciliação: reconcilia o saldo calculado com o saldo real da conta. Não é receita nem despesa. Não substitui lançamentos econômicos. Não autoriza alterar `current_balance` de forma arbitrária.
 
 Em receitas, cancelamento e estorno **não são a mesma operação**: cancelar inutiliza a duplicata (`EXPECTED` → `CANCELLED`); estornar desfaz o recebimento e mantém a duplicata ativa (`RECEIVED` → `EXPECTED`).
 
@@ -954,12 +954,12 @@ Mas não criar estrutura que impeça evolução futura.
 
 Usuário possui:
 
-Nubank:
+Nubank (`BANK_ACCOUNT`):
 
 R$ 2.000
 
 
-Itaú:
+Ailos (`BANK_ACCOUNT`):
 
 R$ 500
 
@@ -969,7 +969,9 @@ Transfere:
 R$ 300
 
 
-Nubank → Itaú
+Nubank → Ailos
+
+Somente `BANK_ACCOUNT` participa. `CASH` não. Contrato: `docs/24` §19.5.
 
 
 # 47. Resultado
@@ -979,7 +981,7 @@ Nubank:
 R$ 1.700
 
 
-Itaú:
+Ailos:
 
 R$ 800
 
@@ -2910,11 +2912,13 @@ Não existe status `REVERSED`.
 **DECISÃO PENDENTE DO DESENVOLVEDOR:** cancelamento direto de receita já `RECEIVED`. A Fase 6 rejeita essa transição. O caminho composto estornar e depois cancelar já é possível. Não implementar a transição direta até decisão explícita.
 
 
-# 177. Fluxo — Ajuste de saldo (conceitual; fora da Fase 6)
+# 177. Fluxo — Acerto de Saldos (Fase 14 — contrato)
 
-Um ajuste reconcilia o saldo calculado com o saldo real da conta.
+Um acerto (`BALANCE_ADJUSTMENT` / tabela `account_balance_adjustments`) reconcilia o saldo calculado com o saldo real da conta.
 
-Não é receita. Não é despesa.
+Não é receita. Não é despesa. Não é transferência. Não é adjustment de parcela/fatura.
+
+O usuário informa o saldo real; o sistema calcula a diferença.
 
 
 Exemplo 1:
@@ -2923,7 +2927,7 @@ Exemplo 1:
 Saldo calculado: R$ 1.000
 Saldo real:      R$   950
 
-Ajuste: −R$ 50
+Acerto: −R$ 50
 Novo saldo: R$ 950
 ```
 
@@ -2934,11 +2938,11 @@ Exemplo 2:
 Saldo calculado: R$ 1.000
 Saldo real:      R$ 1.050
 
-Ajuste: +R$ 50
+Acerto: +R$ 50
 Novo saldo: R$ 1.050
 ```
 
-Não implementar na Fase 6. A arquitetura não deve impedir essa funcionalidade futura.
+Contrato oficial: `docs/24` §19.5. Status: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`.
 
 
 # 178. Conceito — Saldo em datas e períodos

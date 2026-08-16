@@ -295,9 +295,9 @@ O proprietário é sempre o usuário autenticado (claim `sub`). Propriedades des
 Conta de outro usuário ou UUID inexistente: **404** (`code`: `NOT_FOUND`, mensagem `Conta não encontrada.`). A API não distingue esses casos, para não vazar existência do recurso.
 
 
-## Fase 4 — não implementado
+## Fase 4 — não implementado / fora da Fase 14
 
-- `GET /api/v1/accounts/{id}/statement` — o extrato depende de movimentações financeiras reais (receitas, despesas, transferências), que pertencem a fases posteriores. Não há extrato artificial nesta fase.
+- `GET /api/v1/accounts/{id}/statement` — extrato unificado **fora do escopo da Fase 14**. O modelo permanece compatível com representação futura; não implementar nesta fase.
 
 
 Endpoint:
@@ -361,12 +361,27 @@ Regras:
 
 - `name` obrigatório, 1–255 caracteres (após trim);
 - `type` obrigatório; somente `BANK_ACCOUNT` ou `CASH`;
-- `initialBalance` obrigatório; número decimal JSON; no máximo 17 dígitos inteiros e 2 casas decimais; persistido como `NUMERIC(19,2)` e normalizado no backend com `RoundingMode.HALF_UP`, escala 2;
+- `initialBalance` **opcional** (contrato Fase 14 / RN010). Omitido ⇒ `0,00`. Se informado: número decimal JSON; no máximo 17 dígitos inteiros e 2 casas decimais; persistido como `NUMERIC(19,2)` e normalizado no backend com `RoundingMode.HALF_UP`, escala 2;
+- a presença de `initialBalance` na criação **não** impede definição/alteração posterior via `PUT /accounts/{id}/initial-balance`, enquanto a conta ainda não tiver movimentação (RN010A);
 - conta criada como `active = true`;
 - UUID v7 gerado pela aplicação;
 - o `userId` não é aceito no request.
 
+Exemplos válidos:
+
+```json
+{ "name": "Nubank", "type": "BANK_ACCOUNT" }
+```
+
+⇒ `initialBalance = 0.00`
+
+```json
+{ "name": "Nubank", "type": "BANK_ACCOUNT", "initialBalance": 2000.00 }
+```
+
 Response **201 Created**: mesmo formato de `GET /api/v1/accounts/{id}`.
+
+**Nota de implementação:** o código da Fase 4 ainda trata `initialBalance` como obrigatório. A opcionalidade e o default `0,00` são contrato da Fase 14 — aplicar na implementação autorizada, sem alterar comportamento antes disso.
 
 
 # 16. Atualizar conta
@@ -389,7 +404,7 @@ Campos permitidos: `name`, `type`.
 
 Campos rejeitados (propriedades desconhecidas no DTO → **400**): `id`, `userId`, `initialBalance`, `active`, `createdAt`, `updatedAt`.
 
-O saldo inicial não é alterável por esta operação: não é movimentação financeira real (`docs/23` §16, RN011).
+O saldo inicial **não** é alterável por este `PUT`. Definição/alteração controlada do saldo inicial (enquanto sem movimentação): contrato da Fase 14 — endpoint dedicado abaixo (RN010). Após a primeira movimentação, correção = Acerto de Saldos.
 
 O estado ativo/inativo não é alterável por PUT; usar os endpoints de desativar e reativar.
 
@@ -403,9 +418,11 @@ POST /api/v1/accounts/{id}/deactivate
 
 Desativação lógica. Não excluir fisicamente. Não existe `DELETE /api/v1/accounts/{id}`.
 
-A conta permanece persistida e consultável. Somente contas ativas poderão ser utilizadas em novas operações financeiras das fases posteriores (RN007).
+A conta permanece persistida e consultável. Somente contas ativas poderão ser utilizadas em novas operações financeiras (RN007).
 
-Response **200** com a conta (`active = false`). A operação é idempotente.
+**Fase 14 (RN007A):** se o saldo derivado atual for diferente de `0,00`, rejeitar (**400**, `BUSINESS_RULE_VIOLATION`). Somente saldo `0,00` permite inativação.
+
+Response **200** com a conta (`active = false`). A operação é idempotente quando já inativa e elegível.
 
 
 # 18. Reativar conta
@@ -436,12 +453,12 @@ Response:
 }
 ```
 
-Na Fase 4 o saldo derivado é igual ao `initialBalance`. A partir da Fase 6, receitas `RECEIVED` passam a somar. A partir da Fase 7, pagamentos de despesas cuja despesa **não** está `CANCELLED` nem `REFUNDED` passam a subtrair (RN216). A Fase 8 **emenda** a fórmula (RN240): somente payments **`ACTIVE`** entram no subtraendo. Transferências e ajustes entram nas fases dos respectivos domínios. Não existe coluna `current_balance`. Este endpoint é **leitura derivada**; não exige lock pessimista da conta.
+Na Fase 4 o saldo derivado é igual ao `initialBalance`. A partir da Fase 6, receitas `RECEIVED` passam a somar. A partir da Fase 7, pagamentos de despesas cuja despesa **não** está `CANCELLED` nem `REFUNDED` passam a subtrair (RN216). A Fase 8 **emenda** a fórmula (RN240): somente payments **`ACTIVE`** entram no subtraendo. A Fase 9 inclui pagamentos de fatura `ACTIVE` e devoluções ACCOUNT. A **Fase 14** inclui transferências `ACTIVE` e acertos de saldo `ACTIVE` (`BALANCE_ADJUSTMENT`). Não existe coluna `current_balance`. Este endpoint é **leitura derivada** do saldo **atual**; não exige lock pessimista da conta. Saldo as-of-date é capacidade **interna** da Fase 14 (não obrigatório expor `date` neste GET nesta fase).
 
 
 # 20. Extrato da conta
 
-Endpoint previsto:
+Endpoint previsto (futuro; **fora da Fase 14**):
 
 GET /api/v1/accounts/{id}/statement
 
@@ -456,7 +473,7 @@ page
 
 size
 
-Não implementado na Fase 4. Dependência futura: movimentações financeiras reais.
+Não implementar na Fase 14. Dependência: contrato futuro de extrato unificado. O modelo deve permanecer compatível.
 
 
 # 21. Cartões
@@ -1316,20 +1333,27 @@ RN234 (payment + adjustment no mesmo ato): permanece regra de domínio. **Não**
 A edição de parcela × total da despesa para ACCOUNT/NONE está **fechada** (docs/23 §269.2). Parcela já em fatura permanece **DEFERIDA**.
 
 
-# 52. Transferências
+# 52. Transferências (Fase 14 — contrato; implementação pendente)
+
+**Status:** contrato oficial `docs/24` §19.5 — `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`. **Não implementado.**
 
 Endpoint:
 
 GET /api/v1/transfers
 
 
-Filtros:
+Filtros oficiais do MVP da Fase 14:
 
 startDate
 
 endDate
 
-accountId
+accountId (origem ou destino)
+
+**Não** há filtro de `status` no MVP. A listagem pode retornar transferências `ACTIVE` e `REVERSED`. O `status` continua no recurso de cada item. Não criar parâmetro de filtro por antecipação.
+
+
+Auth: Bearer. Ownership: somente transferências do usuário autenticado.
 
 
 # 53. Criar transferência
@@ -1341,6 +1365,7 @@ POST /api/v1/transfers
 
 Request:
 
+```json
 {
   "sourceAccountId": "...",
   "destinationAccountId": "...",
@@ -1348,6 +1373,19 @@ Request:
   "transferDate": "2026-08-10",
   "description": "Transferência"
 }
+```
+
+Regras (contrato):
+
+- origem e destino: `BANK_ACCOUNT`, ativas, do usuário autenticado, distintas;
+- `CASH` e cartões: rejeitar;
+- `amount > 0`;
+- `transferDate` não futura (`America/Sao_Paulo`); retroativa permitida;
+- saldo da origem >= amount;
+- status inicial: `ACTIVE`;
+- atômica.
+
+Response **201**: transferência criada (incluir `id`, contas, `amount`, `transferDate`, `description`, `status`, `createdAt`).
 
 
 # 54. Transferência
@@ -1355,6 +1393,107 @@ Request:
 Endpoint:
 
 GET /api/v1/transfers/{id}
+
+
+Auth: Bearer. **404** se não existir ou não for do usuário.
+
+
+# 54A. Reverter transferência
+
+Endpoint:
+
+POST /api/v1/transfers/{id}/reverse
+
+
+Body: vazio.
+
+Comportamento: `ACTIVE` → `REVERSED`. Exige saldo suficiente na conta debitada pelo movimento inverso. Já `REVERSED` → **400** `BUSINESS_RULE_VIOLATION`. Não apaga. Não edita amount/datas.
+
+Response **200**: transferência com `status = REVERSED`.
+
+
+# 54B. Definir / alterar saldo inicial (Fase 14 — contrato)
+
+Endpoint oficial (único para definição/alteração após a criação):
+
+PUT /api/v1/accounts/{id}/initial-balance
+
+
+Request:
+
+```json
+{
+  "initialBalance": 2500.00
+}
+```
+
+Regras (RN010 / RN010A):
+
+- conta do usuário autenticado;
+- permitido somente se a conta **nunca** teve movimentação financeira efetiva (RN010A);
+- após a primeira movimentação (mesmo cancelada/revertida/estornada): **400** `BUSINESS_RULE_VIOLATION`;
+- valor normalizado `NUMERIC(19,2)` / `HALF_UP`;
+- não usar `PUT /accounts/{id}` (cadastral) para saldo inicial;
+- não criar outros endpoints equivalentes.
+
+Response **200**: conta atualizada.
+
+
+# 54C. Acerto de Saldos — listar / criar (Fase 14 — contrato)
+
+Identificador técnico: `BALANCE_ADJUSTMENT`.
+
+Tabela oficial contratada (migration futura): **`account_balance_adjustments`**.
+
+Não confundir com adjustments de parcela/fatura (`expense_installment_adjustments` / ajustes de fatura).
+
+Endpoints previstos:
+
+```text
+GET  /api/v1/accounts/{accountId}/balance-adjustments
+POST /api/v1/accounts/{accountId}/balance-adjustments
+GET  /api/v1/accounts/{accountId}/balance-adjustments/{id}
+```
+
+Request de criação:
+
+```json
+{
+  "reportedBalance": 1500.00,
+  "adjustmentDate": "2026-08-14"
+}
+```
+
+O cliente **não** envia `adjustmentAmount` nem `calculatedBalance`. O backend calcula:
+
+```text
+calculatedBalance = saldo as-of adjustmentDate
+adjustmentAmount = reportedBalance − calculatedBalance
+```
+
+Regras:
+
+- conta `BANK_ACCOUNT` ou `CASH` **ativa**;
+- `reportedBalance >= 0`;
+- `adjustmentDate` não futura;
+- retroativa permitida;
+- status inicial `ACTIVE`;
+- o acerto não pode deixar o saldo da conta negativo;
+- persistir no fato: `calculatedBalance`, `reportedBalance`, `adjustmentAmount`, data, status, timestamps.
+
+Response **201**: fato do acerto (campos acima + `id`, `accountId`, `status`, `createdAt`).
+
+
+# 54D. Reverter acerto de saldo
+
+Endpoint:
+
+POST /api/v1/accounts/{accountId}/balance-adjustments/{id}/reverse
+
+
+Body: vazio.
+
+`ACTIVE` → `REVERSED`. Exige saldo suficiente quando o efeito inverso for saída. Já `REVERSED` → **400**. Sem desreversão.
 
 
 # 55. Faturas
@@ -2212,17 +2351,23 @@ Fluxo:
 Não gravar `total_amount` / `paid_amount` / `remaining_amount` como colunas. Pagamento parcial **não** transita a fatura para `PARTIALLY_PAID`. Status persistido: `SCHEDULED` / `OPEN` / `CLOSED` / `PAID`. Rateio persistido em alocações. Atualizar remaining das parcelas e o limite usado na mesma transação.
 
 
-# 118. Transferência
+# 118. Transferência (Fase 14 — contrato)
+
+Endpoint: `POST /api/v1/transfers` (implementação pendente).
 
 Fluxo:
 
-1. validar conta origem;
-2. validar conta destino;
-3. validar saldo;
-4. criar transferência;
-5. debitar origem;
-6. creditar destino;
-7. confirmar transação.
+1. validar conta origem (`BANK_ACCOUNT`, ativa, do usuário);
+2. validar conta destino (`BANK_ACCOUNT`, ativa, do usuário, distinta);
+3. validar `amount > 0` e `transferDate` não futura;
+4. validar saldo da origem;
+5. criar transferência `ACTIVE` (um único fato);
+6. efeitos no saldo derivado (origem −, destino +) na mesma transação;
+7. confirmar.
+
+Reversão: `POST /api/v1/transfers/{id}/reverse` — movimento inverso com checagem de saldo; `ACTIVE` → `REVERSED`.
+
+Não há colunas de saldo a debitar/creditar: o saldo é derivado (RN240).
 
 
 # 119. Compra no cartão
@@ -2370,6 +2515,7 @@ Ordem inicial:
 8. Installments
 9. Payments
 10. Transfers
+10A. Balance Adjustments (Acerto de Saldos)
 11. Invoices
 12. Financial Goals
 13. Projections

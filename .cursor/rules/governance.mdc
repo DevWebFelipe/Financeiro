@@ -30,6 +30,8 @@ Do not create provisional code, preparatory migrations, presumed enums/CHECKs, o
 
 **Closed in Phase 13 (D1–D11; renegotiation amendment approved — phase `CONCLUÍDA E APROVADA`):** §269.5 / `docs/24` §19.4 / RN254 — `CONCLUÍDA E APROVADA`. Key choices: `SETTLED_BY_AGREEMENT`; settlement = `invoiceSettlementAmount`; expense `CREDIT_CARD` + equal installments; V13 superseded; paths under `/api/v1/invoices/...`; `settled` only on Agreement anticipate; renegotiation = all `ACTIVE` on card with consolidated `financedAmount` (futures net ≠ financial discount); `used_limit` uses contracted total; `contractedTotal >= financedAmount`.
 
+**Phase 14 contract closed (implementation pending):** `docs/24` §19.5 — transfers (`BANK_ACCOUNT` only; `ACTIVE`/`REVERSED`; no status filter in MVP listing), Acerto de Saldos (`BALANCE_ADJUSTMENT` / table `account_balance_adjustments`), initial balance (RN010 / RN010A; optional on create; `PUT .../initial-balance`), deactivate only if balance = 0 (RN007A). Do **not** implement without explicit authorization. Unified statement is out of Phase 14 scope.
+
 Mandatory remaining questions: `docs/23-modelo-de-dados.md` seção 269 (`payments.type`; §269.2.7).
 
 Everything else already consolidated in `docs/23` remains the source of truth.

@@ -1,0 +1,9 @@
+PATH: d:\Financeiro\docs\23-modelo-de-dados.md
+
+NEW:
+├── TRANSFERS
+│
+├── ACCOUNT_BALANCE_ADJUSTMENTS (BALANCE_ADJUSTMENT — Fase 14; contrato)
+│
+└── FINANCIAL_GOALS
+    └── GOAL_CONTRIBUTIONS

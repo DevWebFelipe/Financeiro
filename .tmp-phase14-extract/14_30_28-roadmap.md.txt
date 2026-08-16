@@ -1,0 +1,10 @@
+PATH: d:\Financeiro\docs\28-roadmap.md
+
+NEW:
+Próxima fase: **Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial**.
+
+Status da Fase 14: `CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE` (`docs/24` §19.5).
+
+Status da Fase 13: `CONCLUÍDA E APROVADA` (`docs/24` §19.4 / RN254; `docs/23` §269.5 D1–D11 FECHADO).
+
+A IA não deve implementar a Fase 14, Refresh Token, logout backend, relatórios/PDF, frontend financeiro, `payments.type`, extrato `/statement` nem auditoria genérica sem autorização. Itens ainda deferidos: §269.1, §269.2.7. Fechados: §269.3, §269.4, **§269.5**.

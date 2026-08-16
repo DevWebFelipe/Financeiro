@@ -1,0 +1,85 @@
+PATH: d:\Financeiro\docs\23-modelo-de-dados.md
+
+NEW:
+# 123. Transferência
+
+Tabela:
+
+transfers
+
+Contrato oficial: `docs/24` §19.5. Status da Fase 14: `CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE`.
+
+
+# 124. Transferência
+
+Representa movimentação entre duas contas `BANK_ACCOUNT` do mesmo usuário.
+
+`CASH` e cartões **não** participam.
+
+
+# 125. Campos:
+
+id
+
+user_id
+
+source_account_id
+
+destination_account_id
+
+amount
+
+transfer_date
+
+description
+
+status (`ACTIVE` | `REVERSED`) — **contrato Fase 14**; coluna a ser adicionada na implementação (migration futura; **não** criar nesta etapa documental)
+
+created_at
+
+Observação: a tabela física atual (V11) ainda **não** possui `status`. A implementação da Fase 14 deve adicioná-lo sem alterar o significado das demais colunas.
+
+
+# 126. Regra
+
+source_account_id deve ser diferente de:
+
+destination_account_id
+
+Ambas as contas: `type = BANK_ACCOUNT`, `active = true`, mesmo `user_id`.
+
+
+# 127. Resultado
+
+Transferência:
+
+Nubank → Itaú
+
+
+Nubank:
+
+- R$ 500
+
+
+Itaú:
+
++ R$ 500
+
+
+Somente status `ACTIVE` produz esse efeito. `REVERSED` permanece no histórico sem efeito no saldo.
+
+
+# 128. Regra
+
+Transferência não é:
+
+receita;
+
+despesa;
+
+acerto de saldos.
+
+
+# 129. Regra
+
+Transferência não altera patrimônio total.

@@ -27,7 +27,7 @@ Controller → Service → Repository
 
 Controller does not access Repository.
 
-Default: one Service per module (`AccountService`, `ExpenseService`, `IncomeService`, `TransferService`, `PaymentService`, `CreditCardService`, `CreditCardInvoiceService`, `FinancialGoalService`).
+Default: one Service per module (`AccountService`, `ExpenseService`, `IncomeService`, `TransferService`, `BalanceAdjustmentService`, `PaymentService`, `CreditCardService`, `CreditCardInvoiceService`, `FinancialGoalService`).
 
 Do not create `CreateExpenseUseCase`, `GetExpenseUseCase`, `ListExpenseUseCase`.
 

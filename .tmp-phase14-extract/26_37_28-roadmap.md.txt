@@ -1,0 +1,12 @@
+PATH: d:\Financeiro\docs\28-roadmap.md
+
+NEW:
+Não implementar nesta fase:
+
+- despesas;
+- transferências;
+- acerto de saldos (`BALANCE_ADJUSTMENT` — hoje Fase 14);
+- relatórios;
+- dashboard;
+- frontend;
+- responsável em receitas.

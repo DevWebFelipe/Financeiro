@@ -344,6 +344,7 @@ br.com.financialcontrol
 ├── expenses
 ├── incomes
 ├── transfers
+├── balance_adjustments
 ├── payments
 ├── credit_cards
 ├── credit_card_invoices
@@ -389,13 +390,13 @@ Conta
    └── Movimentações financeiras
           ├── Receita recebida
           ├── Despesa efetivada
-          ├── Transferência
-          └── Ajuste de saldo
+          ├── Transferência (ACTIVE)
+          └── Acerto de Saldos / BALANCE_ADJUSTMENT (ACTIVE)
 ```
 
 Isso não autoriza criar agora uma entidade genérica `Transaction`.
 
-A implementação concreta ocorre por domínio (`incomes`, `expenses`, `transfers` e, no futuro, ajustes), sem ledger paralelo.
+A implementação concreta ocorre por domínio (`incomes`, `expenses`, `transfers`, `balance_adjustments`, …), sem ledger paralelo.
 
 Na Fase 6, receita `RECEIVED` passa a participar positivamente do saldo da conta informada (`+ amount`). Receita `EXPECTED` ou `CANCELLED` não participa do saldo efetivo.
 
@@ -405,22 +406,22 @@ O estorno de receita desfaz exatamente a movimentação (`− amount`), devolve 
 
 O cancelamento (`EXPECTED` → `CANCELLED` em receita; `OPEN` → `CANCELLED` em despesa) não altera saldo. Cancelamento e estorno não são a mesma operação.
 
-Ajuste de saldo é conceito oficial e requisito futuro. Não implementar na Fase 6 nem na Fase 7. A arquitetura não pode impedir essa funcionalidade.
+**Acerto de Saldos** (`BALANCE_ADJUSTMENT` / tabela `account_balance_adjustments`) é conceito oficial da Fase 14 (`docs/24` §19.5). Status: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`. Não implementar sem autorização. A arquitetura não usa ledger genérico.
 
 
 # 29.2 Saldo em datas e períodos
 
-O modelo deve permitir futuramente obter:
+O modelo deve permitir obter:
 
 - saldo inicial;
-- saldo em uma data específica;
+- saldo em uma data específica (as-of-date — capacidade interna da Fase 14);
 - saldo anterior a um período;
 - movimentações de um período;
 - movimentação líquida;
 - saldo final de um período;
 - saldo atual.
 
-Não implementar relatórios, extrato completo nem dashboard nesta etapa.
+Extrato unificado completo / `GET /accounts/{id}/statement` e dashboard de apresentação **fora** da Fase 14.
 
 
 # 30. Organização futura

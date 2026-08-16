@@ -153,6 +153,7 @@ br.com.financialcontrol
 ├── expenses
 ├── incomes
 ├── transfers
+├── balance_adjustments
 ├── payments
 ├── credit_cards
 ├── credit_card_invoices
@@ -161,7 +162,7 @@ br.com.financialcontrol
 └── reports
 ```
 
-Do **not** create a generic `transactions` module to group incomes, expenses, transfers, and payments.
+Do **not** create a generic `transactions` module to group incomes, expenses, transfers, payments, and balance adjustments.
 
 Do **not** create a generic `common/`, `utils/`, `helpers/`, or `managers/` package without a genuine shared responsibility.
 

@@ -1,0 +1,198 @@
+PATH: d:\Financeiro\docs\24-regras-de-negocio.md
+
+NEW:
+A emenda altera **somente** a semântica detalhada da **renegociação** (consolidação / financedAmount / futuros), não reabre D1–D11.
+
+
+## 19.4.14 Testes
+
+Cenários L01–L36 permanecem a base. A emenda exige cobertura de L13–L16/L36, `financedAmount` consolidado, `contractedTotal >= financedAmount` e desconto × incorporação — cobertos em `CreditCardInvoiceAgreementPhase13ApiTest`. Detalhe: `docs/27-testes.md`.
+
+
+# 19.5 Contrato da Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial
+
+**Status:** `CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE`.
+
+Não implementar código, migrations nem testes de implementação até autorização explícita.
+
+Autoridade: `AGENTS.md` §28 → esta seção → `docs/23` (modelo) → `docs/25` (API) → `docs/27` / `docs/28`.
+
+---
+
+## 19.5.1 Escopo
+
+**Inclui:**
+
+1. Transferências entre contas (`BANK_ACCOUNT`);
+2. Reversão de transferências (`ACTIVE` → `REVERSED`);
+3. Transferências retroativas;
+4. Regras de saldo e atomicidade das transferências;
+5. Acerto de Saldos (`BALANCE_ADJUSTMENT`);
+6. Reversão de Acerto de Saldos;
+7. Acertos retroativos;
+8. Regras temporais dos acertos;
+9. Saldo inicial (RN010);
+10. Encerramento do saldo inicial após a primeira movimentação;
+11. Inativação de conta com saldo ≠ 0 (RN007A);
+12. Extensão do cálculo de saldo (RN240 / RN011);
+13. Cálculo interno de saldo as-of-date.
+
+**Fora do escopo:**
+
+- transferências futuras/agendadas;
+- transferência entre usuários;
+- extrato unificado / `GET /accounts/{id}/statement`;
+- planejamento financeiro futuro;
+- ledger genérico / entidade `Transaction` única.
+
+---
+
+## 19.5.2 Transferências
+
+### Conceito
+
+Fato próprio: debita origem, credita destino, patrimônio consolidado inalterado. Um único registro lógico (não duas transferências).
+
+### Contas
+
+Somente `BANK_ACCOUNT` ativas do usuário autenticado; origem ≠ destino; `CASH` e cartões excluídos (RN016A).
+
+### Valor e atomicidade
+
+`amount > 0`; uma origem; um destino; saldo origem suficiente; sem saldo negativo; operação atômica (RN018–RN020).
+
+### Data
+
+Uma `transfer_date` financeira (`America/Sao_Paulo`). Retroativa permitida. Futura proibida (RN022A).
+
+### Status
+
+`ACTIVE` | `REVERSED`. Somente `ACTIVE` entra no saldo.
+
+### Reversão
+
+Não editável. `POST .../reverse`: mantém registro; `ACTIVE` → `REVERSED`; efeito inverso; exige saldo suficiente na conta debitada pela reversão; sem “desreversão” (RN019A, RN022B).
+
+### Histórico lógico
+
+Origem: saída + id/nome do destino. Destino: entrada + id/nome da origem. Extrato unificado fora da fase.
+
+
+## RN255 — Transferência ACTIVE no saldo
+
+Transferência `ACTIVE`:
+
+- origem: − `amount`;
+- destino: + `amount`.
+
+`REVERSED`: zero efeito no saldo.
+
+
+## RN256 — Transferência futura proibida
+
+`transfer_date` não pode ser posterior à data atual em `America/Sao_Paulo`.
+
+
+## RN257 — Reversão de transferência
+
+`ACTIVE` → `REVERSED`. Já `REVERSED` → rejeitar. Não apaga. Não cria fato compensatório separado. Aplica movimento inverso com checagem de saldo (RN019A).
+
+
+## RN258 — Concorrência da transferência
+
+Criação e reversão são `@Transactional` com locks pessimistas nas contas envolvidas (padrão das fases anteriores). Falha → rollback completo.
+
+---
+
+## 19.5.3 Acerto de Saldos (`BALANCE_ADJUSTMENT`)
+
+### Nome
+
+- Conceitual: **Acerto de Saldos**
+- Técnico: `BALANCE_ADJUSTMENT`
+
+Não reutilizar o termo genérico `ADJUSTMENT` (já usado em parcela/fatura).
+
+### Fluxo
+
+Usuário informa `reported_balance` (saldo real ≥ 0). Sistema calcula:
+
+```text
+adjustment_amount = reported_balance − calculated_balance
+```
+
+Pode ser positivo, zero ou negativo. Não informar a diferença diretamente.
+
+### Contas
+
+`BANK_ACCOUNT` e `CASH` **ativas**. Cartões não participam. Conta com saldo calculado 0,00 pode receber acerto.
+
+### Persistência do fato (não é saldo da conta)
+
+Campos do fato: `calculated_balance`, `reported_balance`, `adjustment_amount`, data financeira, `account_id`, `user_id`, `status`, timestamps conforme padrão.
+
+Esses valores **não** constituem `current_balance` da conta.
+
+### Status
+
+`ACTIVE` | `REVERSED`. Somente `ACTIVE` no saldo.
+
+### Temporal
+
+Retroativo permitido (usa saldo as-of-date). Futuro proibido. Múltiplos acertos independentes. Não editável; correção = reverter + novo acerto.
+
+### Reversão
+
+Efeito inverso de `adjustment_amount`; exige saldo suficiente quando o inverso for saída; sem desreversão.
+
+
+## RN259 — Acerto de Saldos
+
+Fato de conciliação. Não é receita, despesa, transferência, payment nem adjustment de parcela/fatura.
+
+
+## RN260 — Saldo real do acerto
+
+`reported_balance >= 0`. O acerto não pode provocar saldo negativo da conta.
+
+
+## RN261 — Acerto as-of-date
+
+Na criação, `calculated_balance` = saldo da conta **até** a data financeira do acerto (inclusive fatos elegíveis com data ≤ data do acerto). Movimentações posteriores permanecem intactas e passam a incorporar o acerto na linha temporal.
+
+
+## RN262 — Reversão de acerto
+
+`ACTIVE` → `REVERSED`. Já `REVERSED` → rejeitar. Remove efeito financeiro; histórico permanece.
+
+
+## RN263 — Saldo as-of-date (capacidade interna)
+
+A Fase 14 exige cálculo interno de saldo até uma data financeira. Uso principal: acerto retroativo. Expor data em `GET /accounts/{id}/balance` **não** é obrigatório nesta fase.
+
+---
+
+## 19.5.4 Saldo inicial
+
+Ver RN010. Endpoint de definição/alteração: contrato em `docs/25` (implementação pendente).
+
+---
+
+## 19.5.5 Inativação
+
+Ver RN007A.
+
+---
+
+## 19.5.6 Arquitetura
+
+Manter domínio modular. **Não** criar `Transaction` / ledger genérico. Pacote previsto: `balance_adjustments` (ou nome de pacote alinhado à tabela oficial em `docs/23`). Cálculo de saldo agrega fatos por domínio (RN240).
+
+---
+
+## 19.5.7 Critério de conclusão da implementação (futuro)
+
+Usuário consegue: transferir entre `BANK_ACCOUNT` próprias; reverter transferência; registrar/reverter acerto; definir saldo inicial só antes da primeira movimentação; inativar apenas conta com saldo zero; saldo derivado coerente com RN240.
+
+
+# 20. Metas

@@ -155,7 +155,7 @@ Environment Contract completo: `docs/22-stack-tecnologica.md` (seção 30). Diag
 ### Convenções
 
 - Pacote Java: `br.com.financialcontrol`
-- Pacotes de domínio no plural, alinhados ao modelo real: `accounts`, `expenses`, `incomes`, `transfers`, `payments`, `credit_cards`, `credit_card_invoices`, `financial_goals`
+- Pacotes de domínio no plural, alinhados ao modelo real: `accounts`, `expenses`, `incomes`, `transfers`, `balance_adjustments`, `payments`, `credit_cards`, `credit_card_invoices`, `financial_goals`
 - Não criar módulo genérico `transactions` para agrupar operações financeiras diferentes
 - API: `/api/v1`
 - Moeda V1: BRL
@@ -382,7 +382,7 @@ Em receitas (ver 11.1):
 
 Receitas não possuem `REFUNDED` nem `REVERSED`.
 
-Não utilizar `DELETE` HTTP como operação padrão para dados financeiros. Preferir ações explícitas (`POST /expenses/{id}/pay`, `POST /expenses/{id}/cancel`, `POST /expenses/{id}/refund`, `POST /incomes/{id}/receive`, `POST /incomes/{id}/reverse`, `POST /incomes/{id}/cancel`, `POST /payments/{id}/reverse`, `POST .../adjustments/{id}/reverse`, e na Fase 9 `POST /invoices/{id}/payments`, reverse de pagamento de fatura, créditos e ajustes de fatura). `DELETE` só pode existir para recurso não financeiro com regra explícita. Cartão com histórico financeiro **não** se exclui (inativar).
+Não utilizar `DELETE` HTTP como operação padrão para dados financeiros. Preferir ações explícitas (`POST /expenses/{id}/pay`, `POST /expenses/{id}/cancel`, `POST /expenses/{id}/refund`, `POST /incomes/{id}/receive`, `POST /incomes/{id}/reverse`, `POST /incomes/{id}/cancel`, `POST /payments/{id}/reverse`, `POST .../adjustments/{id}/reverse`, na Fase 9 endpoints de fatura/crédito, e na Fase 14 `POST /transfers/{id}/reverse` e reverse de acerto de saldos — contrato §19.5). `DELETE` só pode existir para recurso não financeiro com regra explícita. Cartão com histórico financeiro **não** se exclui (inativar).
 
 ### 11.4 Compra no cartão
 
@@ -408,11 +408,15 @@ Pagamento parcial **não** altera o status da fatura (`OPEN` permanece `OPEN`; `
 
 ### 11.6 Transferência
 
-Operação própria, atômica: saída na origem + entrada no destino. Não é receita nem despesa. Contas diferentes. Sem saldo insuficiente.
+Operação própria, atômica: saída na origem + entrada no destino. Não é receita nem despesa.
+
+Somente contas `BANK_ACCOUNT` ativas do mesmo usuário; origem ≠ destino; `CASH` e cartões excluídos. Valor positivo; sem saldo insuficiente (criação e reversão). Status: `ACTIVE` / `REVERSED`. Retroativa permitida; futura não. Não editável — correção = reverter + criar nova. Listagem MVP sem filtro de `status` (pode retornar ACTIVE e REVERSED).
+
+Contrato: `docs/24` §19.5. Status da Fase 14: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`.
 
 ### 11.7 Saldo negativo
 
-Operações normais não permitem saldo negativo (transferências, pagamento de despesas, pagamento de fatura limitado ao saldo da conta).
+Operações normais não permitem saldo negativo (transferências e suas reversões, acertos de saldo e suas reversões quando o efeito for de saída, pagamento de despesas, pagamento de fatura limitado ao saldo da conta).
 
 Estorno de receita recebida é correção: não é bloqueado se o saldo resultante for negativo.
 
@@ -426,17 +430,21 @@ Não usar: `CHECKING`, `SAVINGS`, `PERSONAL_WALLET`, `OTHER`.
 
 `CASH` = dinheiro em espécie (ex.: Carteira Felipe). Sem entidade separada de carteira.
 
+Conta com saldo derivado ≠ `0,00` **não** pode ser inativada (RN007A / Fase 14).
+
+Saldo inicial (RN010 / RN010A / Fase 14): começa em `0,00`; `initialBalance` opcional na criação; definição/alteração só via `PUT /accounts/{id}/initial-balance` enquanto a conta nunca tiver tido movimentação efetiva; após a primeira movimentação (mesmo cancelada/revertida), correção = Acerto de Saldos.
+
 ### 11.9 Saldo
 
 Fonte de verdade: movimentações. Saldo derivado delas, a partir do saldo inicial.
 
-Conceitualmente: saldo inicial + receitas recebidas − despesas efetivadas + transferências de entrada − transferências de saída + ajustes de saldo.
+Conceitualmente: saldo inicial + receitas recebidas − payments ACTIVE − pagamentos de fatura ACTIVE + devoluções ACCOUNT + transferências ACTIVE (entrada − saída) + acertos de saldo ACTIVE (`BALANCE_ADJUSTMENT` / `account_balance_adjustments`).
 
-A partir da Fase 8 (RN240): o subtraendo de despesas `ACCOUNT`/`NONE` usa somente payments `ACTIVE` de despesas não `CANCELLED`/`REFUNDED`. A partir da Fase 9, o saldo também subtrai pagamentos `ACTIVE` de fatura (`credit_card_invoice_payments`) na conta utilizada e **soma** devoluções `ACCOUNT` de compra no cartão (RN117). Crédito de cartão **não** movimenta conta. `GET /accounts/{id}/balance` é leitura derivada; o contrato não exige lock pessimista da conta só para essa leitura.
+A partir da Fase 8 (RN240): o subtraendo de despesas `ACCOUNT`/`NONE` usa somente payments `ACTIVE` de despesas não `CANCELLED`/`REFUNDED`. A partir da Fase 9, o saldo também subtrai pagamentos `ACTIVE` de fatura (`credit_card_invoice_payments`) na conta utilizada e **soma** devoluções `ACCOUNT` de compra no cartão (RN117). A Fase 14 inclui transferências e acertos `ACTIVE`. Crédito de cartão **não** movimenta conta. `GET /accounts/{id}/balance` é leitura derivada do saldo atual; as-of-date é capacidade interna (Fase 14); o contrato não exige lock pessimista da conta só para essa leitura.
 
 Cache/`current_balance` só se mantido transacionalmente consistente com as movimentações — nunca duas fontes independentes.
 
-Ajuste de saldo é movimentação própria de conciliação (não é receita nem despesa). Conceito oficial; implementação fora da Fase 6. Não criar entidade genérica `Transaction` para representar o conceito.
+**Acerto de Saldos** (nome conceitual; técnico `BALANCE_ADJUSTMENT`; tabela `account_balance_adjustments`) é fato próprio de conciliação (não é receita, despesa, transferência nem adjustment de parcela/fatura). Contrato: `docs/24` §19.5. Status: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`. Não criar entidade genérica `Transaction`. Extrato unificado `/statement` fora da Fase 14.
 
 ---
 

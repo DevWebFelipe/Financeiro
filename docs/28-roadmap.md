@@ -434,7 +434,7 @@ Status:
 
 CONCLUÍDA
 
-A documentação oficial da Fase 6 foi refinada antes da implementação: cancelamento inutiliza a duplicata (`EXPECTED` → `CANCELLED`); estorno desfaz o recebimento e mantém a duplicata ativa (`RECEIVED` → `EXPECTED`; limpa `account_id` e `received_date`; pode deixar saldo negativo); responsável fora desta fase (`responsible_type` nullable); saldo derivado; ajuste de saldo como conceito futuro.
+A documentação oficial da Fase 6 foi refinada antes da implementação: cancelamento inutiliza a duplicata (`EXPECTED` → `CANCELLED`); estorno desfaz o recebimento e mantém a duplicata ativa (`RECEIVED` → `EXPECTED`; limpa `account_id` e `received_date`; pode deixar saldo negativo); responsável fora desta fase (`responsible_type` nullable); saldo derivado; acerto de saldos como conceito futuro (hoje: Fase 14 §19.5 — `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`).
 
 Objetivo:
 
@@ -465,7 +465,7 @@ Não implementar nesta fase:
 
 - despesas;
 - transferências;
-- ajuste de saldo;
+- acerto de saldos (`BALANCE_ADJUSTMENT` — hoje Fase 14);
 - relatórios;
 - dashboard;
 - frontend;
@@ -820,46 +820,65 @@ Parcelamento/negociação de fatura ≠ compra parcelada. V13 sem uso de negóci
 
 # 76. Fase 13 — Próximo passo
 
-Fase 13 **concluída**. Próxima fase autorizável: **Fase 14 — Transferências** (aguardar autorização explícita).
+Fase 13 **concluída**. Próxima fase: **Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial**.
 
 
-# 77. Fase 14 — Transferências
+# 77. Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial
+
+**Status:** `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`.
 
 Objetivo:
 
-Permitir transferência entre contas.
+Transferências entre contas `BANK_ACCOUNT`, Acerto de Saldos (`BALANCE_ADJUSTMENT` / tabela `account_balance_adjustments`), regras de saldo inicial (RN010 / RN010A) e inativação com saldo zero (RN007A).
+
+Contrato oficial: `docs/24` §19.5.
 
 
-# 78. Fase 14
+# 78. Fase 14 — Escopo
 
-Implementar:
+Implementar (quando autorizada):
 
-- origem;
-- destino;
-- valor;
-- data;
-- descrição.
+- transferência (criar, listar, consultar, reverter);
+- somente `BANK_ACCOUNT`; CASH excluído de transferências;
+- data financeira (retroativa ok; futura não);
+- status `ACTIVE` / `REVERSED`;
+- listagem MVP **sem** filtro de `status` (pode retornar ACTIVE e REVERSED; status no recurso);
+- Acerto de Saldos (criar, listar, consultar, reverter) — tabela `account_balance_adjustments`;
+- saldo as-of-date interno;
+- saldo inicial: `initialBalance` opcional no `POST /accounts` (default `0,00`); alteração só via `PUT /accounts/{id}/initial-balance` até a primeira movimentação (RN010A);
+- bloqueio de inativação com saldo ≠ 0 (RN007A);
+- extensão da fórmula de saldo (RN240).
+
+Fora do escopo: transferências futuras/agendadas; entre usuários; extrato unificado `/statement`; ledger genérico.
 
 
-# 79. Fase 14
+# 79. Fase 14 — Atomicidade e saldo
 
-Transferência deve ser atômica.
+Transferência e acerto devem ser atômicos. Sem saldo negativo nas operações normais (criação e reversão com efeito de saída).
 
 
 # 80. Testes
 
-Testar:
+Testar (quando implementar):
 
-- saldo;
-- contas diferentes;
-- saldo insuficiente;
+- saldo e patrimônio;
+- BANK_ACCOUNT vs CASH;
+- saldo insuficiente (criação e reversão);
+- retroativo / futuro;
 - rollback;
-- isolamento.
+- isolamento;
+- acerto as-of-date;
+- saldo inicial após primeira movimentação (mesmo revertida) — RN010A;
+- inativação com saldo ≠ 0.
+
+Detalhe: `docs/27-testes.md` §§34–40C.
 
 
 # 81. Critério de conclusão
 
-Usuário consegue movimentar dinheiro entre suas próprias contas.
+Usuário consegue movimentar dinheiro entre `BANK_ACCOUNT` próprias, reverter, conciliar via acerto e gerir saldo inicial conforme RN010 / RN010A — com testes e docs alinhados.
+
+**Não marcar a fase como concluída até implementação + aprovação.**
 
 
 # 82. Fase 15 — Metas
@@ -1554,8 +1573,10 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 Fases 0 a 9: CONCLUÍDAS. Fase 13: **CONCLUÍDA E APROVADA**.
 
-Próxima fase: **Fase 14 — Transferências**.
+Próxima fase: **Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial**.
+
+Status da Fase 14: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE` (`docs/24` §19.5).
 
 Status da Fase 13: `CONCLUÍDA E APROVADA` (`docs/24` §19.4 / RN254; `docs/23` §269.5 D1–D11 FECHADO).
 
-A IA não deve implementar Refresh Token, logout backend, relatórios/PDF, frontend financeiro, `payments.type` nem auditoria genérica sem autorização. Itens ainda deferidos: §269.1, §269.2.7. Fechados: §269.3, §269.4, **§269.5**.
+A IA não deve implementar a Fase 14, Refresh Token, logout backend, relatórios/PDF, frontend financeiro, `payments.type`, extrato `/statement` nem auditoria genérica sem autorização. Itens ainda deferidos: §269.1, §269.2.7. Fechados: §269.3, §269.4, **§269.5**.

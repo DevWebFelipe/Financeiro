@@ -79,6 +79,19 @@ CASH
 Somente contas ativas podem ser utilizadas em novas operações.
 
 
+## RN007A — Inativação com saldo (Fase 14)
+
+Uma conta com saldo derivado diferente de zero **não** pode ser inativada.
+
+Antes de desativar (`POST /accounts/{id}/deactivate`):
+
+1. calcular o saldo atual da conta;
+2. se `saldo != 0,00` → rejeitar (**400**, `BUSINESS_RULE_VIOLATION`);
+3. se `saldo == 0,00` → permitir.
+
+A regra é aplicada no backend. Contas inativas não participam de novas operações financeiras (RN007).
+
+
 ## RN008 — Conta com histórico
 
 Uma conta que possui movimentações não deve ser excluída fisicamente.
@@ -89,9 +102,58 @@ Uma conta que possui movimentações não deve ser excluída fisicamente.
 Uma conta desativada continua aparecendo no histórico.
 
 
-## RN010 — Saldo inicial
+## RN010 — Saldo inicial (Fase 14)
 
-Toda conta pode possuir um saldo inicial.
+Toda conta começa conceitualmente com saldo inicial `R$ 0,00`.
+
+Na criação (`POST /accounts`), `initialBalance` é **opcional**. Omitido ⇒ `0,00`. Se informado, o valor informado é persistido.
+
+Após criar a conta, o usuário pode definir/alterar o saldo inicial **somente enquanto a conta ainda não tiver nenhuma movimentação financeira efetiva** (RN010A), via o endpoint oficial único:
+
+```text
+PUT /api/v1/accounts/{id}/initial-balance
+```
+
+Não criar outros endpoints equivalentes. O `PUT /accounts/{id}` cadastral **não** altera `initial_balance`.
+
+Depois que existir a **primeira** movimentação financeira efetiva (RN010A):
+
+- o saldo inicial não pode mais ser definido;
+- o saldo inicial não pode mais ser alterado;
+- isso permanece verdadeiro mesmo se a movimentação for posteriormente cancelada, revertida ou estornada.
+
+Correções posteriores usam **Acerto de Saldos** (RN204 / `BALANCE_ADJUSTMENT`), nunca edição recorrente de `initial_balance`.
+
+`initial_balance` é ponto de partida da linha temporal — não é saldo corrente persistido nem mecanismo de correção.
+
+
+## RN010A — Primeira movimentação (Fase 14)
+
+"Primeira movimentação" é o primeiro fato financeiro efetivo da conta.
+
+**Contam** como movimentação (bloqueiam definitivamente o saldo inicial):
+
+1. Receita `RECEIVED`;
+2. Payment `ACTIVE` de despesa que produza saída da conta;
+3. Pagamento `ACTIVE` de fatura que produza saída da conta;
+4. Refund de compra no cartão que produza entrada na conta (`settlement = ACCOUNT`);
+5. Transferência `ACTIVE`;
+6. Acerto de Saldos `ACTIVE` (`BALANCE_ADJUSTMENT`).
+
+Uma vez que qualquer desses fatos tenha ocorrido, a conta passa a ser considerada "já movimentada" **definitivamente**, mesmo que o fato seja depois cancelado, revertido ou estornado. Cancelamento/reversão **não** reabre a possibilidade de definir ou alterar o saldo inicial.
+
+**Não contam** (não bloqueiam o saldo inicial):
+
+- criação da conta;
+- alterações cadastrais;
+- definição/alteração do próprio saldo inicial;
+- criação de despesa `OPEN` sem pagamento;
+- criação de receita `EXPECTED` sem recebimento;
+- criação de parcela;
+- criação de fatura;
+- operações exclusivamente relacionadas ao cartão que não movimentem o saldo da conta.
+
+A regra baseia-se em movimentação financeira efetiva da conta, não na mera existência de registros relacionados.
 
 
 ## RN011 — Saldo
@@ -106,40 +168,46 @@ saldo inicial;
 
 receitas efetivamente recebidas;
 
-despesas efetivamente realizadas;
+despesas efetivamente realizadas (payments `ACTIVE`);
 
-transferências de entrada;
+pagamentos de fatura `ACTIVE`;
 
-transferências de saída;
+devoluções ACCOUNT de compra no cartão (quando aplicável);
 
-ajustes de saldo.
+transferências `ACTIVE` (entrada/saída);
+
+acertos de saldo `ACTIVE` (`BALANCE_ADJUSTMENT`).
 
 Conceitualmente:
 
 ```text
 Saldo em uma data =
 saldo inicial
-+ receitas efetivamente recebidas
-− despesas efetivamente realizadas
-+ transferências de entrada
-− transferências de saída
-+ ajustes de saldo
++ receitas efetivamente recebidas até a data
+− payments ACTIVE de despesas não CANCELLED/REFUNDED até a data
+− pagamentos de fatura ACTIVE até a data
++ devoluções ACCOUNT de compra no cartão (quando aplicáveis à data)
++ transferências ACTIVE de entrada até a data
+− transferências ACTIVE de saída até a data
++ acertos de saldo ACTIVE (adjustment_amount) até a data
 ```
 
-A partir da Fase 7, “despesas efetivamente realizadas” significa a soma dos `payments.amount` da conta cuja despesa **não** está em `CANCELLED` nem `REFUNDED` (RN216).
+A partir da Fase 7, "despesas efetivamente realizadas" significa a soma dos `payments.amount` da conta cuja despesa **não** está em `CANCELLED` nem `REFUNDED` (RN216).
 
-A Fase 8 **emenda** essa fórmula: somente payments **`ACTIVE`** entram na soma; payments **`REVERSED`** não movimentam saldo; adjustments **não** movimentam saldo da conta (RN240). Refund da despesa continua excluindo os payments daquela despesa.
+A Fase 8 **emenda** essa fórmula: somente payments **`ACTIVE`** entram na soma; payments **`REVERSED`** não movimentam saldo; adjustments de **parcela/fatura** **não** movimentam saldo da conta (RN240). Refund da despesa continua excluindo os payments daquela despesa.
 
-As demais operações (transferências, ajustes) participam desse cálculo quando o respectivo domínio for implementado.
+A Fase 9 inclui pagamentos de fatura `ACTIVE` e devoluções ACCOUNT (RN117 / RN240).
 
-Ajuste de saldo é movimentação própria de conciliação (RN204). Não é receita nem despesa. A funcionalidade de ajuste não pertence à Fase 6 nem à Fase 7 (RN206).
+A **Fase 14** inclui transferências `ACTIVE` e acertos de saldo `ACTIVE` (`BALANCE_ADJUSTMENT`). Transferências/acertos `REVERSED` não movimentam saldo. Contrato: §19.5.
+
+**Acerto de Saldos** (nome conceitual oficial) / identificador técnico `BALANCE_ADJUSTMENT` é fato próprio de conciliação (RN204). Não é receita, despesa, transferência, payment nem adjustment de parcela/fatura. Tabela oficial: `account_balance_adjustments`.
 
 
 ## RN012 — Saldo negativo
 
 A V1 não permite que operações financeiras normais deixem a conta com saldo negativo.
 
-Inclui: transferências, pagamento de despesas e pagamento de fatura (limitado ao saldo da conta).
+Inclui: transferências (criação e reversão), acertos de saldo (criação e reversão quando o efeito for de saída), pagamento de despesas e pagamento de fatura (limitado ao saldo da conta).
 
 Esta regra **não** se aplica ao estorno de receita recebida. O estorno é operação de correção (RN200), não despesa, não pagamento, não transferência e não consumo normal de saldo.
 
@@ -165,14 +233,30 @@ Uma receita prevista não altera o saldo atual.
 
 # 4. Transferências
 
+Contrato completo da Fase 14: §19.5. Resumo das regras canônicas:
+
+
 ## RN016 — Transferência
 
-Uma transferência representa movimentação entre duas contas do mesmo usuário.
+Uma transferência representa movimentação de saldo entre duas contas **do mesmo usuário autenticado**.
+
+Não é receita. Não é despesa. É fato financeiro próprio.
+
+Status persistidos: `ACTIVE`, `REVERSED`. Somente `ACTIVE` produz efeito financeiro.
+
+
+## RN016A — Contas participantes (Fase 14)
+
+Somente contas `BANK_ACCOUNT` participam de transferências.
+
+`CASH` **não** participa. Cartões de crédito **não** participam.
+
+Origem e destino devem estar **ativas**.
 
 
 ## RN017 — Contas diferentes
 
-Conta origem e conta destino devem ser diferentes.
+Conta origem e conta destino devem ser diferentes. Não existe transferência de uma conta para ela mesma.
 
 
 ## RN018 — Valor
@@ -180,14 +264,21 @@ Conta origem e conta destino devem ser diferentes.
 Transferência deve possuir valor maior que zero.
 
 
-## RN019 — Saldo
+## RN019 — Saldo na criação
 
-A conta origem deve possuir saldo suficiente.
+A conta origem deve possuir saldo suficiente (`saldo da origem >= valor`). Transferência não pode provocar saldo negativo.
+
+
+## RN019A — Saldo na reversão (Fase 14)
+
+Na reversão, a conta que sofrerá o **débito** do movimento inverso deve possuir saldo suficiente (`>= valor`).
+
+A reversão **não** restaura um snapshot antigo de saldo; aplica o movimento inverso.
 
 
 ## RN020 — Atomicidade
 
-Débito e crédito da transferência devem ocorrer na mesma transação.
+Débito e crédito da transferência devem ocorrer na mesma transação: ou todos os efeitos são aplicados, ou nenhum.
 
 
 ## RN021 — Patrimônio
@@ -198,6 +289,26 @@ Transferências não alteram o patrimônio total do usuário.
 ## RN022 — Receita/despesa
 
 Transferências não devem ser contabilizadas como receita ou despesa.
+
+
+## RN022A — Data financeira (Fase 14)
+
+Uma transferência possui uma única `transfer_date` (data financeira), compartilhada por origem e destino.
+
+Calendário: `America/Sao_Paulo`.
+
+**Retroativa:** permitida (data financeira passada).
+
+**Futura:** **não** permitida. A Fase 14 não agenda transferências.
+
+
+## RN022B — Reversão e imutabilidade (Fase 14)
+
+Transferência **não** é editável. Correção = reverter + criar nova.
+
+Reversão: `ACTIVE` → `REVERSED`; mantém o registro; remove efeito financeiro; não pode ser revertida novamente (não existe "desreversão").
+
+Detalhe: §19.5 / RN255–RN258.
 
 
 # 5. Cartões
@@ -1717,7 +1828,7 @@ Pagamento de despesa reduz o saldo.
 
 Estorno de despesa (`REFUNDED`) desfaz o efeito desses pagamentos no saldo (deixam de ser subtraídos).
 
-A Fase 8 **emenda** esta fórmula (RN240): o subtraendo restringe-se a payments **`ACTIVE`**. Payments **`REVERSED`** não entram. Adjustments não entram. Refund continua excluindo os payments da despesa `REFUNDED`. Transferências e ajustes de conciliação (RN204) entram quando implementados. Não persistir `current_balance`.
+A Fase 8 **emenda** esta fórmula (RN240): o subtraendo restringe-se a payments **`ACTIVE`**. Payments **`REVERSED`** não entram. Adjustments de parcela não entram. Refund continua excluindo os payments da despesa `REFUNDED`. A **Fase 14** inclui transferências `ACTIVE` e acertos de saldo `ACTIVE` (`BALANCE_ADJUSTMENT` / RN204) - ver §19.5 e RN240 emendada. Não persistir `current_balance`.
 
 
 ## RN217 — Edição de despesa (Fase 7)
@@ -2021,17 +2132,22 @@ Ownership: adjustment do usuário e da parcela/despesa do path; mismatch → **4
 saldo atual =
   initial_balance
 + SUM(incomes.amount WHERE status = RECEIVED AND account_id = conta)
-+ SUM(devoluções ACCOUNT de compra no cartão — RN117 — nesta conta)
++ SUM(devoluções ACCOUNT de compra no cartão - RN117 - nesta conta)
 − SUM(payments.amount WHERE account_id = conta
       AND payments.status = ACTIVE
       AND a despesa do pagamento NÃO está em CANCELLED nem REFUNDED)
 − SUM(credit_card_invoice_payments.amount WHERE account_id = conta
       AND status = ACTIVE)
++ SUM(transfers.amount WHERE destination_account_id = conta AND status = ACTIVE)
+− SUM(transfers.amount WHERE source_account_id = conta AND status = ACTIVE)
++ SUM(account_balance_adjustments.adjustment_amount WHERE account_id = conta AND status = ACTIVE)
 ```
 
-Somente payments `ACTIVE` de despesa `ACCOUNT`/`NONE` (despesa não `CANCELLED`/`REFUNDED`) e pagamentos `ACTIVE` de fatura movimentam o saldo da conta no sentido de saída. `REVERSED` não movimenta. Adjustments não movimentam. Crédito de cartão **não** movimenta conta. Refund de despesa `ACCOUNT`/`NONE` remove o efeito dos payments daquela despesa. Refund `CREDIT_CARD` com `settlement = ACCOUNT` **soma** o fato de devolução (`bankLiquidated`); **não** reverte os pagamentos da fatura. Sem `current_balance` persistido em expense/installment.
+Somente payments `ACTIVE` de despesa `ACCOUNT`/`NONE` (despesa não `CANCELLED`/`REFUNDED`) e pagamentos `ACTIVE` de fatura movimentam o saldo da conta no sentido de saída por esses domínios. `REVERSED` não movimenta. Adjustments de **parcela/fatura** não movimentam saldo de conta. Crédito de cartão **não** movimenta conta. Refund de despesa `ACCOUNT`/`NONE` remove o efeito dos payments daquela despesa. Refund `CREDIT_CARD` com `settlement = ACCOUNT` **soma** o fato de devolução (`bankLiquidated`); **não** reverte os pagamentos da fatura.
 
-**Leitura do saldo (`GET /accounts/{id}/balance`):** é cálculo derivado sob demanda. O contrato **não** exige `SELECT FOR UPDATE` da conta apenas para essa leitura. A proteção contra saldo negativo (RN076A) e a concorrência de escrita (RN244) aplicam-se às **operações** que criam/reverterem facts financeiros (pay, reverse, etc.), com locks nas entidades financeiras envolvidas (despesa/parcela/payment), no padrão da Fase 7. Não introduzir lock explícito de conta só para GET de saldo sem decisão arquitetural futura.
+**Fase 14:** transferências `ACTIVE` e acertos de saldo `ACTIVE` (`BALANCE_ADJUSTMENT` / tabela `account_balance_adjustments`) entram na fórmula; `REVERSED` não entra. Sem `current_balance` persistido.
+
+**Leitura do saldo (`GET /accounts/{id}/balance`):** é cálculo derivado sob demanda (saldo atual). O contrato da Fase 14 exige capacidade **interna** de saldo **as-of-date** para acerto retroativo; **não** obriga expor data nesse GET nesta fase. O contrato **não** exige `SELECT FOR UPDATE` da conta apenas para essa leitura. A proteção contra saldo negativo (RN076A) e a concorrência de escrita (RN244) aplicam-se às **operações** que criam/reverterem facts financeiros (pay, reverse, transfer, balance adjustment, etc.), com locks nas entidades financeiras envolvidas, no padrão das fases anteriores. Não introduzir lock explícito de conta só para GET de saldo sem decisão arquitetural futura.
 
 
 ## RN241 — Overdue da parcela
@@ -2465,6 +2581,205 @@ A emenda altera **somente** a semântica detalhada da **renegociação** (consol
 ## 19.4.14 Testes
 
 Cenários L01–L36 permanecem a base. A emenda exige cobertura de L13–L16/L36, `financedAmount` consolidado, `contractedTotal >= financedAmount` e desconto × incorporação — cobertos em `CreditCardInvoiceAgreementPhase13ApiTest`. Detalhe: `docs/27-testes.md`.
+
+
+# 19.5 Contrato da Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial
+
+**Status:** `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`.
+
+Não implementar código, migrations nem testes de implementação até autorização explícita.
+
+Autoridade: `AGENTS.md` §28 → esta seção → `docs/23` (modelo) → `docs/25` (API) → `docs/27` / `docs/28`.
+
+---
+
+## 19.5.1 Escopo
+
+**Inclui:**
+
+1. Transferências entre contas (`BANK_ACCOUNT`);
+2. Reversão de transferências (`ACTIVE` → `REVERSED`);
+3. Transferências retroativas;
+4. Regras de saldo e atomicidade das transferências;
+5. Acerto de Saldos (`BALANCE_ADJUSTMENT` / tabela `account_balance_adjustments`);
+6. Reversão de Acerto de Saldos;
+7. Acertos retroativos;
+8. Regras temporais dos acertos;
+9. Saldo inicial (RN010 / RN010A);
+10. Encerramento do saldo inicial após a primeira movimentação;
+11. Inativação de conta com saldo ≠ 0 (RN007A);
+12. Extensão do cálculo de saldo (RN240 / RN011);
+13. Cálculo interno de saldo as-of-date.
+
+**Fora do escopo:**
+
+- transferências futuras/agendadas;
+- transferência entre usuários;
+- extrato unificado / `GET /accounts/{id}/statement`;
+- planejamento financeiro futuro;
+- ledger genérico / entidade `Transaction` única.
+
+---
+
+## 19.5.2 Transferências
+
+### Conceito
+
+Fato próprio: debita origem, credita destino, patrimônio consolidado inalterado. Um único registro lógico (não duas transferências).
+
+### Contas
+
+Somente `BANK_ACCOUNT` ativas do usuário autenticado; origem ≠ destino; `CASH` e cartões excluídos (RN016A).
+
+### Valor e atomicidade
+
+`amount > 0`; uma origem; um destino; saldo origem suficiente; sem saldo negativo; operação atômica (RN018–RN020).
+
+### Data
+
+Uma `transfer_date` financeira (`America/Sao_Paulo`). Retroativa permitida. Futura proibida (RN022A).
+
+### Status
+
+`ACTIVE` | `REVERSED`. Somente `ACTIVE` entra no saldo.
+
+### Listagem (MVP)
+
+Filtros oficiais: `startDate`, `endDate`, `accountId` (origem ou destino). **Não** há filtro de `status` no MVP. A listagem pode retornar `ACTIVE` e `REVERSED`. O `status` continua no recurso de cada item.
+
+### Reversão
+
+Não editável. `POST .../reverse`: mantém registro; `ACTIVE` → `REVERSED`; efeito inverso; exige saldo suficiente na conta debitada pela reversão; sem "desreversão" (RN019A, RN022B).
+
+### Histórico lógico
+
+Origem: saída + id/nome do destino. Destino: entrada + id/nome da origem. Extrato unificado fora da fase.
+
+
+## RN255 — Transferência ACTIVE no saldo
+
+Transferência `ACTIVE`:
+
+- origem: − `amount`;
+- destino: + `amount`.
+
+`REVERSED`: zero efeito no saldo.
+
+
+## RN256 — Transferência futura proibida
+
+`transfer_date` não pode ser posterior à data atual em `America/Sao_Paulo`.
+
+
+## RN257 — Reversão de transferência
+
+`ACTIVE` → `REVERSED`. Já `REVERSED` → rejeitar. Não apaga. Não cria fato compensatório separado. Aplica movimento inverso com checagem de saldo (RN019A).
+
+
+## RN258 — Concorrência da transferência
+
+Criação e reversão são `@Transactional` com locks pessimistas nas contas envolvidas (padrão das fases anteriores). Falha → rollback completo.
+
+---
+
+## 19.5.3 Acerto de Saldos (`BALANCE_ADJUSTMENT`)
+
+### Nome
+
+- Conceitual: **Acerto de Saldos**
+- Técnico: `BALANCE_ADJUSTMENT`
+- Tabela oficial: **`account_balance_adjustments`**
+
+Não reutilizar o termo genérico `ADJUSTMENT` (já usado em parcela/fatura). Não usar nomes ambíguos (`adjustments`, `expense_installment_adjustments`).
+
+### Fluxo
+
+Usuário informa `reported_balance` (saldo real ≥ 0). Sistema calcula:
+
+```text
+adjustment_amount = reported_balance − calculated_balance
+```
+
+Pode ser positivo, zero ou negativo. Não informar a diferença diretamente.
+
+### Contas
+
+`BANK_ACCOUNT` e `CASH` **ativas**. Cartões não participam. Conta com saldo calculado 0,00 pode receber acerto.
+
+### Persistência do fato (não é saldo da conta)
+
+Campos do fato: `calculated_balance`, `reported_balance`, `adjustment_amount`, data financeira, `account_id`, `user_id`, `status`, timestamps conforme padrão.
+
+Esses valores **não** constituem `current_balance` da conta.
+
+### Status
+
+`ACTIVE` | `REVERSED`. Somente `ACTIVE` no saldo.
+
+### Temporal
+
+Retroativo permitido (usa saldo as-of-date). Futuro proibido. Múltiplos acertos independentes. Não editável; correção = reverter + novo acerto.
+
+### Reversão
+
+Efeito inverso de `adjustment_amount`; exige saldo suficiente quando o inverso for saída; sem desreversão.
+
+
+## RN259 — Acerto de Saldos
+
+Fato de conciliação. Não é receita, despesa, transferência, payment nem adjustment de parcela/fatura.
+
+
+## RN260 — Saldo real do acerto
+
+`reported_balance >= 0`. O acerto não pode provocar saldo negativo da conta.
+
+
+## RN261 — Acerto as-of-date
+
+Na criação, `calculated_balance` = saldo da conta **até** a data financeira do acerto (inclusive fatos elegíveis com data ≤ data do acerto). Movimentações posteriores permanecem intactas e passam a incorporar o acerto na linha temporal.
+
+
+## RN262 — Reversão de acerto
+
+`ACTIVE` → `REVERSED`. Já `REVERSED` → rejeitar. Remove efeito financeiro; histórico permanece.
+
+
+## RN263 — Saldo as-of-date (capacidade interna)
+
+A Fase 14 exige cálculo interno de saldo até uma data financeira. Uso principal: acerto retroativo. Expor data em `GET /accounts/{id}/balance` **não** é obrigatório nesta fase.
+
+---
+
+## 19.5.4 Saldo inicial
+
+Ver RN010 / RN010A.
+
+API oficial única de definição/alteração após a criação:
+
+```text
+PUT /api/v1/accounts/{id}/initial-balance
+```
+
+`POST /accounts`: `initialBalance` **opcional**; omitido ⇒ `0,00`. A presença na criação **não** impede alteração posterior via PUT enquanto não houver movimentação efetiva (RN010A).
+
+---
+
+## 19.5.5 Inativação
+
+Ver RN007A.
+
+---
+
+## 19.5.6 Arquitetura
+
+Manter domínio modular. **Não** criar `Transaction` / ledger genérico. Pacote: `balance_adjustments` (tabela `account_balance_adjustments`). Cálculo de saldo agrega fatos por domínio (RN240).
+
+---
+
+## 19.5.7 Critério de conclusão da implementação (futuro)
+
+Usuário consegue: transferir entre `BANK_ACCOUNT` próprias; reverter transferência; registrar/reverter acerto; definir saldo inicial só antes da primeira movimentação; inativar apenas conta com saldo zero; saldo derivado coerente com RN240.
 
 
 # 20. Metas
@@ -3043,33 +3358,42 @@ Quando houver ambiguidade:
 4. solicitar decisão.
 
 
-# 41. Ajuste de saldo
+# 41. Acerto de Saldos (`BALANCE_ADJUSTMENT`)
 
-## RN204 — Ajuste de saldo
+Nome conceitual oficial: **Acerto de Saldos**. Identificador técnico: `BALANCE_ADJUSTMENT`. Tabela oficial: `account_balance_adjustments`.
 
-Um ajuste de saldo é uma movimentação cuja única finalidade é reconciliar o saldo calculado pelo sistema com o saldo real da conta.
-
-Pode ser positivo ou negativo. Altera o saldo. Deve possuir histórico/auditoria quando implementado.
+Não confundir com adjustments de parcela/fatura (`DISCOUNT` / `SURCHARGE`).
 
 
-## RN205 — Ajuste não é receita nem despesa
+## RN204 — Acerto de Saldos
 
-Ajuste de saldo não é receita e não é despesa.
+Um acerto de saldos é um fato financeiro cuja única finalidade é reconciliar o saldo calculado pelo sistema com o saldo real da conta.
 
-Não representa necessariamente uma operação econômica.
+O usuário informa o saldo real (`reported_balance`). O sistema calcula `adjustment_amount = reported_balance − calculated_balance` (pode ser positivo, zero ou negativo).
 
-Não deve ser lançado como despesa (ajuste negativo) nem como receita (ajuste positivo). Isso distorceria relatórios financeiros.
+Altera o saldo derivado. Deve persistir o fato com `calculated_balance`, `reported_balance`, `adjustment_amount`, data financeira e `status` (`ACTIVE` / `REVERSED`) para histórico/auditoria.
 
-Futuramente, um relatório poderá apresentar receitas, despesas, transferências, ajustes, movimentação líquida e saldo de forma separada.
+Esses campos **não** são fonte de verdade de saldo da conta.
+
+Contrato completo: **Fase 14** (`docs/24` §19.5 / RN259–RN263).
 
 
-## RN206 — Ajuste fora da Fase 6 e da Fase 7
+## RN205 — Acerto não é receita nem despesa
 
-A funcionalidade de ajuste de saldo não pertence à Fase 6 nem à Fase 7.
+Acerto de saldos não é receita, despesa, transferência, payment nem adjustment de parcela/fatura.
 
-Não criar endpoint, DTO, entidade, service, controller, migration nem testes funcionais de ajuste nestas fases.
+Não deve ser lançado como despesa (acerto negativo) nem como receita (acerto positivo). Isso distorceria relatórios financeiros.
 
-A arquitetura não pode impedir a futura existência de ajustes.
+Futuramente, um relatório poderá apresentar receitas, despesas, transferências, acertos, movimentação líquida e saldo de forma separada.
+
+
+## RN206 — Acerto fora da Fase 6 e da Fase 7
+
+A funcionalidade de acerto de saldos não pertence à Fase 6 nem à Fase 7.
+
+Contrato oficial e implementação: **Fase 14** (`docs/24` §19.5). Status documental: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`.
+
+Não criar endpoint, DTO, entidade, service, controller, migration nem testes de implementação sem autorização explícita da Fase 14.
 
 
 # 42. Regra final

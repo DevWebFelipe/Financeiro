@@ -1,0 +1,4 @@
+PATH: d:\Financeiro\docs\20-fluxos-financeiros.md
+
+NEW:
+Acerto de Saldos (nome conceitual oficial; técnico `BALANCE_ADJUSTMENT`; RN204 / Fase 14 §19.5) é exceção explícita de conciliação: reconcilia o saldo calculado com o saldo real da conta. Não é receita nem despesa. Não substitui lançamentos econômicos. Não autoriza alterar `current_balance` de forma arbitrária.

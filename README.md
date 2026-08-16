@@ -287,8 +287,10 @@ Fora da Fase 8: semântica de `payments.type`, JSON aninhado completo da despesa
 | Crédito de cartão | Pertence ao cartão; não movimenta conta; não cria fatura; FIFO dos créditos; faturas elegíveis por `due_date` ASC depois `id` ASC; nunca negativo; manual exige `reason`; `GET .../credits` = array com `remainingAmount` por crédito; total disponível = `SUM(remainingAmount)` (derivado) |
 | Ajuste de fatura | `DISCOUNT` / `SURCHARGE` com `reason`; `SURCHARGE` exige remaining da fatura > 0 |
 | Refund | `CREDIT_CARD` exige `settlement`; `ACCOUNT`/`NONE` + `settlement` → 400 `BUSINESS_RULE_VIOLATION` (`SETTLEMENT_NOT_ALLOWED`) |
-| Transferência | Atômica; não é receita/despesa; sem saldo insuficiente |
-| Saldo | Derivado de movimentações, a partir do saldo inicial; sem `current_balance` como fonte de verdade |
+| Transferência | Atômica; só `BANK_ACCOUNT`; status `ACTIVE`/`REVERSED`; não é receita/despesa; sem saldo insuficiente (criação e reversão); listagem MVP sem filtro de status |
+| Acerto de Saldos | Fato `BALANCE_ADJUSTMENT` (tabela `account_balance_adjustments`); usuário informa saldo real; diferença calculada; `BANK_ACCOUNT` e `CASH` |
+| Saldo inicial | Opcional na criação (default `0,00`); alteração só via `PUT .../initial-balance` até a primeira movimentação efetiva (RN010A) |
+| Saldo | Derivado de movimentações, a partir do saldo inicial; sem `current_balance` como fonte de verdade; Fase 14 estende com transfers/acertos ACTIVE |
 | Receita | `EXPECTED` / `RECEIVED` / `CANCELLED`; cancelar inutiliza (`EXPECTED` → `CANCELLED`); estornar desfaz recebimento e mantém ativa (`RECEIVED` → `EXPECTED`); limpa `account_id` e `received_date`; pode deixar saldo negativo; sem `REVERSED`; sem responsável na Fase 6 (`responsible_type` nullable) |
 | Despesa (Fase 7) | `ACCOUNT` e `NONE`; criação `OPEN` sem payment; parcela 1/1 interna; `POST /expenses/{id}/pay`; cancelar só `OPEN`; estornar `PARTIALLY_PAID`/`PAID` → `REFUNDED`; `overdue` derivado; cartão fora. A RN210 (payment na mesma conta) foi **SUPERADA** no contrato da Fase 8. |
 | Pagamentos | Sem saldo negativo em operações normais; fatura parcial limitada ao saldo da conta |
@@ -468,10 +470,11 @@ Fase 7 — Despesas — CONCLUÍDA
 Fase 8 — Parcelamento de despesas — CONCLUÍDA
 Fase 9 — Cartões / faturas (expandida) — CONCLUÍDA / APROVADA
 Fase 13 — Parcelamento / negociação / renegociação de fatura — CONCLUÍDA E APROVADA
+Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial — CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE
 ```
 
-Estado atual do backend (Fases 1–9): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas, despesas, parcelamento (Fase 8) e cartões/faturas (Fase 9).
+Estado atual do backend (Fases 1–9 + 13): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas, despesas, parcelamento (Fase 8), cartões/faturas (Fase 9) e Agreements (Fase 13).
 
-Fase 13 — Parcelamento / negociação / renegociação de fatura — **CONCLUÍDA E APROVADA** (`docs/24` §19.4 / RN254). Próxima fase: **Fase 14 — Transferências** (ver `docs/28`). A Fase 9 está **CONCLUÍDA** e **APROVADA**. Não implementar Refresh Token, `payments.type`, relatórios/PDF, frontend financeiro, auditoria genérica nem `POST /invoices/{id}/close` sem autorização.
+Fase 13 — **CONCLUÍDA E APROVADA** (`docs/24` §19.4 / RN254). **Fase 14** — Transferências, Acerto de Saldos e Saldo Inicial: contrato oficial em `docs/24` §19.5 / `docs/25` / `docs/28` — status **`CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`**. **Não implementar** a Fase 14 sem autorização explícita. Não implementar Refresh Token, `payments.type`, relatórios/PDF, frontend financeiro, auditoria genérica, extrato `/statement` nem `POST /invoices/{id}/close` sem autorização.
 
 Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend financeiro, relatórios/PDF, auditoria genérica nem `payments.type` sem autorização. A edição de parcela já em fatura (§269.2.7) permanece **deferida**. Fechados: §269.3, §269.4, **§269.5** (Fase 13 — `CONCLUÍDA E APROVADA`).

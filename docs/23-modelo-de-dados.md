@@ -144,6 +144,8 @@ Não utilizar `current_balance` como fonte independente de verdade.
 
 Se no futuro existir saldo materializado/cacheado, ele deverá ser mantido de forma transacionalmente consistente com as movimentações.
 
+`initial_balance` é ponto de partida da linha temporal (RN010 / RN010A / Fase 14). Começa conceitualmente em `0,00`. Em `POST /accounts`, `initialBalance` é **opcional** (omitido ⇒ `0,00`). Definição/alteração posterior somente via `PUT /api/v1/accounts/{id}/initial-balance`, enquanto a conta **nunca** tiver tido movimentação financeira efetiva (RN010A). Após a primeira movimentação (mesmo que depois cancelada/revertida), correções usam **Acerto de Saldos** (`BALANCE_ADJUSTMENT` / tabela `account_balance_adjustments`), não edição de `initial_balance`.
+
 
 # 11. Tipo de conta
 
@@ -199,12 +201,12 @@ movimentações.
 
 O saldo atual não deve ser alterado arbitrariamente por operações que não representam movimentação real.
 
-Ajuste de saldo, quando implementado, é movimentação real de conciliação — não edição direta de um campo de saldo.
+**Acerto de Saldos** (`BALANCE_ADJUSTMENT`), quando implementado (Fase 14), é fato real de conciliação — não edição direta de um campo de saldo corrente. Persistência do fato: `calculated_balance`, `reported_balance`, `adjustment_amount` (não são `current_balance` da conta). Tabela oficial: `account_balance_adjustments`.
 
 
 # 17. Conta
 
-Transferências entre contas não alteram patrimônio total.
+Transferências entre contas `BANK_ACCOUNT` do mesmo usuário não alteram patrimônio total. `CASH` não participa de transferências (Fase 14).
 
 
 # 18. Cartão
@@ -1636,10 +1638,14 @@ Tabela:
 
 transfers
 
+Contrato oficial: `docs/24` §19.5. Status da Fase 14: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`.
+
 
 # 124. Transferência
 
-Representa movimentação entre contas do mesmo usuário.
+Representa movimentação entre duas contas `BANK_ACCOUNT` do mesmo usuário.
+
+`CASH` e cartões **não** participam.
 
 
 # 125. Campos:
@@ -1658,7 +1664,11 @@ transfer_date
 
 description
 
+status (`ACTIVE` | `REVERSED`) — **contrato Fase 14**; coluna a ser adicionada na implementação (migration futura; **não** criar nesta etapa documental)
+
 created_at
+
+Observação: a tabela física atual (V11) ainda **não** possui `status`. A implementação da Fase 14 deve adicioná-lo sem alterar o significado das demais colunas.
 
 
 # 126. Regra
@@ -1666,6 +1676,8 @@ created_at
 source_account_id deve ser diferente de:
 
 destination_account_id
+
+Ambas as contas: `type = BANK_ACCOUNT`, `active = true`, mesmo `user_id`.
 
 
 # 127. Resultado
@@ -1685,13 +1697,18 @@ Itaú:
 + R$ 500
 
 
+Somente status `ACTIVE` produz esse efeito. `REVERSED` permanece no histórico sem efeito no saldo.
+
+
 # 128. Regra
 
 Transferência não é:
 
 receita;
 
-despesa.
+despesa;
+
+acerto de saldos.
 
 
 # 129. Regra
@@ -2478,19 +2495,23 @@ Não utilizar `current_balance` como fonte de verdade.
 
 # 204. Implementação
 
-O sistema deve possuir estrutura consistente de movimentações financeiras.
+O sistema deve possuir estrutura consistente de movimentações financeiras por domínio (sem ledger genérico).
 
 O saldo é derivado dessas movimentações:
 
 ```text
 Saldo em uma data =
 saldo inicial
-+ receitas efetivamente recebidas
-− despesas efetivamente realizadas
-+ transferências de entrada
-− transferências de saída
-+ ajustes de saldo
++ receitas efetivamente recebidas até a data
+− payments ACTIVE de despesas não CANCELLED/REFUNDED até a data
+− pagamentos de fatura ACTIVE até a data
++ devoluções ACCOUNT de compra no cartão (quando aplicáveis)
++ transferências ACTIVE de entrada até a data
+− transferências ACTIVE de saída até a data
++ acertos de saldo ACTIVE (adjustment_amount) até a data
 ```
+
+Detalhe canônico: `docs/24` RN011 / RN240 / §19.5.
 
 
 # 205. Regra
@@ -2507,9 +2528,10 @@ Caso futuramente exista saldo materializado/cacheado para performance, ele dever
 
 Utilizar:
 
-- `initial_balance`
+- `initial_balance` (ponto de partida; regras de mutabilidade: RN010 / RN010A / Fase 14)
 - movimentações como fonte de verdade
 - saldo calculado/derivado (e, se houver cache, sempre consistente com as movimentações)
+- capacidade interna de saldo as-of-date (Fase 14; não obrigatório expor no GET público de saldo)
 
 
 # 208. Regra
@@ -2523,11 +2545,15 @@ Movimentações reais incluem:
 
 receitas recebidas (`RECEIVED`);
 
-despesas efetivadas;
+despesas efetivadas (payments `ACTIVE`);
 
-transferências;
+pagamentos de fatura `ACTIVE`;
 
-ajustes de saldo (conceito oficial; implementação futura).
+devoluções ACCOUNT de compra no cartão;
+
+transferências `ACTIVE`;
+
+acertos de saldo `ACTIVE` (`BALANCE_ADJUSTMENT` / `account_balance_adjustments`).
 
 Receita `EXPECTED` ou `CANCELLED` não participa do saldo efetivo.
 
@@ -2535,31 +2561,56 @@ Estorno de receita recebida desfaz o impacto positivo anteriormente produzido e 
 
 Cancelamento de receita prevista não altera saldo: `EXPECTED` já não participava do saldo efetivo.
 
+Fatos `REVERSED` (transferência, payment, acerto, etc.) não participam do saldo.
+
 Isso **não** significa criar entidade genérica `Transaction`. A implementação ocorre por domínio.
 
 
 # 209.1 Saldo em datas e períodos
 
-O modelo deve permitir futuramente obter:
+O modelo deve permitir obter:
 
 - saldo inicial;
-- saldo em uma data específica;
+- saldo em uma data específica (as-of-date — **capacidade interna** exigida na Fase 14);
 - saldo anterior a um período;
 - movimentações de um período;
 - movimentação líquida;
 - saldo final de um período;
 - saldo atual.
 
-Não implementar relatórios nesta etapa.
+Extrato unificado / `GET /accounts/{id}/statement` e relatórios de apresentação **fora** da Fase 14.
 
 
-# 209.2 Ajuste de saldo
+# 209.2 Acerto de Saldos (`BALANCE_ADJUSTMENT`)
 
-Ajuste de saldo é movimentação de conciliação entre o saldo calculado e o saldo real da conta.
+Nome conceitual: **Acerto de Saldos**. Identificador técnico: `BALANCE_ADJUSTMENT`.
 
-Pode ser positivo ou negativo. Altera o saldo. Não é receita. Não é despesa. Não representa necessariamente uma operação econômica.
+Tabela oficial contratada (migration **futura**, não criar nesta etapa):
 
-Não criar tabela, endpoint, entidade nem migration de ajuste na Fase 6. A arquitetura não deve impedir essa funcionalidade futura.
+**`account_balance_adjustments`**
+
+Campos do fato:
+
+- id
+- user_id
+- account_id
+- adjustment_date (data financeira)
+- calculated_balance
+- reported_balance
+- adjustment_amount (`reported_balance − calculated_balance`)
+- status (`ACTIVE` | `REVERSED`)
+- created_at
+- updated_at (se alinhado ao padrão de entidades mutáveis por status)
+
+Ownership: FK composta `(account_id, user_id) → accounts (id, user_id)`.
+
+Pode ser positivo, zero ou negativo. Altera o saldo derivado. Não é receita. Não é despesa. Não é transferência. Não é adjustment de parcela/fatura.
+
+`reported_balance >= 0`. Contas participantes: `BANK_ACCOUNT` e `CASH` ativas. Cartões excluídos.
+
+Contrato: `docs/24` §19.5 / RN204–RN206 / RN259–RN263. Status: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`.
+
+Não criar tabela, endpoint, entidade nem migration sem autorização de implementação da Fase 14.
 
 
 # 210. Cartão
@@ -2933,6 +2984,8 @@ USER
 │
 ├── TRANSFERS
 │
+├── ACCOUNT_BALANCE_ADJUSTMENTS (BALANCE_ADJUSTMENT — Fase 14; contrato)
+│
 └── FINANCIAL_GOALS
     └── GOAL_CONTRIBUTIONS
 
@@ -3226,6 +3279,7 @@ FKs compostas obrigatórias:
 | credit_card_invoice_installments | `(invoice_id, user_id)` | credit_card_invoices |
 | transfers | `(source_account_id, user_id)` | accounts |
 | transfers | `(destination_account_id, user_id)` | accounts |
+| account_balance_adjustments (Fase 14) | `(account_id, user_id)` | accounts |
 | financial_goals | — | users |
 | goal_contributions | `(goal_id, user_id)` | financial_goals |
 | goal_contributions | `(account_id, user_id)` | accounts |

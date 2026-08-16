@@ -1,0 +1,15 @@
+PATH: d:\Financeiro\docs\23-modelo-de-dados.md
+
+NEW:
+Observação:
+
+O saldo atual é derivado das movimentações financeiras.
+
+Não utilizar `current_balance` como fonte independente de verdade.
+
+Se no futuro existir saldo materializado/cacheado, ele deverá ser mantido de forma transacionalmente consistente com as movimentações.
+
+`initial_balance` é ponto de partida da linha temporal (RN010 / Fase 14). Começa conceitualmente em `0,00`. Pode ser definido/alterado somente enquanto a conta **nunca** tiver tido movimentação financeira. Após a primeira movimentação (mesmo que depois cancelada/revertida), correções usam **Acerto de Saldos** (`BALANCE_ADJUSTMENT`), não edição de `initial_balance`.
+
+
+# 11. Tipo de conta
