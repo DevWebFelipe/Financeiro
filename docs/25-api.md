@@ -1485,7 +1485,7 @@ Proibido em fatura `PAID`. Rateio RN247A.
 
 `DISCOUNT`: não pode ultrapassar o remaining da fatura.
 
-`SURCHARGE`: além de fatura não `PAID`, exige **remaining > 0**. Se `remaining = 0`, rejeitar por regra de negócio (**400**, `BUSINESS_RULE_VIOLATION`). Não persistir ajuste sem efeito financeiro. A mensagem/constante específica do erro será definida na etapa de implementação da validação (não inventar código paralelo nesta formalização).
+`SURCHARGE`: além de fatura não `PAID`, exige **remaining > 0**. Se `remaining = 0`, rejeitar por regra de negócio — **400**, `code = BUSINESS_RULE_VIOLATION`, constante `SURCHARGE_REQUIRES_REMAINING`, mensagem `"O acréscimo só pode ser aplicado quando a fatura possui saldo em aberto."`. Não persistir ajuste sem efeito financeiro.
 
 
 # 64. Parcelamento de fatura

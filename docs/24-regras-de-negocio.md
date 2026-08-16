@@ -1337,7 +1337,7 @@ Não criar ajuste em fatura `PAID`.
 
 Ajuste negativo (`DISCOUNT`) não pode ultrapassar o remaining disponível. Excedente **não** vira crédito automaticamente.
 
-`SURCHARGE` exige fatura não `PAID` **e** `remaining > 0`. Se `remaining = 0`, rejeitar por regra de negócio: não persistir ajuste sem efeito financeiro; não criar dívida futura sem rateio; não inventar semântica de rateio distinta do RN247. HTTP **400**, `BUSINESS_RULE_VIOLATION`; a mensagem/constante específica do erro será definida na etapa de implementação da validação.
+`SURCHARGE` exige fatura não `PAID` **e** `remaining > 0`. Se `remaining = 0`, rejeitar por regra de negócio: não persistir ajuste sem efeito financeiro; não criar dívida futura sem rateio; não inventar semântica de rateio distinta do RN247. HTTP **400**, `code = BUSINESS_RULE_VIOLATION`, constante `SURCHARGE_REQUIRES_REMAINING`, mensagem `"O acréscimo só pode ser aplicado quando a fatura possui saldo em aberto."`.
 
 Juros/multa de atraso são ajustes (`SURCHARGE` + `reason`), não cálculo automático.
 
@@ -1931,7 +1931,7 @@ Adjustment altera a **obrigação**. Não movimenta saldo de conta. Não é paym
 
 Tipos oficiais iniciais: `DISCOUNT` (reduz), `SURCHARGE` (aumenta). O `amount` do adjustment é sempre positivo.
 
-Desconto por antecipação = `DISCOUNT`. Acréscimo por atraso = `SURCHARGE`. Não criar enumeração específica por motivo (juros vs multa vs tarifa vs outros). A partir da Fase 9, o request HTTP inclui `type`, `amount` e **`reason` obrigatório** (texto). A ausência de `reason` na Fase 8 (implementada) está **SUPERADA** no contrato vigente; a API em produção da Fase 8 ainda não envia `reason` até a implementação da Fase 9.
+Desconto por antecipação = `DISCOUNT`. Acréscimo por atraso = `SURCHARGE`. Não criar enumeração específica por motivo (juros vs multa vs tarifa vs outros). A partir da Fase 9 (**concluída**), o request HTTP inclui `type`, `amount` e **`reason` obrigatório** (texto). A ausência de `reason` na Fase 8 está **SUPERADA** pelo contrato vigente.
 
 Ajuste de **parcela** altera a obligation da parcela (RN231). Ajuste de **fatura** participa do rateio (RN247A).
 
@@ -2087,22 +2087,22 @@ Quando existirem adjustments `ACTIVE` na parcela 1/1, o `PUT` que altera o total
 
 # 19.3 Contrato da Fase 9 — Cartões de crédito (fase expandida)
 
-Contrato oficial da Fase 9. **Implementado** (fechamento formal da fase ainda **pendente** — ver `docs/28`).
+Contrato oficial da Fase 9. **Implementado** e **concluído** (ver `docs/28`).
 
 A Fase 9 absorve o que o roadmap anterior distribuía entre as Fases 9–12, mais as decisões desta consolidação: cadastro e manutenção de cartões; limite derivado; compras `CREDIT_CARD`; parcelamento vinculado a faturas; ciclo; status `SCHEDULED`/`OPEN`/`CLOSED`/`PAID`; fechamento automático (scheduler Spring); pagamento de fatura; rateio persistido; liberação de limite; créditos de cartão; ajustes com `reason`; reverse de pagamentos de fatura; cancelamento/estorno de compra no cartão (RN117 / §269.4 **fechado**).
 
-Fora da Fase 9: parcelamento do saldo da fatura (RN107–RN113); relatórios/PDF; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição de parcela já em fatura (§269.2.7).
+Fora da Fase 9: parcelamento do saldo da fatura (RN107–RN113); relatórios/PDF; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição de parcela já em fatura (§269.2.7); `POST /invoices/{id}/close`.
 
 A RN029A (recusar compra acima do limite) está **SUPERADA**. `PARTIALLY_PAID` como status de **fatura** está **SUPERADO**. O §269.3 (rateio) está **fechado** (RN247). O §269.4 (estorno de compra no cartão já liquidada) está **fechado** (RN117).
 
-Decisões finais da Fase 9 (fechadas nesta consolidação):
+Decisões finais da Fase 9 (fechadas e implementadas):
 
 1. cancelamento vs refund de compra no cartão, opções `CARD_CREDIT` / `ACCOUNT` e efeitos — RN117;
 2. ordem das faturas na aplicação automática de créditos (FIFO dos créditos inalterado) — RN246;
 3. mês do `due_date` da fatura quando `due_day` ≤ `closing_day` — RN099B;
 4. desempate do rateio: `due_date` ASC, depois `id` da parcela ASC — RN247 passo 3;
 5. refund `ACCOUNT`/`NONE` + `settlement` → **400** `BUSINESS_RULE_VIOLATION` (`SETTLEMENT_NOT_ALLOWED`) — não é propriedade desconhecida;
-6. `SURCHARGE` de fatura exige `remaining > 0` — RN247A (validação de implementação pendente se o código ainda não rejeitar);
+6. `SURCHARGE` de fatura exige `remaining > 0` — RN247A (**400**, `BUSINESS_RULE_VIOLATION`, `SURCHARGE_REQUIRES_REMAINING`);
 7. `GET /credit-cards/{id}/credits` → array com `remainingAmount` por crédito; total disponível = `SUM(remainingAmount)` (derivado; sem envelope).
 
 

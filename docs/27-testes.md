@@ -845,7 +845,7 @@ CONCORRÊNCIA:
 
 # 48. Testes de cartão
 
-Contrato da Fase 9 (`docs/24` §19.3). **Implementado** com a autorização da fase.
+Contrato da Fase 9 (`docs/24` §19.3). **Implementado** e **concluído**.
 
 Testar:
 

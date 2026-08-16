@@ -269,7 +269,7 @@ Implementado: despesas parceladas (`installmentCount`), pagamento por parcela, `
 | `POST` | `.../adjustments/{adjustmentId}/reverse` | Bearer | `200` |
 | `POST` | `/api/v1/payments/{id}/reverse` | Bearer | `200` |
 
-Fora da Fase 8: semântica de `payments.type`, JSON aninhado completo da despesa N>1, endpoint composto payment+adjustment. Cartão, fatura e rateio estão no contrato da **Fase 9** (**implementada**; fechamento formal da fase ainda pendente).
+Fora da Fase 8: semântica de `payments.type`, JSON aninhado completo da despesa N>1, endpoint composto payment+adjustment. Cartão, fatura e rateio estão no contrato da **Fase 9** (**CONCLUÍDA** / **APROVADA**).
 ---
 
 ## Regras financeiras (resumo)
@@ -466,11 +466,11 @@ Fase 5 — Categorias — CONCLUÍDA
 Fase 6 — Receitas — CONCLUÍDA
 Fase 7 — Despesas — CONCLUÍDA
 Fase 8 — Parcelamento de despesas — CONCLUÍDA
-Fase 9 — Cartões / faturas (expandida) — IMPLEMENTADA — FECHAMENTO FORMAL PENDENTE
+Fase 9 — Cartões / faturas (expandida) — CONCLUÍDA / APROVADA
 ```
 
-Estado atual do backend (Fases 1–8): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas, despesas e parcelamento (Fase 8).
+Estado atual do backend (Fases 1–9): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas, despesas, parcelamento (Fase 8) e cartões/faturas (Fase 9).
 
-Próxima fase: **Fase 13 — Parcelamento de fatura**. A Fase 9 (cartões, compras, ciclo, faturas, pagamento, rateio, créditos, RN099B, RN117) está **implementada**; o **fechamento formal** da fase permanece **pendente**. Não implementar Refresh Token, `payments.type`, parcelamento do saldo da fatura, relatórios/PDF, frontend financeiro nem auditoria genérica sem autorização.
+Próxima fase: **Fase 13 — Parcelamento de fatura**. A Fase 9 (cartões, compras, ciclo, faturas, pagamento, rateio, créditos, RN099B, RN117, RN246, RN247, RN247A) está **CONCLUÍDA** e **APROVADA**. Não implementar Refresh Token, `payments.type`, parcelamento do saldo da fatura, relatórios/PDF, frontend financeiro, auditoria genérica nem `POST /invoices/{id}/close` sem autorização.
 
 Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend financeiro, parcelamento do saldo da fatura, relatórios/PDF, auditoria genérica nem `payments.type`. A edição de parcela já em fatura (§269.2.7) permanece **deferida**. Os itens §269.3 (rateio) e §269.4 (estorno no cartão) estão **fechados** no contrato.

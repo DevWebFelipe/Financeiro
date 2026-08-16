@@ -697,14 +697,14 @@ Usuário consegue criar despesa parcelada (compromissos futuros gerados), pagar 
 
 **Critério atendido.** Ressalvas de auditoria (lock de conta no GET de saldo; PUT 1/1 × obligation; parcelas 0,00) estão **fechadas** em `docs/24` (RN067/RN068, RN231, RN240, RN244, RN245) e `docs/28` §50.1.
 
-A Fase 9 tem contrato oficial expandido documentado. **Implementação presente.** Fechamento formal da fase **ainda pendente** (validação RN247A de `SURCHARGE` com remaining = 0 e auditoria final).
+A Fase 9 tem contrato oficial expandido documentado. **Implementação concluída e fase fechada.**
 
 
 # 54. Fase 9 — Cartões de crédito (fase expandida)
 
 Status:
 
-IMPLEMENTADA — FECHAMENTO FORMAL PENDENTE
+CONCLUÍDA
 
 Objetivo:
 
@@ -731,7 +731,7 @@ As antigas Fases 10 (compras), 11 (faturas) e 12 (pagamento de fatura) deste roa
 - reverse de pagamento de fatura;
 - cancelamento de compra `OPEN` e refund com `settlement` `CARD_CREDIT` / `ACCOUNT` (RN117).
 
-Não incluir: parcelamento do saldo da fatura (Fase 13); relatórios/PDF; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição de parcela já em fatura (§269.2.7).
+Não incluir: parcelamento do saldo da fatura (Fase 13); relatórios/PDF; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição de parcela já em fatura (§269.2.7); `POST /invoices/{id}/close`.
 
 
 # 56. Fase 9 — Status da fatura
@@ -774,7 +774,7 @@ Além dos testes de cadastro de cartão:
 
 Usuário consegue cadastrar cartão, lançar compra (inclusive parcelada e acima do limite), ver faturas e itens, pagar fatura (parcial/antecipado) com rateio e limite corretos, usar crédito e ajustes, cancelar/estornar compra no cartão (RN117), e o fechamento automático respeita o ciclo — sem parcelar saldo de fatura e sem relatórios.
 
-**Critério ainda não declarado atendido para fechamento formal.** Pendências de fechamento incluem a implementação da validação RN247A (`SURCHARGE` exige remaining > 0) e a auditoria final pós-formalização contratual. Fora da Fase 9: parcelamento do saldo da fatura, relatórios/PDF, frontend financeiro, Refresh Token, `payments.type`, auditoria genérica, edição cadastral de parcela já em fatura (§269.2.7).
+**Critério atendido.** Fase 9 — **FECHADA E APROVADA**. RN246, RN247, RN247A (`SURCHARGE` exige remaining > 0; **400** / `BUSINESS_RULE_VIOLATION` / `SURCHARGE_REQUIRES_REMAINING`), settlement (`SETTLEMENT_NOT_ALLOWED`), credits (array + `remainingAmount`) e auditoria final de conformidade confirmados. Fora da Fase 9 (permanecem fora): parcelamento do saldo da fatura; PDF/relatórios; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição cadastral de parcela já em fatura (§269.2.7); `POST /invoices/{id}/close`.
 
 
 # 59–72. Fases 10–12 — ABSORVIDAS
@@ -1538,10 +1538,8 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 8: CONCLUÍDAS.
+Fases 0 a 9: CONCLUÍDAS.
 
-Fase 9: **implementada**; **fechamento formal pendente**.
-
-Próxima fase após o fechamento da Fase 9: Fase 13 — Parcelamento de fatura (saldo restante). Não absorvida pela Fase 9.
+Próxima fase: Fase 13 — Parcelamento de fatura (saldo restante). Não absorvida pela Fase 9.
 
 A IA não deve implementar Refresh Token, logout backend, parcelamento do saldo da fatura, relatórios/PDF, frontend financeiro, `payments.type` nem auditoria genérica sem autorização. Itens ainda deferidos: §269.1, §269.2.7. O rateio (§269.3) e o estorno no cartão (§269.4) estão **fechados** e **implementados**.

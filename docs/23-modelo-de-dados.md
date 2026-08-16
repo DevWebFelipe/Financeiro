@@ -1531,7 +1531,7 @@ Fato de adjustment na fatura: `DISCOUNT` | `SURCHARGE`, amount > 0, `reason` obr
 
 Rateado às parcelas com remaining > 0 (mesmo algoritmo RN247). Não permitido em fatura `PAID`. DISCOUNT não vira crédito.
 
-`SURCHARGE` exige `remaining > 0` na fatura. Se `remaining = 0`, rejeitar (não persistir ajuste sem efeito). Detalhe: RN247A.
+`SURCHARGE` exige `remaining > 0` na fatura. Se `remaining = 0`, rejeitar — **400**, `BUSINESS_RULE_VIOLATION`, `SURCHARGE_REQUIRES_REMAINING` (não persistir ajuste sem efeito). Detalhe: RN247A.
 
 
 # 113D. Devolução à conta no estorno de compra no cartão
