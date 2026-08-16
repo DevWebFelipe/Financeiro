@@ -7,6 +7,8 @@ import br.com.financialcontrol.accounts.dto.CreateAccountRequest;
 import br.com.financialcontrol.accounts.dto.UpdateAccountRequest;
 import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.NotFoundException;
+import br.com.financialcontrol.credit_card_invoices.CreditCardInvoicePaymentRepository;
+import br.com.financialcontrol.credit_cards.CardPurchaseAccountRefundRepository;
 import br.com.financialcontrol.incomes.IncomeRepository;
 import br.com.financialcontrol.payments.PaymentRepository;
 import br.com.financialcontrol.security.AuthenticatedUser;
@@ -29,16 +31,22 @@ public class AccountService {
   private final AccountRepository accountRepository;
   private final IncomeRepository incomeRepository;
   private final PaymentRepository paymentRepository;
+  private final CreditCardInvoicePaymentRepository invoicePaymentRepository;
+  private final CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository;
   private final Clock clock;
 
   public AccountService(
       AccountRepository accountRepository,
       IncomeRepository incomeRepository,
       PaymentRepository paymentRepository,
+      CreditCardInvoicePaymentRepository invoicePaymentRepository,
+      CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository,
       Clock clock) {
     this.accountRepository = accountRepository;
     this.incomeRepository = incomeRepository;
     this.paymentRepository = paymentRepository;
+    this.invoicePaymentRepository = invoicePaymentRepository;
+    this.cardPurchaseAccountRefundRepository = cardPurchaseAccountRefundRepository;
     this.clock = clock;
   }
 
@@ -102,9 +110,9 @@ public class AccountService {
   }
 
   /**
-   * Saldo derivado (RN240 / RN216 emendada): saldo inicial + receitas RECEIVED − payments ACTIVE de
-   * despesas que não estão CANCELLED nem REFUNDED. Adjustments não entram. Não consulta
-   * IncomeService/ExpenseService (evita ciclo).
+   * Saldo derivado (RN240 / RN216 emendada, Fase 9): saldo inicial + receitas RECEIVED − payments
+   * ACTIVE de despesas ACCOUNT/NONE não CANCELLED/REFUNDED − pagamentos ACTIVE de fatura +
+   * devoluções ACCOUNT de compra no cartão (RN117). Adjustments e crédito de cartão não entram.
    */
   public BigDecimal calculateCurrentBalance(Account account) {
     BigDecimal received =
@@ -119,7 +127,36 @@ public class AccountService {
     if (paid == null) {
       paid = BigDecimal.ZERO;
     }
-    return normalizeMoney(account.getInitialBalance().add(received).subtract(paid));
+    BigDecimal invoicePaid =
+        invoicePaymentRepository.sumActiveAmountByAccountIdAndUserId(
+            account.getId(), account.getUserId());
+    if (invoicePaid == null) {
+      invoicePaid = BigDecimal.ZERO;
+    }
+    BigDecimal cardRefunds =
+        cardPurchaseAccountRefundRepository.sumAmountByAccountIdAndUserId(
+            account.getId(), account.getUserId());
+    if (cardRefunds == null) {
+      cardRefunds = BigDecimal.ZERO;
+    }
+    return normalizeMoney(
+        account
+            .getInitialBalance()
+            .add(received)
+            .subtract(paid)
+            .subtract(invoicePaid)
+            .add(cardRefunds));
+  }
+
+  public Account requireActiveOwnedAccountForUpdate(UUID userId, UUID accountId) {
+    Account account =
+        accountRepository
+            .findByIdAndUserIdForUpdate(accountId, userId)
+            .orElseThrow(() -> new NotFoundException(ACCOUNT_NOT_FOUND));
+    if (!account.isActive()) {
+      throw new BusinessRuleException(ACCOUNT_INACTIVE);
+    }
+    return account;
   }
 
   Account requireOwnedAccount(UUID userId, UUID accountId) {

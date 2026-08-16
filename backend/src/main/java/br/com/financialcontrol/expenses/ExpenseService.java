@@ -7,6 +7,16 @@ import br.com.financialcontrol.categories.Category;
 import br.com.financialcontrol.categories.CategoryService;
 import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.NotFoundException;
+import br.com.financialcontrol.credit_card_invoices.CreditCardInvoice;
+import br.com.financialcontrol.credit_card_invoices.CreditCardInvoicePaymentAllocationRepository;
+import br.com.financialcontrol.credit_card_invoices.CreditCardInvoiceService;
+import br.com.financialcontrol.credit_card_invoices.CreditCardInvoiceStatus;
+import br.com.financialcontrol.credit_cards.CardPurchaseAccountRefund;
+import br.com.financialcontrol.credit_cards.CardPurchaseAccountRefundRepository;
+import br.com.financialcontrol.credit_cards.CreditCard;
+import br.com.financialcontrol.credit_cards.CreditCardCreditApplicationRepository;
+import br.com.financialcontrol.credit_cards.CreditCardCreditOrigin;
+import br.com.financialcontrol.credit_cards.CreditCardService;
 import br.com.financialcontrol.expenses.dto.AdjustmentResponse;
 import br.com.financialcontrol.expenses.dto.CreateAdjustmentRequest;
 import br.com.financialcontrol.expenses.dto.CreateExpenseRequest;
@@ -14,6 +24,7 @@ import br.com.financialcontrol.expenses.dto.ExpenseInstallmentResponse;
 import br.com.financialcontrol.expenses.dto.ExpensePageResponse;
 import br.com.financialcontrol.expenses.dto.ExpenseResponse;
 import br.com.financialcontrol.expenses.dto.PayExpenseRequest;
+import br.com.financialcontrol.expenses.dto.RefundExpenseRequest;
 import br.com.financialcontrol.expenses.dto.UpdateExpenseInstallmentRequest;
 import br.com.financialcontrol.expenses.dto.UpdateExpenseRequest;
 import br.com.financialcontrol.payments.Payment;
@@ -52,6 +63,8 @@ public class ExpenseService {
       "A conta é obrigatória para despesa em conta.";
   static final String ACCOUNT_NOT_ALLOWED_FOR_NONE =
       "Despesa sem cartão não deve informar conta no cadastro.";
+  static final String ACCOUNT_NOT_ALLOWED_FOR_CREDIT_CARD =
+      "Despesa no cartão não deve informar conta no cadastro.";
   static final String ACCOUNT_REQUIRED_FOR_PAYMENT = "A conta é obrigatória.";
   static final String OTHER_REQUIRES_NAME =
       "O nome do responsável é obrigatório quando o tipo for OTHER.";
@@ -92,6 +105,28 @@ public class ExpenseService {
       "O valor do ajuste deve ser maior que zero.";
   static final String INVALID_INSTALLMENT_OBLIGATION =
       "A alteração deixaria a obrigação da parcela inválida.";
+  static final String CREDIT_CARD_REQUIRED = "O cartão é obrigatório para despesa no cartão.";
+  static final String CREDIT_CARD_NOT_ALLOWED_FOR_ACCOUNT =
+      "Despesa em conta não deve informar cartão.";
+  static final String CARD_EXPENSE_NOT_PAYABLE =
+      "Despesa no cartão não é liquidada por pagamento de despesa.";
+  static final String INSTALLMENT_ON_INVOICE_IMMUTABLE =
+      "Parcela vinculada a fatura não pode ser editada cadastralmente nesta fase.";
+  static final String ADJUSTMENT_REASON_REQUIRED = "O motivo do ajuste é obrigatório.";
+  static final String SETTLEMENT_REQUIRED =
+      "O destino do estorno da compra no cartão é obrigatório.";
+  static final String SETTLEMENT_ACCOUNT_REQUIRED =
+      "A conta é obrigatória para devolver o valor liquidado.";
+  static final String SETTLEMENT_NOT_ALLOWED =
+      "Estorno de despesa em conta não aceita settlement de cartão.";
+  static final String PAYMENT_METHOD_CREDIT_CARD_IMMUTABLE =
+      "A forma de pagamento no cartão não pode ser alterada depois da criação.";
+  static final String CREDIT_CARD_TOTAL_IMMUTABLE =
+      "O valor total de despesa no cartão não pode ser alterado pelo PUT da despesa.";
+  static final String CREDIT_CARD_DUE_DATE_IMMUTABLE =
+      "O vencimento de despesa no cartão é o da fatura e não pode ser alterado pelo PUT.";
+  static final String INVOICE_PAID_NO_ADJUSTMENT =
+      "Parcela em fatura paga não pode receber ajuste.";
   static final ZoneId FINANCIAL_ZONE = ZoneId.of("America/Sao_Paulo");
 
   private final ExpenseRepository expenseRepository;
@@ -100,6 +135,12 @@ public class ExpenseService {
   private final PaymentRepository paymentRepository;
   private final AccountService accountService;
   private final CategoryService categoryService;
+  private final CreditCardService creditCardService;
+  private final CreditCardInvoiceService creditCardInvoiceService;
+  private final InstallmentBalanceService installmentBalanceService;
+  private final CreditCardInvoicePaymentAllocationRepository invoicePaymentAllocationRepository;
+  private final CreditCardCreditApplicationRepository creditApplicationRepository;
+  private final CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository;
   private final Clock clock;
 
   public ExpenseService(
@@ -109,6 +150,12 @@ public class ExpenseService {
       PaymentRepository paymentRepository,
       AccountService accountService,
       CategoryService categoryService,
+      CreditCardService creditCardService,
+      CreditCardInvoiceService creditCardInvoiceService,
+      InstallmentBalanceService installmentBalanceService,
+      CreditCardInvoicePaymentAllocationRepository invoicePaymentAllocationRepository,
+      CreditCardCreditApplicationRepository creditApplicationRepository,
+      CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository,
       Clock clock) {
     this.expenseRepository = expenseRepository;
     this.expenseInstallmentRepository = expenseInstallmentRepository;
@@ -116,6 +163,12 @@ public class ExpenseService {
     this.paymentRepository = paymentRepository;
     this.accountService = accountService;
     this.categoryService = categoryService;
+    this.creditCardService = creditCardService;
+    this.creditCardInvoiceService = creditCardInvoiceService;
+    this.installmentBalanceService = installmentBalanceService;
+    this.invoicePaymentAllocationRepository = invoicePaymentAllocationRepository;
+    this.creditApplicationRepository = creditApplicationRepository;
+    this.cardPurchaseAccountRefundRepository = cardPurchaseAccountRefundRepository;
     this.clock = clock;
   }
 
@@ -127,6 +180,7 @@ public class ExpenseService {
       ExpenseStatus status,
       UUID categoryId,
       UUID accountId,
+      UUID creditCardId,
       ResponsibleType responsibleType,
       PaymentMethod paymentMethod,
       int page,
@@ -144,6 +198,7 @@ public class ExpenseService {
             status,
             categoryId,
             accountId,
+            creditCardId,
             responsibleType,
             paymentMethod,
             startDate,
@@ -197,7 +252,9 @@ public class ExpenseService {
     Category category =
         categoryService.requireActiveOwnedExpenseCategory(userId, request.categoryId());
     Account account =
-        resolveAccountForCreateOrUpdate(userId, request.paymentMethod(), request.accountId());
+        resolveAccountForCreateOrUpdate(
+            userId, request.paymentMethod(), request.accountId(), request.creditCardId());
+    CreditCard creditCard = resolveCreditCardForCreate(userId, request);
     String responsibleName =
         resolveResponsibleName(request.responsibleType(), request.responsibleName());
     Instant now = Instant.now(clock);
@@ -210,7 +267,7 @@ public class ExpenseService {
     expense.setUserId(userId);
     expense.setCategory(category);
     expense.setAccount(account);
-    expense.setCreditCard(null);
+    expense.setCreditCard(creditCard);
     expense.setDescription(request.description());
     expense.setTotalAmount(totalAmount);
     expense.setExpenseDate(request.expenseDate());
@@ -226,20 +283,36 @@ public class ExpenseService {
     expenseRepository.save(expense);
 
     List<ExpenseInstallment> installments = new ArrayList<>(installmentCount);
+    LocalDate firstDueDate = request.dueDate();
     for (int number = 1; number <= installmentCount; number++) {
       ExpenseInstallment installment = new ExpenseInstallment();
       installment.setId(UuidV7.create());
       installment.setUserId(userId);
       installment.setExpense(expense);
-      installment.setInvoice(null);
       installment.setInstallmentNumber(number);
       installment.setTotalInstallments(installmentCount);
       installment.setAmount(amounts.get(number - 1));
-      installment.setDueDate(dueDateForInstallment(request.dueDate(), number));
       installment.setStatus(ExpenseStatus.OPEN);
       installment.setCreatedAt(now);
       installment.setUpdatedAt(now);
+      if (creditCard != null) {
+        CreditCardInvoice invoice =
+            creditCardInvoiceService.requireInvoiceForPurchase(
+                creditCard, request.expenseDate(), number);
+        installment.setInvoice(invoice);
+        installment.setDueDate(invoice.getDueDate());
+        if (number == 1) {
+          firstDueDate = invoice.getDueDate();
+        }
+      } else {
+        installment.setInvoice(null);
+        installment.setDueDate(dueDateForInstallment(request.dueDate(), number));
+      }
       installments.add(installment);
+    }
+    if (!firstDueDate.equals(expense.getDueDate())) {
+      expense.setDueDate(firstDueDate);
+      expenseRepository.save(expense);
     }
     expenseInstallmentRepository.saveAll(installments);
     assertInstallmentSum(
@@ -261,7 +334,14 @@ public class ExpenseService {
             authenticatedUser.userId(), request.categoryId());
     Account account =
         resolveAccountForCreateOrUpdate(
-            authenticatedUser.userId(), request.paymentMethod(), request.accountId());
+            authenticatedUser.userId(),
+            request.paymentMethod(),
+            request.accountId(),
+            request.creditCardId());
+    if (expense.getPaymentMethod() == PaymentMethod.CREDIT_CARD
+        || request.paymentMethod() == PaymentMethod.CREDIT_CARD) {
+      assertCreditCardUpdateAllowed(expense, request);
+    }
     BigDecimal totalAmount = normalizeMoney(request.totalAmount());
     Instant now = Instant.now(clock);
 
@@ -270,7 +350,7 @@ public class ExpenseService {
           requireSingleInstallmentForUpdate(authenticatedUser.userId(), expense.getId());
       expense.setCategory(category);
       expense.setAccount(account);
-      expense.setCreditCard(null);
+      expense.setCreditCard(expense.getCreditCard());
       expense.setDescription(request.description());
       expense.setTotalAmount(totalAmount);
       expense.setExpenseDate(request.expenseDate());
@@ -302,7 +382,7 @@ public class ExpenseService {
 
     expense.setCategory(category);
     expense.setAccount(account);
-    expense.setCreditCard(null);
+    expense.setCreditCard(expense.getCreditCard());
     expense.setDescription(request.description());
     expense.setExpenseDate(request.expenseDate());
     expense.setPaymentMethod(request.paymentMethod());
@@ -332,6 +412,9 @@ public class ExpenseService {
         expenseInstallmentRepository
             .findByIdAndExpense_IdAndUserIdForUpdate(installmentId, expenseId, userId)
             .orElseThrow(() -> new NotFoundException(INSTALLMENT_NOT_FOUND));
+    if (installment.getInvoice() != null) {
+      throw new BusinessRuleException(INSTALLMENT_ON_INVOICE_IMMUTABLE);
+    }
     if (installment.getStatus() != ExpenseStatus.OPEN) {
       throw new BusinessRuleException(ONLY_OPEN_INSTALLMENT_CAN_BE_EDITED);
     }
@@ -372,6 +455,9 @@ public class ExpenseService {
       AuthenticatedUser authenticatedUser, UUID expenseId, PayExpenseRequest request) {
     UUID userId = authenticatedUser.userId();
     Expense expense = requireOwnedExpenseForUpdate(userId, expenseId);
+    if (expense.getPaymentMethod() == PaymentMethod.CREDIT_CARD) {
+      throw new BusinessRuleException(CARD_EXPENSE_NOT_PAYABLE);
+    }
     assertExpensePayable(expense);
     List<ExpenseInstallment> installments = requireInstallments(expense);
     if (installments.size() != 1) {
@@ -393,6 +479,9 @@ public class ExpenseService {
       PayExpenseRequest request) {
     UUID userId = authenticatedUser.userId();
     Expense expense = requireOwnedExpenseForUpdate(userId, expenseId);
+    if (expense.getPaymentMethod() == PaymentMethod.CREDIT_CARD) {
+      throw new BusinessRuleException(CARD_EXPENSE_NOT_PAYABLE);
+    }
     assertExpensePayable(expense);
     ExpenseInstallment installment =
         expenseInstallmentRepository
@@ -440,7 +529,12 @@ public class ExpenseService {
       UUID installmentId,
       CreateAdjustmentRequest request) {
     return createAdjustment(
-        authenticatedUser, expenseId, installmentId, request.type(), request.amount());
+        authenticatedUser,
+        expenseId,
+        installmentId,
+        request.type(),
+        request.amount(),
+        request.reason());
   }
 
   @Transactional
@@ -450,6 +544,17 @@ public class ExpenseService {
       UUID installmentId,
       AdjustmentType type,
       BigDecimal amount) {
+    return createAdjustment(authenticatedUser, expenseId, installmentId, type, amount, "ajuste");
+  }
+
+  @Transactional
+  public AdjustmentResponse createAdjustment(
+      AuthenticatedUser authenticatedUser,
+      UUID expenseId,
+      UUID installmentId,
+      AdjustmentType type,
+      BigDecimal amount,
+      String reason) {
     UUID userId = authenticatedUser.userId();
     Expense expense = requireOwnedExpenseForUpdate(userId, expenseId);
     assertExpenseAdjustable(expense);
@@ -462,6 +567,9 @@ public class ExpenseService {
     BigDecimal adjustmentAmount = normalizeMoney(amount);
     if (adjustmentAmount.compareTo(BigDecimal.ZERO) <= 0) {
       throw new BusinessRuleException(ADJUSTMENT_AMOUNT_MUST_BE_POSITIVE);
+    }
+    if (reason == null || reason.isBlank()) {
+      throw new BusinessRuleException(ADJUSTMENT_REASON_REQUIRED);
     }
 
     InstallmentTotals totals = calculateInstallmentTotals(installment.getId(), userId);
@@ -486,6 +594,7 @@ public class ExpenseService {
     adjustment.setInstallment(installment);
     adjustment.setType(type);
     adjustment.setAmount(adjustmentAmount);
+    adjustment.setReason(reason.trim());
     adjustment.setStatus(AdjustmentStatus.ACTIVE);
     adjustment.setCreatedAt(now);
     adjustmentRepository.save(adjustment);
@@ -562,21 +671,40 @@ public class ExpenseService {
     expense.setStatus(ExpenseStatus.CANCELLED);
     expense.setUpdatedAt(now);
     for (ExpenseInstallment installment : installments) {
+      if (expense.getPaymentMethod() == PaymentMethod.CREDIT_CARD
+          && installment.getInvoice() != null
+          && installment.getInvoice().getStatus() == CreditCardInvoiceStatus.PAID) {
+        installment.setUpdatedAt(now);
+        continue;
+      }
       installment.setStatus(ExpenseStatus.CANCELLED);
       installment.setUpdatedAt(now);
     }
     expenseRepository.save(expense);
     expenseInstallmentRepository.saveAll(installments);
+    refreshAffectedInvoices(installments);
     return toResponse(expense, installments);
   }
 
   @Transactional
   public ExpenseResponse refund(AuthenticatedUser authenticatedUser, UUID expenseId) {
+    return refund(authenticatedUser, expenseId, null);
+  }
+
+  @Transactional
+  public ExpenseResponse refund(
+      AuthenticatedUser authenticatedUser, UUID expenseId, RefundExpenseRequest request) {
     UUID userId = authenticatedUser.userId();
     Expense expense = requireOwnedExpenseForUpdate(userId, expenseId);
     if (expense.getStatus() != ExpenseStatus.PARTIALLY_PAID
         && expense.getStatus() != ExpenseStatus.PAID) {
       throw new BusinessRuleException(ONLY_PAID_OR_PARTIAL_CAN_BE_REFUNDED);
+    }
+    if (expense.getPaymentMethod() == PaymentMethod.CREDIT_CARD) {
+      return refundCreditCardPurchase(userId, expense, request);
+    }
+    if (request != null && request.settlement() != null) {
+      throw new BusinessRuleException(SETTLEMENT_NOT_ALLOWED);
     }
     List<ExpenseInstallment> installments = requireInstallments(expense);
     Instant now = Instant.now(clock);
@@ -699,9 +827,14 @@ public class ExpenseService {
           || installment.getStatus() == ExpenseStatus.REFUNDED) {
         continue;
       }
-      ExpenseStatus next =
-          resolveInstallmentFinancialStatus(
-              installment, calculateInstallmentTotals(installment.getId(), expense.getUserId()));
+      ExpenseStatus next;
+      if (expense.getPaymentMethod() == PaymentMethod.CREDIT_CARD) {
+        next = resolveCreditCardInstallmentStatus(installment);
+      } else {
+        next =
+            resolveInstallmentFinancialStatus(
+                installment, calculateInstallmentTotals(installment.getId(), expense.getUserId()));
+      }
       installment.setStatus(next);
       installment.setUpdatedAt(now);
     }
@@ -715,6 +848,18 @@ public class ExpenseService {
             .findFirst()
             .orElse(touchedInstallment)
             .getStatus());
+  }
+
+  private ExpenseStatus resolveCreditCardInstallmentStatus(ExpenseInstallment installment) {
+    BigDecimal remaining = installmentBalanceService.remaining(installment);
+    if (remaining.compareTo(BigDecimal.ZERO) == 0) {
+      return ExpenseStatus.PAID;
+    }
+    BigDecimal obligation = installmentBalanceService.obligation(installment);
+    if (remaining.compareTo(obligation) < 0) {
+      return ExpenseStatus.PARTIALLY_PAID;
+    }
+    return ExpenseStatus.OPEN;
   }
 
   private static ExpenseStatus resolveInstallmentFinancialStatus(
@@ -779,10 +924,112 @@ public class ExpenseService {
     return normalizeMoney(value);
   }
 
+  private ExpenseResponse refundCreditCardPurchase(
+      UUID userId, Expense expense, RefundExpenseRequest request) {
+    if (request == null || request.settlement() == null) {
+      throw new BusinessRuleException(SETTLEMENT_REQUIRED);
+    }
+    CreditCard card =
+        creditCardService.requireOwnedForUpdate(userId, expense.getCreditCard().getId());
+    List<ExpenseInstallment> installments = requireInstallments(expense);
+    BigDecimal bankLiquidated =
+        zeroIfNull(
+            invoicePaymentAllocationRepository.sumActiveAmountByExpenseIdAndUserId(
+                expense.getId(), userId));
+    BigDecimal creditLiquidated =
+        zeroIfNull(
+            creditApplicationRepository.sumAmountByExpenseIdAndUserId(expense.getId(), userId));
+    BigDecimal totalLiquidated = normalizeMoney(bankLiquidated.add(creditLiquidated));
+
+    Account refundAccount = null;
+    if (request.settlement() == RefundExpenseRequest.RefundSettlement.ACCOUNT) {
+      if (request.accountId() == null) {
+        throw new BusinessRuleException(SETTLEMENT_ACCOUNT_REQUIRED);
+      }
+      refundAccount = accountService.requireActiveOwnedAccount(userId, request.accountId());
+    }
+
+    Instant now = Instant.now(clock);
+    expense.setStatus(ExpenseStatus.REFUNDED);
+    expense.setUpdatedAt(now);
+    for (ExpenseInstallment installment : installments) {
+      if (installment.getInvoice() != null
+          && installment.getInvoice().getStatus() == CreditCardInvoiceStatus.PAID) {
+        installment.setUpdatedAt(now);
+        continue;
+      }
+      boolean liquidated = installmentHasLiquidation(installment);
+      installment.setStatus(liquidated ? ExpenseStatus.REFUNDED : ExpenseStatus.CANCELLED);
+      installment.setUpdatedAt(now);
+    }
+    expenseRepository.save(expense);
+    expenseInstallmentRepository.saveAll(installments);
+
+    if (request.settlement() == RefundExpenseRequest.RefundSettlement.CARD_CREDIT) {
+      creditCardInvoiceService.persistCredit(
+          card,
+          totalLiquidated,
+          "estorno da compra",
+          CreditCardCreditOrigin.CARD_PURCHASE_REFUND,
+          expense);
+    } else {
+      if (bankLiquidated.compareTo(BigDecimal.ZERO) > 0) {
+        CardPurchaseAccountRefund refund = new CardPurchaseAccountRefund();
+        refund.setId(UuidV7.create());
+        refund.setUserId(userId);
+        refund.setExpense(expense);
+        refund.setAccount(refundAccount);
+        refund.setAmount(bankLiquidated);
+        refund.setCreatedAt(now);
+        cardPurchaseAccountRefundRepository.save(refund);
+      }
+      creditCardInvoiceService.persistCredit(
+          card,
+          creditLiquidated,
+          "estorno da compra",
+          CreditCardCreditOrigin.CARD_PURCHASE_REFUND,
+          expense);
+    }
+    creditCardInvoiceService.applyAvailableCredits(card);
+    refreshAffectedInvoices(installments);
+    return toResponse(expense, installments);
+  }
+
+  private boolean installmentHasLiquidation(ExpenseInstallment installment) {
+    BigDecimal bank =
+        zeroIfNull(
+            invoicePaymentAllocationRepository.sumActiveAmountByInstallmentIdAndUserId(
+                installment.getId(), installment.getUserId()));
+    BigDecimal credit =
+        zeroIfNull(
+            creditApplicationRepository.sumAmountByInstallmentIdAndUserId(
+                installment.getId(), installment.getUserId()));
+    return bank.add(credit).compareTo(BigDecimal.ZERO) > 0;
+  }
+
+  private void refreshAffectedInvoices(List<ExpenseInstallment> installments) {
+    installments.stream()
+        .map(ExpenseInstallment::getInvoice)
+        .filter(invoice -> invoice != null)
+        .collect(
+            Collectors.toMap(CreditCardInvoice::getId, invoice -> invoice, (left, right) -> left))
+        .values()
+        .forEach(creditCardInvoiceService::refreshOperationalState);
+  }
+
   private Account resolveAccountForCreateOrUpdate(
-      UUID userId, PaymentMethod paymentMethod, UUID accountId) {
+      UUID userId, PaymentMethod paymentMethod, UUID accountId, UUID creditCardId) {
     if (paymentMethod == PaymentMethod.CREDIT_CARD) {
-      throw new BusinessRuleException(CREDIT_CARD_NOT_ALLOWED);
+      if (accountId != null) {
+        throw new BusinessRuleException(ACCOUNT_NOT_ALLOWED_FOR_CREDIT_CARD);
+      }
+      if (creditCardId == null) {
+        throw new BusinessRuleException(CREDIT_CARD_REQUIRED);
+      }
+      return null;
+    }
+    if (creditCardId != null) {
+      throw new BusinessRuleException(CREDIT_CARD_NOT_ALLOWED_FOR_ACCOUNT);
     }
     if (paymentMethod == PaymentMethod.ACCOUNT) {
       if (accountId == null) {
@@ -794,6 +1041,30 @@ public class ExpenseService {
       throw new BusinessRuleException(ACCOUNT_NOT_ALLOWED_FOR_NONE);
     }
     return null;
+  }
+
+  private CreditCard resolveCreditCardForCreate(UUID userId, CreateExpenseRequest request) {
+    if (request.paymentMethod() != PaymentMethod.CREDIT_CARD) {
+      return null;
+    }
+    return creditCardService.requireActiveOwned(userId, request.creditCardId());
+  }
+
+  private void assertCreditCardUpdateAllowed(Expense expense, UpdateExpenseRequest request) {
+    if (expense.getPaymentMethod() != PaymentMethod.CREDIT_CARD
+        || request.paymentMethod() != PaymentMethod.CREDIT_CARD) {
+      throw new BusinessRuleException(PAYMENT_METHOD_CREDIT_CARD_IMMUTABLE);
+    }
+    UUID currentCardId = expense.getCreditCard() == null ? null : expense.getCreditCard().getId();
+    if (request.creditCardId() != null && !request.creditCardId().equals(currentCardId)) {
+      throw new BusinessRuleException(PAYMENT_METHOD_CREDIT_CARD_IMMUTABLE);
+    }
+    if (request.totalAmount().compareTo(expense.getTotalAmount()) != 0) {
+      throw new BusinessRuleException(CREDIT_CARD_TOTAL_IMMUTABLE);
+    }
+    if (!request.dueDate().equals(expense.getDueDate())) {
+      throw new BusinessRuleException(CREDIT_CARD_DUE_DATE_IMMUTABLE);
+    }
   }
 
   /** RN228: payments.account_id may differ from expenses.account_id. */
@@ -852,6 +1123,10 @@ public class ExpenseService {
     if (installment.getStatus() == ExpenseStatus.CANCELLED
         || installment.getStatus() == ExpenseStatus.REFUNDED) {
       throw new BusinessRuleException(INSTALLMENT_NOT_ADJUSTABLE);
+    }
+    if (installment.getInvoice() != null
+        && installment.getInvoice().getStatus() == CreditCardInvoiceStatus.PAID) {
+      throw new BusinessRuleException(INVOICE_PAID_NO_ADJUSTMENT);
     }
   }
 
@@ -916,7 +1191,9 @@ public class ExpenseService {
   private ExpenseInstallmentResponse toInstallmentResponse(
       Expense expense, ExpenseInstallment installment) {
     BigDecimal remaining =
-        calculateRemaining(installment.getId(), expense.getUserId(), installment.getAmount());
+        expense.getPaymentMethod() == PaymentMethod.CREDIT_CARD
+            ? installmentBalanceService.remaining(installment)
+            : calculateRemaining(installment.getId(), expense.getUserId(), installment.getAmount());
     return ExpenseInstallmentResponse.from(
         installment, remaining, isInstallmentOverdue(expense, installment, remaining));
   }
@@ -937,8 +1214,10 @@ public class ExpenseService {
         .anyMatch(
             installment -> {
               BigDecimal remaining =
-                  calculateRemaining(
-                      installment.getId(), expense.getUserId(), installment.getAmount());
+                  expense.getPaymentMethod() == PaymentMethod.CREDIT_CARD
+                      ? installmentBalanceService.remaining(installment)
+                      : calculateRemaining(
+                          installment.getId(), expense.getUserId(), installment.getAmount());
               return isInstallmentOverdue(expense, installment, remaining);
             });
   }

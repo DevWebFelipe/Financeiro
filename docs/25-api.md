@@ -461,7 +461,7 @@ Não implementado na Fase 4. Dependência futura: movimentações financeiras re
 
 # 21. Cartões
 
-Contrato da **Fase 9** (documentado; implementação ainda não iniciada).
+Contrato da **Fase 9** (implementado).
 
 Endpoint:
 
@@ -546,10 +546,24 @@ Response:
 
 # 27A. Créditos do cartão
 
-Endpoints conceituais da Fase 9:
+Endpoints da Fase 9 (**implementados**):
 
-- `GET /api/v1/credit-cards/{id}/credits` — saldo disponível + histórico
+- `GET /api/v1/credit-cards/{id}/credits`
 - `POST /api/v1/credit-cards/{id}/credits` — crédito manual (`amount`, `reason` obrigatório)
+
+### GET — shape oficial
+
+Response **200**: **array** de créditos (sem envelope).
+
+Cada item inclui, entre outros campos oficiais do DTO, `remainingAmount` (saldo ainda não aplicado daquele crédito).
+
+O **saldo disponível total** de créditos do cartão **não** é campo da response. É **derivado** na leitura:
+
+```text
+SUM(remainingAmount) de todos os créditos do cartão
+```
+
+Não há response com `availableAmount` + `credits`. Não persistir saldo total de créditos.
 
 Aplicação automática: sem endpoint de “aplicar crédito”. FIFO dos créditos (`created_at` ASC, `id` ASC). Faturas elegíveis (`OPEN` ou `CLOSED`, remaining > 0) por `due_date` ASC depois `id` ASC. Não movimenta conta. Não cria fatura. Detalhe: RN246.
 
@@ -1096,11 +1110,11 @@ ou
 }
 ```
 
-`settlement` valores oficiais: `CARD_CREDIT`, `ACCOUNT`. `ACCOUNT` exige `accountId` de conta ativa do usuário. Propriedades desconhecidas: **400**.
+`settlement` valores oficiais: `CARD_CREDIT`, `ACCOUNT`. `ACCOUNT` exige `accountId` de conta ativa do usuário. Propriedades JSON realmente desconhecidas: **400** (`VALIDATION_ERROR`).
 
-Despesa `ACCOUNT`/`NONE`: body vazio como na Fase 7/8; enviar `settlement` é propriedade desconhecida (**400**).
+Para despesas `ACCOUNT` ou `NONE`: o body permanece vazio como na Fase 7/8. O campo `settlement` é **aceito estruturalmente** pelo DTO compartilhado do endpoint (necessário para `CREDIT_CARD` na Fase 9), porém sua **utilização é proibida**. Enviar `settlement` **não** é propriedade desconhecida: a API rejeita por regra de negócio — **400**, `code = BUSINESS_RULE_VIOLATION`, mensagem/regra `SETTLEMENT_NOT_ALLOWED`.
 
-Efeitos: RN117. Fatura `PAID` não muda. Pagamentos de fatura não são revertidos.
+Efeitos em `CREDIT_CARD`: RN117. Fatura `PAID` não muda. Pagamentos de fatura não são revertidos.
 
 
 # 45. Pagamentos da despesa
@@ -1452,7 +1466,7 @@ GET /api/v1/invoices/{id}/payments
 
 # 63A. Reverse de pagamento de fatura
 
-Endpoint conceitual da Fase 9:
+Endpoint da Fase 9 (**implementado**):
 
 POST /api/v1/invoices/{invoiceId}/payments/{paymentId}/reverse
 
@@ -1461,13 +1475,17 @@ Não DELETE. Proibido se a fatura estiver `PAID`.
 
 # 63B. Ajustes de fatura
 
-Endpoints conceituais:
+Endpoints da Fase 9 (**implementados**):
 
 - `POST /api/v1/invoices/{id}/adjustments` — `type`, `amount`, `reason`
 - `GET /api/v1/invoices/{id}/adjustments`
-- reverse aninhado do adjustment da fatura
+- `POST /api/v1/invoices/{invoiceId}/adjustments/{adjustmentId}/reverse`
 
 Proibido em fatura `PAID`. Rateio RN247A.
+
+`DISCOUNT`: não pode ultrapassar o remaining da fatura.
+
+`SURCHARGE`: além de fatura não `PAID`, exige **remaining > 0**. Se `remaining = 0`, rejeitar por regra de negócio (**400**, `BUSINESS_RULE_VIOLATION`). Não persistir ajuste sem efeito financeiro. A mensagem/constante específica do erro será definida na etapa de implementação da validação (não inventar código paralelo nesta formalização).
 
 
 # 64. Parcelamento de fatura
@@ -1496,6 +1514,8 @@ Request:
 
 
 # 65. Parcelas da fatura
+
+**Fora da Fase 9** (parcelamento do saldo restante — Fase 13). Não confundir com `GET /api/v1/invoices/{id}/items` (parcelas de compras do ciclo, Fase 9).
 
 Endpoint:
 
@@ -2213,7 +2233,7 @@ Fluxo:
 
 Não apagar `payments`. O saldo deixa de subtrair esses pagamentos. Não voltar a `OPEN`. Não usar `Income.reverse()` como modelo.
 
-Na Fase 9, despesa `CREDIT_CARD` usa o mesmo endpoint com body `settlement` (RN117). Não reverte pagamentos de fatura.
+Na Fase 9, despesa `CREDIT_CARD` usa o mesmo endpoint com body `settlement` (RN117). Não reverte pagamentos de fatura. Para `ACCOUNT`/`NONE`, `settlement` é estruturalmente conhecido no DTO e proibido por regra de negócio (**400**, `BUSINESS_RULE_VIOLATION`, `SETTLEMENT_NOT_ALLOWED`) — não é propriedade desconhecida.
 
 
 # 121. Idempotência

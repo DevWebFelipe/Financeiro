@@ -30,7 +30,8 @@ public record CreateExpenseRequest(
     String barcode,
     String notes,
     @Min(value = 1, message = "A quantidade de parcelas deve ser maior que zero.")
-        Integer installmentCount) {
+        Integer installmentCount,
+    UUID creditCardId) {
 
   public CreateExpenseRequest {
     description = description == null ? null : description.trim();

@@ -272,6 +272,8 @@ class OwnershipAndPersistenceTest {
     invoicePayment.setAccount(source);
     invoicePayment.setAmount(new BigDecimal("50.00"));
     invoicePayment.setPaymentDate(TODAY);
+    invoicePayment.setStatus(
+        br.com.financialcontrol.credit_card_invoices.InvoicePaymentStatus.ACTIVE);
     invoicePayment.setCreatedAt(NOW);
     creditCardInvoicePaymentRepository.saveAndFlush(invoicePayment);
 

@@ -3,6 +3,8 @@ package br.com.financialcontrol.credit_card_invoices;
 import br.com.financialcontrol.accounts.Account;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -46,6 +48,10 @@ public class CreditCardInvoicePayment {
 
   @Column(name = "notes")
   private String notes;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "status", nullable = false)
+  private InvoicePaymentStatus status;
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;

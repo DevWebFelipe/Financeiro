@@ -250,7 +250,7 @@ Implementado: despesas simples `ACCOUNT` e `NONE`, sem cartão e sem parcelament
 | `GET` | `/api/v1/expenses/{id}/payments` | Bearer | `200` array; histórico permanece após `REFUNDED` |
 | `GET` | `/api/v1/payments/{id}` | Bearer | `200`; `404` se não for do usuário |
 
-`CREDIT_CARD` e faturas entram na **Fase 9** (contrato documentado; implementação ainda não iniciada). Valores oficiais de `payments.type` continuam indefinidos. Parcelas N>1, reverse de payment e adjustments estão **implementados na Fase 8**. Detalhes: `docs/25-api.md`.
+`CREDIT_CARD` e faturas estão **implementados na Fase 9**. Valores oficiais de `payments.type` continuam indefinidos. Parcelas N>1, reverse de payment e adjustments estão **implementados na Fase 8**. Detalhes: `docs/25-api.md`.
 
 ---
 
@@ -269,7 +269,7 @@ Implementado: despesas parceladas (`installmentCount`), pagamento por parcela, `
 | `POST` | `.../adjustments/{adjustmentId}/reverse` | Bearer | `200` |
 | `POST` | `/api/v1/payments/{id}/reverse` | Bearer | `200` |
 
-Fora da Fase 8: cartão, fatura, rateio, semântica de `payments.type`, JSON aninhado completo da despesa N>1, endpoint composto payment+adjustment. Esses itens de cartão/fatura/rateio passam ao contrato da **Fase 9** (ainda não implementada).
+Fora da Fase 8: semântica de `payments.type`, JSON aninhado completo da despesa N>1, endpoint composto payment+adjustment. Cartão, fatura e rateio estão no contrato da **Fase 9** (**implementada**; fechamento formal da fase ainda pendente).
 ---
 
 ## Regras financeiras (resumo)
@@ -284,7 +284,9 @@ Fora da Fase 8: cartão, fatura, rateio, semântica de `payments.type`, JSON ani
 | Cartão | `holderName` textual (filtrável; não precisa ser o usuário); `last_four_digits` opcional; não armazenar PAN/CVC/validade; inativar não exclui; compra não reduz saldo bancário; compra acima do limite **permitida** (RN029A **SUPERADA**); `used_limit`/`available_limit` derivados (available pode ser negativo); crédito de cartão não aumenta limite; compra no dia do fechamento vai para a próxima fatura; dia inexistente no mês → último dia do mês; `due_date` da fatura: `due_day` > `closing_day` → mesmo mês; `due_day` ≤ `closing_day` → mês seguinte (RN099B) |
 | Fatura | `SCHEDULED`, `OPEN`, `CLOSED`, `PAID` (`PARTIALLY_PAID` **não** é status de fatura); no máximo uma `OPEN` por cartão; futuras de parcelamento = `SCHEDULED`; pagamento parcial não muda status; `PAID` só após fechamento e remaining 0; pagamento não cria despesa nova nem linha em `payments` |
 | Parcelas | Soma = total; residual na **primeira** parcela; quantidade imutável após criação; `ACCOUNT`/`NONE`: vencimentos mensais (dia-base); `CREDIT_CARD`: vencimento = due da fatura do ciclo; edição somente parcela `OPEN` sem fatura (RN227); pagamento por parcela só `ACCOUNT`/`NONE`; `payments.status` ACTIVE/REVERSED; adjustments DISCOUNT/SURCHARGE com `reason` (Fase 9); reverse de payment/adjustment |
-| Crédito de cartão | Pertence ao cartão; não movimenta conta; não cria fatura; FIFO dos créditos; faturas elegíveis por `due_date` ASC depois `id` ASC; nunca negativo; manual exige `reason` |
+| Crédito de cartão | Pertence ao cartão; não movimenta conta; não cria fatura; FIFO dos créditos; faturas elegíveis por `due_date` ASC depois `id` ASC; nunca negativo; manual exige `reason`; `GET .../credits` = array com `remainingAmount` por crédito; total disponível = `SUM(remainingAmount)` (derivado) |
+| Ajuste de fatura | `DISCOUNT` / `SURCHARGE` com `reason`; `SURCHARGE` exige remaining da fatura > 0 |
+| Refund | `CREDIT_CARD` exige `settlement`; `ACCOUNT`/`NONE` + `settlement` → 400 `BUSINESS_RULE_VIOLATION` (`SETTLEMENT_NOT_ALLOWED`) |
 | Transferência | Atômica; não é receita/despesa; sem saldo insuficiente |
 | Saldo | Derivado de movimentações, a partir do saldo inicial; sem `current_balance` como fonte de verdade |
 | Receita | `EXPECTED` / `RECEIVED` / `CANCELLED`; cancelar inutiliza (`EXPECTED` → `CANCELLED`); estornar desfaz recebimento e mantém ativa (`RECEIVED` → `EXPECTED`); limpa `account_id` e `received_date`; pode deixar saldo negativo; sem `REVERSED`; sem responsável na Fase 6 (`responsible_type` nullable) |
@@ -464,10 +466,11 @@ Fase 5 — Categorias — CONCLUÍDA
 Fase 6 — Receitas — CONCLUÍDA
 Fase 7 — Despesas — CONCLUÍDA
 Fase 8 — Parcelamento de despesas — CONCLUÍDA
+Fase 9 — Cartões / faturas (expandida) — IMPLEMENTADA — FECHAMENTO FORMAL PENDENTE
 ```
 
 Estado atual do backend (Fases 1–8): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas, despesas e parcelamento (Fase 8).
 
-Próxima fase: **Fase 9 — Cartões de crédito (fase expandida)**. Contrato oficial documentado e **fechado** (cadastro, limite, compra, ciclo, faturas, pagamento, rateio, créditos, `due_date` RN099B, cancelamento/estorno RN117). **Implementação ainda não iniciada** — não implementar código sem autorização explícita desta fase.
+Próxima fase: **Fase 13 — Parcelamento de fatura**. A Fase 9 (cartões, compras, ciclo, faturas, pagamento, rateio, créditos, RN099B, RN117) está **implementada**; o **fechamento formal** da fase permanece **pendente**. Não implementar Refresh Token, `payments.type`, parcelamento do saldo da fatura, relatórios/PDF, frontend financeiro nem auditoria genérica sem autorização.
 
 Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend financeiro, parcelamento do saldo da fatura, relatórios/PDF, auditoria genérica nem `payments.type`. A edição de parcela já em fatura (§269.2.7) permanece **deferida**. Os itens §269.3 (rateio) e §269.4 (estorno no cartão) estão **fechados** no contrato.

@@ -1333,7 +1333,11 @@ Despesa `CREDIT_CARD` não possui pagamento próprio via endpoint de despesa.
 
 Ajuste de fatura (`DISCOUNT` / `SURCHARGE`) exige `reason`. Participa do **mesmo** algoritmo de rateio RN247 (remaining aberto, ASC, desempate `due_date` ASC depois `id` ASC, residual na última).
 
-Não criar ajuste em fatura `PAID`. Ajuste negativo (`DISCOUNT`) não pode ultrapassar o remaining disponível. Excedente **não** vira crédito automaticamente.
+Não criar ajuste em fatura `PAID`.
+
+Ajuste negativo (`DISCOUNT`) não pode ultrapassar o remaining disponível. Excedente **não** vira crédito automaticamente.
+
+`SURCHARGE` exige fatura não `PAID` **e** `remaining > 0`. Se `remaining = 0`, rejeitar por regra de negócio: não persistir ajuste sem efeito financeiro; não criar dívida futura sem rateio; não inventar semântica de rateio distinta do RN247. HTTP **400**, `BUSINESS_RULE_VIOLATION`; a mensagem/constante específica do erro será definida na etapa de implementação da validação.
 
 Juros/multa de atraso são ajustes (`SURCHARGE` + `reason`), não cálculo automático.
 
@@ -1472,6 +1476,19 @@ Efeitos comuns às duas opções:
 - após estorno, `total_amount − paid_amount` da fatura **pode divergir** de `remaining_amount`: `remaining_amount` é a dívida operacional; `paid_amount` continua sendo a soma dos pagamentos `ACTIVE` da fatura (histórico, não reescrito).
 
 Proibido: refund de `OPEN`/`CANCELLED`/`REFUNDED`; cancel de `PARTIALLY_PAID`/`PAID`; `ACCOUNT` com conta inativa ou de outro usuário; alterar fatura `PAID`; usar `/pay` da despesa para liquidar `CREDIT_CARD`.
+
+### Refund `ACCOUNT` / `NONE` e o campo `settlement`
+
+O path `POST /api/v1/expenses/{id}/refund` é compartilhado. O DTO do request aceita estruturalmente `settlement` (e `accountId` quando aplicável) porque a Fase 9 exige esses campos para `CREDIT_CARD`.
+
+Para despesas `ACCOUNT` ou `NONE`:
+
+- o body permanece vazio como na Fase 7/8;
+- `settlement` **não** é propriedade JSON desconhecida;
+- a utilização de `settlement` é **proibida**;
+- resposta: HTTP **400**, `code = BUSINESS_RULE_VIOLATION`, regra/mensagem `SETTLEMENT_NOT_ALLOWED`.
+
+Não tratar esse caso como `VALIDATION_ERROR` por propriedade desconhecida.
 
 
 ## RN118 — Estorno
@@ -2070,7 +2087,7 @@ Quando existirem adjustments `ACTIVE` na parcela 1/1, o `PUT` que altera o total
 
 # 19.3 Contrato da Fase 9 — Cartões de crédito (fase expandida)
 
-Contrato oficial da Fase 9. **Documentado; implementação ainda não iniciada.**
+Contrato oficial da Fase 9. **Implementado** (fechamento formal da fase ainda **pendente** — ver `docs/28`).
 
 A Fase 9 absorve o que o roadmap anterior distribuía entre as Fases 9–12, mais as decisões desta consolidação: cadastro e manutenção de cartões; limite derivado; compras `CREDIT_CARD`; parcelamento vinculado a faturas; ciclo; status `SCHEDULED`/`OPEN`/`CLOSED`/`PAID`; fechamento automático (scheduler Spring); pagamento de fatura; rateio persistido; liberação de limite; créditos de cartão; ajustes com `reason`; reverse de pagamentos de fatura; cancelamento/estorno de compra no cartão (RN117 / §269.4 **fechado**).
 
@@ -2083,7 +2100,10 @@ Decisões finais da Fase 9 (fechadas nesta consolidação):
 1. cancelamento vs refund de compra no cartão, opções `CARD_CREDIT` / `ACCOUNT` e efeitos — RN117;
 2. ordem das faturas na aplicação automática de créditos (FIFO dos créditos inalterado) — RN246;
 3. mês do `due_date` da fatura quando `due_day` ≤ `closing_day` — RN099B;
-4. desempate do rateio: `due_date` ASC, depois `id` da parcela ASC — RN247 passo 3.
+4. desempate do rateio: `due_date` ASC, depois `id` da parcela ASC — RN247 passo 3;
+5. refund `ACCOUNT`/`NONE` + `settlement` → **400** `BUSINESS_RULE_VIOLATION` (`SETTLEMENT_NOT_ALLOWED`) — não é propriedade desconhecida;
+6. `SURCHARGE` de fatura exige `remaining > 0` — RN247A (validação de implementação pendente se o código ainda não rejeitar);
+7. `GET /credit-cards/{id}/credits` → array com `remainingAmount` por crédito; total disponível = `SUM(remainingAmount)` (derivado; sem envelope).
 
 
 ## RN246 — Crédito de cartão

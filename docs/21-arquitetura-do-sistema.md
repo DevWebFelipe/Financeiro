@@ -1551,7 +1551,7 @@ Cancelamento de receita (`POST /incomes/{id}/cancel`) é operação distinta (`E
 
 Em despesas (Fase 7), pagamento é `POST /expenses/{id}/pay`; cancelamento é `POST /expenses/{id}/cancel` (`OPEN` → `CANCELLED`); estorno é `POST /expenses/{id}/refund` (`PARTIALLY_PAID` / `PAID` → `REFUNDED`). `POST /payments/{id}/reverse` **não** pertence à Fase 7; entra no contrato da Fase 8.
 
-Na Fase 9, despesa `CREDIT_CARD` usa os mesmos paths de cancel/refund; o refund exige `settlement` `CARD_CREDIT` ou `ACCOUNT` (RN117).
+Na Fase 9, despesa `CREDIT_CARD` usa os mesmos paths de cancel/refund; o refund exige `settlement` `CARD_CREDIT` ou `ACCOUNT` (RN117). Para `ACCOUNT`/`NONE`, `settlement` no mesmo DTO é proibido (**400**, `BUSINESS_RULE_VIOLATION`, `SETTLEMENT_NOT_ALLOWED`).
 
 
 # 169. Transferência

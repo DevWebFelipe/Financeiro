@@ -768,7 +768,8 @@ class ExpenseFinancialPhase8Test {
             null,
             null,
             null,
-            installments));
+            installments,
+            null));
   }
 
   private static UpdateExpenseRequest updateRequest(
@@ -784,7 +785,8 @@ class ExpenseFinancialPhase8Test {
         expense.responsibleType(),
         expense.responsibleName(),
         expense.barcode(),
-        expense.notes());
+        expense.notes(),
+        null);
   }
 
   private static PayExpenseRequest pay(UUID accountId, String amount) {

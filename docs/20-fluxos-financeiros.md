@@ -1143,6 +1143,8 @@ Usuário comprou produto no cartão. A compra foi efetivada. Posteriormente o pr
   - `CARD_CREDIT` — gera crédito de cartão do valor liquidado;
   - `ACCOUNT` — devolve à conta só o que saiu dela (`bankLiquidated`); a parte paga com crédito de cartão volta como crédito.
 
+Para despesa `ACCOUNT`/`NONE`, enviar `settlement` no mesmo endpoint é proibido (**400**, `BUSINESS_RULE_VIOLATION`, `SETTLEMENT_NOT_ALLOWED`) — não é propriedade desconhecida.
+
 Fatura `PAID` não muda. Pagamentos mistos da fatura não são revertidos. Histórico permanece (RN117).
 
 

@@ -45,6 +45,9 @@ public class ExpenseInstallmentAdjustment {
   @Column(name = "status", nullable = false)
   private AdjustmentStatus status;
 
+  @Column(name = "reason")
+  private String reason;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 }

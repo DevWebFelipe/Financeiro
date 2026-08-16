@@ -367,7 +367,8 @@ class ExpenseInstallmentPhase8Test {
         null,
         null,
         null,
-        count);
+        count,
+        null);
   }
 
   private String login(String email) throws Exception {

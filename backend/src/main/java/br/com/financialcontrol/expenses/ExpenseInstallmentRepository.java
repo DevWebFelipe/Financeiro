@@ -20,6 +20,21 @@ public interface ExpenseInstallmentRepository extends JpaRepository<ExpenseInsta
 
   Optional<ExpenseInstallment> findByIdAndExpense_IdAndUserId(UUID id, UUID expenseId, UUID userId);
 
+  List<ExpenseInstallment> findAllByInvoice_IdAndUserIdOrderByDueDateAscIdAsc(
+      UUID invoiceId, UUID userId);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      SELECT i FROM ExpenseInstallment i
+      WHERE i.invoice.id = :invoiceId AND i.userId = :userId
+      ORDER BY i.dueDate ASC, i.id ASC
+      """)
+  List<ExpenseInstallment> findAllByInvoiceIdAndUserIdForUpdate(
+      @Param("invoiceId") UUID invoiceId, @Param("userId") UUID userId);
+
+  List<ExpenseInstallment> findAllByExpense_CreditCard_IdAndUserId(UUID creditCardId, UUID userId);
+
   Optional<ExpenseInstallment> findByExpense_IdAndUserIdAndInstallmentNumber(
       UUID expenseId, UUID userId, int installmentNumber);
 

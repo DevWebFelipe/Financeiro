@@ -8,6 +8,7 @@ import br.com.financialcontrol.expenses.dto.ExpenseInstallmentResponse;
 import br.com.financialcontrol.expenses.dto.ExpensePageResponse;
 import br.com.financialcontrol.expenses.dto.ExpenseResponse;
 import br.com.financialcontrol.expenses.dto.PayExpenseRequest;
+import br.com.financialcontrol.expenses.dto.RefundExpenseRequest;
 import br.com.financialcontrol.expenses.dto.UpdateExpenseInstallmentRequest;
 import br.com.financialcontrol.expenses.dto.UpdateExpenseRequest;
 import br.com.financialcontrol.payments.dto.PaymentResponse;
@@ -58,6 +59,7 @@ public class ExpenseController {
       @RequestParam(required = false) ExpenseStatus status,
       @RequestParam(required = false) UUID categoryId,
       @RequestParam(required = false) UUID accountId,
+      @RequestParam(required = false) UUID creditCardId,
       @RequestParam(required = false) ResponsibleType responsibleType,
       @RequestParam(required = false) PaymentMethod paymentMethod,
       @RequestParam(defaultValue = "0") int page,
@@ -69,6 +71,7 @@ public class ExpenseController {
         status,
         categoryId,
         accountId,
+        creditCardId,
         responsibleType,
         paymentMethod,
         page,
@@ -261,8 +264,10 @@ public class ExpenseController {
     @ApiResponse(responseCode = "404", description = "Despesa não encontrada")
   })
   public ExpenseResponse refund(
-      @AuthenticationPrincipal AuthenticatedUser authenticatedUser, @PathVariable UUID id) {
-    return expenseService.refund(authenticatedUser, id);
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+      @PathVariable UUID id,
+      @RequestBody(required = false) RefundExpenseRequest request) {
+    return expenseService.refund(authenticatedUser, id, request);
   }
 
   @GetMapping("/{id}/payments")

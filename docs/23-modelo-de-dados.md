@@ -1531,18 +1531,18 @@ Fato de adjustment na fatura: `DISCOUNT` | `SURCHARGE`, amount > 0, `reason` obr
 
 Rateado às parcelas com remaining > 0 (mesmo algoritmo RN247). Não permitido em fatura `PAID`. DISCOUNT não vira crédito.
 
+`SURCHARGE` exige `remaining > 0` na fatura. Se `remaining = 0`, rejeitar (não persistir ajuste sem efeito). Detalhe: RN247A.
+
 
 # 113D. Devolução à conta no estorno de compra no cartão
 
-Fato conceitual da Fase 9 (nome físico na migration da implementação, plural snake_case): entrada na conta quando o refund da despesa `CREDIT_CARD` usa `settlement = ACCOUNT` e `bankLiquidated > 0`.
+Fato da Fase 9 (tabela física `card_purchase_account_refunds`): entrada na conta quando o refund da despesa `CREDIT_CARD` usa `settlement = ACCOUNT` e `bankLiquidated > 0`.
 
 Não é receita (`incomes`). Não é reverse de `credit_card_invoice_payments`. Não usa `payments` da despesa.
 
-Campos conceituais: id, user_id, expense_id, account_id, amount (`bankLiquidated`), created_at.
+Campos: id, user_id, expense_id, account_id, amount (`bankLiquidated`), created_at.
 
 Ownership: FKs compostas. Entra na fórmula de saldo (RN240) como parcela positiva.
-
-Não criar a tabela até a migration da implementação da Fase 9.
 
 
 # 114. Regra

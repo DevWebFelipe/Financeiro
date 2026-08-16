@@ -1,6 +1,74 @@
 package br.com.financialcontrol.credit_card_invoices;
 
+import br.com.financialcontrol.credit_cards.CreditCard;
+import jakarta.persistence.LockModeType;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
-public interface CreditCardInvoiceRepository extends JpaRepository<CreditCardInvoice, UUID> {}
+public interface CreditCardInvoiceRepository extends JpaRepository<CreditCardInvoice, UUID> {
+
+  Optional<CreditCardInvoice> findByIdAndUserId(UUID id, UUID userId);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT i FROM CreditCardInvoice i WHERE i.id = :id AND i.userId = :userId")
+  Optional<CreditCardInvoice> findByIdAndUserIdForUpdate(
+      @Param("id") UUID id, @Param("userId") UUID userId);
+
+  Optional<CreditCardInvoice> findByCreditCard_IdAndUserIdAndReferenceYearAndReferenceMonth(
+      UUID creditCardId, UUID userId, int referenceYear, int referenceMonth);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      SELECT i FROM CreditCardInvoice i
+      WHERE i.creditCard.id = :creditCardId
+        AND i.userId = :userId
+        AND i.referenceYear = :year
+        AND i.referenceMonth = :month
+      """)
+  Optional<CreditCardInvoice> findByCardAndCycleForUpdate(
+      @Param("creditCardId") UUID creditCardId,
+      @Param("userId") UUID userId,
+      @Param("year") int year,
+      @Param("month") int month);
+
+  List<CreditCardInvoice> findAllByCreditCard_IdAndUserIdOrderByClosingDateAscIdAsc(
+      UUID creditCardId, UUID userId);
+
+  Optional<CreditCardInvoice> findFirstByCreditCard_IdAndUserIdAndStatus(
+      UUID creditCardId, UUID userId, CreditCardInvoiceStatus status);
+
+  boolean existsByCreditCard_IdAndUserIdAndStatus(
+      UUID creditCardId, UUID userId, CreditCardInvoiceStatus status);
+
+  boolean existsByCreditCard(CreditCard creditCard);
+
+  List<CreditCardInvoice> findAllByUserIdAndStatus(UUID userId, CreditCardInvoiceStatus status);
+
+  List<CreditCardInvoice> findAllByStatus(CreditCardInvoiceStatus status);
+
+  List<CreditCardInvoice> findAllByCreditCard_IdAndUserIdAndStatusInOrderByDueDateAscIdAsc(
+      UUID creditCardId, UUID userId, List<CreditCardInvoiceStatus> statuses);
+
+  @Query(
+      """
+      SELECT i FROM CreditCardInvoice i
+      WHERE i.creditCard.id = :creditCardId
+        AND i.userId = :userId
+        AND (:year IS NULL OR i.referenceYear = :year)
+        AND (:month IS NULL OR i.referenceMonth = :month)
+        AND (:status IS NULL OR i.status = :status)
+      ORDER BY i.closingDate ASC, i.id ASC
+      """)
+  List<CreditCardInvoice> searchByCard(
+      @Param("creditCardId") UUID creditCardId,
+      @Param("userId") UUID userId,
+      @Param("year") Integer year,
+      @Param("month") Integer month,
+      @Param("status") CreditCardInvoiceStatus status);
+}

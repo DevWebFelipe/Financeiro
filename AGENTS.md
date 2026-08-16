@@ -355,7 +355,7 @@ A RN210 da Fase 7 (pagamento `ACCOUNT` obrigatoriamente na mesma conta da despes
 
 Contrato da Fase 8 (**implementado**): despesas parceladas, pagamento por parcela, `payments.status` (`ACTIVE` / `REVERSED`), adjustments (`DISCOUNT` / `SURCHARGE`) com HTTP create/list/reverse (`docs/25` §47), reverse de payment e de adjustment, refund misto. Cartão e fatura entram na **Fase 9**. Relatórios de apresentação permanecem fora. Detalhe: `docs/24` seção 19.2.
 
-Contrato da Fase 9 (**documentado; implementação ainda não iniciada**): fase expandida de cartões de crédito — cadastro, limite, compra `CREDIT_CARD`, ciclo, faturas (`SCHEDULED` / `OPEN` / `CLOSED` / `PAID`), fechamento automático, pagamento de fatura com rateio persistido (desempate RN247), créditos de cartão (FIFO + ordem de faturas RN246), `due_date` da fatura (RN099B), ajustes com `reason`, reverse de pagamentos de fatura, cancelamento/estorno de compra no cartão (RN117). Fora da Fase 9: parcelamento do saldo da fatura, relatórios/PDF, frontend financeiro, Refresh Token, `payments.type`, auditoria genérica, edição cadastral de parcela já em fatura (§269.2.7). Detalhe: `docs/24` seção 19.3 e `docs/28`.
+Contrato da Fase 9 (**implementado**): fase expandida de cartões de crédito — cadastro, limite, compra `CREDIT_CARD`, ciclo, faturas (`SCHEDULED` / `OPEN` / `CLOSED` / `PAID`), fechamento automático, pagamento de fatura com rateio persistido (desempate RN247), créditos de cartão (FIFO + ordem de faturas RN246), `due_date` da fatura (RN099B), ajustes com `reason`, reverse de pagamentos de fatura, cancelamento/estorno de compra no cartão (RN117). Fora da Fase 9: parcelamento do saldo da fatura, relatórios/PDF, frontend financeiro, Refresh Token, `payments.type`, auditoria genérica, edição cadastral de parcela já em fatura (§269.2.7). Detalhe: `docs/24` seção 19.3 e `docs/28`.
 
 ### 11.3 Cancelamento e estorno
 
@@ -368,6 +368,8 @@ Sem exclusão física. Em despesas:
 - reverse de payment: `POST /api/v1/payments/{id}/reverse` entra na **Fase 8** (`ACTIVE` → `REVERSED`); não apaga o fato; não é permitido se a despesa estiver `REFUNDED` ou `CANCELLED`. A menção anterior a “fase futura” está **SUPERADA**;
 - reverse de adjustment: `POST /api/v1/expenses/{expenseId}/installments/{installmentId}/adjustments/{adjustmentId}/reverse` (RN239) — `ACTIVE` → `REVERSED`; não apaga o fato; proibido se a despesa estiver `CANCELLED` ou `REFUNDED`; create/list em `.../installments/{installmentId}/adjustments` (`docs/25` §47);
 - a partir da Fase 9, todo adjustment (parcela ou fatura) exige `reason`; tipos continuam `DISCOUNT` / `SURCHARGE` (RN232 emendada);
+- ajuste de fatura `SURCHARGE` exige `remaining > 0` (RN247A); `remaining = 0` → rejeição por regra de negócio;
+- em `POST /expenses/{id}/refund`, para despesas `ACCOUNT`/`NONE`, o campo `settlement` é aceito estruturalmente pelo DTO compartilhado, porém proibido: **400**, `BUSINESS_RULE_VIOLATION`, `SETTLEMENT_NOT_ALLOWED` (não é propriedade desconhecida);
 - despesa `CREDIT_CARD` **não** se liquida por `POST /expenses/{id}/pay` nem por pagamento de parcela: a liquidação é só via fatura (`docs/25` faturas);
 - `CANCELLED` / `REFUNDED` não impactam saldo, projeções, totais, gráficos nem contas a pagar.
 
@@ -400,7 +402,7 @@ Valor não pode exceder o remaining da fatura nem o saldo disponível da conta. 
 
 O pagamento é rateado entre as parcelas com `remaining > 0` daquela fatura (proporcional ao remaining, ordenação remaining ASC, empate `due_date` ASC depois `id` ASC, residual na última). O rateio é fato persistido (`credit_card_invoice_payment` → alocação → `expense_installment`). Libera limite na mesma proporção.
 
-Créditos de cartão aplicam-se automaticamente: FIFO dos créditos; faturas elegíveis (`OPEN`/`CLOSED` com remaining > 0) por `due_date` ASC depois `id` ASC (RN246).
+Créditos de cartão aplicam-se automaticamente: FIFO dos créditos; faturas elegíveis (`OPEN`/`CLOSED` com remaining > 0) por `due_date` ASC depois `id` ASC (RN246). `GET /credit-cards/{id}/credits` retorna **array** de créditos com `remainingAmount` por crédito; o saldo disponível total é derivado (`SUM(remainingAmount)`), sem envelope.
 
 Pagamento parcial **não** altera o status da fatura (`OPEN` permanece `OPEN`; `CLOSED` permanece `CLOSED` até remaining = 0 → `PAID`).
 

@@ -3,6 +3,7 @@ package br.com.financialcontrol.expenses.dto;
 import br.com.financialcontrol.expenses.AdjustmentType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
@@ -14,4 +15,10 @@ public record CreateAdjustmentRequest(
             integer = 17,
             fraction = 2,
             message = "O valor deve ter no máximo 17 dígitos inteiros e 2 decimais.")
-        BigDecimal amount) {}
+        BigDecimal amount,
+    @NotBlank(message = "O motivo é obrigatório.") String reason) {
+
+  public CreateAdjustmentRequest {
+    reason = reason == null ? null : reason.trim();
+  }
+}

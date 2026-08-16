@@ -31,7 +31,7 @@ public class CreditCard {
   @Column(name = "holder_name", nullable = false)
   private String holderName;
 
-  @Column(name = "last_four_digits", nullable = false)
+  @Column(name = "last_four_digits")
   private String lastFourDigits;
 
   @Column(name = "credit_limit", nullable = false, precision = 19, scale = 2)

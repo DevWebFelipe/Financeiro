@@ -18,6 +18,11 @@ import br.com.financialcontrol.categories.CategoryService;
 import br.com.financialcontrol.categories.CategoryType;
 import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.NotFoundException;
+import br.com.financialcontrol.credit_card_invoices.CreditCardInvoicePaymentAllocationRepository;
+import br.com.financialcontrol.credit_card_invoices.CreditCardInvoiceService;
+import br.com.financialcontrol.credit_cards.CardPurchaseAccountRefundRepository;
+import br.com.financialcontrol.credit_cards.CreditCardCreditApplicationRepository;
+import br.com.financialcontrol.credit_cards.CreditCardService;
 import br.com.financialcontrol.expenses.dto.CreateExpenseRequest;
 import br.com.financialcontrol.expenses.dto.ExpensePageResponse;
 import br.com.financialcontrol.expenses.dto.ExpenseResponse;
@@ -72,6 +77,12 @@ class ExpenseServiceTest {
   @Mock private PaymentRepository paymentRepository;
   @Mock private AccountService accountService;
   @Mock private CategoryService categoryService;
+  @Mock private CreditCardService creditCardService;
+  @Mock private CreditCardInvoiceService creditCardInvoiceService;
+  @Mock private InstallmentBalanceService installmentBalanceService;
+  @Mock private CreditCardInvoicePaymentAllocationRepository invoicePaymentAllocationRepository;
+  @Mock private CreditCardCreditApplicationRepository creditApplicationRepository;
+  @Mock private CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository;
 
   private ExpenseService expenseService;
 
@@ -158,6 +169,7 @@ class ExpenseServiceTest {
                         null,
                         null,
                         null,
+                        null,
                         null)))
         .isInstanceOf(BusinessRuleException.class)
         .hasMessage(ExpenseService.ACCOUNT_REQUIRED_FOR_ACCOUNT_METHOD);
@@ -182,6 +194,7 @@ class ExpenseServiceTest {
                         PaymentMethod.NONE,
                         ACCOUNT_ID,
                         ResponsibleType.MINE,
+                        null,
                         null,
                         null,
                         null,
@@ -212,9 +225,10 @@ class ExpenseServiceTest {
                         null,
                         null,
                         null,
+                        null,
                         null)))
         .isInstanceOf(BusinessRuleException.class)
-        .hasMessage(ExpenseService.CREDIT_CARD_NOT_ALLOWED);
+        .hasMessage(ExpenseService.CREDIT_CARD_REQUIRED);
     verify(expenseRepository, never()).save(any());
     verify(paymentRepository, never()).save(any());
   }
@@ -241,6 +255,7 @@ class ExpenseServiceTest {
                         null,
                         null,
                         null,
+                        null,
                         null)))
         .isInstanceOf(BusinessRuleException.class)
         .hasMessage(ExpenseService.OTHER_REQUIRES_NAME);
@@ -263,6 +278,7 @@ class ExpenseServiceTest {
             ACCOUNT_ID,
             ResponsibleType.OTHER,
             "Vizinho",
+            null,
             null,
             null,
             null));
@@ -296,6 +312,7 @@ class ExpenseServiceTest {
             isNull(),
             isNull(),
             isNull(),
+            isNull(),
             any(Pageable.class)))
         .thenReturn(
             new PageImpl<>(
@@ -309,7 +326,7 @@ class ExpenseServiceTest {
 
     ExpensePageResponse response =
         expenseService.list(
-            new AuthenticatedUser(USER_A), null, null, null, null, null, null, null, 0, 20);
+            new AuthenticatedUser(USER_A), null, null, null, null, null, null, null, null, 0, 20);
 
     assertThat(response.items()).hasSize(1);
     assertThat(response.page()).isEqualTo(0);
@@ -320,6 +337,7 @@ class ExpenseServiceTest {
     verify(expenseRepository)
         .searchByUser(
             eq(USER_A),
+            isNull(),
             isNull(),
             isNull(),
             isNull(),
@@ -362,7 +380,8 @@ class ExpenseServiceTest {
                 ResponsibleType.GIULIA,
                 "ignorado",
                 "123",
-                "nota"));
+                "nota",
+                null));
 
     assertThat(response.description()).isEqualTo("Energia");
     assertThat(response.totalAmount()).isEqualByComparingTo("199.90");
@@ -756,6 +775,12 @@ class ExpenseServiceTest {
         paymentRepository,
         accountService,
         categoryService,
+        creditCardService,
+        creditCardInvoiceService,
+        installmentBalanceService,
+        invoicePaymentAllocationRepository,
+        creditApplicationRepository,
+        cardPurchaseAccountRefundRepository,
         clock);
   }
 
@@ -864,6 +889,7 @@ class ExpenseServiceTest {
         "texto ignorado",
         "23793381286000000000000000000000000000000000",
         null,
+        null,
         null);
   }
 
@@ -880,6 +906,7 @@ class ExpenseServiceTest {
         null,
         null,
         null,
+        null,
         null);
   }
 
@@ -893,6 +920,7 @@ class ExpenseServiceTest {
         PaymentMethod.ACCOUNT,
         ACCOUNT_ID,
         ResponsibleType.MINE,
+        null,
         null,
         null,
         null);

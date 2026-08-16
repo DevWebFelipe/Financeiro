@@ -26,7 +26,7 @@ Do not create provisional code, preparatory migrations, presumed enums/CHECKs, o
 1. `payments.type` — field exists; official values do not. No enum, CHECK, constants, or rules. Do **not** use `type` for ACTIVE/REVERSED (`payments.status` is the Phase 8 column). Invoice payments do **not** use `payments`.
 2. Installment already on an invoice vs `expenses.total_amount` — ACCOUNT/NONE edit is **closed** in the Phase 8 contract; the invoice **edit** question in `docs/23` §269.2.7 is **deferred**.
 
-**Closed in Phase 9:** §269.3 invoice payment allocation (RN247, including tie-break `due_date` then installment `id`). Invoice statuses: `SCHEDULED`, `OPEN`, `CLOSED`, `PAID` — not `PARTIALLY_PAID`. RN029A (reject purchase over limit) is **SUPERSEDED**. §269.4 card-purchase cancel/refund (RN117: `CARD_CREDIT` / `ACCOUNT`). Credit auto-apply invoice order (RN246). Invoice `due_date` when `due_day` ≤ `closing_day` (RN099B).
+**Closed in Phase 9:** §269.3 invoice payment allocation (RN247, including tie-break `due_date` then installment `id`). Invoice statuses: `SCHEDULED`, `OPEN`, `CLOSED`, `PAID` — not `PARTIALLY_PAID`. RN029A (reject purchase over limit) is **SUPERSEDED**. §269.4 card-purchase cancel/refund (RN117: `CARD_CREDIT` / `ACCOUNT`). Credit auto-apply invoice order (RN246). Invoice `due_date` when `due_day` ≤ `closing_day` (RN099B). Refund `ACCOUNT`/`NONE` + `settlement` → **400** `BUSINESS_RULE_VIOLATION` (`SETTLEMENT_NOT_ALLOWED`) — not unknown JSON property. Invoice `SURCHARGE` requires `remaining > 0` (RN247A; implementation of the reject may still be pending). `GET .../credits` is an array with per-credit `remainingAmount`; total available = derived sum (no envelope).
 
 Mandatory remaining questions: `docs/23-modelo-de-dados.md` seção 269.
 

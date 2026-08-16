@@ -43,6 +43,12 @@ class SchemaContractTest {
             "credit_card_invoices",
             "credit_card_invoice_payments",
             "credit_card_invoice_installments",
+            "credit_card_invoice_payment_allocations",
+            "credit_card_credits",
+            "credit_card_credit_applications",
+            "credit_card_invoice_adjustments",
+            "credit_card_invoice_adjustment_allocations",
+            "card_purchase_account_refunds",
             "financial_goals",
             "goal_contributions");
   }
@@ -61,6 +67,45 @@ class SchemaContractTest {
   void shouldNotPersistDerivedInvoiceAmounts() {
     assertThat(columnsOf("credit_card_invoices"))
         .doesNotContain("total_amount", "paid_amount", "remaining_amount");
+  }
+
+  @Test
+  void shouldNotPersistPaidAmountOnInstallments() {
+    assertThat(columnsOf("expense_installments")).doesNotContain("paid_amount", "remaining_amount");
+  }
+
+  @Test
+  void shouldAllowNullableLastFourDigitsOnCreditCards() {
+    String nullable =
+        jdbcTemplate.queryForObject(
+            """
+            SELECT is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'credit_cards'
+              AND column_name = 'last_four_digits'
+            """,
+            String.class);
+    assertThat(nullable).isEqualTo("YES");
+  }
+
+  @Test
+  void shouldUsePhase9InvoiceStatuses() {
+    String check =
+        jdbcTemplate.queryForObject(
+            """
+            SELECT pg_get_constraintdef(oid)
+            FROM pg_constraint
+            WHERE conrelid = 'credit_card_invoices'::regclass
+              AND contype = 'c'
+              AND conname = 'ck_credit_card_invoices_status'
+            """,
+            String.class);
+    assertThat(check).contains("SCHEDULED");
+    assertThat(check).contains("OPEN");
+    assertThat(check).contains("CLOSED");
+    assertThat(check).contains("PAID");
+    assertThat(check).doesNotContain("PARTIALLY_PAID");
   }
 
   @Test

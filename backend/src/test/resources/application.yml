@@ -4,3 +4,7 @@ app:
     expiration-minutes: 30
   cors:
     allowed-origins: http://localhost:4200
+
+financial-control:
+  invoice-scheduler:
+    enabled: false

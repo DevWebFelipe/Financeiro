@@ -26,6 +26,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
         AND (:status IS NULL OR e.status = :status)
         AND (:categoryId IS NULL OR e.category.id = :categoryId)
         AND (:accountId IS NULL OR e.account.id = :accountId)
+        AND (:creditCardId IS NULL OR e.creditCard.id = :creditCardId)
         AND (:responsibleType IS NULL OR e.responsibleType = :responsibleType)
         AND (:paymentMethod IS NULL OR e.paymentMethod = :paymentMethod)
         AND (
@@ -44,6 +45,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
       @Param("status") ExpenseStatus status,
       @Param("categoryId") UUID categoryId,
       @Param("accountId") UUID accountId,
+      @Param("creditCardId") UUID creditCardId,
       @Param("responsibleType") ResponsibleType responsibleType,
       @Param("paymentMethod") PaymentMethod paymentMethod,
       @Param("startDate") LocalDate startDate,

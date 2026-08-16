@@ -13,6 +13,7 @@ public record AdjustmentResponse(
     UUID installmentId,
     AdjustmentType type,
     BigDecimal amount,
+    String reason,
     AdjustmentStatus status,
     Instant createdAt) {
 
@@ -23,6 +24,7 @@ public record AdjustmentResponse(
         adjustment.getInstallment().getId(),
         adjustment.getType(),
         adjustment.getAmount(),
+        adjustment.getReason(),
         adjustment.getStatus(),
         adjustment.getCreatedAt());
   }

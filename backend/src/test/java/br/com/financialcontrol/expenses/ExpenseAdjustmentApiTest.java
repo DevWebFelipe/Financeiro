@@ -133,7 +133,19 @@ class ExpenseAdjustmentApiTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
-                    {"type":"DISCOUNT","amount":10.00,"reason":"antecipacao"}
+                    {"type":"DISCOUNT","amount":10.00}
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+    mockMvc
+        .perform(
+            post(adjustmentsPath(fx.expenseId(), fx.installmentId()))
+                .header(HttpHeaders.AUTHORIZATION, bearer(fx.token()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"type":"DISCOUNT","amount":10.00,"reason":"antecipacao","userId":"x"}
                     """))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
@@ -577,7 +589,7 @@ class ExpenseAdjustmentApiTest {
 
   private static String adjustmentJson(String type, String amount) {
     return """
-        {"type":"%s","amount":%s}
+        {"type":"%s","amount":%s,"reason":"ajuste de teste"}
         """
         .formatted(type, amount);
   }

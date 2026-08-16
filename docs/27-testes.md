@@ -845,7 +845,7 @@ CONCORRÊNCIA:
 
 # 48. Testes de cartão
 
-Contrato da Fase 9 (`docs/24` §19.3). Implementar estes testes **quando** a Fase 9 for autorizada — não agora.
+Contrato da Fase 9 (`docs/24` §19.3). **Implementado** com a autorização da fase.
 
 Testar:
 
@@ -878,6 +878,12 @@ crédito FIFO e ordem de faturas (`due_date` ASC, `id` ASC); crédito manual com
 `due_date` da fatura RN099B (`due_day` ≤ `closing_day` → mês seguinte);
 
 cancelamento `OPEN` e refund com `settlement` `CARD_CREDIT` / `ACCOUNT` (RN117);
+
+refund `ACCOUNT`/`NONE` com `settlement` → 400 `BUSINESS_RULE_VIOLATION` (`SETTLEMENT_NOT_ALLOWED`);
+
+ajuste de fatura: `DISCOUNT` limitado ao remaining; `SURCHARGE` exige remaining > 0 (RN247A);
+
+`GET /credit-cards/{id}/credits` retorna array; `remainingAmount` por crédito; total disponível = soma derivada;
 
 pagamento de fatura não cria `payments`;
 

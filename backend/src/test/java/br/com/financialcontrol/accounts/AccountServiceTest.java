@@ -3,6 +3,7 @@ package br.com.financialcontrol.accounts;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,6 +14,8 @@ import br.com.financialcontrol.accounts.dto.CreateAccountRequest;
 import br.com.financialcontrol.accounts.dto.UpdateAccountRequest;
 import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.NotFoundException;
+import br.com.financialcontrol.credit_card_invoices.CreditCardInvoicePaymentRepository;
+import br.com.financialcontrol.credit_cards.CardPurchaseAccountRefundRepository;
 import br.com.financialcontrol.incomes.IncomeRepository;
 import br.com.financialcontrol.payments.PaymentRepository;
 import br.com.financialcontrol.security.AuthenticatedUser;
@@ -41,6 +44,8 @@ class AccountServiceTest {
   @Mock private AccountRepository accountRepository;
   @Mock private IncomeRepository incomeRepository;
   @Mock private PaymentRepository paymentRepository;
+  @Mock private CreditCardInvoicePaymentRepository invoicePaymentRepository;
+  @Mock private CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository;
 
   private AccountService accountService;
 
@@ -51,7 +56,15 @@ class AccountServiceTest {
             accountRepository,
             incomeRepository,
             paymentRepository,
+            invoicePaymentRepository,
+            cardPurchaseAccountRefundRepository,
             Clock.fixed(NOW, ZoneOffset.UTC));
+    lenient()
+        .when(invoicePaymentRepository.sumActiveAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+        .thenReturn(BigDecimal.ZERO);
+    lenient()
+        .when(cardPurchaseAccountRefundRepository.sumAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+        .thenReturn(BigDecimal.ZERO);
   }
 
   @Test

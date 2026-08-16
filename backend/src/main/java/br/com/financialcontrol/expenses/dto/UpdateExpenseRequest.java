@@ -27,7 +27,8 @@ public record UpdateExpenseRequest(
     @NotNull(message = "O responsável é obrigatório.") ResponsibleType responsibleType,
     String responsibleName,
     String barcode,
-    String notes) {
+    String notes,
+    UUID creditCardId) {
 
   public UpdateExpenseRequest {
     description = description == null ? null : description.trim();

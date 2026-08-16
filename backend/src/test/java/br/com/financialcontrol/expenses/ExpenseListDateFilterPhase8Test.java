@@ -50,6 +50,7 @@ class ExpenseListDateFilterPhase8Test {
             null,
             null,
             null,
+            null,
             0,
             20);
 
@@ -74,6 +75,7 @@ class ExpenseListDateFilterPhase8Test {
             null,
             null,
             null,
+            null,
             0,
             20);
     assertThat(february.items()).extracting(ExpenseResponse::id).containsExactly(multi.id());
@@ -88,6 +90,7 @@ class ExpenseListDateFilterPhase8Test {
             null,
             null,
             null,
+            null,
             0,
             20);
     assertThat(march.items()).extracting(ExpenseResponse::id).containsExactly(multi.id());
@@ -97,6 +100,7 @@ class ExpenseListDateFilterPhase8Test {
             user,
             LocalDate.of(2026, 4, 1),
             LocalDate.of(2026, 4, 30),
+            null,
             null,
             null,
             null,
@@ -130,6 +134,7 @@ class ExpenseListDateFilterPhase8Test {
             null,
             null,
             null,
+            null,
             0,
             20);
 
@@ -142,6 +147,7 @@ class ExpenseListDateFilterPhase8Test {
             otherUser,
             LocalDate.of(2026, 3, 1),
             LocalDate.of(2026, 5, 31),
+            null,
             null,
             null,
             null,
@@ -184,7 +190,8 @@ class ExpenseListDateFilterPhase8Test {
             null,
             null,
             null,
-            installments));
+            installments,
+            null));
   }
 
   private Fixture bootstrap(String prefix) throws Exception {
