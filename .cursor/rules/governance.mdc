@@ -28,7 +28,9 @@ Do not create provisional code, preparatory migrations, presumed enums/CHECKs, o
 
 **Closed in Phase 9:** §269.3 invoice payment allocation (RN247, including tie-break `due_date` then installment `id`). Invoice statuses: `SCHEDULED`, `OPEN`, `CLOSED`, `PAID` — not `PARTIALLY_PAID`. RN029A (reject purchase over limit) is **SUPERSEDED**. §269.4 card-purchase cancel/refund (RN117: `CARD_CREDIT` / `ACCOUNT`). Credit auto-apply invoice order (RN246). Invoice `due_date` when `due_day` ≤ `closing_day` (RN099B). Refund `ACCOUNT`/`NONE` + `settlement` → **400** `BUSINESS_RULE_VIOLATION` (`SETTLEMENT_NOT_ALLOWED`) — not unknown JSON property. Invoice `SURCHARGE` requires `remaining > 0` (RN247A; **400** `BUSINESS_RULE_VIOLATION` / `SURCHARGE_REQUIRES_REMAINING`). `GET .../credits` is an array with per-credit `remainingAmount`; total available = derived sum (no envelope). Phase 9 is **CONCLUÍDA**.
 
-Mandatory remaining questions: `docs/23-modelo-de-dados.md` seção 269.
+**Closed in Phase 13 (contract only):** §269.5 / `docs/24` §19.4 — `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`. Do **not** implement Agreement code until the developer explicitly authorizes the Phase 13 implementation step. Key closed choices: `SETTLED_BY_AGREEMENT`; settlement fact; expense `CREDIT_CARD` + equal installments; V13 superseded; paths under `/api/v1/invoices/...`; `settled` only on Agreement anticipate; renegotiation = all `ACTIVE` on card; `used_limit` uses contracted total.
+
+Mandatory remaining questions: `docs/23-modelo-de-dados.md` seção 269 (`payments.type`; §269.2.7).
 
 Everything else already consolidated in `docs/23` remains the source of truth.
 

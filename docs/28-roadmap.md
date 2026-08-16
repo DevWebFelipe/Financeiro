@@ -731,7 +731,7 @@ As antigas Fases 10 (compras), 11 (faturas) e 12 (pagamento de fatura) deste roa
 - reverse de pagamento de fatura;
 - cancelamento de compra `OPEN` e refund com `settlement` `CARD_CREDIT` / `ACCOUNT` (RN117).
 
-Não incluir: parcelamento do saldo da fatura (Fase 13); relatórios/PDF; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição de parcela já em fatura (§269.2.7); `POST /invoices/{id}/close`.
+Não incluir: parcelamento/negociação de fatura (Fase 13 — §19.4 / §269.5); relatórios/PDF; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição de parcela já em fatura (§269.2.7); `POST /invoices/{id}/close`.
 
 
 # 56. Fase 9 — Status da fatura
@@ -774,7 +774,7 @@ Além dos testes de cadastro de cartão:
 
 Usuário consegue cadastrar cartão, lançar compra (inclusive parcelada e acima do limite), ver faturas e itens, pagar fatura (parcial/antecipado) com rateio e limite corretos, usar crédito e ajustes, cancelar/estornar compra no cartão (RN117), e o fechamento automático respeita o ciclo — sem parcelar saldo de fatura e sem relatórios.
 
-**Critério atendido.** Fase 9 — **FECHADA E APROVADA**. RN246, RN247, RN247A (`SURCHARGE` exige remaining > 0; **400** / `BUSINESS_RULE_VIOLATION` / `SURCHARGE_REQUIRES_REMAINING`), settlement (`SETTLEMENT_NOT_ALLOWED`), credits (array + `remainingAmount`) e auditoria final de conformidade confirmados. Fora da Fase 9 (permanecem fora): parcelamento do saldo da fatura; PDF/relatórios; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição cadastral de parcela já em fatura (§269.2.7); `POST /invoices/{id}/close`.
+**Critério atendido.** Fase 9 — **FECHADA E APROVADA**. RN246, RN247, RN247A (`SURCHARGE` exige remaining > 0; **400** / `BUSINESS_RULE_VIOLATION` / `SURCHARGE_REQUIRES_REMAINING`), settlement (`SETTLEMENT_NOT_ALLOWED`), credits (array + `remainingAmount`) e auditoria final de conformidade confirmados. Fora da Fase 9 (permanecem fora): parcelamento/negociação de fatura (Fase 13 — `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`); PDF/relatórios; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição cadastral de parcela já em fatura (§269.2.7); `POST /invoices/{id}/close`.
 
 
 # 59–72. Fases 10–12 — ABSORVIDAS
@@ -782,31 +782,45 @@ Usuário consegue cadastrar cartão, lançar compra (inclusive parcelada e acima
 As seções anteriores “Fase 10 — Compras”, “Fase 11 — Faturas” e “Fase 12 — Pagamento de fatura” deixam de ser fases futuras independentes. O conteúdo está no contrato da Fase 9 (`docs/24` §19.3).
 
 
-# 73. Fase 13 — Parcelamento de fatura
+# 73. Fase 13 — Parcelamento, Negociação e Renegociação de Fatura
+
+Status:
+
+`CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`
 
 Objetivo:
 
-Permitir parcelar saldo restante da fatura.
+Permitir parcelar/negociar remaining de fatura **fechada**; distinguir nova negociação de renegociação; registrar Agreement, entrada, custo adicional; antecipação de parcelas de Agreement com desconto; histórico completo.
+
+**Não implementado** (sem Java/Angular/migrations/testes automatizados até autorização da etapa de implementação).
 
 
-# 74. Fase 13
+# 74. Fase 13 — Escopo contratado
 
-Implementar:
+- somente `CLOSED` + remaining > 0;
+- `SETTLED_BY_AGREEMENT` (D1); settlement fact (D2);
+- expense `CREDIT_CARD` + parcelas iguais; V13 SUPERADO (D3, D4, D9);
+- API `/api/v1/invoices/.../agreements|renegotiations` (D5);
+- `entryAmount == remaining` → 400 (D6);
+- `settled` só em anticipate de Agreement (D7);
+- renegociação: todos `ACTIVE` do cartão (D8);
+- `CANCELLED` reservado (D10);
+- `used_limit` compromete contractedTotal (D11);
+- testes L01–L36 (`docs/27`).
 
-- saldo restante;
-- criação de parcelas;
-- valores diferentes;
-- vencimentos futuros.
+Detalhe: `docs/24` §19.4.
 
 
-# 75. Fase 13
+# 75. Fase 13 — Domínio separado
 
-Parcelamento de fatura deve ser tratado como domínio separado de compra parcelada.
+Parcelamento/negociação de fatura ≠ compra parcelada. V13 sem uso de negócio.
 
 
-# 76. Fase 13
+# 76. Fase 13 — Próximo passo
 
-Criar testes específicos.
+Aguardar autorização explícita: **IMPLEMENTAÇÃO DA FASE 13**.
+
+A IA **não** inicia implementação sem essa autorização.
 
 
 # 77. Fase 14 — Transferências
@@ -1540,6 +1554,8 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 Fases 0 a 9: CONCLUÍDAS.
 
-Próxima fase: Fase 13 — Parcelamento de fatura (saldo restante). Não absorvida pela Fase 9.
+Próxima fase: Fase 13 — Parcelamento / Negociação / Renegociação de fatura.
 
-A IA não deve implementar Refresh Token, logout backend, parcelamento do saldo da fatura, relatórios/PDF, frontend financeiro, `payments.type` nem auditoria genérica sem autorização. Itens ainda deferidos: §269.1, §269.2.7. O rateio (§269.3) e o estorno no cartão (§269.4) estão **fechados** e **implementados**.
+Status da Fase 13: `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE` (`docs/24` §19.4; `docs/23` §269.5 **FECHADO**). Aguardar autorização explícita para implementar.
+
+A IA não deve implementar Refresh Token, logout backend, Agreement/parcelamento de fatura, relatórios/PDF, frontend financeiro, `payments.type` nem auditoria genérica sem autorização. Itens ainda deferidos: §269.1, §269.2.7. Fechados: §269.3, §269.4, **§269.5**.

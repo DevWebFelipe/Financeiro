@@ -1272,7 +1272,7 @@ Fonte de verdade e fórmulas: seções 194–199 e 263.
 
 # 94. Fatura
 
-Status persistidos V1 (Fase 9):
+Status persistidos V1:
 
 SCHEDULED
 
@@ -1282,7 +1282,11 @@ CLOSED
 
 PAID
 
+SETTLED_BY_AGREEMENT *(Fase 13 — `docs/24` §19.4)*
+
 `PARTIALLY_PAID` **não** é status de fatura (redação anterior **SUPERADA**).
+
+A Fase 9 introduziu `SCHEDULED`/`OPEN`/`CLOSED`/`PAID`. A Fase 13 **adiciona** `SETTLED_BY_AGREEMENT` (terminal, liquidação por Agreement).
 
 
 # 95. Fatura
@@ -1317,16 +1321,23 @@ Pagamento parcial **não** gera status próprio. OPEN permanece OPEN; CLOSED per
 
 PAID:
 
-fatura já fechada **e** remaining = 0. Terminal. Nada altera PAID.
+fatura já fechada **e** remaining = 0 por pagamentos/créditos/ajustes (fluxo Fase 9). Terminal. Nada altera PAID.
 
 OPEN + remaining 0 **não** é PAID até o fechamento.
+
+
+# 98A. Fatura — SETTLED_BY_AGREEMENT (Fase 13)
+
+Liquidação por negociação/renegociação (Agreement). Terminal. Nada altera `SETTLED_BY_AGREEMENT`. Não reabre.
+
+Entrada: `credit_card_invoice_payments`. Trecho negociado: fato de settlement + alocações (sem conta). Remaining = 0.
 
 
 # 99. Fatura — OVERDUE (derivado)
 
 `OVERDUE` NÃO é status persistido.
 
-Pode ser derivado quando a fatura não está `PAID` e `due_date` < data atual.
+Pode ser derivado quando a fatura **não** está `PAID` nem `SETTLED_BY_AGREEMENT` e `due_date` < data atual.
 
 A UI pode exibir "VENCIDA".
 
@@ -1567,61 +1578,47 @@ Remaining:
 R$ 800
 
 
-# 116. Parcelamento de fatura
+# 116. Parcelamento de fatura (Fase 13)
 
-**Fora da Fase 9.**
+**Fase 13 — `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`** (`docs/24` §19.4; §269.5 **FECHADO**).
 
-Tabela:
+Tabela legado (V13) — **SUPERADA** como negócio (**D4=A**):
 
-credit_card_invoice_installments
+`credit_card_invoice_installments`
+
+Modelo oficial: cabeçalho **Agreement** + fato de **settlement** (D2) + `expenses` `CREDIT_CARD` + `expense_installments` nas faturas futuras (D3). Nomes físicos das novas tabelas na migration da implementação (plural, ownership composto).
 
 
 # 117. Objetivo
 
-Representar o parcelamento do saldo de uma fatura que não foi integralmente pago.
+Representar a **negociação do remaining** de uma fatura **`CLOSED`**. Compras originais permanecem; fatura → `SETTLED_BY_AGREEMENT`; nasce obrigação nova.
 
 
-# 118. Campos:
+# 118. Agreement — campos conceituais
 
-id
+id, user_id, credit_card_id, source_invoice_id, expense_id, status (`ACTIVE` / `COMPLETED` / `RENEGOTIATED`; `CANCELLED` reservado), entry_amount, financed_amount (ou derivado), installment_count, installment_amount, created_at, updated_at; vínculo de renegociação (Agreement(s) de origem) para histórico.
 
-user_id
-
-invoice_id
-
-installment_number
-
-total_installments
-
-amount
-
-due_date
-
-status
-
-created_at
-
-updated_at
+Settlement: fato + alocações às `expense_installments` do ciclo da fatura de origem (sem conta). Entrada: `credit_card_invoice_payments` normal.
 
 
 # 119. Regra
 
-Parcelamento de fatura é diferente de compra parcelada.
+Parcelamento/negociação de fatura ≠ compra parcelada (RN110).
 
 
 # 120. Compra parcelada
 
-É uma compra dividida em parcelas.
+Compra dividida em `expense_installments` vinculadas a faturas do ciclo.
 
 
-# 121. Parcelamento de fatura
+# 121. Negociação de fatura (Agreement)
 
-É uma dívida de fatura dividida em parcelas.
+Dívida do remaining negociada com o banco: Agreement + despesa `CREDIT_CARD` com `total_amount = contractedTotal`. 1ª parcela na próxima fatura.
 
 
 # 122. Regra
 
-Não misturar os dois conceitos.
+Não misturar os dois conceitos. Não reutilizar `expense_installments` das compras originais como parcelas do Agreement.
 
 
 # 123. Transferência
@@ -2397,11 +2394,11 @@ Valores derivados:
 
 `remaining_amount` NÃO é coluna persistida.
 
-Fórmula vigente (Fase 9):
+Fórmula vigente:
 
 remaining_amount = soma dos remainings das parcelas vinculadas à fatura (excluindo `CANCELLED` e `REFUNDED`).
 
-Remaining da parcela de cartão: obligation (RN231) − alocações ACTIVE de pagamentos de fatura − alocações ACTIVE de créditos − efeito ACTIVE de ajustes de fatura rateados. Despesa `CREDIT_CARD` não usa `payments` da despesa.
+Remaining da parcela de cartão: obligation (RN231) − alocações ACTIVE de pagamentos de fatura − alocações ACTIVE de créditos − efeito ACTIVE de ajustes de fatura rateados − **alocações ACTIVE do fato de settlement de Agreement (Fase 13, D2)**. Despesa `CREDIT_CARD` não usa `payments` da despesa para liquidação ordinária via fatura.
 
 A fórmula anterior (`sum(amount) − sum(invoice_payments)`) está **SUPERADA**: ignorava obligation, alocações, créditos e ajustes.
 
@@ -2416,18 +2413,22 @@ Não persistir `used_limit` nem `available_limit` em `credit_cards`.
 
 A API pode (e deve) expô-los no response, calculados na leitura.
 
-O `status` da fatura (`SCHEDULED`, `OPEN`, `CLOSED`, `PAID`) continua persistido: é ciclo/estado, não valor monetário.
+O `status` da fatura (`SCHEDULED`, `OPEN`, `CLOSED`, `PAID`, `SETTLED_BY_AGREEMENT`) continua persistido: é ciclo/estado, não valor monetário.
 
 
-# 199. Parcelamento do saldo restante
+# 199. Parcelamento / negociação do saldo restante (Fase 13)
 
-`credit_card_invoice_installments` representa o plano de parcelamento do saldo restante.
+**Contrato aprovado** (`docs/24` §19.4). V13 `credit_card_invoice_installments` **SUPERADO** (D4).
 
-Criar esse parcelamento **não** altera `total_amount` nem `paid_amount`.
+- COMPRA ORIGINAL ≠ parcela de Agreement;
+- somente fatura `CLOSED` com remaining > 0;
+- entrada imediata; financed ≠ contractedTotal;
+- fatura → `SETTLED_BY_AGREEMENT` (D1); settlement fact no remaining (D2);
+- nova `expenses` `CREDIT_CARD` com `total_amount = contractedTotal` (D3, D11);
+- parcelas iguais (`installmentCount` × `installmentAmount`); 1ª na próxima fatura;
+- histórico imutável de renegociações.
 
-O saldo restante só diminui quando houver pagamento em `credit_card_invoice_payments`.
-
-Esse parcelamento é distinto das parcelas de compra (`expense_installments`) — RN110.
+Remaining do ciclo: alocações de entrada (`credit_card_invoice_payments`) + alocações do fato de settlement do Agreement.
 
 
 # 200. Projeções
@@ -3307,7 +3308,9 @@ Nenhuma lacuna abaixo pode ser preenchida por suposição técnica.
 
 Itens **ainda bloqueados**: 269.1 (`payments.type`); 269.2.7 (edição de parcela já em fatura).
 
-O item 269.2 está **fechado** para ACCOUNT/NONE na Fase 8. O item **269.3 está fechado** na Fase 9 (rateio RN247; status da fatura RN090/RN091). O item **269.4 está fechado** na Fase 9 (RN117).
+O item 269.2 está **fechado** para ACCOUNT/NONE na Fase 8. O item **269.3 está fechado** na Fase 9 (rateio RN247; status da fatura RN090/RN091). O item **269.4 está fechado** na Fase 9 (RN117). O item **269.5 está fechado** (Fase 13 D1–D11 — `docs/24` §19.4).
+
+A Fase 13 está com **`CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`**.
 
 Não criar migration, coluna, enum, CHECK, constante, validação, teste ou regra de Service/API dependente dos itens ainda bloqueados até decisão explícita.
 
@@ -3381,3 +3384,23 @@ Respostas oficiais (RN117):
 3. Fatura `PAID` é imutável; o benefício posterior é crédito e/ou devolução à conta.
 4. Não reverter pagamentos de fatura mistos. Crédito já utilizado impede desfazer a origem (RN246).
 5. Remaining operacional da fatura = soma dos remainings das parcelas não `CANCELLED`/`REFUNDED`.
+
+
+## 269.5 Fase 13 — Agreement / liquidação por negociação — FECHADO
+
+Decisões D1–D11 fechadas. Contrato: `docs/24` §19.4 (`CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`).
+
+Resumo:
+
+1. Status de fatura: adicionar `SETTLED_BY_AGREEMENT` (terminal, como `PAID`) — D1=A.
+2. Fato de settlement do Agreement participa do remaining das parcelas do ciclo (sem conta) — D2=A.
+3. Nova obrigação: `expenses` `CREDIT_CARD` + `expense_installments` + Agreement cabeçalho — D3=A.
+4. V13 `credit_card_invoice_installments` SUPERADO; novas tabelas na implementação — D4=A.
+5. API sob `/api/v1/invoices/{id}/agreements|renegotiations` + `GET /api/v1/agreements/{id}` + anticipate — D5=A, D7=B.
+6. `entryAmount == remaining` → 400 `BUSINESS_RULE_VIOLATION` — D6=A.
+7. Renegociação: todos `ACTIVE` do cartão — D8=A.
+8. Plano: `installmentCount` + `installmentAmount` iguais — D9=A.
+9. `CANCELLED` do Agreement reservado (sem operação) — D10=A.
+10. `used_limit` compromete o **contractedTotal** — D11.
+
+Implementação ainda **não** autorizada automaticamente: aguardar etapa explícita de implementação.

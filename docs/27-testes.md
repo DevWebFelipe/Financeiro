@@ -1128,36 +1128,60 @@ Saldo:
 800
 
 
-# 68. Testes de parcelamento de fatura
+# 68. Testes de parcelamento / negociação de fatura (Fase 13)
 
-Testar:
+**Status:** cenários **contratados**; **não implementados**. Contrato: `docs/24` §19.4 (`CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`).
 
-saldo parcial;
+Mínimo contratado:
 
-parcelas iguais;
+| ID | Cenário |
+| --- | --- |
+| L01 | parcelamento válido |
+| L02 | parcelamento sem entrada (`entryAmount = 0`) |
+| L03 | entrada igual ao saldo → 400 |
+| L04 | entrada superior ao saldo |
+| L05 | tentativa em fatura aberta |
+| L06 | pagamento integral em fatura aberta (status permanece OPEN) |
+| L07 | ausência de campo “quitado”/`settled` em pagamento de fatura |
+| L08 | fechamento posterior de fatura zerada → PAID |
+| L09 | compras parceladas originais não são transformadas |
+| L10 | nova obrigação (expense CREDIT_CARD do Agreement) é independente |
+| L11 | nova negociação não antecipa Agreements anteriores |
+| L12 | coexistência de Agreements ACTIVE |
+| L13 | renegociação automática (todos ACTIVE do cartão; sem lista de ids) |
+| L14 | antecipação de parcelas futuras |
+| L15 | encerramento automático `RENEGOTIATED` |
+| L16 | entrada da renegociação |
+| L17 | antecipação individual com desconto automático (`settled=true`) |
+| L18 | percentual de desconto derivado |
+| L19 | pagamento parcial (antecipação) |
+| L20 | segundo pagamento completa obrigação |
+| L21 | quitação com desconto |
+| L22 | pagamento superior ao saldo |
+| L23 | pagamento de parcela já quitada |
+| L24 | limite negativo permitido |
+| L25 | histórico da fatura parcelada |
+| L26 | histórico de renegociação |
+| L27 | ownership da fatura |
+| L28 | ownership do Agreement |
+| L29 | ownership da conta de pagamento |
+| L30 | concorrência em negociação |
+| L31 | concorrência em pagamento/antecipação |
+| L32 | rollback completo |
+| L33 | imutabilidade `SETTLED_BY_AGREEMENT` |
+| L34 | 1ª parcela na próxima fatura |
+| L35 | contractedTotal > financedAmount |
+| L36 | renegociação sem duplicar parcela da fatura atual |
 
-parcelas diferentes;
 
-soma incorreta.
+# 69. Exemplo (legado pré-Agreement)
 
-
-# 69. Exemplo
-
-Saldo:
-
-800
+O exemplo “saldo 800 → duas parcelas 400+400 cuja soma = 800” ficou **SUPERADO** como regra geral (RN113). O exemplo canônico da Fase 13 admite total contratado **maior** que o financed (ex.: negociado 600, 10×120 = 1.200).
 
 
-Parcelamento:
+# 69. Exemplo (legado pré-Agreement)
 
-400
-
-400
-
-
-Resultado:
-
-800
+O exemplo “saldo 800 → duas parcelas 400+400 cuja soma = 800” ficou **SUPERADO** como regra geral (RN113). O exemplo canônico da Fase 13 admite total contratado **maior** que o financed (ex.: negociado 600, 10×120 = 1.200).
 
 
 # 70. Testes de estorno

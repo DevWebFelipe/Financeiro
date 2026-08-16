@@ -355,7 +355,7 @@ A RN210 da Fase 7 (pagamento `ACCOUNT` obrigatoriamente na mesma conta da despes
 
 Contrato da Fase 8 (**implementado**): despesas parceladas, pagamento por parcela, `payments.status` (`ACTIVE` / `REVERSED`), adjustments (`DISCOUNT` / `SURCHARGE`) com HTTP create/list/reverse (`docs/25` §47), reverse de payment e de adjustment, refund misto. Cartão e fatura entram na **Fase 9**. Relatórios de apresentação permanecem fora. Detalhe: `docs/24` seção 19.2.
 
-Contrato da Fase 9 (**implementado** e **concluído**): fase expandida de cartões de crédito — cadastro, limite, compra `CREDIT_CARD`, ciclo, faturas (`SCHEDULED` / `OPEN` / `CLOSED` / `PAID`), fechamento automático, pagamento de fatura com rateio persistido (desempate RN247), créditos de cartão (FIFO + ordem de faturas RN246), `due_date` da fatura (RN099B), ajustes com `reason`, reverse de pagamentos de fatura, cancelamento/estorno de compra no cartão (RN117). Fora da Fase 9: parcelamento do saldo da fatura, relatórios/PDF, frontend financeiro, Refresh Token, `payments.type`, auditoria genérica, edição cadastral de parcela já em fatura (§269.2.7), `POST /invoices/{id}/close`. Detalhe: `docs/24` seção 19.3 e `docs/28`.
+Contrato da Fase 9 (**implementado** e **concluído**): fase expandida de cartões de crédito — cadastro, limite, compra `CREDIT_CARD`, ciclo, faturas (`SCHEDULED` / `OPEN` / `CLOSED` / `PAID`), fechamento automático, pagamento de fatura com rateio persistido (desempate RN247), créditos de cartão (FIFO + ordem de faturas RN246), `due_date` da fatura (RN099B), ajustes com `reason`, reverse de pagamentos de fatura, cancelamento/estorno de compra no cartão (RN117). Fora da Fase 9: parcelamento/negociação/renegociação de fatura (**Fase 13**, `docs/24` §19.4 — `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`; status de fatura inclui `SETTLED_BY_AGREEMENT`), relatórios/PDF, frontend financeiro, Refresh Token, `payments.type`, auditoria genérica, edição cadastral de parcela já em fatura (§269.2.7), `POST /invoices/{id}/close`. Detalhe da Fase 9: `docs/24` seção 19.3 e `docs/28`.
 
 ### 11.3 Cancelamento e estorno
 
@@ -490,15 +490,15 @@ Regras de ciclo:
 
 ## 14. Faturas
 
-Status persistidos da fatura (Fase 9): `SCHEDULED`, `OPEN`, `CLOSED`, `PAID`.
+Status persistidos da fatura: `SCHEDULED`, `OPEN`, `CLOSED`, `PAID` (Fase 9); `SETTLED_BY_AGREEMENT` (Fase 13 — liquidação por Agreement; terminal).
 
 `PARTIALLY_PAID` **não** é status de fatura (a menção anterior está **SUPERADA**). Pagamento parcial não muda o status da fatura.
 
 `OVERDUE` derivado da data de vencimento (não persistido).
 
-Fluxo: `SCHEDULED` → `OPEN` → `CLOSED` → `PAID`. No máximo **uma** fatura `OPEN` por cartão. Faturas futuras de parcelamento nascem `SCHEDULED` (parcela já vinculada; **não** usar `invoice_id` nulo).
+Fluxo: `SCHEDULED` → `OPEN` → `CLOSED` → `PAID` **ou** `CLOSED` → `SETTLED_BY_AGREEMENT`. No máximo **uma** fatura `OPEN` por cartão. Faturas futuras de parcelamento nascem `SCHEDULED` (parcela já vinculada; **não** usar `invoice_id` nulo).
 
-`PAID` exige fatura já fechada **e** remaining = 0. `OPEN` com remaining 0 **não** é `PAID` até o fechamento. `PAID` é terminal: nada altera a fatura.
+`PAID` exige fatura já fechada **e** remaining = 0 por pagamentos/créditos/ajustes. `OPEN` com remaining 0 **não** é `PAID` até o fechamento. `PAID` e `SETTLED_BY_AGREEMENT` são terminais: nada altera a fatura.
 
 Campos persistidos: cartão, período, fechamento, vencimento, status.
 
@@ -506,9 +506,9 @@ Valor total, valor pago e saldo restante são **derivados** (não colunas). Rema
 
 Itens da fatura: `expense_installments` (`invoice_id` na parcela, nunca na despesa). Uma compra parcelada atravessa várias faturas (RN085).
 
-Pagamento parcial permitido. Parcelamento do **saldo restante** da fatura (`credit_card_invoice_installments`) é operação **separada**, **fora da Fase 9**, e **não** apaga/modifica compras originais.
+Pagamento parcial permitido. Parcelamento/negociação do **saldo restante** da fatura é operação **separada** (**Fase 13**, §19.4 — `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`), **fora da Fase 9**, e **não** apaga/modifica compras originais. V13 `credit_card_invoice_installments` está **SUPERADO** (§269.5); modelo oficial = Agreement + settlement + expense `CREDIT_CARD`.
 
-Fechamento **não** é ação normal do usuário. Scheduler Spring, idempotente: abre `SCHEDULED` cujo ciclo iniciou; fecha `OPEN` cuja `closing_date` chegou (`remaining > 0` → `CLOSED`; `remaining = 0` → `PAID`); `CLOSED` com remaining 0 → `PAID`. Não reabrir. Não fechar de novo. Não alterar `PAID`.
+Fechamento **não** é ação normal do usuário. Scheduler Spring, idempotente: abre `SCHEDULED` cujo ciclo iniciou; fecha `OPEN` cuja `closing_date` chegou (`remaining > 0` → `CLOSED`; `remaining = 0` → `PAID`); `CLOSED` com remaining 0 → `PAID`. Não reabrir. Não fechar de novo. Não alterar `PAID` nem `SETTLED_BY_AGREEMENT`.
 
 ---
 
@@ -693,6 +693,8 @@ Até decisão explícita, **não** implementar Flyway, entidade, enum, CHECK, te
 
 1. `payments.type` — o campo existe no modelo; valores oficiais **não** existem. **Não** usar `type` para `ACTIVE`/`REVERSED`. O estado do payment na Fase 8 é a coluna **`payments.status`**. Pagamento de fatura **não** usa `payments` nem `payments.type`. Não criar enum, CHECK, constantes, validações nem regras sobre `type`.
 2. Edição de parcela já vinculada a fatura × `expenses.total_amount` — a edição cadastral de parcela `OPEN` **sem fatura** (ACCOUNT/NONE) está **fechada** no contrato da Fase 8 (RN227): `total_amount` não muda; soma das parcelas deve continuar igual ao total; sem redistribuição; rollback se não fechar. A pergunta do §269.2 sobre parcela **já pertencente a uma fatura** permanece **DEFERIDA**.
+
+**SUPERADO (Fase 13 contrato):** o antigo bloqueio §269.5 (D1–D11). Decisões fechadas; implementação **ainda pendente** de autorização. Detalhe: `docs/24` §19.4 e `docs/23` §269.5.
 
 **SUPERADO (Fase 9):** o antigo item 269.3 (rateio). Rateio proporcional ao remaining, ordenação remaining ASC, empate `due_date` ASC depois `id` ASC, residual na última, persistido como alocação. Status da fatura **não** muda por pagamento parcial. Detalhe: `docs/23` §269.3 e `docs/24` RN247.
 

@@ -896,101 +896,57 @@ R$ 800
 O sistema não deve considerar os R$ 800 como pagos.
 
 
-# 41. Fluxo — Parcelamento do restante da fatura
+# 41. Fluxo — Parcelamento / negociação do restante da fatura (Fase 13)
 
-Fatura:
+**Status:** `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE` (`docs/24` §19.4).
 
-R$ 2.000
+Somente fatura **`CLOSED`** com remaining > 0.
 
+Exemplo:
 
-Pago:
+Fatura remaining: R$ 1.000  
+Entrada: R$ 400 (conta)  
+Saldo negociado: R$ 600  
+Banco: 10 × R$ 120 → contractedTotal R$ 1.200
 
-R$ 1.200
+Resultado:
 
+- compras originais intactas (remainings zerados via entrada + settlement);
+- fatura → `SETTLED_BY_AGREEMENT`;
+- Agreement + expense `CREDIT_CARD` (`total_amount` 1.200) + parcelas iguais;
+- parcela 1/10 na **próxima** fatura;
+- `used_limit` passa a comprometer o contractedTotal das novas parcelas.
 
-Saldo:
-
-R$ 800
-
-
-Usuário decide parcelar:
-
-R$ 800
-
-
-em:
-
-4 parcelas
+Nova negociação ≠ renegociação (esta antecipa todos os `ACTIVE` do cartão → `RENEGOTIATED`).
 
 
 # 42. Resultado
 
-Criar operação:
+Criar **Agreement** + despesa `CREDIT_CARD` associada.
 
-PARCELAMENTO_CARTAO
-
-
-Parcelas:
-
-1/4
-
-2/4
-
-3/4
-
-4/4
+Parcelas: 1/N … N/N (1ª na próxima fatura).
 
 
 # 43. Valores do parcelamento
 
-O usuário pode definir valores diferentes.
+Plano oficial: `installmentCount` × `installmentAmount` (iguais). Due dates pelo ciclo.
 
 
-Exemplo:
+# 44. Regra — SUPERADA
 
-200
-
-200
-
-200
-
-200
+A redação anterior (“a soma deve representar o saldo negociado”) está **SUPERADA** (RN113). Total contratado pode ser maior que o financedAmount.
 
 
-ou:
+# 45. Fluxo — Custo adicional (conscientização)
 
-150
+Registrar/derivar: financedAmount, contractedTotal, custo adicional, % de acréscimo.
 
-200
-
-200
-
-250
-
-
-# 44. Regra
-
-A soma deve representar:
-
-R$ 800
-
-
-# 45. Fluxo — Parcelamento com juros
-
-Se futuramente houver suporte a juros:
-
-o sistema poderá representar:
-
-principal;
-
-juros;
-
-total.
+Não modelar IOF nem juros bancários compostos nesta fase.
 
 
 ## V1
 
-Não implementar cálculo avançado de juros.
+Não implementar cálculo avançado de juros do emissor.
 
 
 Mas não criar estrutura que impeça evolução futura.

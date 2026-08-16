@@ -1488,38 +1488,66 @@ Proibido em fatura `PAID`. Rateio RN247A.
 `SURCHARGE`: além de fatura não `PAID`, exige **remaining > 0**. Se `remaining = 0`, rejeitar por regra de negócio — **400**, `code = BUSINESS_RULE_VIOLATION`, constante `SURCHARGE_REQUIRES_REMAINING`, mensagem `"O acréscimo só pode ser aplicado quando a fatura possui saldo em aberto."`. Não persistir ajuste sem efeito financeiro.
 
 
-# 64. Parcelamento de fatura
+# 64. Parcelamento / negociação de fatura (Fase 13)
 
-**Fora da Fase 9.**
+**Status:** `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE` (`docs/24` §19.4). **Não implementar** até autorização explícita da etapa de implementação.
 
-Endpoint:
+## Nova negociação
 
-POST /api/v1/invoices/{id}/installments
-
+`POST /api/v1/invoices/{invoiceId}/agreements`
 
 Request:
 
+```json
 {
-  "installments": [
-    {
-      "amount": 450.00,
-      "dueDate": "2026-09-20"
-    },
-    {
-      "amount": 450.00,
-      "dueDate": "2026-10-20"
-    }
-  ]
+  "entryAmount": 400.00,
+  "accountId": "…",
+  "entryPaymentDate": "2026-02-10",
+  "installmentCount": 10,
+  "installmentAmount": 120.00
 }
+```
+
+Regras: fatura `CLOSED` com remaining > 0; `0 <= entryAmount < remaining`; `entryAmount == remaining` → **400** `BUSINESS_RULE_VIOLATION`; parcelas iguais; 1ª na próxima fatura; fatura → `SETTLED_BY_AGREEMENT`; cria Agreement + expense `CREDIT_CARD` (`total_amount = installmentCount × installmentAmount`).
+
+## Renegociação
+
+`POST /api/v1/invoices/{invoiceId}/renegotiations`
+
+Mesmos campos de entrada/plano (`entryAmount`, `accountId`, `entryPaymentDate`, `installmentCount`, `installmentAmount`). **Sem** lista de `agreementId`s. Antecipa automaticamente todos os Agreements `ACTIVE` do cartão: parcelas futuras encerradas com `DISCOUNT` = remaining (consolidação no novo `contractedTotal`); parcela da fatura atual não é duplicada.
+
+## Consultas
+
+- `GET /api/v1/invoices/{invoiceId}/agreements`
+- `GET /api/v1/agreements/{agreementId}`
+
+## Antecipação de parcela do Agreement
+
+`POST /api/v1/agreements/{agreementId}/installments/{installmentId}/anticipate`
+
+Request:
+
+```json
+{
+  "accountId": "…",
+  "amount": 150.00,
+  "paymentDate": "2026-03-01",
+  "settled": true
+}
+```
+
+`settled` só neste fluxo (não no pay de fatura nem no pay ACCOUNT/NONE).
+
+### Legado obsoleto
+
+Não implementar: `POST/GET /api/v1/invoices/{id}/installments` com lista amount/dueDate.
+
+Não confundir com `GET /api/v1/invoices/{id}/items` (Fase 9).
 
 
-# 65. Parcelas da fatura
+# 65. Consulta de parcelas de parcelamento de fatura (legado)
 
-**Fora da Fase 9** (parcelamento do saldo restante — Fase 13). Não confundir com `GET /api/v1/invoices/{id}/items` (parcelas de compras do ciclo, Fase 9).
-
-Endpoint:
-
-GET /api/v1/invoices/{id}/installments
+**Obsoleto.** Substituído por Agreements (§64).
 
 
 # 66. Contas a pagar
