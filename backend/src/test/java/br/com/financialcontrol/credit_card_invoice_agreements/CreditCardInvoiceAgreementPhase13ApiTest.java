@@ -19,28 +19,35 @@ import br.com.financialcontrol.credit_card_invoices.CreditCardInvoiceStatus;
 import br.com.financialcontrol.credit_card_invoices.dto.CreditCardInvoiceResponse;
 import br.com.financialcontrol.credit_cards.dto.CreditCardLimitResponse;
 import br.com.financialcontrol.credit_cards.dto.CreditCardResponse;
+import br.com.financialcontrol.expenses.AdjustmentType;
+import br.com.financialcontrol.expenses.ExpenseService;
 import br.com.financialcontrol.expenses.ExpenseStatus;
 import br.com.financialcontrol.expenses.dto.AdjustmentResponse;
 import br.com.financialcontrol.expenses.dto.ExpenseInstallmentResponse;
 import br.com.financialcontrol.expenses.dto.ExpenseResponse;
 import com.jayway.jsonpath.JsonPath;
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.json.JsonMapper;
@@ -50,10 +57,16 @@ import tools.jackson.databind.json.JsonMapper;
 @Import(PostgresTestcontainersConfig.class)
 class CreditCardInvoiceAgreementPhase13ApiTest {
 
+  private static final String FUTURES_FINANCIAL_DISCOUNT_REASON =
+      "Desconto financeiro por renegociação";
+  private static final String FUTURES_INCORPORATION_REASON = "Incorporação de saldo à renegociação";
+
   @Autowired private MockMvc mockMvc;
   @Autowired private JsonMapper jsonMapper;
   @Autowired private CreditCardInvoiceService invoiceService;
   @Autowired private CreditCardInvoiceRepository invoiceRepository;
+  @Autowired private EntityManager entityManager;
+  @MockitoSpyBean private ExpenseService expenseService;
 
   // --- L01 / L34 / L35 / D11 used_limit ---
 
@@ -358,31 +371,96 @@ class CreditCardInvoiceAgreementPhase13ApiTest {
     assertThat(agreement2.installmentAmount()).isEqualByComparingTo("320.00");
     assertThat(agreement2.installments()).hasSize(10);
 
+    // Persisted settlement = invoiceSettlementAmount (700), not financedAmount (1600)
+    BigDecimal persistedSettlementAmount =
+        entityManager
+            .createQuery(
+                """
+                SELECT s.amount
+                FROM CreditCardInvoiceAgreementSettlement s
+                WHERE s.agreement.id = :agreementId
+                """,
+                BigDecimal.class)
+            .setParameter("agreementId", agreement2.id())
+            .getSingleResult();
+    assertThat(persistedSettlementAmount).isEqualByComparingTo("700.00");
+    assertThat(persistedSettlementAmount).isNotEqualByComparingTo(agreement2.financedAmount());
+
+    List<Object[]> settlementAllocations =
+        entityManager
+            .createQuery(
+                """
+                SELECT a.amount, a.installment.id, a.installment.invoice.id
+                FROM CreditCardInvoiceAgreementSettlementAllocation a
+                WHERE a.settlement.agreement.id = :agreementId
+                """,
+                Object[].class)
+            .setParameter("agreementId", agreement2.id())
+            .getResultList();
+    BigDecimal allocatedTotal =
+        settlementAllocations.stream()
+            .map(row -> (BigDecimal) row[0])
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    assertThat(allocatedTotal).isEqualByComparingTo("700.00");
+    assertThat(settlementAllocations)
+        .allSatisfy(row -> assertThat((UUID) row[2]).isEqualTo(february.id()));
+
+    Set<UUID> februaryInstallmentIds =
+        Arrays.stream(listInvoiceItems(fx, february.id()))
+            .map(ExpenseInstallmentResponse::id)
+            .collect(Collectors.toSet());
+    assertThat(settlementAllocations)
+        .allSatisfy(row -> assertThat(februaryInstallmentIds).contains((UUID) row[1]));
+
     AgreementResponse previous = getAgreement(fx.token(), agreement1.id());
     assertThat(previous.status()).isEqualTo(CreditCardInvoiceAgreementStatus.RENEGOTIATED);
     assertThat(previous.supersededByAgreementId()).isEqualTo(agreement2.id());
     assertThat(previous.installments())
         .allSatisfy(i -> assertThat(i.remainingAmount()).isEqualByComparingTo("0.00"));
 
-    // futures (2/10..10/10) have financial discount + incorporation reasons
-    AgreementInstallmentResponse futureSample = previous.installments().get(1);
-    var adjustments = listInstallmentAdjustments(fx, previous.expenseId(), futureSample.id());
-    assertThat(adjustments)
-        .extracting(a -> a.reason())
-        .contains("Desconto financeiro por renegociação", "Incorporação de saldo à renegociação");
-    BigDecimal discountTotal =
-        adjustments.stream()
-            .filter(a -> "Desconto financeiro por renegociação".equals(a.reason()))
-            .map(a -> a.amount())
+    List<AgreementInstallmentResponse> futureInstallments =
+        previous.installments().stream().filter(i -> !february.id().equals(i.invoiceId())).toList();
+    assertThat(futureInstallments).hasSize(9);
+
+    BigDecimal globalFinancialDiscount = BigDecimal.ZERO.setScale(2);
+    BigDecimal globalIncorporation = BigDecimal.ZERO.setScale(2);
+    for (AgreementInstallmentResponse future : futureInstallments) {
+      List<AdjustmentResponse> adjustments =
+          listInstallmentAdjustments(fx, previous.expenseId(), future.id());
+      assertThat(adjustments)
+          .allSatisfy(a -> assertThat(a.type()).isEqualTo(AdjustmentType.DISCOUNT));
+      assertThat(adjustments)
+          .extracting(AdjustmentResponse::reason)
+          .contains(FUTURES_FINANCIAL_DISCOUNT_REASON, FUTURES_INCORPORATION_REASON);
+      for (AdjustmentResponse adjustment : adjustments) {
+        if (FUTURES_FINANCIAL_DISCOUNT_REASON.equals(adjustment.reason())) {
+          globalFinancialDiscount = globalFinancialDiscount.add(adjustment.amount());
+        } else if (FUTURES_INCORPORATION_REASON.equals(adjustment.reason())) {
+          globalIncorporation = globalIncorporation.add(adjustment.amount());
+        }
+      }
+    }
+    assertThat(globalFinancialDiscount).isEqualByComparingTo("900.00");
+    assertThat(globalIncorporation).isEqualByComparingTo("900.00");
+    assertThat(globalFinancialDiscount.add(globalIncorporation)).isEqualByComparingTo("1800.00");
+    assertThat(futureInstallments)
+        .allSatisfy(i -> assertThat(i.remainingAmount()).isEqualByComparingTo("0.00"));
+
+    // Sample installment still shows both semantic reasons (equal split 100+100)
+    AgreementInstallmentResponse futureSample = futureInstallments.getFirst();
+    var sampleAdjustments = listInstallmentAdjustments(fx, previous.expenseId(), futureSample.id());
+    BigDecimal sampleDiscount =
+        sampleAdjustments.stream()
+            .filter(a -> FUTURES_FINANCIAL_DISCOUNT_REASON.equals(a.reason()))
+            .map(AdjustmentResponse::amount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
-    BigDecimal incorporationTotal =
-        adjustments.stream()
-            .filter(a -> "Incorporação de saldo à renegociação".equals(a.reason()))
-            .map(a -> a.amount())
+    BigDecimal sampleIncorporation =
+        sampleAdjustments.stream()
+            .filter(a -> FUTURES_INCORPORATION_REASON.equals(a.reason()))
+            .map(AdjustmentResponse::amount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
-    // One future installment: 100 discount + 100 incorporation (equal split of 1800→900/900)
-    assertThat(discountTotal).isEqualByComparingTo("100.00");
-    assertThat(incorporationTotal).isEqualByComparingTo("100.00");
+    assertThat(sampleDiscount).isEqualByComparingTo("100.00");
+    assertThat(sampleIncorporation).isEqualByComparingTo("100.00");
 
     CreditCardLimitResponse limit = cardLimit(fx);
     assertThat(limit.usedLimit()).isEqualByComparingTo("3200.00");
@@ -406,6 +484,80 @@ class CreditCardInvoiceAgreementPhase13ApiTest {
               assertThat(item.remainingAmount()).isEqualByComparingTo("0.00");
               assertThat(item.status()).isEqualTo(ExpenseStatus.PAID);
             });
+  }
+
+  @Test
+  void shouldRollbackRenegotiationWhenExpenseCreationFailsMidFlight() throws Exception {
+    Fixture fx = bootstrap("rn254-rollback", "5000.00", "5000.00");
+
+    createCardExpense(fx, "1000.00", "2026-06-05", 1);
+    CreditCardInvoiceResponse june = invoiceByClosing(fx, LocalDate.of(2026, 6, 10));
+    closeUntilStatus(fx.token(), june.id(), CreditCardInvoiceStatus.CLOSED);
+    AgreementResponse first =
+        createAgreement(
+            fx, getInvoice(fx.token(), june.id()).id(), "0.00", 2, "600.00", status().isCreated());
+    UUID julyId = first.installments().getFirst().invoiceId();
+    createCardExpense(fx, "500.00", "2026-07-05", 1);
+    closeUntilStatus(fx.token(), julyId, CreditCardInvoiceStatus.CLOSED);
+    CreditCardInvoiceResponse julyBefore = getInvoice(fx.token(), julyId);
+    assertThat(julyBefore.status()).isEqualTo(CreditCardInvoiceStatus.CLOSED);
+    assertThat(julyBefore.remainingAmount()).isEqualByComparingTo("1100.00");
+    BigDecimal balanceBefore = balance(fx.token(), fx.accountId());
+
+    Mockito.doThrow(new RuntimeException("forced mid-flight failure"))
+        .when(expenseService)
+        .createCreditCardAgreementExpense(
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.anyInt(),
+            Mockito.any(),
+            Mockito.any());
+    try {
+      mockMvc
+          .perform(
+              post("/api/v1/invoices/" + julyId + "/renegotiations")
+                  .header(HttpHeaders.AUTHORIZATION, bearer(fx.token()))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(renegotiateJson(fx.accountId(), "100.00", 2, "700.00", "300.00")))
+          .andExpect(status().isInternalServerError())
+          .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"));
+    } finally {
+      Mockito.reset(expenseService);
+    }
+
+    CreditCardInvoiceResponse julyAfter = getInvoice(fx.token(), julyId);
+    assertThat(julyAfter.status()).isEqualTo(CreditCardInvoiceStatus.CLOSED);
+    assertThat(julyAfter.remainingAmount()).isEqualByComparingTo("1100.00");
+    assertThat(listAgreements(fx, julyId)).isEmpty();
+    AgreementResponse previous = getAgreement(fx.token(), first.id());
+    assertThat(previous.status()).isEqualTo(CreditCardInvoiceAgreementStatus.ACTIVE);
+    assertThat(previous.supersededByAgreementId()).isNull();
+    assertThat(previous.installments().get(1).remainingAmount()).isEqualByComparingTo("600.00");
+    assertThat(balance(fx.token(), fx.accountId())).isEqualByComparingTo(balanceBefore);
+
+    Long settlementCount =
+        entityManager
+            .createQuery(
+                """
+                SELECT COUNT(s)
+                FROM CreditCardInvoiceAgreementSettlement s
+                WHERE s.invoice.id = :invoiceId
+                """,
+                Long.class)
+            .setParameter("invoiceId", julyId)
+            .getSingleResult();
+    assertThat(settlementCount).isZero();
+
+    List<AdjustmentResponse> futureAdjustments =
+        listInstallmentAdjustments(fx, first.expenseId(), previous.installments().get(1).id());
+    assertThat(futureAdjustments)
+        .noneMatch(
+            a ->
+                FUTURES_FINANCIAL_DISCOUNT_REASON.equals(a.reason())
+                    || FUTURES_INCORPORATION_REASON.equals(a.reason()));
   }
 
   @Test

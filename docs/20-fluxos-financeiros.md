@@ -898,7 +898,7 @@ O sistema não deve considerar os R$ 800 como pagos.
 
 # 41. Fluxo — Parcelamento / negociação do restante da fatura (Fase 13)
 
-**Status:** `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA` (`docs/24` §19.4 / RN254).
+**Status:** `CONCLUÍDA E APROVADA` (`docs/24` §19.4 / RN254).
 
 Somente fatura **`CLOSED`** com remaining > 0.
 

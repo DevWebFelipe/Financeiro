@@ -1490,7 +1490,7 @@ Proibido em fatura `PAID`. Rateio RN247A.
 
 # 64. Parcelamento / negociação de fatura (Fase 13)
 
-**Status:** `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA` (`docs/24` §19.4 / RN254).
+**Status:** `CONCLUÍDA E APROVADA` (`docs/24` §19.4 / RN254).
 
 Invariante comum: `contractedTotal = installmentCount × installmentAmount` e `contractedTotal >= financedAmount`. Se `contractedTotal < financedAmount` → **400** `BUSINESS_RULE_VIOLATION` (razão específica, ex. alinhada a `AGREEMENT_CONTRACTED_TOTAL_BELOW_FINANCED_AMOUNT`).
 

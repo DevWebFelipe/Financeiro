@@ -1345,7 +1345,7 @@ Juros/multa de atraso são ajustes (`SURCHARGE` + `reason`), não cálculo autom
 
 # 16. Parcelamento de fatura
 
-**Status:** domínio da **Fase 13**. Contrato oficial: **§19.4** — `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA`.
+**Status:** domínio da **Fase 13**. Contrato oficial: **§19.4** — `CONCLUÍDA E APROVADA`.
 
 A tabela física `credit_card_invoice_installments` (V13) existe no schema e está **SUPERADA** como contrato de negócio (**D4=A**). Novas tabelas de Agreement na implementação.
 
@@ -2087,7 +2087,7 @@ Contrato oficial da Fase 9. **Implementado** e **concluído** (ver `docs/28`).
 
 A Fase 9 absorve o que o roadmap anterior distribuía entre as Fases 9–12, mais as decisões desta consolidação: cadastro e manutenção de cartões; limite derivado; compras `CREDIT_CARD`; parcelamento vinculado a faturas; ciclo; status `SCHEDULED`/`OPEN`/`CLOSED`/`PAID`; fechamento automático (scheduler Spring); pagamento de fatura; rateio persistido; liberação de limite; créditos de cartão; ajustes com `reason`; reverse de pagamentos de fatura; cancelamento/estorno de compra no cartão (RN117 / §269.4 **fechado**).
 
-Fora da Fase 9: parcelamento/negociação/renegociação de fatura (**Fase 13**, §19.4 — `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA`); relatórios/PDF; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição de parcela já em fatura (§269.2.7); `POST /invoices/{id}/close`.
+Fora da Fase 9: parcelamento/negociação/renegociação de fatura (**Fase 13**, §19.4 — `CONCLUÍDA E APROVADA`); relatórios/PDF; frontend financeiro; Refresh Token; `payments.type`; auditoria genérica; edição de parcela já em fatura (§269.2.7); `POST /invoices/{id}/close`.
 
 A RN029A (recusar compra acima do limite) está **SUPERADA**. `PARTIALLY_PAID` como status de **fatura** está **SUPERADO**. O §269.3 (rateio) está **fechado** (RN247). O §269.4 (estorno de compra no cartão já liquidada) está **fechado** (RN117).
 
@@ -2136,9 +2136,9 @@ Operações críticas (compra no cartão, pagamento de fatura, aplicação de cr
 
 # 19.4 Contrato da Fase 13 — Parcelamento, Negociação e Renegociação de Fatura
 
-**Status:** `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA`.
+**Status:** `CONCLUÍDA E APROVADA`.
 
-A base da Fase 13 (D1–D11) e a **emenda de consolidação da renegociação** (RN254) estão implementadas no backend. Não marcar `CONCLUÍDA E APROVADA` até reauditoria explícita.
+A base da Fase 13 (D1–D11) e a **emenda de consolidação da renegociação** (RN254) estão implementadas, testadas e auditadas.
 
 Decisões D1–D11 **fechadas** (2026-08-16) — **não reabertas**. Autoridade: `AGENTS.md` §28 → esta seção → `docs/23` §269.5 → API/testes.
 
@@ -2385,7 +2385,7 @@ Negociação, renegociação e antecipação são atômicas e com lock pessimist
 
 ## RN254 — Consolidação da renegociação (emenda)
 
-Regra determinística da renegociação. **Implementada; aguardando reauditoria.**
+Regra determinística da renegociação. **Implementada e aprovada** (Fase 13 `CONCLUÍDA E APROVADA`).
 
 ### Grandezas
 

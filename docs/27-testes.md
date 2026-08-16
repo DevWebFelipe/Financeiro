@@ -1130,7 +1130,7 @@ Saldo:
 
 # 68. Testes de parcelamento / negociação de fatura (Fase 13)
 
-**Status:** cenários L01–L36 **contratados e cobertos** em `CreditCardInvoiceAgreementPhase13ApiTest` (inclui emenda RN254 e cenário oficial Jan→Fev→Mar). Contrato: `docs/24` §19.4 / RN254 (`IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA`).
+**Status:** cenários L01–L36 **contratados e cobertos** em `CreditCardInvoiceAgreementPhase13ApiTest` (inclui emenda RN254 e cenário oficial Jan→Fev→Mar). Contrato: `docs/24` §19.4 / RN254 (`CONCLUÍDA E APROVADA`).
 
 Mínimo contratado:
 

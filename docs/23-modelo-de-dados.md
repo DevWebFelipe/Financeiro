@@ -1580,7 +1580,7 @@ R$ 800
 
 # 116. Parcelamento de fatura (Fase 13)
 
-**Fase 13 — `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA`** (`docs/24` §19.4 / RN254; §269.5 **FECHADO** para D1–D11).
+**Fase 13 — `CONCLUÍDA E APROVADA`** (`docs/24` §19.4 / RN254; §269.5 **FECHADO** para D1–D11).
 
 Tabela legado (V13) — **SUPERADA** como negócio (**D4=A**):
 
@@ -2427,7 +2427,7 @@ O `status` da fatura (`SCHEDULED`, `OPEN`, `CLOSED`, `PAID`, `SETTLED_BY_AGREEME
 
 # 199. Parcelamento / negociação do saldo restante (Fase 13)
 
-**Contrato:** `docs/24` §19.4 / RN254 — `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA`. V13 `credit_card_invoice_installments` **SUPERADO** (D4).
+**Contrato:** `docs/24` §19.4 / RN254 — `CONCLUÍDA E APROVADA`. V13 `credit_card_invoice_installments` **SUPERADO** (D4).
 
 - COMPRA ORIGINAL ≠ parcela de Agreement;
 - somente fatura `CLOSED` com remaining > 0;
@@ -3321,7 +3321,7 @@ Itens **ainda bloqueados**: 269.1 (`payments.type`); 269.2.7 (edição de parcel
 
 O item 269.2 está **fechado** para ACCOUNT/NONE na Fase 8. O item **269.3 está fechado** na Fase 9 (rateio RN247; status da fatura RN090/RN091). O item **269.4 está fechado** na Fase 9 (RN117). O item **269.5 está fechado** (Fase 13 D1–D11 — `docs/24` §19.4).
 
-A Fase 13 está com **`IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA`**.
+A Fase 13 está **`CONCLUÍDA E APROVADA`**.
 
 Não criar migration, coluna, enum, CHECK, constante, validação, teste ou regra de Service/API dependente dos itens ainda bloqueados até decisão explícita.
 
@@ -3397,11 +3397,11 @@ Respostas oficiais (RN117):
 5. Remaining operacional da fatura = soma dos remainings das parcelas não `CANCELLED`/`REFUNDED`.
 
 
-## 269.5 Fase 13 — Agreement / liquidação por negociação — FECHADO (D1–D11); emenda de renegociação documentada
+## 269.5 Fase 13 — Agreement / liquidação por negociação — FECHADO (D1–D11); emenda RN254 aprovada
 
 Decisões D1–D11 fechadas e **não reabertas**. Contrato: `docs/24` §19.4 / RN254.
 
-Status da fase: `IMPLEMENTAÇÃO DA EMENDA CONCLUÍDA — AGUARDANDO REAUDITORIA`.
+Status da fase: `CONCLUÍDA E APROVADA`.
 
 Resumo (D1–D11 + emenda RN254 no código):
 
@@ -3415,5 +3415,3 @@ Resumo (D1–D11 + emenda RN254 no código):
 8. Plano iguais — D9=A; `contractedTotal >= financedAmount`.
 9. `CANCELLED` reservado — D10=A.
 10. `used_limit` = **contractedTotal** — D11.
-
-Não marcar `CONCLUÍDA E APROVADA` até reauditoria.
