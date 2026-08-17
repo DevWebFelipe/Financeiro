@@ -777,7 +777,7 @@ Contrato: `docs/24` §19.7 / `docs/25` §66.
 
 Contrato: `docs/24` §19.8 / `docs/25` §67.
 
-**Status:** contrato documentado — **não implementado**. Não criar testes de código nesta etapa. Quando a implementação começar: classe prevista `ReceivablesApiTest` (HTTP + Testcontainers + clock injetável para `overdue`). **Não** criar infraestrutura especial de concorrência (D30).
+**Status:** contrato documentado — **não implementado**. Classe: `ReceivablesApiTest` (HTTP + Testcontainers + `Clock` fixo em `2026-08-17T15:00:00Z` / hoje financeiro `2026-08-17` em `America/Sao_Paulo`; override de bean apenas neste teste). Os testes existem e **falham** até a implementação do endpoint. **Não** criar infraestrutura especial de concorrência (D30).
 
 **Não** testar a Parte 2 (movimentações/baixas). **Não** persistir remaining. **Não** criar tabela `receivables`. **Não** testar `dueDate` como alias. **Não** testar receita sem `expectedDate`.
 
