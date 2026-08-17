@@ -532,15 +532,15 @@ class Phase14ApiTest {
   private void receiveIncome(String token, UUID incomeId, UUID accountId) throws Exception {
     mockMvc
         .perform(
-            post("/api/v1/incomes/" + incomeId + "/receive")
+            post("/api/v1/incomes/" + incomeId + "/receipts")
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
-                    {"accountId":"%s","receivedDate":"%s"}
+                    {"accountId":"%s","amount":100.00,"date":"%s"}
                     """
                         .formatted(accountId, today())))
-        .andExpect(status().isOk());
+        .andExpect(status().isCreated());
   }
 
   private String registerAndLogin(String name, String email, String password) throws Exception {

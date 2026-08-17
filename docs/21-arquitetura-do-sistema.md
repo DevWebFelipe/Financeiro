@@ -389,7 +389,7 @@ Pacotes da Fase 17 — Parte 1 (`CONCLUÍDA E APROVADA`):
 - `receivables` — visão de leitura de contas a receber (`ReceivablesController` → `ReceivablesService` → consultas em `IncomeRepository`).
 - **Sem** entidade JPA `Receivable`, **sem** tabela `receivables`, **sem** remaining persistido.
 - Vocabulário de data: `expectedDate` (sem alias `dueDate`). Filtros, ordenação, paginação e resumo **no banco** (não copiar o filtro em memória de payables). Contrato: `docs/24` §19.8.
-- A Fase 17 inteira permanece em andamento. Parte 2: **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE** (`docs/24` §19.9). D73–D93 **fechadas**. Escrita de responsável em Income faz parte da Parte 2 (RN306 / D89) e **não** está implementada. Não criar tabela `receivables`. Não criar `income_movements` até autorização.
+- A Fase 17 está **`CONCLUÍDA E APROVADA`** (Parte 1 + Parte 2). Pacote `receivables`: visão de leitura; **sem** tabela `receivables`. Domínio `incomes`: tabela `income_movements` (V30); movimentações ACCRUAL/RECEIPT; D73–D94 **fechadas** e **implementadas**. Escrita de responsável em Income (**D89** / RN306) **implementada**. **Não** criar `IncomeMovementService` nem módulo `transactions`.
 
 Pacotes da Fase 5:
 
@@ -424,11 +424,11 @@ Conta
 
 Isso não autoriza criar agora uma entidade genérica `Transaction`.
 
-A implementação concreta ocorre por domínio (`incomes`, `expenses`, `transfers`, `balance_adjustments`, …), sem ledger paralelo. A Parte 2 de receitas contrata fatos `income_movements` **dentro** do domínio `incomes` — não um `Transaction` genérico (`docs/24` §19.9.14). **Não criar agora.**
+A implementação concreta ocorre por domínio (`incomes`, `expenses`, `transfers`, `balance_adjustments`, …), sem ledger paralelo. A Parte 2 de receitas usa fatos `income_movements` **dentro** do domínio `incomes` — não um `Transaction` genérico (`docs/24` §19.9.14). **Implementado** (V30).
 
-Na Fase 6, receita `RECEIVED` passa a participar positivamente do saldo da conta informada (`+ amount`). Receita `EXPECTED` ou `CANCELLED` não participa do saldo efetivo.
+Na Fase 6, receita `RECEIVED` passava a participar positivamente do saldo da conta informada (`+ amount`). Receita `EXPECTED` ou `CANCELLED` não participa do saldo efetivo.
 
-**Fase 17 Parte 2 (contrato fechado — implementação pendente):** o efeito no saldo passa a ser a soma dos RECEIPT `ACTIVE` (`docs/24` §19.9.11 / emenda futura de RN240 / D83). Acréscimos não movimentam conta. Estorno de RECEIPT mantém RN200 (D80). Não implementar agora.
+**Fase 17 Parte 2 (implementada):** o efeito no saldo é a soma dos RECEIPT `ACTIVE` por `movement_date` (**D83** / RN240). Acréscimos (ACCRUAL) não movimentam conta. Estorno de RECEIPT mantém RN200 (**D80-A**). RN010A considera qualquer RECEIPT histórico (ACTIVE ou REVERSED).
 
 A partir da Fase 7, pagamentos de despesa cuja despesa não está `CANCELLED` nem `REFUNDED` participam negativamente (`− payments.amount`). Criação de despesa não altera saldo. Estorno de despesa (`REFUNDED`) faz esses pagamentos deixarem de ser subtraídos; as linhas de `payments` permanecem.
 
@@ -1580,7 +1580,7 @@ Pagamento deve ser tratado como operação financeira própria.
 
 Estorno deve ser tratado como operação própria.
 
-Em receitas, estorno (`POST /incomes/{id}/reverse`) desfaz o recebimento (`RECEIVED` → `EXPECTED`) e **não** cancela a duplicata.
+Em receitas, estorno canônico (`POST /incomes/{id}/movements/{movementId}/reverse`) desfaz o RECEIPT (`RECEIVED` → `EXPECTED` quando remaining > 0) e **não** cancela a duplicata. Endpoints legados da Fase 6 (`/receive`, `/reverse`) foram **removidos** (**D74-A**).
 
 Cancelamento de receita (`POST /incomes/{id}/cancel`) é operação distinta (`EXPECTED` → `CANCELLED`).
 

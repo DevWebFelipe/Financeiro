@@ -53,8 +53,8 @@ class IncomeApiTest {
             .andExpect(jsonPath("$.accountId").value((Object) null))
             .andExpect(jsonPath("$.receivedDate").value((Object) null))
             .andExpect(jsonPath("$.userId").doesNotExist())
-            .andExpect(jsonPath("$.responsibleType").doesNotExist())
-            .andExpect(jsonPath("$.responsibleName").doesNotExist())
+            .andExpect(jsonPath("$.responsibleType").value((Object) null))
+            .andExpect(jsonPath("$.responsibleName").value((Object) null))
             .andReturn();
 
     IncomeResponse body = read(result, IncomeResponse.class);
@@ -102,7 +102,7 @@ class IncomeApiTest {
     IncomeResponse inRange = createIncome(token, "No período", "100.00", "2026-08-10");
     createIncome(token, "Fora", "200.00", "2026-07-01");
     AccountResponse account = createAccount(token);
-    receive(token, inRange.id(), account.id(), "2026-09-01");
+    receipt(token, inRange.id(), account.id(), "100.00", "2026-08-12");
 
     mockMvc
         .perform(
@@ -139,7 +139,7 @@ class IncomeApiTest {
     AccountResponse account = createAccount(token);
     IncomeResponse received =
         createIncome(token, category.id(), "Recebida", "100.00", "2026-08-05");
-    receive(token, received.id(), account.id(), "2026-08-06");
+    receipt(token, received.id(), account.id(), "100.00", "2026-08-06");
     IncomeResponse cancelled =
         createIncome(token, category.id(), "Cancelada", "50.00", "2026-08-05");
     cancel(token, cancelled.id());
@@ -163,51 +163,27 @@ class IncomeApiTest {
   }
 
   @Test
-  void shouldReceiveIncomeIncreaseBalanceAndReverseWithoutCancelling() throws Exception {
+  void shouldReceiptIncomeIncreaseBalanceAndReverseWithoutCancelling() throws Exception {
     String token = registerAndLogin("Alice", uniqueEmail("cycle"), "senha-segura");
     AccountResponse account = createAccount(token, "200.00");
     IncomeResponse created = createIncome(token, "Salário", "1000.00", "2026-08-05");
 
     assertThat(balance(token, account.id())).isEqualByComparingTo("200.00");
 
-    mockMvc
-        .perform(
-            post("/api/v1/incomes/" + created.id() + "/receive")
-                .header(HttpHeaders.AUTHORIZATION, bearer(token))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(receiveJson(account.id(), "2026-08-06")))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("RECEIVED"))
-        .andExpect(jsonPath("$.accountId").value(account.id().toString()))
-        .andExpect(jsonPath("$.receivedDate").value("2026-08-06"));
+    receipt(token, created.id(), account.id(), "1000.00", "2026-08-06");
 
+    assertThat(getIncome(token, created.id()).status()).isEqualTo(IncomeStatus.RECEIVED);
     assertThat(balance(token, account.id())).isEqualByComparingTo("1200.00");
 
-    mockMvc
-        .perform(
-            post("/api/v1/incomes/" + created.id() + "/reverse")
-                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("EXPECTED"))
-        .andExpect(jsonPath("$.accountId").value((Object) null))
-        .andExpect(jsonPath("$.receivedDate").value((Object) null));
+    reverseFirstReceipt(token, created.id());
 
     Income afterReverse = incomeRepository.findById(created.id()).orElseThrow();
     assertThat(afterReverse.getStatus()).isEqualTo(IncomeStatus.EXPECTED);
     assertThat(afterReverse.getStatus()).isNotEqualTo(IncomeStatus.CANCELLED);
-    assertThat(afterReverse.getAccount()).isNull();
-    assertThat(afterReverse.getReceivedDate()).isNull();
     assertThat(balance(token, account.id())).isEqualByComparingTo("200.00");
 
-    mockMvc
-        .perform(
-            post("/api/v1/incomes/" + created.id() + "/receive")
-                .header(HttpHeaders.AUTHORIZATION, bearer(token))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(receiveJson(account.id(), "2026-08-07")))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("RECEIVED"))
-        .andExpect(jsonPath("$.receivedDate").value("2026-08-07"));
+    receipt(token, created.id(), account.id(), "1000.00", "2026-08-07");
+    assertThat(getIncome(token, created.id()).status()).isEqualTo(IncomeStatus.RECEIVED);
     assertThat(balance(token, account.id())).isEqualByComparingTo("1200.00");
   }
 
@@ -216,16 +192,12 @@ class IncomeApiTest {
     String token = registerAndLogin("Alice", uniqueEmail("neg"), "senha-segura");
     AccountResponse account = createAccount(token, "-800.00");
     IncomeResponse created = createIncome(token, "Salário", "1000.00", "2026-08-05");
-    receive(token, created.id(), account.id(), "2026-08-06");
+    receipt(token, created.id(), account.id(), "1000.00", "2026-08-06");
     assertThat(balance(token, account.id())).isEqualByComparingTo("200.00");
 
-    mockMvc
-        .perform(
-            post("/api/v1/incomes/" + created.id() + "/reverse")
-                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("EXPECTED"));
+    reverseFirstReceipt(token, created.id());
 
+    assertThat(getIncome(token, created.id()).status()).isEqualTo(IncomeStatus.EXPECTED);
     assertThat(balance(token, account.id())).isEqualByComparingTo("-800.00");
   }
 
@@ -248,10 +220,10 @@ class IncomeApiTest {
 
     mockMvc
         .perform(
-            post("/api/v1/incomes/" + created.id() + "/receive")
+            post("/api/v1/incomes/" + created.id() + "/receipts")
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(receiveJson(account.id(), "2026-08-06")))
+                .content(receiptJson(account.id(), "1000.00", "2026-08-06")))
         .andExpect(status().isBadRequest());
     mockMvc
         .perform(
@@ -265,7 +237,7 @@ class IncomeApiTest {
     String token = registerAndLogin("Alice", uniqueEmail("no-direct-cancel"), "senha-segura");
     AccountResponse account = createAccount(token);
     IncomeResponse created = createIncome(token, "Salário", "100.00", "2026-08-05");
-    receive(token, created.id(), account.id(), "2026-08-06");
+    receipt(token, created.id(), account.id(), "100.00", "2026-08-06");
 
     mockMvc
         .perform(
@@ -287,34 +259,33 @@ class IncomeApiTest {
         createIncome(token, category.id(), "Esperada", "100.00", "2026-08-05");
     IncomeResponse received =
         createIncome(token, category.id(), "Recebida", "100.00", "2026-08-05");
-    receive(token, received.id(), account.id(), "2026-08-06");
+    receipt(token, received.id(), account.id(), "100.00", "2026-08-06");
     IncomeResponse cancelled =
         createIncome(token, category.id(), "Cancelada", "100.00", "2026-08-05");
     cancel(token, cancelled.id());
 
     mockMvc
         .perform(
-            post("/api/v1/incomes/" + received.id() + "/receive")
+            post("/api/v1/incomes/" + cancelled.id() + "/receipts")
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(receiveJson(account.id(), "2026-08-07")))
+                .content(receiptJson(account.id(), "100.00", "2026-08-07")))
         .andExpect(status().isBadRequest());
     mockMvc
         .perform(
-            post("/api/v1/incomes/" + cancelled.id() + "/receive")
+            post("/api/v1/incomes/"
+                    + expected.id()
+                    + "/movements/"
+                    + UUID.randomUUID()
+                    + "/reverse")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+        .andExpect(status().isNotFound());
+    mockMvc
+        .perform(
+            post("/api/v1/incomes/" + cancelled.id() + "/receipts")
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(receiveJson(account.id(), "2026-08-07")))
-        .andExpect(status().isBadRequest());
-    mockMvc
-        .perform(
-            post("/api/v1/incomes/" + expected.id() + "/reverse")
-                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
-        .andExpect(status().isBadRequest());
-    mockMvc
-        .perform(
-            post("/api/v1/incomes/" + cancelled.id() + "/reverse")
-                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+                .content(receiptJson(account.id(), "10.00", "2026-08-07")))
         .andExpect(status().isBadRequest());
   }
 
@@ -340,14 +311,14 @@ class IncomeApiTest {
         .andExpect(status().isNotFound());
     mockMvc
         .perform(
-            post("/api/v1/incomes/" + incomeA.id() + "/receive")
+            post("/api/v1/incomes/" + incomeA.id() + "/receipts")
                 .header(HttpHeaders.AUTHORIZATION, bearer(tokenB))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(receiveJson(accountB.id(), "2026-08-06")))
+                .content(receiptJson(accountB.id(), "100.00", "2026-08-06")))
         .andExpect(status().isNotFound());
     mockMvc
         .perform(
-            post("/api/v1/incomes/" + incomeA.id() + "/reverse")
+            post("/api/v1/incomes/" + incomeA.id() + "/movements/" + UUID.randomUUID() + "/reverse")
                 .header(HttpHeaders.AUTHORIZATION, bearer(tokenB)))
         .andExpect(status().isNotFound());
     mockMvc
@@ -406,17 +377,17 @@ class IncomeApiTest {
         .andExpect(status().isBadRequest());
     mockMvc
         .perform(
-            post("/api/v1/incomes/" + income.id() + "/receive")
+            post("/api/v1/incomes/" + income.id() + "/receipts")
                 .header(HttpHeaders.AUTHORIZATION, bearer(tokenA))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(receiveJson(foreignAccount.id(), "2026-08-06")))
+                .content(receiptJson(foreignAccount.id(), "100.00", "2026-08-06")))
         .andExpect(status().isNotFound());
     mockMvc
         .perform(
-            post("/api/v1/incomes/" + income.id() + "/receive")
+            post("/api/v1/incomes/" + income.id() + "/receipts")
                 .header(HttpHeaders.AUTHORIZATION, bearer(tokenA))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(receiveJson(inactiveAccount.id(), "2026-08-06")))
+                .content(receiptJson(inactiveAccount.id(), "100.00", "2026-08-06")))
         .andExpect(status().isBadRequest());
   }
 
@@ -458,7 +429,8 @@ class IncomeApiTest {
                     {"categoryId":"%s","description":"Salário","amount":100.00,"expectedDate":"2026-08-05","responsibleType":"MINE"}
                     """
                         .formatted(category.id())))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.responsibleType").value("MINE"));
     mockMvc.perform(get("/api/v1/incomes")).andExpect(status().isUnauthorized());
     mockMvc
         .perform(get("/api/v1/incomes/" + UUID.randomUUID()))
@@ -498,15 +470,43 @@ class IncomeApiTest {
     return read(result, IncomeResponse.class);
   }
 
-  private void receive(String token, UUID incomeId, UUID accountId, String receivedDate)
+  private void receipt(String token, UUID incomeId, UUID accountId, String amount, String date)
       throws Exception {
     mockMvc
         .perform(
-            post("/api/v1/incomes/" + incomeId + "/receive")
+            post("/api/v1/incomes/" + incomeId + "/receipts")
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(receiveJson(accountId, receivedDate)))
+                .content(receiptJson(accountId, amount, date)))
+        .andExpect(status().isCreated());
+  }
+
+  private void reverseFirstReceipt(String token, UUID incomeId) throws Exception {
+    MvcResult movements =
+        mockMvc
+            .perform(
+                get("/api/v1/incomes/" + incomeId + "/movements")
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+            .andExpect(status().isOk())
+            .andReturn();
+    UUID movementId =
+        UUID.fromString(
+            JsonPath.read(movements.getResponse().getContentAsString(), "$.items[0].id"));
+    mockMvc
+        .perform(
+            post("/api/v1/incomes/" + incomeId + "/movements/" + movementId + "/reverse")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
         .andExpect(status().isOk());
+  }
+
+  private IncomeResponse getIncome(String token, UUID incomeId) throws Exception {
+    MvcResult result =
+        mockMvc
+            .perform(
+                get("/api/v1/incomes/" + incomeId).header(HttpHeaders.AUTHORIZATION, bearer(token)))
+            .andExpect(status().isOk())
+            .andReturn();
+    return read(result, IncomeResponse.class);
   }
 
   private void cancel(String token, UUID incomeId) throws Exception {
@@ -616,10 +616,10 @@ class IncomeApiTest {
         .formatted(categoryId, description, amount, expectedDate);
   }
 
-  private static String receiveJson(UUID accountId, String receivedDate) {
+  private static String receiptJson(UUID accountId, String amount, String date) {
     return """
-        {"accountId":"%s","receivedDate":"%s"}
+        {"accountId":"%s","amount":%s,"date":"%s"}
         """
-        .formatted(accountId, receivedDate);
+        .formatted(accountId, amount, date);
   }
 }

@@ -4,6 +4,8 @@ import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.InvalidRequestException;
 import br.com.financialcontrol.expenses.ResponsibleType;
 import br.com.financialcontrol.incomes.Income;
+import br.com.financialcontrol.incomes.IncomeMovementRepository;
+import br.com.financialcontrol.incomes.IncomeMovementType;
 import br.com.financialcontrol.incomes.IncomeRepository;
 import br.com.financialcontrol.incomes.IncomeStatus;
 import br.com.financialcontrol.receivables.dto.ReceivableItemResponse;
@@ -15,7 +17,9 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -34,10 +38,15 @@ public class ReceivablesService {
   private static final int MAX_PAGE_SIZE = 100;
 
   private final IncomeRepository incomeRepository;
+  private final IncomeMovementRepository incomeMovementRepository;
   private final Clock clock;
 
-  public ReceivablesService(IncomeRepository incomeRepository, Clock clock) {
+  public ReceivablesService(
+      IncomeRepository incomeRepository,
+      IncomeMovementRepository incomeMovementRepository,
+      Clock clock) {
     this.incomeRepository = incomeRepository;
+    this.incomeMovementRepository = incomeMovementRepository;
     this.clock = clock;
   }
 
@@ -121,7 +130,7 @@ public class ReceivablesService {
             receivedAmount);
 
     List<ReceivableItemResponse> items =
-        result.getContent().stream().map(income -> toItem(income, today)).toList();
+        toItems(result.getContent(), today, authenticatedUser.userId());
     return new ReceivablePageResponse(
         items,
         summary,
@@ -131,9 +140,42 @@ public class ReceivablesService {
         result.getTotalPages());
   }
 
-  private static ReceivableItemResponse toItem(Income income, LocalDate today) {
+  private List<ReceivableItemResponse> toItems(List<Income> incomes, LocalDate today, UUID userId) {
+    Map<UUID, Totals> totalsByIncome = loadTotals(userId, incomes);
+    return incomes.stream()
+        .map(
+            income ->
+                toItem(income, today, totalsByIncome.getOrDefault(income.getId(), Totals.ZERO)))
+        .toList();
+  }
+
+  private Map<UUID, Totals> loadTotals(UUID userId, List<Income> incomes) {
+    if (incomes.isEmpty()) {
+      return Map.of();
+    }
+    List<UUID> ids = incomes.stream().map(Income::getId).toList();
+    Map<UUID, Totals> totals = new HashMap<>();
+    for (Object[] row :
+        incomeMovementRepository.sumActiveAmountsByIncomeIdsAndUserId(userId, ids)) {
+      UUID incomeId = (UUID) row[0];
+      IncomeMovementType type = (IncomeMovementType) row[1];
+      BigDecimal amount = money(row[2]);
+      Totals current = totals.getOrDefault(incomeId, Totals.ZERO);
+      if (type == IncomeMovementType.ACCRUAL) {
+        totals.put(incomeId, new Totals(amount, current.received()));
+      } else if (type == IncomeMovementType.RECEIPT) {
+        totals.put(incomeId, new Totals(current.accrued(), amount));
+      }
+    }
+    return totals;
+  }
+
+  private static ReceivableItemResponse toItem(Income income, LocalDate today, Totals totals) {
     boolean overdue =
         income.getStatus() == IncomeStatus.EXPECTED && income.getExpectedDate().isBefore(today);
+    BigDecimal amount = income.getAmount().setScale(2, RoundingMode.HALF_UP);
+    BigDecimal remaining =
+        amount.add(totals.accrued()).subtract(totals.received()).setScale(2, RoundingMode.HALF_UP);
     return new ReceivableItemResponse(
         income.getId(),
         income.getCategory().getId(),
@@ -141,7 +183,10 @@ public class ReceivablesService {
         income.getResponsibleType(),
         income.getResponsibleName(),
         income.getDescription(),
-        income.getAmount().setScale(2, RoundingMode.HALF_UP),
+        amount,
+        totals.accrued(),
+        totals.received(),
+        remaining,
         income.getExpectedDate(),
         income.getReceivedDate(),
         income.getStatus(),
@@ -158,9 +203,6 @@ public class ReceivablesService {
       throw new InvalidRequestException(INVALID_DATA);
     }
     if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
-      throw new InvalidRequestException(INVALID_DATA);
-    }
-    if (status == IncomeStatus.EXPECTED && dateType == ReceivableDateType.RECEIVED) {
       throw new InvalidRequestException(INVALID_DATA);
     }
     if (status == IncomeStatus.RECEIVED && dateType == ReceivableDateType.EXPECTED) {
@@ -284,4 +326,11 @@ public class ReceivablesService {
 
   private record DateBounds(
       LocalDate expectedMin, LocalDate expectedMax, LocalDate receivedMin, LocalDate receivedMax) {}
+
+  private record Totals(BigDecimal accrued, BigDecimal received) {
+    private static final Totals ZERO =
+        new Totals(
+            BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP),
+            BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+  }
 }

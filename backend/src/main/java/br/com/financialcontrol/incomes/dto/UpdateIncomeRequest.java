@@ -1,5 +1,6 @@
 package br.com.financialcontrol.incomes.dto;
 
+import br.com.financialcontrol.expenses.ResponsibleType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
@@ -19,10 +20,14 @@ public record UpdateIncomeRequest(
             message = "O valor deve ter no máximo 17 dígitos inteiros e 2 decimais.")
         BigDecimal amount,
     @NotNull(message = "A data prevista é obrigatória.") LocalDate expectedDate,
-    String notes) {
+    String notes,
+    ResponsibleType responsibleType,
+    String responsibleName) {
 
   public UpdateIncomeRequest {
     description = description == null ? null : description.trim();
     notes = notes == null || notes.isBlank() ? null : notes.trim();
+    responsibleName =
+        responsibleName == null || responsibleName.isBlank() ? null : responsibleName.trim();
   }
 }

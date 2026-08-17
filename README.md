@@ -216,21 +216,25 @@ Não existe `GET` por id, reativação nem `DELETE` de categoria nesta fase.
 
 ---
 
-## Receitas (Fase 6)
+## Receitas (Fase 17 — Parte 2)
 
-Implementado: criar prevista, listar (paginado), consultar, editar (`EXPECTED`), receber, estornar e cancelar. Sem responsável nesta fase.
+**CONCLUÍDA E APROVADA** (`docs/24` §19.9 / `docs/25` §32 / §67A). Movimentações em `income_movements`; remaining derivado; saldo via RECEIPT ACTIVE. Endpoints legados `/receive` e `/reverse` **removidos** (**D74-A**).
 
 | Método | Caminho | Autenticação | Resposta |
 |--------|---------|--------------|----------|
-| `GET` | `/api/v1/incomes` | Bearer | `200` página (`items`, `page`, `size`, `totalItems`, `totalPages`) |
+| `GET` | `/api/v1/incomes` | Bearer | `200` página |
 | `GET` | `/api/v1/incomes/{id}` | Bearer | `200`; `404` se não for do usuário |
-| `POST` | `/api/v1/incomes` | Bearer | `201` (`EXPECTED`; `accountId` e `receivedDate` nulos) |
+| `POST` | `/api/v1/incomes` | Bearer | `201` (`EXPECTED`; inclui `responsibleType`/`responsibleName` opcionais) |
 | `PUT` | `/api/v1/incomes/{id}` | Bearer | `200`; somente `EXPECTED` |
-| `POST` | `/api/v1/incomes/{id}/receive` | Bearer | `200` (`RECEIVED`) |
-| `POST` | `/api/v1/incomes/{id}/reverse` | Bearer | `200` (`EXPECTED`; limpa conta e data) |
-| `POST` | `/api/v1/incomes/{id}/cancel` | Bearer | `200` (`CANCELLED`; somente `EXPECTED`) |
+| `POST` | `/api/v1/incomes/{id}/accruals` | Bearer | `201` (ACCRUAL) |
+| `POST` | `/api/v1/incomes/{id}/receipts` | Bearer | `201` (RECEIPT) |
+| `GET` | `/api/v1/incomes/{id}/movements` | Bearer | `200` página |
+| `POST` | `/api/v1/incomes/{id}/movements/{movementId}/reverse` | Bearer | `200` (REVERSED) |
+| `POST` | `/api/v1/incomes/{id}/cancel` | Bearer | `200` (`CANCELLED`; somente `EXPECTED` sem RECEIPT ACTIVE) |
 
-Estorno e cancelamento são operações distintas. O estorno pode deixar saldo negativo. Detalhes: `docs/25-api.md`.
+Estorno de movimentação e cancelamento são operações distintas. Detalhes: `docs/25-api.md` §32 e §67A.
+
+**Histórico Fase 6 (removidos):** `POST /incomes/{id}/receive`, `POST /incomes/{id}/reverse`.
 
 ---
 
@@ -308,9 +312,9 @@ Linha = parcela ACCOUNT/NONE com remaining > 0 **ou** fatura com remaining > 0. 
 
 ---
 
-## Contas a receber (Fase 17 — Parte 1)
+## Contas a receber (Fase 17)
 
-**CONCLUÍDA E APROVADA** (`docs/24` §19.8 / `docs/25` §67). Auditoria: **APROVADA COM RESSALVAS** (não bloqueantes). A Fase 17 inteira **não** está concluída. Parte 2: **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE** (`docs/24` §19.9). D73–D93 **fechadas**. Não implementar até autorização explícita.
+**CONCLUÍDA E APROVADA** (`docs/24` §19.8 / §19.9 / `docs/25` §67 / §67A). Parte 1: visão derivada. Parte 2: movimentações (`income_movements`), item/resumo evoluídos (D77-A / D92-B), filtros D78-A / D88 / D94.
 
 Visão derivada de `Income`. Sem tabela `receivables`. Endpoint:
 
@@ -343,9 +347,8 @@ Data: `expectedDate` (obrigatória; sem alias `dueDate`). Padrão: somente `EXPE
 | Saldo | Derivado: **total** (RN240), **reservado em metas** e **disponível** (Fase 15); operações normais usam disponível; sem `current_balance` |
 | Metas (Fase 15) | Reserva vinculada a conta; contribuição; resgate em `ACTIVE` e `COMPLETED`; conclusão manual; cancelamento só com `currentAmount = 0`; `currentAmount` e `progressPercent` derivados |
 | Contas a pagar (Fase 16) | Visão derivada `GET /api/v1/payables` (`CONCLUÍDA E APROVADA`); linha = parcela ACCOUNT/NONE ou fatura, remaining > 0; sem tabela; cartão só como fatura |
-| Contas a receber (Fase 17 Parte 1) | Visão derivada `GET /api/v1/receivables` (`CONCLUÍDA E APROVADA`); `expectedDate`; sem tabela |
-| Contas a receber (Fase 17 Parte 2) | Contrato consolidado (`docs/24` §19.9); D73–D93 fechadas; movimentações de receita; **IMPLEMENTAÇÃO PENDENTE** |
-| Receita | `EXPECTED` / `RECEIVED` / `CANCELLED`; cancelar inutiliza (`EXPECTED` → `CANCELLED`); estornar desfaz recebimento e mantém ativa (`RECEIVED` → `EXPECTED`); limpa `account_id` e `received_date`; pode deixar saldo negativo; sem `REVERSED`; sem responsável na API **implementada** da Fase 6 (`responsible_type` nullable; escrita contratada na Parte 2 / RN306) |
+| Contas a receber (Fase 17) | **`CONCLUÍDA E APROVADA`**: visão `GET /api/v1/receivables`; `income_movements` (V30); D73–D94 implementadas; sem tabela `receivables` |
+| Receita | `EXPECTED` / `RECEIVED` / `CANCELLED`; acréscimos (ACCRUAL) e recebimentos (RECEIPT) em `income_movements`; remaining derivado; cancelar somente sem RECEIPT ACTIVE (**D73**); estorno por movimentação (`/movements/{id}/reverse`); responsável (**D89**) implementado; cabeçalho `account_id`/`received_date` legado (**D76**) |
 | Despesa (Fase 7) | `ACCOUNT` e `NONE`; criação `OPEN` sem payment; parcela 1/1 interna; `POST /expenses/{id}/pay`; cancelar só `OPEN`; estornar `PARTIALLY_PAID`/`PAID` → `REFUNDED`; `overdue` derivado; cartão fora. A RN210 (payment na mesma conta) foi **SUPERADA** no contrato da Fase 8. |
 | Pagamentos | Sem saldo negativo em operações normais; fatura parcial limitada ao saldo da conta |
 | PDF / gráficos | OpenPDF / Apache ECharts |
@@ -527,11 +530,11 @@ Fase 13 — Parcelamento / negociação / renegociação de fatura — CONCLUÍD
 Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial — CONCLUÍDA E APROVADA
 Fase 15 — Metas — implementação concluída — aguardando auditoria final
 Fase 16 — Contas a pagar — CONCLUÍDA E APROVADA
-Fase 17 — Contas a receber — Parte 1 CONCLUÍDA E APROVADA — Parte 2 CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE
+Fase 17 — Contas a receber — CONCLUÍDA E APROVADA
 ```
 
-Estado atual do backend (Fases 1–9 + 13 + 14 + 15 + 16 + 17 Parte 1): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas, despesas, parcelamento (Fase 8), cartões/faturas (Fase 9), Agreements (Fase 13), transferências e Acerto de Saldos (Fase 14), metas financeiras (Fase 15), contas a pagar (Fase 16), contas a receber Parte 1 (Fase 17).
+Estado atual do backend (Fases 1–9 + 13 + 14 + 15 + 16 + 17): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas (movimentações V30), despesas, parcelamento (Fase 8), cartões/faturas (Fase 9), Agreements (Fase 13), transferências e Acerto de Saldos (Fase 14), metas financeiras (Fase 15), contas a pagar (Fase 16), contas a receber (Fase 17).
 
-Fase 13 — **CONCLUÍDA E APROVADA** (`docs/24` §19.4 / RN254). **Fase 14** — **`CONCLUÍDA E APROVADA`**. **Fase 15** — Metas: contrato em `docs/24` §19.6 / `docs/25` §54E — implementação concluída, **aguardando auditoria final**. **Fase 16** — Contas a pagar: contrato em `docs/24` §19.7 / `docs/25` §66 — **`CONCLUÍDA E APROVADA`**; **não** criar tabela `payables`. **Fase 17 Parte 1** — Contas a receber: contrato em `docs/24` §19.8 / `docs/25` §67 — **`CONCLUÍDA E APROVADA`**; **não** recriar `GET /api/v1/receivables`; **não** criar tabela `receivables`. **Fase 17 Parte 2** — `docs/24` §19.9 — **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE**. D73–D93 **fechadas**. A Fase 17 inteira permanece em andamento. Não implementar Refresh Token, `payments.type`, relatórios/PDF, frontend financeiro, auditoria genérica, extrato `/statement` nem `POST /invoices/{id}/close` sem autorização.
+Fase 13 — **CONCLUÍDA E APROVADA** (`docs/24` §19.4 / RN254). **Fase 14** — **`CONCLUÍDA E APROVADA`**. **Fase 15** — Metas: contrato em `docs/24` §19.6 / `docs/25` §54E — implementação concluída, **aguardando auditoria final**. **Fase 16** — Contas a pagar: **`CONCLUÍDA E APROVADA`**. **Fase 17** — Contas a receber (Parte 1 + Parte 2): **`CONCLUÍDA E APROVADA`** (`docs/24` §19.8 / §19.9); D73–D94 implementadas; **não** recriar `GET /api/v1/receivables`; **não** criar tabela `receivables`. Próxima fase planejada: **Fase 18 — Projeções** (não iniciada). Não implementar Refresh Token, `payments.type`, relatórios/PDF, frontend financeiro, auditoria genérica, extrato `/statement` nem `POST /invoices/{id}/close` sem autorização.
 
 Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend financeiro, relatórios/PDF, auditoria genérica nem `payments.type` sem autorização. A edição de parcela já em fatura (§269.2.7) permanece **deferida**. Fechados: §269.3, §269.4, **§269.5** (Fase 13 — `CONCLUÍDA E APROVADA`).

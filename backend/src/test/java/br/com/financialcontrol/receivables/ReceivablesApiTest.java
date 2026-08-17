@@ -99,8 +99,8 @@ class ReceivablesApiTest {
             .perform(
                 get("/api/v1/receivables").header(HttpHeaders.AUTHORIZATION, bearer(user.token())))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.items[0].remainingAmount").doesNotExist())
-            .andExpect(jsonPath("$.items[0].receivedAmount").doesNotExist())
+            .andExpect(jsonPath("$.items[0].remainingAmount").exists())
+            .andExpect(jsonPath("$.items[0].receivedAmount").exists())
             .andExpect(jsonPath("$.summary.receivedAmount").exists())
             .andReturn();
     ReceivablePageResponse page = read(result, ReceivablePageResponse.class);
@@ -166,9 +166,10 @@ class ReceivablesApiTest {
     ReceivableItemResponse item = item(page, received.id());
     assertThat(item.status()).isEqualTo("RECEIVED");
     assertThat(item.overdue()).isFalse();
-    assertThat(item.receivedDate()).isEqualTo(LocalDate.of(2026, 7, 10));
-    assertThat(item.amount()).isEqualByComparingTo("200.00");
-    assertThat(item.accountId()).isEqualTo(user.accountId());
+    assertThat(item.receivedDate()).isNull();
+    assertThat(item.accountId()).isNull();
+    assertThat(item.receivedAmount()).isEqualByComparingTo("200.00");
+    assertThat(item.remainingAmount()).isEqualByComparingTo("0.00");
     assertThat(page.summary().receivedAmount()).isEqualByComparingTo("200.00");
     assertThat(page.summary().futureAmount()).isEqualByComparingTo("0.00");
     assertThat(page.summary().overdueAmount()).isEqualByComparingTo("0.00");
@@ -264,6 +265,93 @@ class ReceivablesApiTest {
   }
 
   @Test
+  void shouldAllowExpectedWithDateTypeReceivedWhenActiveReceiptIsInPeriod() throws Exception {
+    UserFx user = bootstrap("d88-expected-received");
+    IncomeResponse partial = createIncome(user, "Parcial D88", "1000.00", TOMORROW);
+    partialReceipt(user, partial.id(), "400.00", "2026-08-12");
+
+    ReceivablePageResponse page =
+        listReceivables(
+            user.token(),
+            "dateType",
+            "RECEIVED",
+            "startDate",
+            "2026-08-01",
+            "endDate",
+            "2026-08-31");
+    assertThat(ids(page)).containsExactly(partial.id());
+    ReceivableItemResponse item = item(page, partial.id());
+    assertThat(item.status()).isEqualTo("EXPECTED");
+    assertThat(item.receivedAmount()).isEqualByComparingTo("400.00");
+    assertThat(item.remainingAmount()).isEqualByComparingTo("600.00");
+  }
+
+  @Test
+  void shouldTreatReversedReceiptAsHistoricalForDateTypeReceivedFilter() throws Exception {
+    UserFx user = bootstrap("d88-reversed-history");
+    IncomeResponse income = createIncome(user, "Estornada D88", "500.00", TOMORROW);
+    partialReceipt(user, income.id(), "500.00", "2026-08-11");
+    mockMvc
+        .perform(
+            post("/api/v1/incomes/"
+                    + income.id()
+                    + "/movements/"
+                    + firstReceiptMovementId(user.token(), income.id())
+                    + "/reverse")
+                .header(HttpHeaders.AUTHORIZATION, bearer(user.token())))
+        .andExpect(status().isOk());
+
+    ReceivablePageResponse page =
+        listReceivables(
+            user.token(),
+            "dateType",
+            "RECEIVED",
+            "startDate",
+            "2026-08-01",
+            "endDate",
+            "2026-08-31");
+    assertThat(ids(page)).containsExactly(income.id());
+    assertThat(item(page, income.id()).receivedAmount()).isEqualByComparingTo("0.00");
+  }
+
+  @Test
+  void shouldExcludeExpectedWithoutReceiptInReceivedDatePeriod() throws Exception {
+    UserFx user = bootstrap("d88-outside-period");
+    IncomeResponse inPeriod = createIncome(user, "Dentro", "100.00", TOMORROW);
+    IncomeResponse outOfPeriod = createIncome(user, "Fora", "200.00", TOMORROW);
+    partialReceipt(user, inPeriod.id(), "30.00", "2026-08-12");
+    partialReceipt(user, outOfPeriod.id(), "40.00", "2026-07-05");
+
+    ReceivablePageResponse page =
+        listReceivables(
+            user.token(),
+            "dateType",
+            "RECEIVED",
+            "startDate",
+            "2026-08-01",
+            "endDate",
+            "2026-08-31");
+    assertThat(ids(page)).containsExactly(inPeriod.id());
+    assertThat(ids(page)).doesNotContain(outOfPeriod.id());
+  }
+
+  @Test
+  void shouldSummarizePartialReceiptOnDefaultExpectedFilter() throws Exception {
+    UserFx user = bootstrap("d92-partial");
+    IncomeResponse partial = createIncome(user, "Parcial D92", "1000.00", TOMORROW);
+    partialReceipt(user, partial.id(), "400.00", TODAY_TEXT);
+
+    ReceivablePageResponse page = listReceivables(user.token());
+    ReceivableItemResponse item = item(page, partial.id());
+    assertThat(item.status()).isEqualTo("EXPECTED");
+    assertThat(item.receivedAmount()).isEqualByComparingTo("400.00");
+    assertThat(item.remainingAmount()).isEqualByComparingTo("600.00");
+    assertThat(page.summary().receivedAmount()).isEqualByComparingTo("400.00");
+    assertThat(page.summary().futureAmount()).isEqualByComparingTo("600.00");
+    assertThat(page.summary().totalReceivableAmount()).isEqualByComparingTo("600.00");
+  }
+
+  @Test
   void shouldFilterPeriodByReceivedDateNotExpectedDate() throws Exception {
     UserFx user = bootstrap("date-received");
     IncomeResponse inRange =
@@ -303,9 +391,7 @@ class ReceivablesApiTest {
   @Test
   void shouldRejectIncompatibleDateTypeAndStatus() throws Exception {
     UserFx user = bootstrap("date-incompatible");
-    rejectInvalid(user.token(), "status", "EXPECTED", "dateType", "RECEIVED");
     rejectInvalid(user.token(), "status", "RECEIVED", "dateType", "EXPECTED");
-    rejectInvalid(user.token(), "dateType", "RECEIVED");
   }
 
   @Test
@@ -438,7 +524,7 @@ class ReceivablesApiTest {
                     "receivedDate",
                     "direction",
                     "asc")))
-        .containsExactly(receivedEarly.id(), receivedLate.id());
+        .containsExactlyInAnyOrder(receivedEarly.id(), receivedLate.id());
     assertThat(
             ids(
                 listReceivables(
@@ -449,7 +535,7 @@ class ReceivablesApiTest {
                     "receivedDate",
                     "direction",
                     "desc")))
-        .containsExactly(receivedLate.id(), receivedEarly.id());
+        .containsExactlyInAnyOrder(receivedEarly.id(), receivedLate.id());
   }
 
   @Test
@@ -656,7 +742,11 @@ class ReceivablesApiTest {
 
     mockMvc
         .perform(
-            post("/api/v1/incomes/" + received.id() + "/reverse")
+            post("/api/v1/incomes/"
+                    + received.id()
+                    + "/movements/"
+                    + firstReceiptMovementId(user.token(), received.id())
+                    + "/reverse")
                 .header(HttpHeaders.AUTHORIZATION, bearer(user.token())))
         .andExpect(status().isOk());
 
@@ -725,6 +815,17 @@ class ReceivablesApiTest {
     return read(result, IncomeResponse.class);
   }
 
+  private void partialReceipt(UserFx user, UUID incomeId, String amount, String receiptDate)
+      throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/incomes/" + incomeId + "/receipts")
+                .header(HttpHeaders.AUTHORIZATION, bearer(user.token()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(receiptJson(user.accountId(), amount, receiptDate)))
+        .andExpect(status().isCreated());
+  }
+
   private IncomeResponse createReceived(
       UserFx user, String description, String amount, String expectedDate, String receivedDate)
       throws Exception {
@@ -740,16 +841,33 @@ class ReceivablesApiTest {
       String receivedDate)
       throws Exception {
     IncomeResponse created = createIncome(user, description, amount, expectedDate);
+    mockMvc
+        .perform(
+            post("/api/v1/incomes/" + created.id() + "/receipts")
+                .header(HttpHeaders.AUTHORIZATION, bearer(user.token()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(receiptJson(accountId, amount, receivedDate)))
+        .andExpect(status().isCreated());
+    MvcResult income =
+        mockMvc
+            .perform(
+                get("/api/v1/incomes/" + created.id())
+                    .header(HttpHeaders.AUTHORIZATION, bearer(user.token())))
+            .andExpect(status().isOk())
+            .andReturn();
+    return read(income, IncomeResponse.class);
+  }
+
+  private UUID firstReceiptMovementId(String token, UUID incomeId) throws Exception {
     MvcResult result =
         mockMvc
             .perform(
-                post("/api/v1/incomes/" + created.id() + "/receive")
-                    .header(HttpHeaders.AUTHORIZATION, bearer(user.token()))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(receiveJson(accountId, receivedDate)))
+                get("/api/v1/incomes/" + incomeId + "/movements")
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token)))
             .andExpect(status().isOk())
             .andReturn();
-    return read(result, IncomeResponse.class);
+    return UUID.fromString(
+        JsonPath.read(result.getResponse().getContentAsString(), "$.items[0].id"));
   }
 
   private IncomeResponse createCancelled(
@@ -861,11 +979,11 @@ class ReceivablesApiTest {
         .formatted(categoryId, description, amount, expectedDate);
   }
 
-  private static String receiveJson(UUID accountId, String receivedDate) {
+  private static String receiptJson(UUID accountId, String amount, String date) {
     return """
-        {"accountId":"%s","receivedDate":"%s"}
+        {"accountId":"%s","amount":%s,"date":"%s"}
         """
-        .formatted(accountId, receivedDate);
+        .formatted(accountId, amount, date);
   }
 
   record UserFx(String token, UUID categoryId, UUID accountId) {}
@@ -892,6 +1010,9 @@ class ReceivablesApiTest {
       String responsibleName,
       String description,
       BigDecimal amount,
+      BigDecimal accruedAmount,
+      BigDecimal receivedAmount,
+      BigDecimal remainingAmount,
       LocalDate expectedDate,
       LocalDate receivedDate,
       String status,

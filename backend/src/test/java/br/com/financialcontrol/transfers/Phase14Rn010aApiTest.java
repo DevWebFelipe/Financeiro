@@ -51,10 +51,23 @@ class Phase14Rn010aApiTest {
     receiveIncome(token, income.id(), account.id());
     mockMvc
         .perform(
-            post("/api/v1/incomes/" + income.id() + "/reverse")
+            post("/api/v1/incomes/"
+                    + income.id()
+                    + "/movements/"
+                    + JsonPath.read(
+                        mockMvc
+                            .perform(
+                                get("/api/v1/incomes/" + income.id() + "/movements")
+                                    .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+                            .andExpect(status().isOk())
+                            .andReturn()
+                            .getResponse()
+                            .getContentAsString(),
+                        "$.items[0].id")
+                    + "/reverse")
                 .header(HttpHeaders.AUTHORIZATION, bearer(token)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("EXPECTED"));
+        .andExpect(jsonPath("$.status").value("REVERSED"));
 
     assertInitialBalanceRejected(token, account.id(), "999.00");
     assertThat(balance(token, account.id())).isEqualByComparingTo("0.00");
@@ -148,7 +161,20 @@ class Phase14Rn010aApiTest {
 
     mockMvc
         .perform(
-            post("/api/v1/incomes/" + income.id() + "/reverse")
+            post("/api/v1/incomes/"
+                    + income.id()
+                    + "/movements/"
+                    + JsonPath.read(
+                        mockMvc
+                            .perform(
+                                get("/api/v1/incomes/" + income.id() + "/movements")
+                                    .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+                            .andExpect(status().isOk())
+                            .andReturn()
+                            .getResponse()
+                            .getContentAsString(),
+                        "$.items[0].id")
+                    + "/reverse")
                 .header(HttpHeaders.AUTHORIZATION, bearer(token)))
         .andExpect(status().isOk());
     assertThat(balance(token, account.id())).isEqualByComparingTo("-100.00");
@@ -217,14 +243,32 @@ class Phase14Rn010aApiTest {
   private void receiveIncome(String token, UUID incomeId, UUID accountId) throws Exception {
     mockMvc
         .perform(
-            post("/api/v1/incomes/" + incomeId + "/receive")
+            post("/api/v1/incomes/" + incomeId + "/receipts")
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
-                    {"accountId":"%s","receivedDate":"%s"}
+                    {"accountId":"%s","amount":100.00,"date":"%s"}
                     """
                         .formatted(accountId, today())))
+        .andExpect(status().isCreated());
+  }
+
+  private void reverseIncomeReceipt(String token, UUID incomeId) throws Exception {
+    MvcResult movements =
+        mockMvc
+            .perform(
+                get("/api/v1/incomes/" + incomeId + "/movements")
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+            .andExpect(status().isOk())
+            .andReturn();
+    UUID movementId =
+        UUID.fromString(
+            JsonPath.read(movements.getResponse().getContentAsString(), "$.items[0].id"));
+    mockMvc
+        .perform(
+            post("/api/v1/incomes/" + incomeId + "/movements/" + movementId + "/reverse")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
         .andExpect(status().isOk());
   }
 

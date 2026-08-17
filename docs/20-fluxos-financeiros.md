@@ -2901,7 +2901,7 @@ Saldo:
 R$ 15.400
 
 
-Usuário solicita estorno (`POST /incomes/{id}/reverse`).
+Usuário solicita estorno da movimentação (`POST /incomes/{id}/movements/{movementId}/reverse`). **Histórico Fase 6 (removido):** `POST /incomes/{id}/reverse`.
 
 
 ## Resultado
@@ -3021,7 +3021,7 @@ Não existe reativação de receita cancelada nesta fase.
 
 Não existe status `REVERSED`.
 
-**Fase 17 Parte 2 (D73 — fechado, não implementado):** cancelamento direto `RECEIVED` → `CANCELLED` **não** existe. Cancelar somente sem RECEIPT `ACTIVE`. Sem estorno automático. Caminho: estornar RECEIPT ACTIVE e depois cancelar. `docs/24` §19.9.8.
+**Fase 17 Parte 2 (D73 — implementado):** cancelamento direto `RECEIVED` → `CANCELLED` **não** existe. Cancelar somente sem RECEIPT `ACTIVE`. Sem estorno automático. Caminho: estornar RECEIPT ACTIVE e depois cancelar. `docs/24` §19.9.8.
 
 
 # 177. Fluxo — Acerto de Saldos (Fase 14 — implementado)

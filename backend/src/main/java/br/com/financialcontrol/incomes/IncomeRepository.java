@@ -2,7 +2,6 @@ package br.com.financialcontrol.incomes;
 
 import br.com.financialcontrol.expenses.ResponsibleType;
 import jakarta.persistence.LockModeType;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -20,8 +19,8 @@ public interface IncomeRepository extends JpaRepository<Income, UUID> {
   Optional<Income> findByIdAndUserId(UUID id, UUID userId);
 
   /**
-   * Lock pessimista (SELECT FOR UPDATE) para receive/reverse/cancel/PUT. Impede duas transições
-   * concorrentes sobre a mesma duplicata sem coluna de versão (RN167).
+   * Lock pessimista (SELECT FOR UPDATE) para accrual, receipt, reverse de movimentação, cancel e
+   * PUT. Impede duas transições concorrentes sobre a mesma duplicata sem coluna de versão (RN167).
    */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT i FROM Income i WHERE i.id = :id AND i.userId = :userId")
@@ -46,34 +45,32 @@ public interface IncomeRepository extends JpaRepository<Income, UUID> {
       @Param("endDate") LocalDate endDate,
       Pageable pageable);
 
-  @Query(
-      """
-      SELECT COALESCE(SUM(i.amount), 0)
-      FROM Income i
-      WHERE i.userId = :userId
-        AND i.account.id = :accountId
-        AND i.status = br.com.financialcontrol.incomes.IncomeStatus.RECEIVED
-        AND (CAST(:asOfDate AS LocalDate) IS NULL OR i.receivedDate <= :asOfDate)
-      """)
-  BigDecimal sumReceivedAmountByAccountIdAndUserIdAsOf(
-      @Param("accountId") UUID accountId,
-      @Param("userId") UUID userId,
-      @Param("asOfDate") LocalDate asOfDate);
-
-  boolean existsByAccount_IdAndUserIdAndStatus(UUID accountId, UUID userId, IncomeStatus status);
-
   String RECEIVABLES_PREDICATE =
       """
       i.userId = :userId
         AND i.status = :status
         AND (:categoryId IS NULL OR i.category.id = :categoryId)
-        AND (:accountId IS NULL OR i.account.id = :accountId)
         AND (:responsibleType IS NULL OR i.responsibleType = :responsibleType)
         AND (:responsibleName IS NULL OR i.responsibleName = :responsibleName)
         AND (CAST(:expectedMin AS LocalDate) IS NULL OR i.expectedDate >= :expectedMin)
         AND (CAST(:expectedMax AS LocalDate) IS NULL OR i.expectedDate <= :expectedMax)
-        AND (CAST(:receivedMin AS LocalDate) IS NULL OR i.receivedDate >= :receivedMin)
-        AND (CAST(:receivedMax AS LocalDate) IS NULL OR i.receivedDate <= :receivedMax)
+        AND (:accountId IS NULL OR EXISTS (
+              SELECT 1 FROM IncomeMovement rec
+              WHERE rec.income = i
+                AND rec.userId = i.userId
+                AND rec.type = br.com.financialcontrol.incomes.IncomeMovementType.RECEIPT
+                AND rec.status = br.com.financialcontrol.incomes.IncomeMovementStatus.ACTIVE
+                AND rec.account.id = :accountId
+            ))
+        AND ((CAST(:receivedMin AS LocalDate) IS NULL AND CAST(:receivedMax AS LocalDate) IS NULL)
+             OR EXISTS (
+              SELECT 1 FROM IncomeMovement recDate
+              WHERE recDate.income = i
+                AND recDate.userId = i.userId
+                AND recDate.type = br.com.financialcontrol.incomes.IncomeMovementType.RECEIPT
+                AND (CAST(:receivedMin AS LocalDate) IS NULL OR recDate.movementDate >= :receivedMin)
+                AND (CAST(:receivedMax AS LocalDate) IS NULL OR recDate.movementDate <= :receivedMax)
+            ))
       """;
 
   @EntityGraph(attributePaths = {"category", "account"})
@@ -94,9 +91,17 @@ public interface IncomeRepository extends JpaRepository<Income, UUID> {
   @Query(
       """
       SELECT
-        COALESCE(SUM(CASE WHEN i.status = br.com.financialcontrol.incomes.IncomeStatus.EXPECTED AND i.expectedDate >= :today THEN i.amount ELSE 0 END), 0),
-        COALESCE(SUM(CASE WHEN i.status = br.com.financialcontrol.incomes.IncomeStatus.EXPECTED AND i.expectedDate < :today THEN i.amount ELSE 0 END), 0),
-        COALESCE(SUM(CASE WHEN i.status = br.com.financialcontrol.incomes.IncomeStatus.RECEIVED THEN i.amount ELSE 0 END), 0)
+        COALESCE(SUM(CASE WHEN i.status = br.com.financialcontrol.incomes.IncomeStatus.EXPECTED AND i.expectedDate >= :today THEN (
+          i.amount
+          + COALESCE((SELECT SUM(acc.amount) FROM IncomeMovement acc WHERE acc.income = i AND acc.userId = i.userId AND acc.type = br.com.financialcontrol.incomes.IncomeMovementType.ACCRUAL AND acc.status = br.com.financialcontrol.incomes.IncomeMovementStatus.ACTIVE), 0)
+          - COALESCE((SELECT SUM(rcp.amount) FROM IncomeMovement rcp WHERE rcp.income = i AND rcp.userId = i.userId AND rcp.type = br.com.financialcontrol.incomes.IncomeMovementType.RECEIPT AND rcp.status = br.com.financialcontrol.incomes.IncomeMovementStatus.ACTIVE), 0)
+        ) ELSE 0 END), 0),
+        COALESCE(SUM(CASE WHEN i.status = br.com.financialcontrol.incomes.IncomeStatus.EXPECTED AND i.expectedDate < :today THEN (
+          i.amount
+          + COALESCE((SELECT SUM(acc.amount) FROM IncomeMovement acc WHERE acc.income = i AND acc.userId = i.userId AND acc.type = br.com.financialcontrol.incomes.IncomeMovementType.ACCRUAL AND acc.status = br.com.financialcontrol.incomes.IncomeMovementStatus.ACTIVE), 0)
+          - COALESCE((SELECT SUM(rcp.amount) FROM IncomeMovement rcp WHERE rcp.income = i AND rcp.userId = i.userId AND rcp.type = br.com.financialcontrol.incomes.IncomeMovementType.RECEIPT AND rcp.status = br.com.financialcontrol.incomes.IncomeMovementStatus.ACTIVE), 0)
+        ) ELSE 0 END), 0),
+        COALESCE(SUM(COALESCE((SELECT SUM(rcp.amount) FROM IncomeMovement rcp WHERE rcp.income = i AND rcp.userId = i.userId AND rcp.type = br.com.financialcontrol.incomes.IncomeMovementType.RECEIPT AND rcp.status = br.com.financialcontrol.incomes.IncomeMovementStatus.ACTIVE), 0)), 0)
       FROM Income i
       WHERE
       """

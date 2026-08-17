@@ -490,9 +490,9 @@ FK composta `(account_id, user_id)` é nullable.
 
 `responsible_type` é nullable (migration V16). Não persistir valor artificial para preencher a coluna. O CHECK de valores (`MINE`, `GIULIA`, `EDERSON`, `ELISIANE`, `OTHER`) permanece inalterado. `responsible_name` permanece e aceita ausência de responsável.
 
-**Fase 17:** a visão `GET /api/v1/receivables` (Parte 1, `CONCLUÍDA E APROVADA`) lê e filtra `responsible_type` / `responsible_name` nas colunas existentes. A escrita desses campos no cadastro/edição de Income está no contrato da **Parte 2** (`docs/24` §19.9 / RN306) e **não** está implementada. Não inventar colunas. Não tornar `expected_date` nullable.
+**Fase 17 — CONCLUÍDA E APROVADA:** a visão `GET /api/v1/receivables` (Parte 1) lê e filtra `responsible_type` / `responsible_name`. A escrita desses campos no cadastro/edição de Income está **implementada** na Parte 2 (**D89** / RN306). Não inventar colunas. Não tornar `expected_date` nullable.
 
-**Fase 17 — Parte 2 (contrato consolidado / implementação pendente):** não criar tabela `receivables`. Tabela oficial única: `income_movements` (**D87-A** / D85). `incomes.amount` é o valor original (**D75-A**); sem movimentação `OPENING`. Não persistir remaining/recebido/acumulado em `incomes`. `account_id` / `received_date` no cabeçalho são **legado/transição** (**D76-A**) — **não remover as colunas**. Backfill obrigatório das `RECEIVED` atuais (**D83**). Índice `(user_id, income_id)`. **D86** omitido de propósito. Detalhe: `docs/23` §40.5 e §269.6. Decisões D73–D93 **fechadas**. **Não criar a tabela agora.**
+**Fase 17 — Parte 2 (implementada):** não existe tabela `receivables`. Tabela oficial: `income_movements` (**D87-A** / D85), migration V30. `incomes.amount` é o valor original (**D75-A**); sem movimentação `OPENING`. Não persistir remaining/recebido/acumulado em `incomes`. `account_id` / `received_date` no cabeçalho são **legado/transição** (**D76-A** — limitação contratual conhecida) — **não remover as colunas**; novos RECEIPTs **não** preenchem o cabeçalho. Backfill D83 na V30. Índice `(user_id, income_id)`. **D86** omitido. Decisões D73–D94 **fechadas** e **implementadas**. Detalhe: §40.5 e §269.6.
 
 
 # 37. Receita
@@ -578,7 +578,7 @@ Não permitidas nesta fase: `RECEIVED` → `CANCELLED`; `CANCELLED` → `EXPECTE
 
 O caminho composto `RECEIVED` → reverse → `EXPECTED` → cancel → `CANCELLED` já é possível pela composição das operações definidas.
 
-**Fase 6 (implementado):** rejeita `RECEIVED` → `CANCELLED`. **Parte 2 (D73 — fechado, não implementado):** essa transição **não** existe. Cancelar somente sem RECEIPT `ACTIVE`. Sem estorno automático. `docs/24` §19.9.8.
+**Fase 6 (histórico — superado na Parte 2):** rejeitava `RECEIVED` → `CANCELLED`. **Parte 2 (D73 — implementado):** essa transição **não** existe. Cancelar somente sem RECEIPT `ACTIVE`. Sem estorno automático. `docs/24` §19.9.8.
 
 
 # 40.2 Estorno de receita
@@ -661,14 +661,14 @@ Não há efeito financeiro a reverter.
 
 Ver RN045 e RN207.
 
-**Fase 17 Parte 2 (D73 — fechado, não implementado):** cancelar somente sem RECEIPT `ACTIVE`. Não apagar movimentações. Sem estorno automático. `docs/24` §19.9.8.
+**Fase 17 Parte 2 (D73 — implementado):** cancelar somente sem RECEIPT `ACTIVE`. Não apagar movimentações. Sem estorno automático. `docs/24` §19.9.8.
 
 
-# 40.5 Fase 17 Parte 2 — movimentações de receita (contrato fechado — não criar agora)
+# 40.5 Fase 17 Parte 2 — movimentações de receita (implementada — V30)
 
-**CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE.** Fonte: `docs/24` §19.9. Decisões D73–D93 **fechadas**.
+**IMPLEMENTADA** (`V30__create_income_movements.sql`). Fonte: `docs/24` §19.9. Decisões D73–D94 **fechadas** e **implementadas**. Fase 17 — **`CONCLUÍDA E APROVADA`**.
 
-Não criar migration nesta etapa. Não criar tabela `receivables`. Não persistir remaining.
+Não criar tabela `receivables`. Não persistir remaining.
 
 `incomes` permanece a duplicata. O histórico financeiro **não** é colunas `received_amount` / `remaining_amount` no cabeçalho. `incomes.amount` é o fato cadastral original (**D75-A**). Sem linha `OPENING`/`ORIGINAL` no histórico.
 
@@ -690,7 +690,7 @@ Backfill obrigatório (**D83**): cada `RECEIVED` atual → um RECEIPT `ACTIVE` (
 
 **D86:** omitido de propósito (salto D85 → D87). Não criar D86 fictícia.
 
-A migration continua bloqueada até autorização explícita de implementar.
+Migration **V30** executada. Tabela `income_movements` é fonte de verdade das movimentações (**D84**).
 
 
 # 41. Receita
@@ -702,7 +702,7 @@ expected_date representa a data prevista.
 
 received_date representa a data real de recebimento **na Fase 6** (cabeçalho).
 
-**Fase 17 Parte 2 (D76-A — não implementado):** a coluna permanece como **legado/transição**. A data real de cada recebimento passa a ser `income_movements.movement_date` do RECEIPT. Não remover a coluna. Não usá-la como fonte de verdade.
+**Fase 17 Parte 2 (D76-A — implementado):** a coluna permanece como **legado/transição**. A data real de cada recebimento é `income_movements.movement_date` do RECEIPT. Novos RECEIPTs **não** preenchem `incomes.received_date`. Sort `receivedDate` em `/receivables` usa o cabeçalho legado.
 
 
 # 43. Receita
@@ -2315,7 +2315,7 @@ incomes
 
 1:N
 
-income_movements  (Fase 17 Parte 2 — contrato fechado; **não criar agora**; D87-A)
+income_movements  (Fase 17 Parte 2 — **implementada** V30; D87-A)
 
 
 users
@@ -3388,8 +3388,8 @@ FKs compostas obrigatórias:
 | credit_cards | — | users |
 | incomes | `(category_id, user_id)` | categories |
 | incomes | `(account_id, user_id)` | accounts (nullable) |
-| income_movements (Fase 17 Parte 2 — contrato fechado; **não criar agora**) | `(income_id, user_id)` | incomes |
-| income_movements (contrato fechado; **não criar agora**) | `(account_id, user_id)` | accounts (nullable; obrigatório se `RECEIPT`) |
+| income_movements (Fase 17 Parte 2 — **implementada** V30) | `(income_id, user_id)` | incomes |
+| income_movements (V30) | `(account_id, user_id)` | accounts (nullable; obrigatório se `RECEIPT`) |
 | expenses | `(category_id, user_id)` | categories |
 | expenses | `(account_id, user_id)` | accounts (nullable) |
 | expenses | `(credit_card_id, user_id)` | credit_cards (nullable) |

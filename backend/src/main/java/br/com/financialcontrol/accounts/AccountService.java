@@ -13,8 +13,8 @@ import br.com.financialcontrol.credit_card_invoices.CreditCardInvoicePaymentRepo
 import br.com.financialcontrol.credit_cards.CardPurchaseAccountRefundRepository;
 import br.com.financialcontrol.financial_goals.GoalContributionRepository;
 import br.com.financialcontrol.financial_goals.GoalRedemptionRepository;
-import br.com.financialcontrol.incomes.IncomeRepository;
-import br.com.financialcontrol.incomes.IncomeStatus;
+import br.com.financialcontrol.incomes.IncomeMovementRepository;
+import br.com.financialcontrol.incomes.IncomeMovementType;
 import br.com.financialcontrol.payments.PaymentRepository;
 import br.com.financialcontrol.security.AuthenticatedUser;
 import br.com.financialcontrol.transfers.TransferRepository;
@@ -46,7 +46,7 @@ public class AccountService {
   static final ZoneId FINANCIAL_ZONE = ZoneId.of("America/Sao_Paulo");
 
   private final AccountRepository accountRepository;
-  private final IncomeRepository incomeRepository;
+  private final IncomeMovementRepository incomeMovementRepository;
   private final PaymentRepository paymentRepository;
   private final CreditCardInvoicePaymentRepository invoicePaymentRepository;
   private final CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository;
@@ -58,7 +58,7 @@ public class AccountService {
 
   public AccountService(
       AccountRepository accountRepository,
-      IncomeRepository incomeRepository,
+      IncomeMovementRepository incomeMovementRepository,
       PaymentRepository paymentRepository,
       CreditCardInvoicePaymentRepository invoicePaymentRepository,
       CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository,
@@ -68,7 +68,7 @@ public class AccountService {
       GoalRedemptionRepository goalRedemptionRepository,
       Clock clock) {
     this.accountRepository = accountRepository;
-    this.incomeRepository = incomeRepository;
+    this.incomeMovementRepository = incomeMovementRepository;
     this.paymentRepository = paymentRepository;
     this.invoicePaymentRepository = invoicePaymentRepository;
     this.cardPurchaseAccountRefundRepository = cardPurchaseAccountRefundRepository;
@@ -162,9 +162,10 @@ public class AccountService {
   }
 
   /**
-   * Saldo financeiro total atual (RN240 / Fase 14): initial + RECEIVED + refunds - payments ACTIVE
-   * - invoice payments ACTIVE + transfers ACTIVE in - transfers ACTIVE out + balance adjustments
-   * ACTIVE. Contribuições/resgates de meta não entram nesta fórmula.
+   * Saldo financeiro total atual (RN240 / Fase 14): initial + SUM(RECEIPT ACTIVE por conta e
+   * movement_date) + refunds - payments ACTIVE - invoice payments ACTIVE + transfers ACTIVE in -
+   * transfers ACTIVE out + balance adjustments ACTIVE. Contribuições/resgates de meta não entram
+   * nesta fórmula.
    */
   public BigDecimal calculateCurrentBalance(Account account) {
     return calculateBalanceAsOf(account, null);
@@ -178,7 +179,7 @@ public class AccountService {
   public BigDecimal calculateBalanceAsOf(Account account, LocalDate asOfDate) {
     BigDecimal received =
         zeroIfNull(
-            incomeRepository.sumReceivedAmountByAccountIdAndUserIdAsOf(
+            incomeMovementRepository.sumActiveReceiptAmountByAccountIdAndUserIdAsOf(
                 account.getId(), account.getUserId(), asOfDate));
     BigDecimal paid =
         zeroIfNull(
@@ -273,8 +274,8 @@ public class AccountService {
     UUID accountId = account.getId();
     UUID userId = account.getUserId();
     boolean moved =
-        incomeRepository.existsByAccount_IdAndUserIdAndStatus(
-                accountId, userId, IncomeStatus.RECEIVED)
+        incomeMovementRepository.existsByAccount_IdAndUserIdAndType(
+                accountId, userId, IncomeMovementType.RECEIPT)
             || paymentRepository.existsByAccount_IdAndUserId(accountId, userId)
             || invoicePaymentRepository.existsByAccount_IdAndUserId(accountId, userId)
             || cardPurchaseAccountRefundRepository.existsByAccount_IdAndUserId(accountId, userId)

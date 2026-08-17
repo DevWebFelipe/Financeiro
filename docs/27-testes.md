@@ -781,11 +781,11 @@ Contrato: `docs/24` §19.8 / `docs/25` §67.
 
 Regressão no fechamento: `IncomeApiTest` 15/15; `PayablesApiTest` 14/14; `mvn verify` **460/460**; BUILD SUCCESS.
 
-**Não** declarar a Fase 17 inteira concluída. A Parte 2 tem contrato consolidado (`docs/24` §19.9); D73–D93 **fechadas**; **IMPLEMENTAÇÃO PENDENTE**. **Não** criar infraestrutura especial de concorrência na Parte 1 (D30).
+**Não** criar infraestrutura especial de concorrência na Parte 1 (D30). A suíte da Parte 2 está em §40G (**implementada**).
 
 Melhorias futuras de teste (não são falhas da Parte 1): token inválido/expirado; período só com `startDate` ou só com `endDate`; fronteira UTC/São Paulo à meia-noite; `categoryId`/`accountId` de outro usuário.
 
-**Não** testar a Parte 2 nesta suíte da Parte 1. A suíte da Parte 2 é §40G (ainda sem código). **Não** persistir remaining. **Não** criar tabela `receivables`. **Não** testar `dueDate` como alias. **Não** testar receita sem `expectedDate`.
+**Não** testar a Parte 2 nesta suíte da Parte 1. A suíte da Parte 2 é §40G (**implementada**). **Não** persistir remaining. **Não** criar tabela `receivables`. **Não** testar `dueDate` como alias. **Não** testar receita sem `expectedDate`.
 
 **Elegibilidade**
 
@@ -840,16 +840,27 @@ Melhorias futuras de teste (não são falhas da Parte 1): token inválido/expira
 
 - a visão filtra/retorna as colunas existentes;
 - enquanto Income não gravar responsável, filtros por responsável podem devolver vazio;
-- a evolução do `POST`/`PUT /incomes` para gravar responsável está no contrato da Parte 2 (`docs/24` §19.9 / RN306) e será coberta em §40G; **não** alterar `ReceivablesApiTest` da Parte 1 para simular escrita ainda inexistente.
+- a evolução do `POST`/`PUT /incomes` para gravar responsável está **implementada** (Parte 2 / `docs/24` §19.9 / RN306 / §40G).
 
 
-# 40G. Contas a receber — Fase 17 Parte 2 (contrato — implementação pendente)
+# 40G. Contas a receber — Fase 17 Parte 2
 
 Contrato: `docs/24` §19.9 / `docs/25` §67A.
 
-**Status:** **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE.** Decisões D73–D93 **fechadas**. Não criar classe de teste agora. Não alterar `ReceivablesApiTest` nem `IncomeApiTest` nesta etapa. Não implementar estes casos até autorização.
+**Status:** **`CONCLUÍDA E APROVADA`**. Decisões D73–D94 **fechadas** e **implementadas**. Suíte validada: **481** testes; 0 falhas; `mvn verify` BUILD SUCCESS.
 
-Classe prevista: `IncomeMovementsApiTest` (nome de trabalho). Reutilizar `Clock` / timezone `America/Sao_Paulo` e o padrão de API existente (`IncomeApiTest`, `ReceivablesApiTest`). Concorrência: locks na ordem de `docs/24` §19.9; sem infraestrutura especial.
+Classes: `IncomeMovementsApiTest`, `IncomeBalanceAsOfIntegrationTest`, `V30IncomeMovementsBackfillTest`; `ReceivablesApiTest` (D88, D92-B, D94); `SchemaContractTest` (`income_movements`). Reutilizar `Clock` / timezone `America/Sao_Paulo`. Concorrência: locks conforme `docs/24` §19.9.
+
+## Testes adicionados (pós-auditoria)
+
+- `ReceivablesApiTest`: D88 (`EXPECTED` + `dateType=RECEIVED`; RECEIPT ACTIVE/REVERSED histórico); D92-B (parcial + `summary.receivedAmount`).
+- `IncomeBalanceAsOfIntegrationTest`: RN240 as-of por `movement_date`; reverse excluído do saldo.
+- `V30IncomeMovementsBackfillTest`: backfill D83 (SQL da V30); duplicação; EXPECTED/CANCELLED; validação de dados inválidos.
+- `IncomeMovementsApiTest`: reverse concorrente (recomendado).
+
+## Sort `receivedDate` (D76)
+
+O sort `receivedDate` em `/receivables` usa `incomes.received_date` (legado). Novos RECEIPTs **não** preenchem o cabeçalho; o teste de sort usa `containsExactlyInAnyOrder` quando aplicável.
 
 ## Acréscimos
 
@@ -999,7 +1010,7 @@ que estorno **não** resulta em `CANCELLED`;
 que cancelamento **não** é tratado como estorno.
 
 
-A Fase 6 não testa responsável em receitas (`responsibleType` / `responsibleName`). A escrita desses campos no cadastro de Income está no contrato da Parte 2 (`docs/24` §19.9 / RN306 / `docs/27` §40G) e **não** está implementada.
+A escrita de responsável no cadastro de Income está **implementada** (Parte 2 / `docs/24` §19.9 / RN306 / §40G).
 
 
 # 44. Receita esperada

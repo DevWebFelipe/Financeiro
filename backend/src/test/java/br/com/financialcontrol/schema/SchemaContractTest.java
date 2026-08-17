@@ -55,7 +55,8 @@ class SchemaContractTest {
             "card_purchase_account_refunds",
             "financial_goals",
             "goal_contributions",
-            "goal_redemptions");
+            "goal_redemptions",
+            "income_movements");
   }
 
   @Test

@@ -21,7 +21,7 @@ import br.com.financialcontrol.credit_card_invoices.CreditCardInvoicePaymentRepo
 import br.com.financialcontrol.credit_cards.CardPurchaseAccountRefundRepository;
 import br.com.financialcontrol.financial_goals.GoalContributionRepository;
 import br.com.financialcontrol.financial_goals.GoalRedemptionRepository;
-import br.com.financialcontrol.incomes.IncomeRepository;
+import br.com.financialcontrol.incomes.IncomeMovementRepository;
 import br.com.financialcontrol.payments.PaymentRepository;
 import br.com.financialcontrol.security.AuthenticatedUser;
 import br.com.financialcontrol.transfers.TransferRepository;
@@ -48,7 +48,7 @@ class AccountServiceTest {
   private static final UUID ACCOUNT_ID = UUID.fromString("01800000-0000-7000-8000-0000000000aa");
 
   @Mock private AccountRepository accountRepository;
-  @Mock private IncomeRepository incomeRepository;
+  @Mock private IncomeMovementRepository incomeMovementRepository;
   @Mock private PaymentRepository paymentRepository;
   @Mock private CreditCardInvoicePaymentRepository invoicePaymentRepository;
   @Mock private CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository;
@@ -64,7 +64,7 @@ class AccountServiceTest {
     accountService =
         new AccountService(
             accountRepository,
-            incomeRepository,
+            incomeMovementRepository,
             paymentRepository,
             invoicePaymentRepository,
             cardPurchaseAccountRefundRepository,
@@ -79,7 +79,7 @@ class AccountServiceTest {
   private void stubZeroBalanceParts() {
     lenient()
         .when(
-            incomeRepository.sumReceivedAmountByAccountIdAndUserIdAsOf(
+            incomeMovementRepository.sumActiveReceiptAmountByAccountIdAndUserIdAsOf(
                 eq(ACCOUNT_ID), eq(USER_A), isNull()))
         .thenReturn(BigDecimal.ZERO);
     lenient()
@@ -291,7 +291,7 @@ class AccountServiceTest {
   void shouldAddReceivedIncomesToDerivedBalance() {
     Account account = ownedAccount(true);
     when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
-    when(incomeRepository.sumReceivedAmountByAccountIdAndUserIdAsOf(
+    when(incomeMovementRepository.sumActiveReceiptAmountByAccountIdAndUserIdAsOf(
             eq(ACCOUNT_ID), eq(USER_A), isNull()))
         .thenReturn(new BigDecimal("5400.00"));
 
@@ -305,7 +305,7 @@ class AccountServiceTest {
   void shouldSubtractValidExpensePaymentsFromDerivedBalance() {
     Account account = ownedAccount(true);
     when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
-    when(incomeRepository.sumReceivedAmountByAccountIdAndUserIdAsOf(
+    when(incomeMovementRepository.sumActiveReceiptAmountByAccountIdAndUserIdAsOf(
             eq(ACCOUNT_ID), eq(USER_A), isNull()))
         .thenReturn(new BigDecimal("1000.00"));
     when(paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserIdAsOf(

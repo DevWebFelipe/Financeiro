@@ -136,7 +136,7 @@ Correções posteriores usam **Acerto de Saldos** (RN204 / `BALANCE_ADJUSTMENT`)
 
 **Contam** como movimentação (bloqueiam definitivamente o saldo inicial):
 
-1. Receita `RECEIVED` (Fase 6: o recebimento integral no cabeçalho). **Fase 17 Parte 2 (D91-A / RN318 — implementação pendente):** qualquer `RECEIPT` (`ACTIVE` ou `REVERSED`) na conta; não o acréscimo; não `incomes.status = RECEIVED` sozinho. Backfill **D83** na mesma migração que a troca da fórmula;
+1. Receita `RECEIVED` (Fase 6: recebimento integral no cabeçalho). **Fase 17 Parte 2 (D91-A / RN318 — implementado):** qualquer `RECEIPT` (`ACTIVE` ou `REVERSED`) na conta; não o acréscimo; não `incomes.status = RECEIVED` sozinho. Backfill **D83** na V30;
 2. Payment `ACTIVE` de despesa que produza saída da conta;
 3. Pagamento `ACTIVE` de fatura que produza saída da conta;
 4. Refund de compra no cartão que produza entrada na conta (`settlement = ACCOUNT`);
@@ -536,7 +536,7 @@ Duplicata ativa, ainda não recebida. Não altera o saldo da conta.
 
 É também o estado após o estorno de um recebimento (RN200): a duplicata permanece ativa e pode ser recebida novamente.
 
-**Fase 17 Parte 2 (contrato — implementação pendente):** `EXPECTED` passa a significar duplicata ativa com **saldo a receber > 0**, inclusive após recebimentos parciais. A conta do dinheiro recebido pertence à movimentação, não necessariamente ao cabeçalho (`docs/24` §19.9 / D76). O comportamento **implementado** desta RN permanece o da Fase 6.
+**Fase 17 Parte 2 (implementado):** `EXPECTED` significa duplicata ativa com **saldo a receber > 0**, inclusive após recebimentos parciais. A conta do dinheiro recebido pertence à movimentação, não necessariamente ao cabeçalho (**D76-A** — limitação contratual).
 
 
 ## RN042 — Receita recebida
@@ -552,7 +552,7 @@ Representa entrada financeira real.
 
 `account_id` e `received_date` são obrigatórios.
 
-**Fase 17 Parte 2 (contrato — implementação pendente):** `RECEIVED` passa a significar saldo a receber = `0,00`. Um novo acréscimo reabre `EXPECTED`. `account_id` / `received_date` no cabeçalho deixam de ser a fonte de verdade (D76). O comportamento **implementado** permanece o da Fase 6.
+**Fase 17 Parte 2 (implementado):** `RECEIVED` significa saldo a receber = `0,00`. Um novo acréscimo reabre `EXPECTED`. `account_id` / `received_date` no cabeçalho não são fonte de verdade (**D76-A**).
 
 
 ## RN043 — Conta
@@ -591,7 +591,7 @@ Nesta fase o cancelamento parte somente de `EXPECTED`. Não há impacto financei
 
 Receita já recebida não pode voltar silenciosamente para EXPECTED.
 
-A correção explícita é o estorno (`POST /api/v1/incomes/{id}/reverse`), que retorna a duplicata a `EXPECTED` (ativa, não cancelada).
+A correção explícita é o estorno da movimentação (`POST /api/v1/incomes/{id}/movements/{movementId}/reverse`), que retorna a duplicata a `EXPECTED` (ativa, não cancelada) conforme o remaining. Endpoints legados `/receive` e `/reverse` foram **removidos** (**D74-A**).
 
 Não usar cancelamento para desfazer um recebimento.
 
@@ -631,7 +631,7 @@ Cancelar inutiliza a duplicata. Estornar desfaz o recebimento e mantém a duplic
 
 Não existe status `REVERSED` para receitas. Os status oficiais continuam `EXPECTED`, `RECEIVED` e `CANCELLED`. O registro em `incomes` é a duplicata; não existe entidade separada.
 
-**Fase 17 Parte 2 (contrato — implementação pendente):** o estorno deixa de ser uma transição única do cabeçalho e passa a ser o estorno de **uma movimentação**. `EXPECTED`/`RECEIVED` passam a seguir o remaining (`docs/24` §19.9.5). Destino de `POST /receive` e `POST /reverse`: D74. O ciclo **implementado** permanece o desta RN.
+**Fase 17 Parte 2 (implementado):** o estorno é o estorno de **uma movimentação** (`POST /movements/{movementId}/reverse`). `EXPECTED`/`RECEIVED` seguem o remaining. Endpoints legados `/receive` e `/reverse` **removidos** (**D74-A**).
 
 
 ## RN199 — Transições não permitidas de receita
@@ -698,7 +698,7 @@ O próximo recebimento (`POST /receive`) deve informar novamente `accountId` e `
 
 O estorno não deve ser bloqueado apenas porque o saldo resultante da conta ficará negativo. Esta possibilidade de saldo negativo é exceção à regra das operações normais (RN012).
 
-**Fase 17 Parte 2 (D80 — fechado, não implementado):** o estorno de cada RECEIPT **mantém** esta RN: conta do próprio RECEIPT; lock; ownership; conta **não** precisa estar ativa; saldo da conta pode ficar negativo. Sem regra especial só para recebimentos.
+**Fase 17 Parte 2 (D80-A — implementado):** o estorno de cada RECEIPT **mantém** esta RN: conta do próprio RECEIPT; lock; ownership; conta **não** precisa estar ativa; saldo da conta pode ficar negativo. Sem regra especial só para recebimentos.
 
 Exemplo (correção com saldo não negativo):
 
@@ -789,7 +789,7 @@ Esta regra não altera o uso de responsável em despesas (RN035–RN038).
 
 **Emenda (Fase 17 — Parte 1):** o responsável é informação de negócio necessária para receitas. As colunas físicas já existem; não inventar campos novos. A visão `GET /api/v1/receivables` já lê e filtra esses campos. A API de Income da Fase 6 **continua** rejeitando `responsibleType` / `responsibleName` no JSON até a implementação da Parte 2.
 
-**Emenda (Fase 17 — Parte 2 — CONTRATO CONSOLIDADO — IMPLEMENTAÇÃO PENDENTE):** a escrita de responsável no cadastro/edição de Income passa a fazer parte da Parte 2 (RN306 / §19.9). Não é mais trabalho separado. Não implementar agora. Detalhe: §19.8.12 e §19.9.
+**Emenda (Fase 17 — Parte 2 — implementada):** a escrita de responsável no cadastro/edição de Income faz parte da Parte 2 (RN306 / §19.9 / **D89**). **Implementado.** Detalhe: §19.8.12 e §19.9.
 
 
 ## RN207 — Cancelamento de receita prevista
@@ -2188,7 +2188,7 @@ Somente payments `ACTIVE` de despesa `ACCOUNT`/`NONE` (despesa não `CANCELLED`/
 
 **Fase 15:** contribuições e resgates de meta **não** alteram o resultado de RN240. Eles afetam somente `reservedAmount` e `availableBalance` (RN265–RN267). A fórmula acima continua sendo a definição de **saldo financeiro total**.
 
-**Fase 17 Parte 2 (D83 / D91 — implementação pendente):** o termo `+ SUM(incomes.amount WHERE status = RECEIVED AND account_id = conta)` será substituído por `+ SUM(RECEIPT ACTIVE na conta)`. Acréscimos não entram. RECEIPT `REVERSED` não entra no saldo. Backfill obrigatório das `RECEIVED` atuais na **mesma** migração. A fórmula desta RN permanece a **implementada** até a Parte 2 ser autorizada.
+**Fase 17 Parte 2 (D83 / D91 / RN240 — implementado):** `+ SUM(RECEIPT ACTIVE na conta por movement_date)`. Acréscimos não entram. RECEIPT `REVERSED` não entra no saldo. Backfill D83 na V30.
 
 **Leitura do saldo (`GET /accounts/{id}/balance`):** é cálculo derivado sob demanda. A partir da Fase 15, a resposta expõe `totalBalance`, `reservedAmount` e `availableBalance` (RN265). O campo legado `balance`, quando presente, representa o **saldo financeiro total** (equivalente a `totalBalance`). O contrato da Fase 14 exige capacidade **interna** de saldo **as-of-date** para acerto retroativo; **não** obriga expor data nesse GET nesta fase. O contrato **não** exige `SELECT FOR UPDATE` da conta apenas para essa leitura. A proteção contra saldo negativo (RN076A / RN276) e a concorrência de escrita (RN244 / RN277) aplicam-se às **operações** que criam/reverterem facts financeiros (pay, reverse, transfer, balance adjustment, contribuição, resgate, etc.), com locks nas entidades financeiras envolvidas, no padrão das fases anteriores. Não introduzir lock explícito de conta só para GET de saldo sem decisão arquitetural futura.
 
@@ -3687,7 +3687,7 @@ Incompatíveis (lista oficial da **Parte 1 implementada**):
 - `dateType` ou `status` com valor fora do conjunto oficial;
 - período (`startDate` e/ou `endDate`) sem `dateType`.
 
-**Fase 17 Parte 2 (D88 — implementação pendente):** o primeiro item **deixa de ser incompatível**. Permanecem os demais.
+**Fase 17 Parte 2 (D88 / D94 — implementado):** `status=EXPECTED` + `dateType=RECEIVED` **é permitido**.
 
 **Não** é incompatível (retorna **200**, possivelmente vazio):
 
@@ -3741,7 +3741,7 @@ Envelope: `items`, `summary`, `page`, `size`, `totalItems`, `totalPages`.
 
 O resumo **respeita exatamente os filtros** (D49, D59). Não é um resumo global. Exemplo: `status=RECEIVED` → `futureAmount` / `overdueAmount` / `totalReceivableAmount` = `0.00`; `receivedAmount` = soma das recebidas filtradas. Consulta padrão (só `EXPECTED`) → `receivedAmount` = `0.00`.
 
-**Fase 17 Parte 2 (D92-B / RN317 — implementação pendente):** `futureAmount` / `overdueAmount` somam `remainingAmount`; `receivedAmount` do resumo = soma dos RECEIPT ACTIVE do universo filtrado (pode ser > 0 no padrão EXPECTED).
+**Fase 17 Parte 2 (D92-B / RN317 — implementado):** `futureAmount` / `overdueAmount` somam `remainingAmount`; `receivedAmount` do resumo = soma dos RECEIPT ACTIVE do universo filtrado (pode ser > 0 no padrão EXPECTED).
 
 `totalItems` / `totalPages` também são do universo filtrado, não só da página. Lista vazia: **200**, `items: []`, resumo `0.00`, `totalItems: 0`, `totalPages: 0`.
 
@@ -3803,7 +3803,7 @@ A visão de Receivables **já contrata** retorno e filtro desses campos. Quando 
 
 ## 19.8.13 Parte 2 — Baixas e movimentações
 
-**Status:** contrato consolidado em §19.9. **IMPLEMENTAÇÃO PENDENTE.** Não criar tabela, entidade, endpoint, DTO, migration nem teste de código agora.
+**Status:** contrato consolidado em §19.9. **IMPLEMENTADO** (V30, endpoints canônicos, testes).
 
 A Parte 2 **não** deve ser modelada simplesmente como:
 
@@ -3814,9 +3814,9 @@ Income
 └── remainingAmount
 ```
 
-O histórico das movimentações é a fonte de verdade dos totais acumulados. Contrato fechado (D73–D93): §19.9. **IMPLEMENTAÇÃO PENDENTE.**
+O histórico das movimentações é a fonte de verdade dos totais acumulados. Contrato fechado (D73–D93): §19.9. **IMPLEMENTADO.**
 
-A Parte 1 permanece leitura da duplicata integral (`incomes.amount` + `status`) **até** a implementação da Parte 2. Após **toda** a Fase 17, e **antes** da Fase 18, haverá atualização geral de roadmap, README, documentação, status, regras, API, arquitetura, testes, `AGENTS.md` e rules operacionais relevantes (D70).
+A Parte 1 permanece leitura da duplicata integral (`incomes.amount` + `status`). A Parte 2 evoluiu item/resumo e movimentações (**implementado**). Após **toda** a Fase 17, e **antes** da Fase 18, haverá atualização geral de roadmap, README, documentação, status, regras, API, arquitetura, testes, `AGENTS.md` e rules operacionais relevantes (D70).
 
 ---
 
@@ -3824,11 +3824,11 @@ A Parte 1 permanece leitura da duplicata integral (`incomes.amount` + `status`) 
 
 Dono = `userId` do JWT. A consulta filtra na query por esse usuário. Recurso/filtro de outro usuário não devolve dados alheios (lista vazia; sem vazar existência).
 
-Pacote: `br.com.financialcontrol.receivables` — `ReceivablesController` → `ReceivablesService` → consultas de leitura em `IncomeRepository`. Sem entidade JPA `Receivable`. Sem UseCase por filtro. DTOs próprios da visão (D28). Sem alterar o domínio de Income sem necessidade real da Parte 1 (D45). A escrita de responsável em Income e as movimentações estão no contrato da Parte 2 (`docs/24` §19.9) e **não** estão implementadas.
+Pacote: `br.com.financialcontrol.receivables` — `ReceivablesController` → `ReceivablesService` → consultas de leitura em `IncomeRepository`. Sem entidade JPA `Receivable`. Sem UseCase por filtro. DTOs próprios da visão (D28). Escrita de responsável em Income e movimentações **implementadas** na Parte 2 (`docs/24` §19.9).
 
 Timezone: `America/Sao_Paulo`. Convenções: inglês no código/rotas/pacotes/DTOs/banco; documentação funcional em português (D72).
 
-Fase 17 Parte 1 = somente backend/API. A Fase 17 inteira permanece em andamento até a Parte 2.
+Fase 17 Parte 1 = somente backend/API da visão. **Fase 17 — CONCLUÍDA E APROVADA** (Parte 1 + Parte 2).
 
 ---
 
@@ -3836,7 +3836,7 @@ Fase 17 Parte 1 = somente backend/API. A Fase 17 inteira permanece em andamento 
 
 As decisões D51–D72 (e o contrato preliminar D01–D50 da auditoria, na medida em que não contradisserem D51–D72) estão refletidas nesta seção e em `docs/25` §67. Em conflito, prevalecem D51–D72 e esta seção. Lacuna nova → parar e perguntar.
 
-RN293–RN305 estão **implementadas** na Parte 1. RN306: a visão já lê e filtra; a **escrita** e o GET de Income estão no contrato da Parte 2 (D89) e **não** estão implementados. RN307: Parte 2 — **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE**; D73–D93 **fechadas**.
+RN293–RN305 estão **implementadas** na Parte 1. RN306: escrita e GET de responsável em Income **implementados** (Parte 2 / **D89**). RN307: Parte 2 — **`CONCLUÍDA E APROVADA`**; D73–D94 **fechadas** e **implementadas**.
 
 ---
 
@@ -3864,14 +3864,14 @@ Sem filtro de `status`, a visão operacional considera somente receitas `EXPECTE
 
 `dateType=EXPECTED` filtra `expectedDate`. `dateType=RECEIVED` filtra `receivedDate` do cabeçalho **na Parte 1**. Período (`startDate` / `endDate`) exige `dateType`. Intervalo inclusivo. Não usar `createdAt`. Não implementar `year` / `month`.
 
-**Fase 17 Parte 2 (D78-A — implementação pendente):** `dateType=RECEIVED` filtra `income_movements.movement_date` dos RECEIPT. `accountId` casa receitas com pelo menos um RECEIPT `ACTIVE` naquela conta.
+**Fase 17 Parte 2 (D78-A / D94 — implementado):** `dateType=RECEIVED` filtra `income_movements.movement_date` de **qualquer** RECEIPT (ACTIVE ou REVERSED — **D94**). `accountId` casa receitas com pelo menos um RECEIPT `ACTIVE` naquela conta.
 
 
 ## RN298 — Combinações incompatíveis
 
 **Parte 1 (implementada):** `status=EXPECTED` (explícito ou padrão) + `dateType=RECEIVED`, `status=RECEIVED` + `dateType=EXPECTED`, e `status=RECEIVED` + `overdue` → **400**. `status=EXPECTED` + `accountId` não é 400 (pode ser vazio).
 
-**Fase 17 Parte 2 (contrato fechado — implementação pendente, D88 / RN319):** `status=EXPECTED` + `dateType=RECEIVED` **passa a ser permitido**. Permanecem **400**: `status=RECEIVED` + `dateType=EXPECTED`; `status=RECEIVED` + `overdue`. `overdue` continua sendo da obrigação (`expectedDate`), não da movimentação.
+**Fase 17 Parte 2 (D88 / D94 / RN319 — implementado):** `status=EXPECTED` + `dateType=RECEIVED` **é permitido**. Permanecem **400**: `status=RECEIVED` + `dateType=EXPECTED`; `status=RECEIVED` + `overdue`. `overdue` continua sendo da obrigação (`expectedDate`), não da movimentação.
 
 
 ## RN299 — Resumo respeita filtros
@@ -3888,7 +3888,7 @@ Sem filtro de `status`, a visão operacional considera somente receitas `EXPECTE
 
 O item da Parte 1 (implementada) expõe o `amount` da duplicata. Não expõe `remainingAmount` nem `receivedAmount` no item.
 
-**Fase 17 Parte 2 (D77-A / RN316 — implementação pendente):** evolução **aditiva**. `amount` permanece o original. Passam a existir `accruedAmount`, `receivedAmount` e `remainingAmount` derivados. Não persistir.
+**Fase 17 Parte 2 (D77-A / RN316 — implementado):** evolução **aditiva**. `amount` permanece o original. `accruedAmount`, `receivedAmount` e `remainingAmount` derivados (RECEIPT/ACCRUAL ACTIVE). Não persistir.
 
 
 ## RN302 — Consulta no banco
@@ -3915,33 +3915,21 @@ Somente receitas do `userId` autenticado. Usuário B nunca recebe linhas do usu�
 
 As colunas já existem. A visão de receivables retorna e filtra `responsibleType` / `responsibleName`. Não inventar colunas.
 
-**Parte 2 (D89 — implementação pendente):** `POST` / `PUT /incomes` (PUT só `EXPECTED`) aceitam os campos (RN035–RN038). `GET /incomes` e `GET /incomes/{id}` os devolvem. A API da Fase 6 **ainda** não os aceita na escrita.
+**Parte 2 (D89 — implementado):** `POST` / `PUT /incomes` (PUT só `EXPECTED`) aceitam os campos (RN035–RN038). `GET /incomes` e `GET /incomes/{id}` os devolvem.
 
 
 ## RN307 — Parte 2 de recebíveis
 
-**FASE 17 — PARTE 2 — CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE.**
+**FASE 17 — CONCLUÍDA E APROVADA** (Parte 1 + Parte 2).
 
-Decisões D73–D93 **fechadas** (§19.9.18). Não implementar código, migration, endpoint, entidade nem teste de código até autorização explícita. Contrato: §19.9.
+Decisões D73–D94 **fechadas** e **implementadas** (§19.9.18). Contrato: §19.9.
 
 
 # 19.9 Fase 17 — Parte 2 — Movimentações de receita
 
-**Status:** `CONTRATO CONSOLIDADO` — `IMPLEMENTAÇÃO PENDENTE`.
+**Status:** **`CONCLUÍDA E APROVADA`** (Parte 1 + Parte 2).
 
-Auditoria da consolidação: **APROVADA COM RESSALVAS**. Decisões D73–D93 **fechadas** (§19.9.18). A Parte 1 (§19.8) permanece vigente e **implementada**. A Fase 17 inteira **não** está concluída. A Fase 6 permanece o comportamento **executado** até a implementação ser autorizada.
-
-Não criar código, migration, endpoint, entidade JPA, DTO nem teste de código até autorização explícita.
-
-Fluxo obrigatório restante:
-
-```text
-IMPLEMENTAÇÃO (após autorização)
- → TESTES
- → AUDITORIA
- → CONSOLIDAÇÃO FINAL
- → APROVAÇÃO
-```
+Auditoria: **APROVADA COM RESSALVAS** (correções pós-auditoria e consolidação final concluídas). Decisões D73–D94 **fechadas** e **implementadas** (§19.9.18). A Parte 1 (§19.8) permanece vigente. A Fase 17 inteira está **concluída**.
 
 ---
 
@@ -4195,7 +4183,7 @@ O responsável pertence à **receita**. Não pertence à conta. Não pertence ao
 
 Representa a origem da receita (ex.: salário Felipe / salário esposa). **Não** representa patrimônio separado. Não criar contas nem saldos por responsável.
 
-Escrita na API de Income (**D89** / RN306): `POST` e `PUT` (este último só `EXPECTED`) aceitam `responsibleType` / `responsibleName` (RN035–RN038). `GET /incomes` e `GET /incomes/{id}` **devem** devolver esses campos. O que for gravado é visível na leitura. Não criar entidade separada de responsável. Não remover as colunas existentes. A Parte 1 já lê e filtra na visão; a Parte 2 passa a gravar. **IMPLEMENTAÇÃO PENDENTE.**
+Escrita na API de Income (**D89** / RN306): `POST` e `PUT` (este último só `EXPECTED`) aceitam `responsibleType` / `responsibleName` (RN035–RN038). `GET /incomes` e `GET /incomes/{id}` **devem** devolver esses campos. O que for gravado é visível na leitura. Não criar entidade separada de responsável. Não remover as colunas existentes. A Parte 1 já lê e filtra na visão; a Parte 2 passa a gravar. **IMPLEMENTADO.**
 
 ---
 
@@ -4288,7 +4276,7 @@ Bodies: acréscimo `{ "amount", "date" }`; recebimento `{ "amount", "date", "acc
 
 Auth, isolamento e erros: padrão Fase 6/8 (`401` / `404` ownership / `400` `VALIDATION_ERROR` / `400` `BUSINESS_RULE_VIOLATION`). Códigos específicos na implementação só para violações já fechadas.
 
-**Legado Fase 6 (**D74-A**):** `POST /incomes/{id}/receive` e `POST /incomes/{id}/reverse` não são o caminho canônico da Parte 2. A Parte 2 **não** mantém duas formas concorrentes indefinidamente. A implementação futura define a estratégia de migração/remoção. **Não** adotar D74-C (reverse em massa). **Não** implementar a migração agora.
+**Legado Fase 6 (**D74-A** — removido):** `POST /incomes/{id}/receive` e `POST /incomes/{id}/reverse` foram **removidos**. Caminho canônico: `/accruals`, `/receipts`, `/movements`, reverse da movimentação. Sem reverse em massa (não D74-C).
 
 `GET /api/v1/receivables` permanece. Sem `GET /receivables/{id}`. Sem escrita em `/receivables`.
 
@@ -4317,9 +4305,9 @@ Consulta padrão (`status` omitido = EXPECTED) **pode** ter `summary.receivedAmo
 
 ---
 
-## 19.9.14 Modelo físico (fechado — não criar agora)
+## 19.9.14 Modelo físico (implementado — V30)
 
-Nenhuma migration nesta etapa. Tabela oficial única (**D85** / **D87-A**): `income_movements`.
+Tabela oficial única (**D85** / **D87-A**): `income_movements` — migration `V30__create_income_movements.sql`.
 
 Colunas: `id` (UUID v7 PK), `user_id`, `income_id`, `type` (`ACCRUAL` | `RECEIPT`), `status` (`ACTIVE` | `REVERSED`), `amount` `NUMERIC(19,2)` > 0, `movement_date` `DATE` NOT NULL, `account_id` (NULL se ACCRUAL; obrigatório se RECEIPT), `created_at`, `updated_at`, `reversed_at` (preenchido no estorno).
 
@@ -4386,18 +4374,18 @@ A implementação da Parte 2 **emenda** as regras abaixo somente após autoriza�
 
 ---
 
-## 19.9.18 Registro das decisões D73–D93 (FECHADAS)
+## 19.9.18 Registro das decisões D73–D94 (FECHADAS)
 
-Auditoria: **APROVADA COM RESSALVAS**. O usuário concordou com as recomendações. **IMPLEMENTAÇÃO PENDENTE.**
+Auditoria: **APROVADA COM RESSALVAS** (consolidação final concluída). **Fase 17 — CONCLUÍDA E APROVADA.**
 
 | Id | Decisão |
 |---|---|
 | **D73** | Cancelar somente sem RECEIPT `ACTIVE`. Sem estorno automático. Sem `RECEIVED` → `CANCELLED`. |
-| **D74-A** | Canônicos: `/accruals`, `/receipts`, `/movements`, reverse da movimentação. `/receive` e `/reverse` = legado Fase 6; migração/remoção na implementação, sem duas formas concorrentes indefinidas. Sem reverse em massa (não C). |
+| **D74-A** | Canônicos: `/accruals`, `/receipts`, `/movements`, reverse da movimentação. `/receive` e `/reverse` removidos (**implementado**). Sem reverse em massa (não C). |
 | **D75-A** | Original só em `incomes.amount`. Sem movimentação OPENING. |
-| **D76-A** | `account_id` / `received_date` do cabeçalho = legado; fonte = `amount` + `income_movements`. Colunas não removidas. |
+| **D76-A** | `account_id` / `received_date` do cabeçalho = legado; fonte = `amount` + `income_movements`. Colunas não removidas. Sort `receivedDate` e `item.receivedDate`/`accountId` na visão continuam no cabeçalho legado. |
 | **D77-A** | Item aditivo: `amount`, `accruedAmount`, `receivedAmount`, `remainingAmount`. |
-| **D78-A** | `accountId` = pelo menos um RECEIPT ACTIVE na conta; `dateType=RECEIVED` = `movement_date` do RECEIPT. |
+| **D78-A** | `accountId` = pelo menos um RECEIPT ACTIVE na conta; `dateType=RECEIVED` = `movement_date` do RECEIPT (ver **D94** para status). |
 | **D79** | `PUT amount` rejeitado se existir qualquer movimentação (inclusive REVERSED). |
 | **D80-A** | Estorno de RECEIPT mantém RN200 (conta owned, não precisa ativa; saldo de conta pode ficar negativo). |
 | **D81** | `CANCELLED` não tem RECEIPT ACTIVE (D73). Sem novas movimentações. Reverse já REVERSED continua 400. |
@@ -4413,83 +4401,83 @@ Auditoria: **APROVADA COM RESSALVAS**. O usuário concordou com as recomendaçõ
 | **D91-A** | RN010A: qualquer RECEIPT (`ACTIVE` ou `REVERSED`). |
 | **D92-B** | `summary.receivedAmount` = soma dos RECEIPT ACTIVE do universo filtrado (pode ser > 0 no padrão EXPECTED). |
 | **D93** | PUT só `EXPECTED`. Sem exceção para RECEIVED. |
+| **D94** | **Fechamento lacuna D88:** `dateType=RECEIVED` filtra `movement_date` de **qualquer** RECEIPT (ACTIVE **ou** REVERSED) — existência histórica de recebimento na data. Distinto de `receivedAmount`, `remaining`, saldo (somente RECEIPT ACTIVE) e de `accountId` (somente RECEIPT ACTIVE). |
 
-Não restam decisões D73–D93 em aberto. A implementação continua bloqueada até autorização explícita.
+Não restam decisões D73–D94 em aberto. Todas **implementadas**.
 
 ---
 
-## 19.9.19 Critério desta etapa documental
+## 19.9.19 Critério desta etapa (histórico documental — concluído)
 
-Esta etapa de fechamento está completa quando:
+Esta etapa de fechamento documental **foi concluída** na consolidação final da Fase 17:
 
-1. D73–D93 estiverem registradas como fechadas neste documento;
-2. RN298, RN010A, RN240, RN306 e a visão de receivables estiverem emendadas de acordo;
-3. nenhum código, migration, endpoint, entidade ou teste de código tiver sido alterado;
-4. a Fase 17 **não** tiver sido marcada concluída;
-5. a Parte 1 permanecer `CONCLUÍDA E APROVADA`;
-6. a implementação permanecer bloqueada até autorização explícita.
+1. D73–D94 registradas como fechadas e **implementadas**;
+2. RN298, RN010A, RN240, RN306 e a visão de receivables emendadas;
+3. código, migration V30, endpoints, entidade e testes **implementados**;
+4. Fase 17 marcada **`CONCLUÍDA E APROVADA`**;
+5. Parte 1 permanece `CONCLUÍDA E APROVADA`.
 
-Critério da **implementação** (futuro): acréscimos, recebimentos parciais, estorno individual, histórico, responsável, visão e saldo coerentes — testes `docs/27` §40G.
+Critério da **implementação** (atendido): acréscimos, recebimentos parciais, estorno individual, histórico, responsável, visão e saldo coerentes — testes `docs/27` §40G; 481 testes; `mvn verify` SUCCESS.
 
 
 ## RN308 — Fonte de verdade das movimentações de receita
 
-Após a implementação da Parte 2, totais lançado, recebido e remaining derivam das movimentações válidas e do valor original. Não persistir remaining/recebido/acumulado em `incomes` como fonte independente. **IMPLEMENTAÇÃO PENDENTE.**
+Após a implementação da Parte 2, totais lançado, recebido e remaining derivam das movimentações válidas e do valor original. Não persistir remaining/recebido/acumulado em `incomes` como fonte independente. **IMPLEMENTADO.**
 
 
 ## RN309 — Acréscimo de receita
 
-Acréscimo aumenta o a receber, tem data própria, não altera `expectedDate` nem o valor original, não movimenta conta, permanece no histórico. Proibido em `CANCELLED`. Permitido em `RECEIVED` (reabre `EXPECTED`). **IMPLEMENTAÇÃO PENDENTE.**
+Acréscimo aumenta o a receber, tem data própria, não altera `expectedDate` nem o valor original, não movimenta conta, permanece no histórico. Proibido em `CANCELLED`. Permitido em `RECEIVED` (reabre `EXPECTED`). **IMPLEMENTADO.**
 
 
 ## RN310 — Recebimento parcial de receita
 
-Recebimento válido tem valor > 0, data própria e conta de destino do usuário. Movimenta o saldo da conta. Não pode exceder o remaining. Remaining = 0 → `RECEIVED` automático. Remaining > 0 → `EXPECTED`. **IMPLEMENTAÇÃO PENDENTE.**
+Recebimento válido tem valor > 0, data própria e conta de destino do usuário. Movimenta o saldo da conta. Não pode exceder o remaining. Remaining = 0 → `RECEIVED` automático. Remaining > 0 → `EXPECTED`. **IMPLEMENTADO.**
 
 
 ## RN311 — Estorno de movimentação de receita
 
-`ACTIVE` → `REVERSED`. Não apaga o fato. Estorno de recebimento desfaz o efeito na conta e devolve remaining. Estorno de acréscimo não movimenta conta e é rejeitado se remaining resultante < 0. **IMPLEMENTAÇÃO PENDENTE.**
+`ACTIVE` → `REVERSED`. Não apaga o fato. Estorno de recebimento desfaz o efeito na conta e devolve remaining. Estorno de acréscimo não movimenta conta e é rejeitado se remaining resultante < 0. **IMPLEMENTADO.**
 
 
 ## RN312 — Receita RECEIVED e novo acréscimo
 
-Saldo zero (`RECEIVED`) + acréscimo válido → remaining > 0 e status `EXPECTED`. **IMPLEMENTAÇÃO PENDENTE.**
+Saldo zero (`RECEIVED`) + acréscimo válido → remaining > 0 e status `EXPECTED`. **IMPLEMENTADO.**
 
 
 ## RN313 — Cancelamento de receita (Parte 2)
 
-Cancelar somente se **não** existir RECEIPT `ACTIVE` (**D73**). Sem estorno automático. Histórico permanece. `RECEIVED` → `CANCELLED` direto **não** existe. `CANCELLED` não aceita ACCRUAL nem RECEIPT (**D81**). **IMPLEMENTAÇÃO PENDENTE.**
+Cancelar somente se **não** existir RECEIPT `ACTIVE` (**D73**). Sem estorno automático. Histórico permanece. `RECEIVED` → `CANCELLED` direto **não** existe. `CANCELLED` não aceita ACCRUAL nem RECEIPT (**D81**). **IMPLEMENTADO.**
 
 
 ## RN314 — Data da movimentação de receita
 
-`movement_date` não pode ser futura (`America/Sao_Paulo`, `Clock`). Retroativa permitida, inclusive anterior a `expectedDate` (**D82**). **IMPLEMENTAÇÃO PENDENTE.**
+`movement_date` não pode ser futura (`America/Sao_Paulo`, `Clock`). Retroativa permitida, inclusive anterior a `expectedDate` (**D82**). **IMPLEMENTADO.**
 
 
 ## RN315 — Imutabilidade do valor original após movimentações
 
-Se existir qualquer linha em `income_movements` (inclusive `REVERSED`), `PUT` de `amount` é rejeitado (**D79**). PUT da receita só em `EXPECTED` (**D93**). **IMPLEMENTAÇÃO PENDENTE.**
+Se existir qualquer linha em `income_movements` (inclusive `REVERSED`), `PUT` de `amount` é rejeitado (**D79**). PUT da receita só em `EXPECTED` (**D93**). **IMPLEMENTADO.**
 
 
 ## RN316 — Item aditivo de receivables (Parte 2)
 
-`amount` = original. `accruedAmount`, `receivedAmount`, `remainingAmount` derivados, não persistidos (**D77-A**). **IMPLEMENTAÇÃO PENDENTE.**
+`amount` = original. `accruedAmount`, `receivedAmount`, `remainingAmount` derivados, não persistidos (**D77-A**). **IMPLEMENTADO.**
 
 
 ## RN317 — Resumo receivedAmount da visão (Parte 2)
 
-`summary.receivedAmount` = soma dos RECEIPT `ACTIVE` do universo filtrado, inclusive quando o status filtrado é só `EXPECTED` (**D92-B**). `futureAmount` / `overdueAmount` somam `remainingAmount`. Agregação no banco. **IMPLEMENTAÇÃO PENDENTE.**
+`summary.receivedAmount` = soma dos RECEIPT `ACTIVE` do universo filtrado, inclusive quando o status filtrado é só `EXPECTED` (**D92-B**). `futureAmount` / `overdueAmount` somam `remainingAmount`. Agregação no banco. **IMPLEMENTADO.**
 
 
 ## RN318 — RN010A e RECEIPT de receita
 
-Qualquer RECEIPT (`ACTIVE` ou `REVERSED`) conta como movimentação efetiva da conta (**D91-A**). Não usar só `incomes.status = RECEIVED`. **IMPLEMENTAÇÃO PENDENTE.**
+Qualquer RECEIPT (`ACTIVE` ou `REVERSED`) conta como movimentação efetiva da conta (**D91-A**). Não usar só `incomes.status = RECEIVED`. **IMPLEMENTADO.**
 
 
 ## RN319 — Combinações da visão após parciais
 
-`status=EXPECTED` + `dateType=RECEIVED` é permitido (**D88**). Permanecem 400: `status=RECEIVED` + `dateType=EXPECTED`; `status=RECEIVED` + `overdue`. `overdue` deriva de `expectedDate`. **IMPLEMENTAÇÃO PENDENTE.**
+`status=EXPECTED` + `dateType=RECEIVED` é permitido (**D88**). `dateType=RECEIVED` usa `movement_date` de qualquer RECEIPT (**D94**). Permanecem 400: `status=RECEIVED` + `dateType=EXPECTED`; `status=RECEIVED` + `overdue`. `overdue` deriva de `expectedDate`. **IMPLEMENTADO.**
 
 
 # 20. Metas

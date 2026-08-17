@@ -1,5 +1,6 @@
 package br.com.financialcontrol.incomes.dto;
 
+import br.com.financialcontrol.expenses.ResponsibleType;
 import br.com.financialcontrol.incomes.Income;
 import br.com.financialcontrol.incomes.IncomeStatus;
 import java.math.BigDecimal;
@@ -16,6 +17,8 @@ public record IncomeResponse(
     LocalDate expectedDate,
     LocalDate receivedDate,
     IncomeStatus status,
+    ResponsibleType responsibleType,
+    String responsibleName,
     String notes,
     Instant createdAt,
     Instant updatedAt) {
@@ -30,6 +33,8 @@ public record IncomeResponse(
         income.getExpectedDate(),
         income.getReceivedDate(),
         income.getStatus(),
+        income.getResponsibleType(),
+        income.getResponsibleName(),
         income.getNotes(),
         income.getCreatedAt(),
         income.getUpdatedAt());

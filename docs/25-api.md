@@ -722,11 +722,15 @@ Response **200** com a categoria (`active = false`). A operação é idempotente
 
 # 32. Receitas
 
-Contrato da Fase 6 — **implementado** (comportamento vigente).
+Contrato vigente — Fase 17 **`CONCLUÍDA E APROVADA`** (`docs/24` §19.9 / `docs/25` §67A).
 
-**Fase 17 — Parte 2:** `docs/24` §19.9 — **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE**. Decisões D73–D93 fechadas. Não criar os endpoints de movimentação nem alterar o JSON vigente desta seção até autorização. Canônicos: §67A. `/receive` e `/reverse` = legado Fase 6 (**D74-A**). Responsável: **D89**.
+**Status:** Parte 2 **implementada**. Decisões D73–D94 **fechadas** e **implementadas**.
 
-O registro em `incomes` é a duplicata. Cancelamento (`/cancel`) e estorno (`/reverse`) são operações diferentes.
+O registro em `incomes` é a duplicata. Cancelamento (`POST /cancel`) e estorno de movimentação (`POST /movements/{id}/reverse`) são operações diferentes.
+
+Endpoints canônicos de movimentação: `POST /accruals`, `POST /receipts`, `GET /movements`, `POST /movements/{movementId}/reverse` (**D74-A** — legado `/receive` e `/reverse` **removidos**).
+
+Detalhe completo dos endpoints de movimentação: §67A.
 
 Endpoint:
 
@@ -749,7 +753,7 @@ page
 
 size
 
-A Fase 6 **não** utiliza filtro `responsibleType`. `responsibleType` e `responsibleName` não fazem parte do contrato **implementado** desta fase (RN203). A Parte 2 **contrata** aceitá-los no POST/PUT e devolvê-los no GET (**D89** / RN306) e **não** está implementada. Até lá, essas propriedades continuam **desconhecidas** neste recurso.
+`responsibleType` e `responsibleName` fazem parte do contrato **implementado** (**D89** / RN306). `POST` / `PUT` aceitam; `GET` devolve.
 
 
 Response de item (criação, consulta, listagem, edição e ações):
@@ -770,11 +774,11 @@ Response de item (criação, consulta, listagem, edição e ações):
 }
 ```
 
-`accountId` e `receivedDate` são `null` em `EXPECTED` (criação e após estorno). Em `RECEIVED`, ambos são obrigatórios.
+`accountId` e `receivedDate` são `null` em `EXPECTED` na criação. Novos recebimentos **não** preenchem o cabeçalho — a conta e a data ficam em `income_movements` (**D76-A**). Colunas legadas permanecem para backfill/transição.
 
-Na criação e no `PUT` **implementados** da Fase 6, propriedades desconhecidas no JSON — inclusive `userId`, `id`, `status`, `accountId`, `receivedDate`, `responsibleType`, `responsibleName`, `createdAt` e `updatedAt` — são rejeitadas (**400**, `VALIDATION_ERROR`). O `POST /receive` aceita `accountId` e `receivedDate`.
+Na criação e no `PUT`, propriedades desconhecidas no JSON — inclusive `userId`, `id`, `status`, `accountId`, `receivedDate`, `createdAt` e `updatedAt` — são rejeitadas (**400**, `VALIDATION_ERROR`).
 
-**Parte 2 (D89 — não implementado):** `POST` / `PUT` passam a aceitar `responsibleType` / `responsibleName`; `GET /incomes` e `GET /incomes/{id}` os devolvem. Deixam de ser propriedades desconhecidas. Não criar entidade separada de responsável.
+**Parte 2 (D89 — implementado):** `POST` / `PUT` aceitam `responsibleType` / `responsibleName`; `GET /incomes` e `GET /incomes/{id}` os devolvem.
 
 
 # 33. Receita
@@ -805,13 +809,15 @@ Request:
 }
 ```
 
-Regras da Fase 6:
+Regras vigentes (Fase 17):
 
 - criação resulta em `EXPECTED`, com `accountId` e `receivedDate` nulos;
-- a conta e a data de recebimento entram somente em `POST /receive`;
+- conta e data de recebimento entram em `POST /receipts` (`income_movements`);
 - categoria obrigatória, do usuário, ativa e do tipo `INCOME` (RN031, RN033);
 - valor > 0;
-- não enviar `responsibleType` nem `responsibleName` (Fase 6 vigente; **D89** / RN306 contratam a escrita e a leitura no GET — **não implementado**).
+- `responsibleType` / `responsibleName` opcionais (**D89** / RN306 — **implementado**).
+
+**Histórico Fase 6 (superado):** a conta e a data entravam somente em `POST /receive` (endpoint **removido** — **D74-A**).
 
 Response **201**.
 
@@ -828,64 +834,21 @@ Receita `RECEIVED`: rejeitar (**400**, `BUSINESS_RULE_VIOLATION`). Correção: e
 
 Receita `CANCELLED`: rejeitar nesta fase.
 
-**Parte 2 (D93 / D79 — não implementado):** PUT continua só em `EXPECTED` (inclui responsável). Se `RECEIVED` voltar a `EXPECTED` por acréscimo, o PUT volta a ser permitido nas regras de `EXPECTED`. Sem exceção para editar responsável em `RECEIVED`. Se existir **qualquer** linha em `income_movements` (inclusive `REVERSED`), alterar `amount` é rejeitado. Demais campos cadastrais não financeiros de `EXPECTED` seguem as regras vigentes.
+**Parte 2 (D93 / D79 — implementado):** PUT continua só em `EXPECTED` (inclui responsável). Se `RECEIVED` voltar a `EXPECTED` por acréscimo, o PUT volta a ser permitido nas regras de `EXPECTED`. Sem exceção para editar responsável em `RECEIVED`. Se existir **qualquer** linha em `income_movements` (inclusive `REVERSED`), alterar `amount` é rejeitado. Demais campos cadastrais não financeiros de `EXPECTED` seguem as regras vigentes.
 
 
-# 36. Receber receita
+# 36. Receber receita — **SUPERADO (Fase 6 — removido na Parte 2)**
 
-Endpoint:
+**Histórico Fase 6.** Endpoint removido: `POST /api/v1/incomes/{id}/receive`.
 
-POST /api/v1/incomes/{id}/receive
-
-
-Request:
-
-```json
-{
-  "accountId": "...",
-  "receivedDate": "2026-08-05"
-}
-```
-
-Somente `EXPECTED` → `RECEIVED`.
-
-O recebimento baixa a duplicata e gera a movimentação financeira correspondente.
-
-`accountId` e `receivedDate` obrigatórios. Conta do usuário e ativa.
-
-Produz movimentação positiva (`+ amount`) no saldo da conta informada.
-
-Não reutilizar conta de um recebimento anterior estornado: após o estorno `account_id` é `null`; este endpoint informa novamente a conta.
-
-Rejeitar `receive` sobre receita já `RECEIVED` ou `CANCELLED`.
-
-**Fase 17 Parte 2 (D74-A — não implementado):** caminho canônico = `POST /incomes/{id}/receipts`. Este endpoint é legado da Fase 6. Estratégia de migração/remoção na implementação. Sem duas formas concorrentes indefinidas.
+Caminho canônico: `POST /api/v1/incomes/{id}/receipts` (§67A).
 
 
-# 36.1 Estornar receita
+# 36.1 Estornar receita — **SUPERADO (Fase 6 — removido na Parte 2)**
 
-Endpoint:
+**Histórico Fase 6.** Endpoint removido: `POST /api/v1/incomes/{id}/reverse`.
 
-POST /api/v1/incomes/{id}/reverse
-
-
-Somente `RECEIVED` → `EXPECTED`.
-
-O estorno **não cancela** a duplicata. Desfaz o recebimento e os efeitos financeiros. A duplicata permanece ativa como não recebida e pode ser recebida novamente.
-
-Desfaz exatamente a movimentação do recebimento original (`− amount`) na conta que recebeu o valor, na mesma transação.
-
-Limpa `accountId` e `receivedDate` (`null`).
-
-Não cria despesa, receita negativa, `REFUNDED`, `REVERSED` nem `CANCELLED`.
-
-Não é bloqueado se o saldo resultante for negativo. Esta possibilidade de saldo negativo é exceção à regra das operações normais.
-
-Operação atômica: falha em qualquer etapa implica rollback (RN201).
-
-O próximo recebimento deve informar novamente `accountId` e `receivedDate`.
-
-**Fase 17 Parte 2 (D74-A / D80 — não implementado):** estorno canônico = `POST .../movements/{movementId}/reverse`. Este endpoint é legado. Estorno de RECEIPT mantém RN200.
+Caminho canônico: `POST /api/v1/incomes/{id}/movements/{movementId}/reverse` (§67A). Estorno de RECEIPT mantém RN200 (**D80-A**).
 
 
 # 37. Cancelar receita
@@ -900,11 +863,11 @@ O cancelamento inutiliza a duplicata. O registro permanece para histórico. Não
 
 Não há efeito financeiro a desfazer (`EXPECTED` não alterava o saldo).
 
-Não tratar este endpoint como estorno. Estorno é `POST /reverse` (`RECEIVED` → `EXPECTED`).
+Não tratar este endpoint como estorno. Estorno de recebimento = `POST /movements/{movementId}/reverse` (§67A).
 
-Não há `RECEIVED` → `CANCELLED` nesta fase. Não há reativação de receita cancelada.
+Não há `RECEIVED` → `CANCELLED`. Sem reativação de receita cancelada.
 
-**Parte 2 (D73 — fechado, não implementado):** cancelar somente sem RECEIPT `ACTIVE`. `RECEIVED` → `CANCELLED` direto **não** existe. Sem estorno automático.
+**Parte 2 (D73 — implementado):** cancelar somente sem RECEIPT `ACTIVE`. Sem estorno automático.
 
 
 # 38. Despesas — Contrato da Fase 7
@@ -2103,7 +2066,7 @@ Dashboard, projeções, frontend, escritas, `GET /payables/{id}`, migration, tab
 
 # 67. Contas a receber (Fase 17 — Parte 1)
 
-**Status:** `docs/24` §19.8 — Parte 1 **CONCLUÍDA E APROVADA**. Auditoria: **APROVADA COM RESSALVAS** (não bloqueantes). A Parte 2 tem contrato consolidado em §19.9 / `docs/25` §67A e **IMPLEMENTAÇÃO PENDENTE**. A Fase 17 inteira **não** está concluída. Endpoint existente:
+**Status:** `docs/24` §19.8 — Parte 1 **CONCLUÍDA E APROVADA**. Parte 2 **implementada** (`§67A`). A Fase 17 inteira **não** está concluída. Endpoint existente:
 
 ```text
 GET /api/v1/receivables
@@ -2153,7 +2116,7 @@ Filtros combinam por interseção quando compatíveis. `startDate` > `endDate` �
 - `status=RECEIVED` + `dateType=EXPECTED`;
 - `status=RECEIVED` + `overdue`.
 
-**Parte 2 (D88 — não implementado):** o primeiro item deixa de ser incompatível.
+**Parte 2 (D88 / D94 — implementado):** `status=EXPECTED` + `dateType=RECEIVED` **é permitido**. `dateType=RECEIVED` usa `movement_date` de qualquer RECEIPT (ACTIVE ou REVERSED — **D94**).
 
 `page < 0`, `size < 1` ou `size > 100` → **400** `BUSINESS_RULE_VIOLATION`.
 
@@ -2199,7 +2162,7 @@ Regras do item:
 - `responsibleType` / `responsibleName`: colunas de `incomes` (nulos enquanto a API de Income da Fase 6 não os gravar);
 - valores monetários escala 2, `HALF_UP`.
 
-**Parte 2 (D77-A / D92-B — não implementado):** o item passa a ser aditivo — `amount` continua o original; `accruedAmount`, `receivedAmount` e `remainingAmount` derivados (não persistidos). `summary.receivedAmount` = soma dos RECEIPT ACTIVE do universo filtrado (pode ser > 0 no padrão EXPECTED). `futureAmount` / `overdueAmount` somam `remainingAmount`.
+**Parte 2 (D77-A / D92-B — implementado):** item aditivo — `amount` continua o original; `accruedAmount`, `receivedAmount` e `remainingAmount` derivados (não persistidos). `summary.receivedAmount` = soma dos RECEIPT ACTIVE do universo filtrado (pode ser > 0 no padrão EXPECTED). `futureAmount` / `overdueAmount` somam `remainingAmount`.
 
 `summary.futureAmount` + `summary.overdueAmount` = `summary.totalReceivableAmount`. Os quatro campos do resumo somam o **universo filtrado**, não só `items` e não um global. `totalItems` / `totalPages` idem.
 
@@ -2219,14 +2182,12 @@ Não usar 404 para lista vazia.
 
 Dashboard, projeções, frontend, PDF/Excel, escritas neste recurso, `GET /receivables/{id}`, migration, tabela `receivables`, alias `dueDate`, `year`/`month`/`search`.
 
-A Parte 2 (movimentações + escrita de responsável) tem contrato **fechado** em `docs/24` §19.9 / `docs/25` §67A e **não** está implementada. Evolução do item/resumo: D77-A / D92-B.
+A Parte 2 (movimentações + escrita de responsável) está **implementada** em `docs/24` §19.9 / `docs/25` §67A. Evolução do item/resumo: D77-A / D92-B; filtros: D78-A / D88 / D94.
 
 
-# 67A. Contas a receber — Fase 17 Parte 2 (contrato — implementação pendente)
+# 67A. Contas a receber — Fase 17 Parte 2 (implementada)
 
-**Status:** `docs/24` §19.9 — **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE.** Decisões D73–D93 **fechadas**.
-
-Não criar estes endpoints agora. Não alterar o JSON vigente de `/incomes` nem de `GET /receivables` até autorização. Os caminhos abaixo são **contrato futuro**, não API existente.
+**Status:** `docs/24` §19.9 — **`CONCLUÍDA E APROVADA`**. Decisões D73–D94 **fechadas** e **implementadas**. Endpoints canônicos implementados; `/receive` e `/reverse` **removidos** (**D74-A**).
 
 ## Distinção
 
@@ -2241,7 +2202,7 @@ Não criar estes endpoints agora. Não alterar o JSON vigente de `/incomes` nem 
 
 Não misturar cadastro com operação financeira. Não criar escrita em `/receivables`. Não criar `GET /receivables/{id}`. POST de criação **não** é idempotente.
 
-Legado Fase 6 (**D74-A**): `POST /incomes/{id}/receive` e `POST /incomes/{id}/reverse`. A implementação define migração/remoção. Sem reverse em massa.
+Legado Fase 6 (**D74-A** — **removido**): `POST /incomes/{id}/receive` e `POST /incomes/{id}/reverse`. Caminho canônico: §67A. Sem reverse em massa.
 
 Request de acréscimo: `{ "amount", "date" }`. Request de recebimento: `{ "amount", "date", "accountId" }`. Response da movimentação inclui pelo menos: `id`, `incomeId`, `type` (`ACCRUAL` \| `RECEIPT`), `status` (`ACTIVE` \| `REVERSED`), `amount`, `movementDate`, `accountId` (nulo em ACCRUAL), `createdAt`, `updatedAt`, `reversedAt`.
 
@@ -2257,7 +2218,7 @@ Item aditivo (**D77-A**): `amount` (original), `accruedAmount`, `receivedAmount`
 
 Resumo (**D92-B**): `futureAmount` / `overdueAmount` = soma de `remainingAmount`; `receivedAmount` = soma dos RECEIPT ACTIVE do universo filtrado (pode ser > 0 no padrão EXPECTED); `totalReceivableAmount` = future + overdue. Agregação no banco.
 
-Filtros (**D78-A** / **D88**): `dateType=RECEIVED` usa `movement_date` do RECEIPT; `accountId` = pelo menos um RECEIPT ACTIVE na conta; `EXPECTED` + `dateType=RECEIVED` permitido.
+Filtros (**D78-A** / **D88** / **D94**): `dateType=RECEIVED` usa `movement_date` de **qualquer** RECEIPT (ACTIVE ou REVERSED); `accountId` = pelo menos um RECEIPT ACTIVE na conta; `EXPECTED` + `dateType=RECEIVED` permitido.
 
 ## Fora desta parte
 
@@ -2566,11 +2527,13 @@ POST /api/v1/expenses/{id}/cancel
 
 POST /api/v1/expenses/{id}/refund
 
-POST /api/v1/incomes/{id}/receive
+POST /api/v1/incomes/{id}/receipts
 
-POST /api/v1/incomes/{id}/reverse
+POST /api/v1/incomes/{id}/movements/{movementId}/reverse
 
 POST /api/v1/incomes/{id}/cancel
+
+**Histórico Fase 6 (removidos — D74-A):** `POST /api/v1/incomes/{id}/receive` e `POST /api/v1/incomes/{id}/reverse`.
 
 `POST /api/v1/payments/{id}/reverse` entra na Fase 8 (RN238). Não faz parte da Fase 7.
 

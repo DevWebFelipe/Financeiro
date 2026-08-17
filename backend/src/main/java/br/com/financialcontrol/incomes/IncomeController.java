@@ -1,10 +1,13 @@
 package br.com.financialcontrol.incomes;
 
 import br.com.financialcontrol.config.OpenApiConfig;
+import br.com.financialcontrol.incomes.dto.CreateIncomeAccrualRequest;
+import br.com.financialcontrol.incomes.dto.CreateIncomeReceiptRequest;
 import br.com.financialcontrol.incomes.dto.CreateIncomeRequest;
+import br.com.financialcontrol.incomes.dto.IncomeMovementPageResponse;
+import br.com.financialcontrol.incomes.dto.IncomeMovementResponse;
 import br.com.financialcontrol.incomes.dto.IncomePageResponse;
 import br.com.financialcontrol.incomes.dto.IncomeResponse;
-import br.com.financialcontrol.incomes.dto.ReceiveIncomeRequest;
 import br.com.financialcontrol.incomes.dto.UpdateIncomeRequest;
 import br.com.financialcontrol.security.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -99,32 +102,66 @@ public class IncomeController {
     return incomeService.update(authenticatedUser, id, request);
   }
 
-  @PostMapping("/{id}/receive")
-  @Operation(summary = "Receber receita esperada")
+  @PostMapping("/{id}/accruals")
+  @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary = "Lançar acréscimo na receita")
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Receita recebida"),
+    @ApiResponse(responseCode = "201", description = "Acréscimo criado"),
     @ApiResponse(responseCode = "400", description = "Dados inválidos"),
     @ApiResponse(responseCode = "401", description = "Não autenticado"),
     @ApiResponse(responseCode = "404", description = "Receita não encontrada")
   })
-  public IncomeResponse receive(
+  public IncomeMovementResponse createAccrual(
       @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
       @PathVariable UUID id,
-      @Valid @RequestBody ReceiveIncomeRequest request) {
-    return incomeService.receive(authenticatedUser, id, request);
+      @Valid @RequestBody CreateIncomeAccrualRequest request) {
+    return incomeService.createAccrual(authenticatedUser, id, request);
   }
 
-  @PostMapping("/{id}/reverse")
-  @Operation(summary = "Estornar recebimento de receita")
+  @PostMapping("/{id}/receipts")
+  @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary = "Registrar recebimento da receita")
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Recebimento estornado"),
-    @ApiResponse(responseCode = "400", description = "Transição inválida"),
+    @ApiResponse(responseCode = "201", description = "Recebimento criado"),
+    @ApiResponse(responseCode = "400", description = "Dados inválidos"),
     @ApiResponse(responseCode = "401", description = "Não autenticado"),
     @ApiResponse(responseCode = "404", description = "Receita não encontrada")
   })
-  public IncomeResponse reverse(
-      @AuthenticationPrincipal AuthenticatedUser authenticatedUser, @PathVariable UUID id) {
-    return incomeService.reverse(authenticatedUser, id);
+  public IncomeMovementResponse createReceipt(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+      @PathVariable UUID id,
+      @Valid @RequestBody CreateIncomeReceiptRequest request) {
+    return incomeService.createReceipt(authenticatedUser, id, request);
+  }
+
+  @GetMapping("/{id}/movements")
+  @Operation(summary = "Listar movimentações da receita")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Histórico da receita"),
+    @ApiResponse(responseCode = "401", description = "Não autenticado"),
+    @ApiResponse(responseCode = "404", description = "Receita não encontrada")
+  })
+  public IncomeMovementPageResponse listMovements(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+      @PathVariable UUID id,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size) {
+    return incomeService.listMovements(authenticatedUser, id, page, size);
+  }
+
+  @PostMapping("/{id}/movements/{movementId}/reverse")
+  @Operation(summary = "Estornar uma movimentação da receita")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Movimentação estornada"),
+    @ApiResponse(responseCode = "400", description = "Transição inválida"),
+    @ApiResponse(responseCode = "401", description = "Não autenticado"),
+    @ApiResponse(responseCode = "404", description = "Receita ou movimentação não encontrada")
+  })
+  public IncomeMovementResponse reverseMovement(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+      @PathVariable UUID id,
+      @PathVariable UUID movementId) {
+    return incomeService.reverseMovement(authenticatedUser, id, movementId);
   }
 
   @PostMapping("/{id}/cancel")
