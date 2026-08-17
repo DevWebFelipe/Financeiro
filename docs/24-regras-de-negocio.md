@@ -3229,7 +3229,7 @@ Contribuições e resgates não possuem reverse/estorno HTTP na Fase 15. Correç
 
 # 19.7 Contrato da Fase 16 — Contas a pagar
 
-**Status:** contrato documental fechado (D01–D75) — **aguardando auditoria humana**. Implementação de `GET /api/v1/payables` **não autorizada** nesta etapa.
+**Status:** implementação concluída — aguardando auditoria final da fase. Implementação de `GET /api/v1/payables` autorizada pelo contrato D01–D75. **Não** declarar `CONCLUÍDA E APROVADA` antes da auditoria.
 
 Autoridade: `AGENTS.md` §28 → esta seção → `docs/25` §66 → `docs/27` §40E / `docs/28`.
 

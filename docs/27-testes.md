@@ -698,7 +698,7 @@ Classes: `FinancialGoalApiTest`, `FinancialGoalConcurrencyTest`, `GoalProgressTe
 
 Contrato: `docs/24` §19.7 / `docs/25` §66.
 
-**Status:** testes de implementação **ainda não autorizados**. Esta seção é o plano obrigatório para quando a implementação for aprovada.
+**Status:** testes de implementação em `PayablesApiTest`. Aguardando auditoria final da fase.
 
 Classe prevista: `PayablesApiTest` (HTTP + regras da visão). Complementar isolamento e totais vs página no mesmo conjunto.
 

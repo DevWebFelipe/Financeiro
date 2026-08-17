@@ -75,4 +75,20 @@ public interface ExpenseInstallmentRepository extends JpaRepository<ExpenseInsta
       """)
   List<ExpenseInstallment> findSingleByExpenseIdsAndUserId(
       @Param("expenseIds") Collection<UUID> expenseIds, @Param("userId") UUID userId);
+
+  @Query(
+      """
+      SELECT DISTINCT i FROM ExpenseInstallment i
+      JOIN FETCH i.expense e
+      JOIN FETCH e.category
+      LEFT JOIN FETCH e.account
+      WHERE i.userId = :userId
+        AND e.paymentMethod IN :paymentMethods
+        AND e.status NOT IN :excludedStatuses
+        AND i.status NOT IN :excludedStatuses
+      """)
+  List<ExpenseInstallment> findAllByUserIdAndPaymentMethodsExcludingStatuses(
+      @Param("userId") UUID userId,
+      @Param("paymentMethods") Collection<PaymentMethod> paymentMethods,
+      @Param("excludedStatuses") Collection<ExpenseStatus> excludedStatuses);
 }

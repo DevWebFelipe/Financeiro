@@ -1,0 +1,56 @@
+$kind: http-request
+description: Visão derivada. Totais (totalRemaining, totalOriginal, totalPaid) do universo filtrado, não da página. Período usa dueDate da linha.
+url: "{{baseUrl}}/api/v1/payables?page=0&size=20"
+method: GET
+queryParams:
+  - key: startDate
+    value: "2026-08-01"
+    disabled: true
+  - key: endDate
+    value: "2026-08-31"
+    disabled: true
+  - key: year
+    value: "2026"
+    disabled: true
+  - key: month
+    value: "10"
+    disabled: true
+  - key: includeWithoutDueDate
+    value: "false"
+    disabled: true
+  - key: status
+    value: OPEN,PARTIALLY_PAID
+    disabled: true
+  - key: overdue
+    value: "true"
+    disabled: true
+  - key: creditCardId
+    value: "{{creditCardId}}"
+    disabled: true
+  - key: withoutCreditCard
+    value: "true"
+    disabled: true
+  - key: categoryId
+    value: "{{categoryId}}"
+    disabled: true
+  - key: responsibleType
+    value: MINE
+    disabled: true
+  - key: search
+    value: Aluguel
+    disabled: true
+  - key: sort
+    value: dueDate
+    disabled: true
+  - key: direction
+    value: asc
+    disabled: true
+  - key: page
+    value: "0"
+  - key: size
+    value: "20"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Resposta deve possuir items\", function () {\r\n    pm.expect(json.items).to.be.an(\"array\");\r\n});\r\n\r\npm.test(\"Resposta deve possuir paginação e totais do universo\", function () {\r\n    pm.expect(json.page).to.exist;\r\n    pm.expect(json.size).to.exist;\r\n    pm.expect(json.totalItems).to.exist;\r\n    pm.expect(json.totalPages).to.exist;\r\n    pm.expect(json.totalRemaining).to.exist;\r\n    pm.expect(json.totalOriginal).to.exist;\r\n    pm.expect(json.totalPaid).to.exist;\r\n});\r"
+    language: text/javascript
+order: 1000

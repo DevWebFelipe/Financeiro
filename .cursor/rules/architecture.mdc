@@ -51,7 +51,7 @@ Use the official V1 concepts:
 - `credit_cards`
 - `credit_card_invoices`
 - `financial_goals`
-- `payables` (Fase 16 — visão de leitura `GET /api/v1/payables`; **sem** tabela/entidade JPA; implementação **não autorizada** até auditoria do contrato `docs/24` §19.7)
+- `payables` (Fase 16 — visão de leitura `GET /api/v1/payables`; **sem** tabela/entidade JPA; implementação concluída, aguardando auditoria do contrato `docs/24` §19.7)
 
 Do not create a generic `transactions`, `cards`, or `goals` module.
 

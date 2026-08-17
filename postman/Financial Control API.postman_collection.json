@@ -1700,6 +1700,143 @@
           ]
         },
         {
+          "name": "Contas a Pagar",
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/payables?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "payables"
+                  ],
+                  "query": [
+                    {
+                      "key": "startDate",
+                      "value": "2026-08-01",
+                      "disabled": true
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "2026-08-31",
+                      "disabled": true
+                    },
+                    {
+                      "key": "year",
+                      "value": "2026",
+                      "disabled": true
+                    },
+                    {
+                      "key": "month",
+                      "value": "10",
+                      "disabled": true
+                    },
+                    {
+                      "key": "includeWithoutDueDate",
+                      "value": "false",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "OPEN,PARTIALLY_PAID",
+                      "disabled": true
+                    },
+                    {
+                      "key": "overdue",
+                      "value": "true",
+                      "disabled": true
+                    },
+                    {
+                      "key": "creditCardId",
+                      "value": "{{creditCardId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "withoutCreditCard",
+                      "value": "true",
+                      "disabled": true
+                    },
+                    {
+                      "key": "categoryId",
+                      "value": "{{categoryId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "responsibleType",
+                      "value": "MINE",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "Aluguel",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sort",
+                      "value": "dueDate",
+                      "disabled": true
+                    },
+                    {
+                      "key": "direction",
+                      "value": "asc",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Visão derivada. Totais (totalRemaining, totalOriginal, totalPaid) do universo filtrado, não da página. Período usa dueDate da linha."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir items\", function () {\r",
+                      "    pm.expect(json.items).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir paginação e totais do universo\", function () {\r",
+                      "    pm.expect(json.page).to.exist;\r",
+                      "    pm.expect(json.size).to.exist;\r",
+                      "    pm.expect(json.totalItems).to.exist;\r",
+                      "    pm.expect(json.totalPages).to.exist;\r",
+                      "    pm.expect(json.totalRemaining).to.exist;\r",
+                      "    pm.expect(json.totalOriginal).to.exist;\r",
+                      "    pm.expect(json.totalPaid).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Visão derivada de leitura. Sem tabela payables, sem GET por id e sem escritas."
+        },
+        {
           "name": "Despesas",
           "item": [
             {

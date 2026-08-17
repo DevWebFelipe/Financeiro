@@ -942,7 +942,7 @@ Ver `docs/27-testes.md` §40D. Classes: `FinancialGoalApiTest`, `FinancialGoalCo
 
 # 86. Fase 16 — Contas a pagar
 
-**Status:** contrato documental fechado (D01–D75) — **aguardando auditoria humana**. Implementação **não autorizada**.
+**Status:** implementação concluída — aguardando auditoria final da fase.
 
 Objetivo:
 
@@ -955,7 +955,7 @@ Contrato oficial: `docs/24` §19.7 / `docs/25` §66 / `docs/27` §40E.
 
 # 87. Fase 16 — Escopo
 
-Implementar **somente após aprovação explícita do contrato**:
+Implementar:
 
 - `GET /api/v1/payables`;
 - linha = parcela ACCOUNT/NONE com remaining > 0 **ou** fatura `SCHEDULED`/`OPEN`/`CLOSED` com remaining > 0;
@@ -993,7 +993,7 @@ e:
 
 sem duplicar cartão, sem usar total no lugar de remaining, sem quitadas/metas/transferências, sem violar isolamento.
 
-Testes previstos: `docs/27` §40E. **Não** declarar a fase `CONCLUÍDA E APROVADA` antes da implementação autorizada + testes + auditoria.
+Testes: `docs/27` §40E (`PayablesApiTest`). **Não** declarar a fase `CONCLUÍDA E APROVADA` antes da auditoria final.
 
 
 # 90. Fase 17 — Contas a receber
@@ -1614,7 +1614,9 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 Fases 0 a 9: CONCLUÍDAS. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**.
 
-Próxima etapa: **auditoria final da Fase 15 — Metas**.
+Próxima etapa: **auditoria final da Fase 15 — Metas** e **auditoria final da Fase 16 — Contas a pagar**.
+
+Status da Fase 16: implementação concluída — aguardando auditoria final (`docs/24` §19.7 / `docs/25` §66). **Não** declarar a fase `CONCLUÍDA E APROVADA` antes dessa auditoria.
 
 Status da Fase 15: implementação concluída — aguardando auditoria final (`docs/24` §19.6 / `docs/25` §54E). **Não** declarar a fase `CONCLUÍDA E APROVADA` antes dessa auditoria.
 

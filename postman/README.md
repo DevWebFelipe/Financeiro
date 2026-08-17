@@ -26,6 +26,7 @@ Financial Control API
 ├── 02 - Processos
 │   ├── Acerto de Saldos
 │   ├── Autenticação
+│   ├── Contas a Pagar
 │   ├── Despesas
 │   ├── Faturas
 │   ├── Metas
@@ -49,6 +50,7 @@ Estado da collection em relação às fases implementadas:
 - Fase 13: negociações, renegociação e antecipação de parcela.
 - Fase 14: transferências, acerto de saldos e `PUT /accounts/{id}/initial-balance`.
 - Fase 15: metas financeiras (10 rotas em `02 - Processos → Metas`).
+- Fase 16: contas a pagar (`GET /api/v1/payables` em `02 - Processos → Contas a Pagar`).
 
 Não adicionar requests de endpoints que ainda não existem no backend. Não existem, por exemplo:
 

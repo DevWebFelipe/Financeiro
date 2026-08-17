@@ -58,6 +58,17 @@ public class GlobalExceptionHandler {
         null);
   }
 
+  @ExceptionHandler(InvalidRequestException.class)
+  public ResponseEntity<ApiError> handleInvalidRequest(
+      InvalidRequestException exception, HttpServletRequest request) {
+    return build(
+        HttpStatus.BAD_REQUEST,
+        "VALIDATION_ERROR",
+        exception.getMessage(),
+        request.getRequestURI(),
+        null);
+  }
+
   @ExceptionHandler(NotFoundException.class)
   public ResponseEntity<ApiError> handleNotFound(
       NotFoundException exception, HttpServletRequest request) {

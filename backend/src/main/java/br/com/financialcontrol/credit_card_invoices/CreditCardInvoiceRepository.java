@@ -2,6 +2,7 @@ package br.com.financialcontrol.credit_card_invoices;
 
 import br.com.financialcontrol.credit_cards.CreditCard;
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -71,4 +72,15 @@ public interface CreditCardInvoiceRepository extends JpaRepository<CreditCardInv
       @Param("year") Integer year,
       @Param("month") Integer month,
       @Param("status") CreditCardInvoiceStatus status);
+
+  @Query(
+      """
+      SELECT DISTINCT i FROM CreditCardInvoice i
+      JOIN FETCH i.creditCard
+      WHERE i.userId = :userId
+        AND i.status IN :statuses
+      """)
+  List<CreditCardInvoice> findAllByUserIdAndStatusInWithCard(
+      @Param("userId") UUID userId,
+      @Param("statuses") Collection<CreditCardInvoiceStatus> statuses);
 }
