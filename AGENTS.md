@@ -156,7 +156,7 @@ Environment Contract completo: `docs/22-stack-tecnologica.md` (seção 30). Diag
 
 - Pacote Java: `br.com.financialcontrol`
 - Pacotes de domínio no plural, alinhados ao modelo real: `accounts`, `expenses`, `incomes`, `transfers`, `balance_adjustments`, `payments`, `credit_cards`, `credit_card_invoices`, `financial_goals`
-- Pacote de consulta da Fase 16 (implementação concluída — aguardando auditoria): `payables` — visão de leitura; **sem** tabela/entidade JPA
+- Pacote de consulta da Fase 16 (`CONCLUÍDA E APROVADA`): `payables` — visão de leitura; **sem** tabela/entidade JPA
 - Não criar módulo genérico `transactions` para agrupar operações financeiras diferentes
 - API: `/api/v1`
 - Moeda V1: BRL
@@ -554,7 +554,7 @@ Campo opcional na despesa, para cópia no pagamento. O sistema não gera boletos
 ## 17. Metas, projeções, relatórios e gráficos
 
 - Metas na V1 (Fase 15 — contrato `docs/24` §19.6): reserva vinculada a uma conta; nome, valor alvo, acumulado derivado (`contributions − redemptions`), data alvo opcional, progresso derivado (`HALF_UP`, escala 2), status (`ACTIVE`/`COMPLETED`/`CANCELLED`); contribuição, resgate (inclusive em `COMPLETED`), conclusão manual e cancelamento (com reservado zero, somente `ACTIVE`).
-- Contas a pagar na V1 (Fase 16 — contrato `docs/24` §19.7 / `docs/25` §66): visão derivada `GET /api/v1/payables`; linha = parcela ACCOUNT/NONE com remaining > 0 **ou** fatura com remaining > 0; **sem** tabela `payables`; implementação concluída, aguardando auditoria final. `reservedAmount` de meta **não** é conta a pagar.
+- Contas a pagar na V1 (Fase 16 — contrato `docs/24` §19.7 / `docs/25` §66 — `CONCLUÍDA E APROVADA`): visão derivada `GET /api/v1/payables`; linha = parcela ACCOUNT/NONE com remaining > 0 **ou** fatura com remaining > 0; **sem** tabela `payables`. `reservedAmount` de meta **não** é conta a pagar.
 - Projeções: receitas/despesas futuras, parcelas, faturas, compromissos; excluir `CANCELLED`/`REFUNDED` e receitas canceladas.
 - PDF: **OpenPDF** (ex.: relatório por responsável em cartão de terceiro).
 - Gráficos: **Apache ECharts**.
@@ -712,7 +712,7 @@ Até decisão explícita, **não** implementar Flyway, entidade, enum, CHECK, te
 
 **Fase 15 — Metas:** contrato `docs/24` §19.6 / API `docs/25` §54E — implementação concluída, aguardando auditoria final da fase. **Não** declarar `CONCLUÍDA E APROVADA` antes dessa auditoria. Fora do escopo: frontend, dashboard, projeções, reverse de contribuição/resgate, DELETE, ledger genérico.
 
-**Fase 16 — Contas a pagar:** contrato `docs/24` §19.7 / API `docs/25` §66 / testes `docs/27` §40E — implementação concluída, aguardando auditoria final da fase. **Não** declarar `CONCLUÍDA E APROVADA` antes dessa auditoria. **Não** criar tabela `payables` nem persistir remaining. Fora do escopo: frontend, dashboard, projeções, escritas, `GET /payables/{id}`.
+**Fase 16 — Contas a pagar:** contrato `docs/24` §19.7 / API `docs/25` §66 / testes `docs/27` §40E — `CONCLUÍDA E APROVADA`. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes; não reabrem a fase). **Não** criar tabela `payables` nem persistir remaining. Fora do escopo: frontend, dashboard, projeções, escritas, `GET /payables/{id}`.
 
 **SUPERADO (Fase 9):** o antigo item 269.3 (rateio). Rateio proporcional ao remaining, ordenação remaining ASC, empate `due_date` ASC depois `id` ASC, residual na última, persistido como alocação. Status da fatura **não** muda por pagamento parcial. Detalhe: `docs/23` §269.3 e `docs/24` RN247.
 

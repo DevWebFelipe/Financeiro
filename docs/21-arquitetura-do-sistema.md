@@ -377,7 +377,7 @@ Pacotes da Fase 15 (implementação concluída — aguardando auditoria final):
 
 Contrato: `docs/24` §19.6.
 
-Pacotes da Fase 16 (implementação concluída — aguardando auditoria final):
+Pacotes da Fase 16 (`CONCLUÍDA E APROVADA`):
 
 - `payables` — visão consolidada de contas a pagar (`PayablesController` → `PayablesService` → consultas de leitura sobre `expenses` / `expense_installments` / `credit_card_invoices`).
 - **Sem** entidade JPA `Payable`, **sem** tabela `payables`, **sem** remaining persistido.

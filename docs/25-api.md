@@ -1949,7 +1949,7 @@ Não confundir com `GET /api/v1/invoices/{id}/items` (Fase 9).
 
 # 66. Contas a pagar (Fase 16)
 
-**Status:** contrato oficial `docs/24` §19.7 — implementação concluída; aguardando auditoria final da fase.
+**Status:** contrato oficial `docs/24` §19.7 — `CONCLUÍDA E APROVADA`.
 
 Endpoint único:
 

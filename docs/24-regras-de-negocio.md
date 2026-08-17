@@ -3229,7 +3229,7 @@ Contribuições e resgates não possuem reverse/estorno HTTP na Fase 15. Correç
 
 # 19.7 Contrato da Fase 16 — Contas a pagar
 
-**Status:** implementação concluída — aguardando auditoria final da fase. Implementação de `GET /api/v1/payables` autorizada pelo contrato D01–D75. **Não** declarar `CONCLUÍDA E APROVADA` antes da auditoria.
+**Status:** `CONCLUÍDA E APROVADA`. Endpoint: `GET /api/v1/payables`. Contrato D01–D75 inalterado. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes; não reabrem a fase).
 
 Autoridade: `AGENTS.md` §28 → esta seção → `docs/25` §66 → `docs/27` §40E / `docs/28`.
 
@@ -3447,9 +3447,9 @@ A visão apenas reflete o remaining resultante:
 
 Dono = `userId` do JWT. A consulta filtra na query por esse usuário. Recurso/filtro de outro usuário não devolve dados alheios (lista vazia; sem vazar existência).
 
-Pacote futuro (após autorização de implementação): `br.com.financialcontrol.payables` — Controller → Service → consultas/repositórios de leitura. Sem entidade JPA `Payable`. Sem UseCase por filtro.
+Pacote implementado e aprovado: `br.com.financialcontrol.payables` — Controller → Service → consultas/repositórios de leitura. Sem entidade JPA `Payable`. Sem UseCase por filtro.
 
-Fase 16 = somente backend/API. Conclusão da **implementação** (fase posterior) exige testes HTTP e de regras (D65), incluindo dupla contagem (D66), isolamento (D67) e totais vs página (D68).
+Fase 16 = somente backend/API. Testes HTTP e de regras (D65) executados (`PayablesApiTest`), incluindo dupla contagem (D66), isolamento (D67) e totais vs página (D68).
 
 ---
 

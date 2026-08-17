@@ -942,7 +942,7 @@ Ver `docs/27-testes.md` §40D. Classes: `FinancialGoalApiTest`, `FinancialGoalCo
 
 # 86. Fase 16 — Contas a pagar
 
-**Status:** implementação concluída — aguardando auditoria final da fase.
+**Status:** `CONCLUÍDA E APROVADA`.
 
 Objetivo:
 
@@ -950,12 +950,14 @@ Visão consolidada de leitura das obrigações de saída já existentes.
 
 Contrato oficial: `docs/24` §19.7 / `docs/25` §66 / `docs/27` §40E.
 
-**Não** criar tabela `payables`, migration, remaining persistido, status novo nem escritas em `/payables`.
+Endpoint implementado: `GET /api/v1/payables`.
+
+**Não** criar tabela `payables`, migration, remaining persistido, status novo nem escritas em `/payables`. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes; não reabrem a fase).
 
 
 # 87. Fase 16 — Escopo
 
-Implementar:
+Implementado:
 
 - `GET /api/v1/payables`;
 - linha = parcela ACCOUNT/NONE com remaining > 0 **ou** fatura `SCHEDULED`/`OPEN`/`CLOSED` com remaining > 0;
@@ -993,7 +995,9 @@ e:
 
 sem duplicar cartão, sem usar total no lugar de remaining, sem quitadas/metas/transferências, sem violar isolamento.
 
-Testes: `docs/27` §40E (`PayablesApiTest`). **Não** declarar a fase `CONCLUÍDA E APROVADA` antes da auditoria final.
+**Critério atendido. Fase 16 — CONCLUÍDA E APROVADA.**
+
+Testes: `docs/27` §40E (`PayablesApiTest`, 14 testes). Suíte no fechamento: 425 testes; `mvn test` / `mvn verify` / Spotless com sucesso.
 
 
 # 90. Fase 17 — Contas a receber
@@ -1612,11 +1616,11 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 9: CONCLUÍDAS. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**.
+Fases 0 a 9: CONCLUÍDAS. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**.
 
-Próxima etapa: **auditoria final da Fase 15 — Metas** e **auditoria final da Fase 16 — Contas a pagar**.
+Próxima etapa: **auditoria final da Fase 15 — Metas**. Próxima fase de implementação prevista (não iniciada): **Fase 17 — Contas a receber**.
 
-Status da Fase 16: implementação concluída — aguardando auditoria final (`docs/24` §19.7 / `docs/25` §66). **Não** declarar a fase `CONCLUÍDA E APROVADA` antes dessa auditoria.
+Status da Fase 16: `CONCLUÍDA E APROVADA` (`docs/24` §19.7 / `docs/25` §66). Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
 
 Status da Fase 15: implementação concluída — aguardando auditoria final (`docs/24` §19.6 / `docs/25` §54E). **Não** declarar a fase `CONCLUÍDA E APROVADA` antes dessa auditoria.
 

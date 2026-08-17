@@ -698,9 +698,7 @@ Classes: `FinancialGoalApiTest`, `FinancialGoalConcurrencyTest`, `GoalProgressTe
 
 Contrato: `docs/24` §19.7 / `docs/25` §66.
 
-**Status:** testes de implementação em `PayablesApiTest`. Aguardando auditoria final da fase.
-
-Classe prevista: `PayablesApiTest` (HTTP + regras da visão). Complementar isolamento e totais vs página no mesmo conjunto.
+**Status:** `CONCLUÍDA E APROVADA`. Classe: `PayablesApiTest` (14 testes HTTP + regras da visão). Suíte informada no fechamento: 425 testes, `mvn test` / `mvn verify` / Spotless com sucesso. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
 
 **Não** testar regra indefinida. **Não** persistir remaining. **Não** criar tabela `payables`.
 
