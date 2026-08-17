@@ -1947,24 +1947,148 @@ Não confundir com `GET /api/v1/invoices/{id}/items` (Fase 9).
 **Obsoleto.** Substituído por Agreements (§64).
 
 
-# 66. Contas a pagar
+# 66. Contas a pagar (Fase 16)
 
-Endpoint:
+**Status:** contrato oficial `docs/24` §19.7 — **fechado; aguardando auditoria humana**. Implementação **não autorizada** nesta etapa.
 
+Endpoint único:
+
+```text
 GET /api/v1/payables
+```
 
+Auth: Bearer obrigatório. Sem token / token inválido / expirado / usuário desativado → **401** `UNAUTHORIZED`. Dono = usuário autenticado (JWT). Não existe `userId` na query. Recurso de outro usuário não é distinguido: filtros que não casam com o dono devolvem lista vazia (**200**), sem vazar existência.
 
-Filtros:
+Não existem `GET /payables/{id}`, POST, PUT, PATCH nem DELETE neste recurso.
 
-startDate
+Propriedades JSON não se aplicam (GET sem body). Query params desconhecidos: rejeitar (**400** `VALIDATION_ERROR`) — o mesmo rigor de `FAIL_ON_UNKNOWN_PROPERTIES` nas escritas, aplicado aos nomes de parâmetro não oficiais.
 
-endDate
+Visão derivada. Sem tabela `payables`. Remaining e totais **não** são colunas.
 
-status
+## Conceito
 
-categoryId
+Linha elegível:
 
-responsibleType
+- parcela `ACCOUNT` / `NONE` com `remainingAmount > 0`; **ou**
+- fatura `SCHEDULED` / `OPEN` / `CLOSED` com `remainingAmount > 0`.
+
+Despesa `CREDIT_CARD` e parcela de cartão **não** são linhas. `remainingAmount = 0` nunca aparece.
+
+## Query params
+
+| Param | Obrigatório | Default | Semântica |
+|---|---|---|---|
+| `startDate` | não | omitido | `LocalDate` inclusive; `due_date` da **linha** ≥ `startDate`. **Não** RN226. |
+| `endDate` | não | omitido | `LocalDate` inclusive; `due_date` da linha ≤ `endDate`. |
+| `year` | não | omitido | ano do **mês selecionado**; exige `month` |
+| `month` | não | omitido | 1–12; exige `year`. "Mês atual" = este par, **não** o mês do relógio. Ex.: hoje 2026-08-17 + `year=2026&month=10` → outubro/2026. |
+| `includeWithoutDueDate` | não | `false` | com filtro temporal, inclui linhas sem `due_date` se `true` |
+| `status` | não | omitido | um ou mais status persistidos da origem, separados por vírgula (D38). Ex.: `status=OPEN,PARTIALLY_PAID`. Valores: `OPEN`, `PARTIALLY_PAID`, `PAID`, `CANCELLED`, `REFUNDED`, `SCHEDULED`, `CLOSED`, `SETTLED_BY_AGREEMENT`. Não existe status `OVERDUE`. |
+| `overdue` | não | omitido | `true` \| `false`; separado de `status` |
+| `creditCardId` | não | omitido | UUID do cartão; casa linhas `INVOICE` daquele cartão |
+| `withoutCreditCard` | não | `false` | `true` = somente linhas INSTALLMENT (ACCOUNT/NONE) |
+| `categoryId` | não | omitido | UUID; **somente** INSTALLMENT. Faturas **não** são filtradas por categoria (continuam no resultado se os demais filtros permitirem). |
+| `responsibleType` | não | omitido | `MINE`, `GIULIA`, `EDERSON`, `ELISIANE`, `OTHER`; **somente** INSTALLMENT. Faturas não são filtradas por responsável. |
+| `search` | não | omitido | texto simples (contém, case-insensitive). INSTALLMENT: `description`, `notes`, `barcode`. INVOICE: nome do cartão. |
+| `sort` | não | `dueDate` | `name`, `purchaseDate`, `dueDate`, `originalAmount`, `remainingAmount`, `status`, `paidAmount` |
+| `direction` | não | `asc` | `asc` \| `desc` (campo principal). Desempate **sempre** `id ASC`. |
+| `page` | não | `0` | ≥ 0 |
+| `size` | não | `20` | 1–100 |
+
+Filtros combinam por interseção. `year` sem `month` (ou o inverso) → **400** `VALIDATION_ERROR`. `startDate` > `endDate` → **400** `VALIDATION_ERROR`. `sort` / `direction` / `status` / `overdue` / `month` inválidos → **400** `VALIDATION_ERROR`. `page < 0`, `size < 1` ou `size > 100` → **400** `BUSINESS_RULE_VIOLATION`.
+
+Período: `due_date` da linha. Sem `startDate`/`endDate`/`year`/`month`: todas as elegíveis, inclusive futuras. Linha sem `due_date`: entra na consulta geral; com período, só se `includeWithoutDueDate=true`. No modelo vigente todas as parcelas e faturas têm `due_date`; o parâmetro não autoriza migration.
+
+`creditCardId` + `withoutCreditCard=true` pode resultar vazio (combinação válida).
+
+## Overdue
+
+Derivado (`America/Sao_Paulo`). Não persistido.
+
+- INSTALLMENT: `remainingAmount > 0`, possui `due_date`, `due_date` < hoje.
+- INVOICE: `remainingAmount > 0`, possui `due_date`, status `OPEN` ou `CLOSED`, `due_date` < hoje. `SCHEDULED` nunca overdue.
+
+## Response 200
+
+```json
+{
+  "items": [
+    {
+      "id": "...",
+      "type": "INSTALLMENT",
+      "expenseId": "...",
+      "creditCardId": null,
+      "categoryId": "...",
+      "accountId": "...",
+      "paymentMethod": "ACCOUNT",
+      "name": "Aluguel",
+      "purchaseDate": "2026-08-01",
+      "dueDate": "2026-08-10",
+      "originalAmount": 1500.00,
+      "paidAmount": 500.00,
+      "remainingAmount": 1000.00,
+      "status": "PARTIALLY_PAID",
+      "overdue": false,
+      "responsibleType": "MINE",
+      "responsibleName": null
+    },
+    {
+      "id": "...",
+      "type": "INVOICE",
+      "expenseId": null,
+      "creditCardId": "...",
+      "categoryId": null,
+      "accountId": null,
+      "paymentMethod": null,
+      "name": "Nubank",
+      "purchaseDate": "2026-08-10",
+      "dueDate": "2026-08-20",
+      "originalAmount": 2000.00,
+      "paidAmount": 200.00,
+      "remainingAmount": 1800.00,
+      "status": "CLOSED",
+      "overdue": false,
+      "responsibleType": null,
+      "responsibleName": null
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalItems": 2,
+  "totalPages": 1,
+  "totalRemaining": 2800.00,
+  "totalOriginal": 3500.00,
+  "totalPaid": 700.00
+}
+```
+
+Regras do item:
+
+- `type`: `INSTALLMENT` \| `INVOICE`;
+- `id`: id da parcela ou da fatura;
+- `name`: descrição da despesa ou nome do cartão;
+- `purchaseDate`: `expense_date` da despesa ou `closing_date` da fatura;
+- `originalAmount` / `paidAmount` / `remainingAmount`: `docs/24` §19.7.4 (fontes oficiais existentes; **não** nova fórmula);
+- sem arrays de payments, adjustments ou parcelas filhas;
+- valores monetários escala 2, `HALF_UP`.
+
+`totalRemaining`, `totalOriginal` e `totalPaid` somam o **universo filtrado**, não só `items`. `totalItems` / `totalPages` idem (paginação clássica).
+
+Lista vazia: **200**, `items: []`, totais `0.00`, `totalItems: 0`, `totalPages: 0`.
+
+## Erros
+
+| Situação | HTTP | `code` |
+|---|---|---|
+| sem Bearer / token inválido | 401 | `UNAUTHORIZED` |
+| query param desconhecido ou valor inválido (UUID, enum, data, `year`/`month` incompleto, `startDate` > `endDate`) | 400 | `VALIDATION_ERROR` |
+| `page < 0` / `size < 1` / `size > 100` | 400 | `BUSINESS_RULE_VIOLATION` |
+
+Não usar 404 para lista vazia.
+
+## Fora desta fase
+
+Dashboard, projeções, frontend, escritas, `GET /payables/{id}`, migration, tabela `payables`.
 
 
 # 67. Contas a receber

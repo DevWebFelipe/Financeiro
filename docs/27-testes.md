@@ -694,6 +694,87 @@ Classes: `FinancialGoalApiTest`, `FinancialGoalConcurrencyTest`, `GoalProgressTe
 - duas metas na mesma conta disputando `availableBalance` são serializadas pelo lock da conta.
 
 
+# 40E. Contas a pagar (Fase 16)
+
+Contrato: `docs/24` §19.7 / `docs/25` §66.
+
+**Status:** testes de implementação **ainda não autorizados**. Esta seção é o plano obrigatório para quando a implementação for aprovada.
+
+Classe prevista: `PayablesApiTest` (HTTP + regras da visão). Complementar isolamento e totais vs página no mesmo conjunto.
+
+**Não** testar regra indefinida. **Não** persistir remaining. **Não** criar tabela `payables`.
+
+**Elegibilidade ACCOUNT/NONE**
+
+- parcela `OPEN` / `PARTIALLY_PAID` com remaining > 0 aparece;
+- 1/1 aparece como uma linha INSTALLMENT (parcela interna);
+- N>1: uma linha por parcela com remaining > 0; o período usa o `due_date` **da parcela**, não RN226;
+- pagamento parcial: `remainingAmount` (não `originalAmount` / `totalAmount` da despesa);
+- remaining 0 não aparece e não aumenta `totalRemaining`;
+- `CANCELLED` não aparece;
+- `REFUNDED` não aparece;
+- NONE aberta aparece (RN123);
+- ACCOUNT aberta aparece.
+
+**Cartão e dupla contagem (obrigatório)**
+
+- fatura `SCHEDULED` / `OPEN` / `CLOSED` com remaining > 0 aparece como `INVOICE`;
+- despesa `CREDIT_CARD` não aparece como linha;
+- parcela de cartão não aparece como linha;
+- soma despesa/parcela de cartão + fatura **nunca** ocorre;
+- fatura remaining 0 (`PAID`, `SETTLED_BY_AGREEMENT`, OPEN remaining 0) não aumenta total;
+- settlement de Agreement reduz remaining da fatura na visão sem regra paralela;
+- a nova obrigação do Agreement entra só via faturas futuras (remaining > 0), não junto com a fatura liquidada.
+
+**Período**
+
+- sem período: inclui futuras elegíveis;
+- `year`+`month` = mês **selecionado** (outubro/2026 consultável em agosto/2026);
+- `startDate`/`endDate` no `due_date` da linha;
+- 12× R$ 100: setembro devolve **uma** parcela (~100 remaining), não R$ 1.200;
+- `includeWithoutDueDate` documentado; no modelo vigente todas as linhas têm `due_date`.
+
+**Overdue**
+
+- derivado; sem coluna/status persistido;
+- parcela: remaining > 0 e `due_date` < hoje (`America/Sao_Paulo`);
+- fatura: remaining > 0, `OPEN`/`CLOSED`, `due_date` < hoje;
+- `SCHEDULED` nunca overdue;
+- filtro `overdue=true|false` independente de `status`.
+
+**Filtros**
+
+- `status` múltiplo (`OPEN,PARTIALLY_PAID`);
+- `creditCardId`;
+- `withoutCreditCard=true`;
+- `categoryId` e `responsibleType` só restringem INSTALLMENT; faturas não são excluídas só por esses filtros;
+- `search` em descrição/notas/boleto (INSTALLMENT) e nome do cartão (INVOICE);
+- combinação de filtros (interseção).
+
+**Ordenação e paginação**
+
+- `sort` nos campos oficiais + `direction`;
+- desempate `id ASC`;
+- `size` default 20, máximo 100; `page < 0` / `size < 1` / `size > 100` → 400;
+- totais (`totalRemaining`, `totalOriginal`, `totalPaid`, `totalItems`) do **universo filtrado**, não da página (obrigatório).
+
+**Fora da visão**
+
+- transferência não entra;
+- acerto de saldo não entra;
+- saldo inicial não entra;
+- `reservedAmount` de meta não entra.
+
+**Isolamento e auth (obrigatório)**
+
+- usuário B nunca recebe linhas do usuário A;
+- 401 sem Bearer.
+
+**Remaining**
+
+- payables não inventa fórmula; usa remaining oficial de parcela e de fatura (ajustes, créditos, settlement já refletidos).
+
+
 # 41. Atomicidade
 
 Se uma etapa da transferência falhar:
@@ -1351,7 +1432,7 @@ Cancelamento não deve apagar o registro original.
 
 Após cancelamento:
 
-não aparece em contas a pagar;
+não aparece em contas a pagar (`GET /api/v1/payables` — `docs/27` §40E);
 
 não participa da projeção;
 

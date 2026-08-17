@@ -1151,6 +1151,8 @@ Status persistidos da fatura: SCHEDULED, OPEN, CLOSED, PAID (Fase 9); SETTLED_BY
 
 Fatura não `PAID` após o vencimento pode ser apresentada como vencida na UI (derivado de dueDate e status ≠ PAID). `SCHEDULED` não se apresenta como vencida.
 
+**Fase 16 (`GET /api/v1/payables`, RN288):** overdue da fatura na visão exige `remainingAmount > 0`, `due_date` presente, `due_date` < hoje (`America/Sao_Paulo`) e status persistido `OPEN` ou `CLOSED`. `SCHEDULED` nunca é overdue nessa visão. `PAID` e `SETTLED_BY_AGREEMENT` não entram na visão (remaining 0 / não elegíveis).
+
 
 ## RN090 — Pagamento parcial da fatura — SUPERADA a transição de status
 
@@ -1654,6 +1656,8 @@ Despesas sem cartão podem permanecer abertas.
 
 Despesas NONE devem aparecer em contas a pagar quando estiverem abertas.
 
+Contrato completo da visão: **Fase 16** (`§19.7`). A linha correspondente é a parcela ACCOUNT/NONE com `remainingAmount > 0` (despesa 1/1 = parcela interna já existente). `CANCELLED` / `REFUNDED` / remaining 0 não entram.
+
 
 ## RN124 — Pagamento
 
@@ -1981,6 +1985,8 @@ Exemplo, dia-base 31: 31/01, 28/02, 31/03, 30/04, 31/05.
 É o vencimento da **primeira** parcela. Os vencimentos reais ficam em `expense_installments.due_date`. Em 1/1 os dois coincidem. Não usar `expenses.due_date` como vencimento de todas as parcelas.
 
 Na listagem `GET /expenses`, `startDate`/`endDate` consideram as datas das parcelas: a despesa entra no intervalo quando **pelo menos uma** parcela tem `due_date` no intervalo. Em 1/1 o efeito é equivalente a filtrar por `expenses.due_date`.
+
+**Esta semântica NÃO se aplica a `GET /api/v1/payables`.** Na Fase 16 o período usa o `due_date` da **linha** (parcela ACCOUNT/NONE ou fatura). Não promover a despesa inteira ao período porque alguma parcela caiu no intervalo (RN285).
 
 
 ## RN227 — Edição cadastral da parcela
@@ -3219,6 +3225,298 @@ Permitido repetir `name` entre metas do mesmo usuário.
 ## RN280 — Sem reverse nesta fase
 
 Contribuições e resgates não possuem reverse/estorno HTTP na Fase 15. Correção futura exige decisão explícita.
+
+
+# 19.7 Contrato da Fase 16 — Contas a pagar
+
+**Status:** contrato documental fechado (D01–D75) — **aguardando auditoria humana**. Implementação de `GET /api/v1/payables` **não autorizada** nesta etapa.
+
+Autoridade: `AGENTS.md` §28 → esta seção → `docs/25` §66 → `docs/27` §40E / `docs/28`.
+
+Payables **não** cria fórmula financeira nova. Remaining, `paidAmount` de fatura e obligation de parcela continuam sendo os derivados oficiais já definidos (RN231, RN247, `docs/23` §§196–197). Settlement de Agreement (RN254) já reduz remaining; a visão apenas lê esse remaining (D69, D74).
+
+---
+
+## 19.7.1 Escopo
+
+**Inclui:**
+
+1. Visão consolidada de leitura das obrigações de saída já existentes;
+2. Unidade da linha: parcela ACCOUNT/NONE com `remainingAmount > 0` **ou** fatura com `remainingAmount > 0`;
+3. Filtros de período (mês selecionado e intervalo arbitrário), status, overdue, cartão, sem cartão, categoria, responsável e busca textual;
+4. Paginação server-side e totais do **universo filtrado**;
+5. Pacote Java `payables` como fronteira HTTP de consulta (sem entidade JPA / sem tabela).
+
+**Fora do escopo:**
+
+- Angular / telas / dashboard / projeções / relatórios PDF;
+- `GET /payables/{id}`;
+- POST/PUT/PATCH/DELETE/pagamento/cancelamento/reembolso via payables;
+- tabela `payables`, colunas persistidas de remaining/total, status novo de payable;
+- migration;
+- transferência, acerto de saldo, saldo inicial, `reservedAmount` de metas;
+- itens deferidos oficiais (`payments.type`, §269.2.7).
+
+---
+
+## 19.7.2 Conceito (D01, D60, D75)
+
+Conta a Pagar é uma **visão derivada** de obrigações financeiras de saída. Não existe entidade `payable` persistida. Não existe segunda fonte de verdade.
+
+Fonte de verdade (inalterada):
+
+- `expenses`
+- `expense_installments`
+- `payments`
+- adjustments de parcela e de fatura
+- `credit_card_invoices` e alocações / créditos / settlement de Agreement
+
+A visão responde:
+
+- "Quanto tenho para pagar?"
+- "Quanto tenho para pagar neste período?"
+
+sem duplicar cartão, sem usar `totalAmount` no lugar de remaining, sem incluir obrigações quitadas (remaining 0), metas, transferências ou dados de outro usuário.
+
+---
+
+## 19.7.3 Unidade da linha (D02, D18, D23, D24)
+
+Uma linha é **exatamente um** dos seguintes:
+
+1. **INSTALLMENT** — parcela de despesa `ACCOUNT` ou `NONE` com `remainingAmount > 0`;
+2. **INVOICE** — fatura de cartão com `remainingAmount > 0` e status `SCHEDULED`, `OPEN` ou `CLOSED` (D16, D17).
+
+**Não** aparecem como linha:
+
+- despesa `CREDIT_CARD`;
+- parcela de cartão (`expense_installments` com `invoice_id` / `paymentMethod = CREDIT_CARD`);
+- a despesa ACCOUNT/NONE inteira no lugar das parcelas (N>1 = uma linha por parcela).
+
+Despesa 1/1 ACCOUNT/NONE já possui parcela interna (Fase 7). Essa parcela **é** a linha. A Fase 16 **não** elimina a parcela 1/1, **não** torna `due_date` da parcela opcional no modelo físico e **não** cria pagamento desligado de `installment_id`. "Obrigação sem parcelamento" na visão = uma única linha INSTALLMENT (a parcela 1/1 já existente).
+
+---
+
+## 19.7.4 Valores da linha (D03, D33, D51, D69)
+
+Cada linha expõe derivados na leitura:
+
+| Campo | INSTALLMENT | INVOICE |
+|---|---|---|
+| `originalAmount` | `expense_installments.amount` (valor original da parcela; D33 — o original criado é preservado) | `totalAmount` derivado da fatura (`docs/23` §196 área / total oficial da fatura) |
+| `paidAmount` | soma dos `payments` `ACTIVE` da parcela | `paidAmount` derivado oficial da fatura (`docs/23` §196) |
+| `remainingAmount` | remaining oficial da parcela (RN231) | remaining oficial da fatura (`docs/23` §197 = soma dos remainings das parcelas do ciclo) |
+
+A linha representa o valor ainda devido: **`remainingAmount`**. Não usar `originalAmount` / `totalAmount` da despesa como resposta a "quanto tenho para pagar".
+
+`remainingAmount = 0` **nunca** entra na consulta e **nunca** aumenta `totalRemaining` (D15).
+
+---
+
+## 19.7.5 Anti-duplicidade (D18, D66, D74)
+
+O total consolidado é a soma dos `remainingAmount` das linhas elegíveis. Proibido somar simultaneamente:
+
+- despesa de cartão + fatura;
+- parcela de cartão + fatura;
+- fatura `SCHEDULED` + as parcelas futuras daquele ciclo como linhas extras (as parcelas de cartão **não** são linhas);
+- fatura `SETTLED_BY_AGREEMENT` + nova obrigação do Agreement como se a fatura liquidada ainda devesse (a fatura liquidada tem remaining 0 e não entra; a nova obrigação entra só quando virar parcela ACCOUNT/NONE ou fatura futura com remaining > 0 — no cartão, pelas faturas futuras da nova despesa `CREDIT_CARD`).
+
+Agreement/settlement **não** ganha tratamento financeiro paralelo: o remaining oficial já reflete o settlement (D74).
+
+---
+
+## 19.7.6 Elegibilidade
+
+**INSTALLMENT (ACCOUNT/NONE):**
+
+- `paymentMethod` ∈ {`ACCOUNT`, `NONE`};
+- despesa **não** `CANCELLED` nem `REFUNDED`;
+- parcela **não** `CANCELLED` nem `REFUNDED`;
+- `remainingAmount > 0` (em geral status `OPEN` ou `PARTIALLY_PAID`).
+
+**INVOICE:**
+
+- status ∈ {`SCHEDULED`, `OPEN`, `CLOSED`};
+- `remainingAmount > 0`;
+- `PAID` e `SETTLED_BY_AGREEMENT` não entram.
+
+**Nunca entram (D70–D73):** transferências, acertos de saldo, saldo inicial, contribuições/resgates/reservado de metas.
+
+---
+
+## 19.7.7 Período (D05, D06, D07, D08, D09)
+
+O período usa o **`due_date` da linha** (parcela ou fatura). **Não** reutilizar RN226.
+
+**Mês selecionado (`year` + `month`):** "mês atual" = o mês **escolhido no filtro**, não o mês civil do relógio do servidor. Exemplo: hoje = 17/08/2026; `year=2026&month=10` consulta **outubro/2026**. Inclusive: `due_date` do primeiro ao último dia daquele mês no calendário `America/Sao_Paulo`.
+
+**Intervalo arbitrário:** `startDate` e `endDate` inclusivos sobre o `due_date` da linha.
+
+Sem nenhum parâmetro de período: **todas** as obrigações elegíveis, inclusive futuras (D07).
+
+`year`/`month` e `startDate`/`endDate` podem combinar (D42): a linha precisa satisfazer **todos** os filtros temporais informados.
+
+**Sem vencimento (D08, D09):** linha sem `due_date` pode aparecer na consulta **sem** filtro temporal. Com filtro temporal, fica de fora, salvo `includeWithoutDueDate=true`.
+
+No modelo físico vigente, `expense_installments.due_date` e `credit_card_invoices.due_date` são obrigatórios. O parâmetro existe para o contrato da consulta; **não** autoriza tornar `due_date` nullable.
+
+---
+
+## 19.7.8 Overdue (D11, D12, D13, D14)
+
+`OVERDUE` **não** é status persistido nem coluna.
+
+Timezone / "hoje": `America/Sao_Paulo` (mesmo calendário financeiro das fases anteriores).
+
+**Parcela (INSTALLMENT):** vencida quando `remainingAmount > 0`, possui `due_date` e `due_date` < hoje. Compatível com RN241 para linhas que já passaram na elegibilidade.
+
+**Fatura (INVOICE):** vencida quando `remainingAmount > 0`, possui `due_date`, status `OPEN` ou `CLOSED` (obrigação aberta) e `due_date` < hoje. `SCHEDULED` nunca é overdue (RN089).
+
+Filtro `overdue=true|false` é **separado** de `status` (D12). Omitido = não restringe por overdue.
+
+---
+
+## 19.7.9 Filtros (D10, D19–D22, D38–D42)
+
+Todos os filtros combinam (interseção). Resultado vazio é `200` com `items` vazio e totais `0.00`.
+
+| Filtro | Efeito |
+|---|---|
+| `status` | Múltiplos valores persistidos da **origem** da linha, separados por vírgula (ex.: `OPEN,PARTIALLY_PAID`). **Não** criar status de payable. Valores aceitos: do conjunto de despesa/parcela (`OPEN`, `PARTIALLY_PAID`, `PAID`, `CANCELLED`, `REFUNDED`) **e** do conjunto de fatura (`SCHEDULED`, `OPEN`, `CLOSED`, `PAID`, `SETTLED_BY_AGREEMENT`). A linha casa se o status persistido da origem está no conjunto. Sem `status` = todas as elegíveis. |
+| `overdue` | ver §19.7.8 |
+| `creditCardId` | restringe linhas `INVOICE` daquele cartão; linhas INSTALLMENT não têm cartão e não casam |
+| `withoutCreditCard=true` | somente linhas INSTALLMENT (ACCOUNT/NONE) |
+| `categoryId` | aplica-se **somente** a INSTALLMENT; faturas **não** são restringidas por este filtro (continuam a aparecer se forem elegíveis pelos demais filtros) (D21) |
+| `responsibleType` | aplica-se **somente** a INSTALLMENT; faturas **não** são restringidas (D22) |
+| `search` | busca textual simples (contém, sem distinção de maiúsculas) em campos textuais da obrigação: INSTALLMENT → `description`, `notes`, `barcode` da despesa; INVOICE → `name` do cartão |
+
+Não criar enum/status `OVERDUE`. `PAID` / `CANCELLED` / `REFUNDED` / `SETTLED_BY_AGREEMENT` no filtro `status` são aceitos e, na prática, tendem a conjunto vazio por elegibilidade (D15 / D17).
+
+---
+
+## 19.7.10 Ordenação, paginação e totais (D43–D51)
+
+Ordenação: `sort` + `direction`. Campos: `name`, `purchaseDate`, `dueDate`, `originalAmount`, `remainingAmount`, `status`, `paidAmount`.
+
+Mapeamento:
+
+| `sort` | INSTALLMENT | INVOICE |
+|---|---|---|
+| `name` | `expenses.description` | nome do cartão |
+| `purchaseDate` | `expenses.expense_date` | `closing_date` da fatura (a fatura não possui `expenseDate`) |
+| `dueDate` | `expense_installments.due_date` | `credit_card_invoices.due_date` |
+| `originalAmount` / `paidAmount` / `remainingAmount` | derivados da linha (§19.7.4) | idem |
+| `status` | status persistido da parcela | status persistido da fatura |
+
+Padrão quando `sort` omitido: `dueDate ASC`. Desempate **sempre** `id ASC` da linha (UUID da parcela ou da fatura), inclusive quando `direction=desc` no campo principal (D45). `dueDate` nulo: por último em `ASC`, por primeiro em `DESC`.
+
+Paginação server-side: `page` default `0`; `size` default `20`; máximo `size=100`.
+
+Envelope: `items`, `page`, `size`, `totalItems`, `totalPages`, `totalRemaining`, `totalOriginal`, `totalPaid`.
+
+`totalRemaining`, `totalOriginal` e `totalPaid` são somas das linhas **elegíveis do universo filtrado**, não da página corrente (D04, D50, D51). Estratégia SQL vs memória é detalhe de implementação posterior; a regra funcional não muda.
+
+---
+
+## 19.7.11 Item resumido (D52, D53)
+
+Não criar `GET /payables/{id}`. Cada item **não** embute listas de payments, adjustments nem parcelas filhas. Identidade: `id` da origem + `type` (`INSTALLMENT` \| `INVOICE`). Contrato de campos: `docs/25` §66.
+
+---
+
+## 19.7.12 Escritas e ciclo de vida (D25–D37, D55)
+
+Payables **não** escreve. Pagamento, ajuste, cancelamento, refund, reverse e Agreement permanecem nos endpoints já oficiais das Fases 7–9 e 13.
+
+A visão apenas reflete o remaining resultante:
+
+- vários payments até remaining 0 (D25) — já existente;
+- pagamento acima do remaining bloqueado (D26) — RN231 / RN076A;
+- conta do payment pode diferir da conta da despesa (D27) — RN228;
+- adjustments `DISCOUNT` / `SURCHARGE` (D28–D30) — RN232/RN233; nunca apagados fisicamente; reverse explícito;
+- cancelamento `OPEN` → `CANCELLED` sem payment efetivo (D34); com payments efetivos não cancelar — reverter primeiro (D35) — RN236;
+- sem exclusão física normal (D36);
+- reembolso ≠ cancelamento (D37) — RN237.
+
+**Ajustes — o que a Fase 16 não emenda:** a data do fato de adjustment continua sendo `createdAt` (não há coluna de data financeira editável no contrato vigente). `reason` permanece **obrigatório** na criação (Fase 9). GET /payables não expõe CRUD de ajuste. D31/D32 não alteram o contrato HTTP de adjustments nesta fase.
+
+---
+
+## 19.7.13 Isolamento e arquitetura (D56–D59, D64, D65)
+
+Dono = `userId` do JWT. A consulta filtra na query por esse usuário. Recurso/filtro de outro usuário não devolve dados alheios (lista vazia; sem vazar existência).
+
+Pacote futuro (após autorização de implementação): `br.com.financialcontrol.payables` — Controller → Service → consultas/repositórios de leitura. Sem entidade JPA `Payable`. Sem UseCase por filtro.
+
+Fase 16 = somente backend/API. Conclusão da **implementação** (fase posterior) exige testes HTTP e de regras (D65), incluindo dupla contagem (D66), isolamento (D67) e totais vs página (D68).
+
+---
+
+## 19.7.14 Registro D01–D75
+
+As 75 decisões aprovadas estão refletidas nesta seção e em `docs/25` §66. Não reinterpretar. Lacuna nova → parar e perguntar.
+
+---
+
+## RN281 — Visão derivada
+
+Contas a pagar não é fato persistido. Não criar tabela `payables` nem colunas de remaining/total da visão.
+
+
+## RN282 — Unidade da linha
+
+Linha = parcela ACCOUNT/NONE com remaining > 0 **ou** fatura `SCHEDULED`/`OPEN`/`CLOSED` com remaining > 0. Despesa/parcela `CREDIT_CARD` não é linha.
+
+
+## RN283 — Remaining zero
+
+`remainingAmount = 0` não aparece e não entra em nenhum total.
+
+
+## RN284 — Anti-duplicidade de cartão
+
+Cartão entra só como fatura. Proibido somar despesa de cartão, parcela de cartão e fatura.
+
+
+## RN285 — Período da visão
+
+Filtro temporal usa `due_date` da linha. Não aplicar RN226. "Mês atual" = mês selecionado no filtro (`year`/`month`), não o mês do relógio.
+
+
+## RN286 — Sem vencimento
+
+Sem `due_date`: entra na consulta geral; sai do filtro temporal salvo `includeWithoutDueDate=true`. Não autoriza nullable no modelo físico vigente.
+
+
+## RN287 — Status da visão
+
+Não criar status persistido de payable. Filtrar pelos status persistidos da origem. Elegibilidade: §19.7.6.
+
+
+## RN288 — Overdue da visão
+
+Derivado. Parcela: remaining > 0, tem vencimento, `due_date` < hoje. Fatura: remaining > 0, tem vencimento, `OPEN` ou `CLOSED`, `due_date` < hoje. `SCHEDULED` nunca overdue. Timezone: `America/Sao_Paulo`.
+
+
+## RN289 — Totais do universo filtrado
+
+`totalRemaining`, `totalOriginal` e `totalPaid` somam todas as linhas elegíveis filtradas, não só a página.
+
+
+## RN290 — Fora da visão
+
+Transferência, acerto de saldo, saldo inicial e `reservedAmount` de metas não são conta a pagar.
+
+
+## RN291 — Isolamento da visão
+
+Somente obrigações do `userId` autenticado. Usuário B nunca recebe linhas do usuário A.
+
+
+## RN292 — Sem escrita em payables
+
+Nenhum POST/PUT/PATCH/DELETE em `/payables`. Nenhum `GET /payables/{id}` nesta fase.
 
 
 # 20. Metas

@@ -45,6 +45,7 @@ Never modify an already-applied shared/production migration.
 ## 2. Naming
 
 - Tables: plural snake_case — `accounts`, `expenses`, `incomes`, `transfers`, `account_balance_adjustments` (Fase 14), `payments`, `credit_cards`, `credit_card_invoices`, `financial_goals`
+- Fase 16 (`payables`): **não** criar tabela `payables` nem colunas de remaining/total da visão (`docs/24` §19.7 / RN281).
 - Columns: snake_case
 - Primary key: `id UUID`
 - Foreign keys: `account_id`, `credit_card_id`

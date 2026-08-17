@@ -942,30 +942,43 @@ Ver `docs/27-testes.md` §40D. Classes: `FinancialGoalApiTest`, `FinancialGoalCo
 
 # 86. Fase 16 — Contas a pagar
 
+**Status:** contrato documental fechado (D01–D75) — **aguardando auditoria humana**. Implementação **não autorizada**.
+
 Objetivo:
 
-Criar visão consolidada de obrigações.
+Visão consolidada de leitura das obrigações de saída já existentes.
+
+Contrato oficial: `docs/24` §19.7 / `docs/25` §66 / `docs/27` §40E.
+
+**Não** criar tabela `payables`, migration, remaining persistido, status novo nem escritas em `/payables`.
 
 
-# 87. Fase 16
+# 87. Fase 16 — Escopo
 
-Exibir:
+Implementar **somente após aprovação explícita do contrato**:
 
-- despesas abertas;
-- despesas vencidas;
-- parcelas futuras;
-- faturas.
+- `GET /api/v1/payables`;
+- linha = parcela ACCOUNT/NONE com remaining > 0 **ou** fatura `SCHEDULED`/`OPEN`/`CLOSED` com remaining > 0;
+- pacote `payables` (Controller → Service → consultas; sem entidade JPA).
+
+Fora do escopo: frontend, dashboard, projeções, `GET /payables/{id}`, POST/PUT/DELETE, transferências, acertos, saldo inicial, metas.
 
 
-# 88. Fase 16
+# 88. Fase 16 — Regras fechadas
 
-Permitir filtros por:
+- visão derivada; remaining/overdue/totais derivados;
+- período = `due_date` da linha (**não** RN226);
+- "mês atual" = mês **selecionado** no filtro (`year`/`month`), não o mês do relógio (outubro/2026 consultável em agosto/2026);
+- cartão só como fatura (sem dupla contagem);
+- remaining 0 nunca entra;
+- `OVERDUE` derivado; filtro `overdue` separado de `status`;
+- `status` múltiplo; `withoutCreditCard`; categoria/responsável só em ACCOUNT/NONE;
+- envelope com `totalRemaining`, `totalOriginal`, `totalPaid` do universo filtrado;
+- ordenação `sort`+`direction` + desempate `id`;
+- paginação `page`/`size` (default 20, máx. 100);
+- isolamento JWT.
 
-- período;
-- categoria;
-- responsável;
-- cartão;
-- status.
+Detalhe: `docs/24` §19.7 (RN281–RN292).
 
 
 # 89. Critério
@@ -973,6 +986,14 @@ Permitir filtros por:
 Usuário deve conseguir responder:
 
 "Quanto tenho para pagar?"
+
+e:
+
+"Quanto tenho para pagar neste período?"
+
+sem duplicar cartão, sem usar total no lugar de remaining, sem quitadas/metas/transferências, sem violar isolamento.
+
+Testes previstos: `docs/27` §40E. **Não** declarar a fase `CONCLUÍDA E APROVADA` antes da implementação autorizada + testes + auditoria.
 
 
 # 90. Fase 17 — Contas a receber

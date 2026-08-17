@@ -1614,15 +1614,7 @@ Usuário deseja saber:
 "Quanto vou pagar em setembro?"
 
 
-O sistema deve considerar:
-
-parcelas de cartão;
-
-despesas abertas;
-
-contas previstas;
-
-parcelamentos.
+O sistema deve considerar a visão Contas a pagar (`docs/24` §19.7): parcelas ACCOUNT/NONE com remaining > 0 cujo `due_date` cai em setembro; faturas com remaining > 0 cujo `due_date` cai em setembro. Não somar de novo parcelas de cartão além da fatura.
 
 
 # 82. Fluxo — Presente
@@ -2654,15 +2646,13 @@ Usuário consulta:
 "Quanto devo pagar este mês?"
 
 
-Sistema deve mostrar:
+Sistema deve mostrar a visão **Contas a pagar** (`GET /api/v1/payables`, Fase 16 / `docs/24` §19.7):
 
-contas a pagar;
+parcelas ACCOUNT/NONE em aberto (remaining > 0);
 
-faturas;
+faturas `SCHEDULED` / `OPEN` / `CLOSED` com remaining > 0.
 
-parcelas;
-
-demais obrigações relevantes.
+Não somar de novo a despesa/parcela de cartão junto com a fatura. O período usa o `due_date` da linha ("este mês" = mês **selecionado** no filtro).
 
 
 # 157. Cenário completo
