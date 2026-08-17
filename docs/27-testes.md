@@ -777,7 +777,13 @@ Contrato: `docs/24` §19.7 / `docs/25` §66.
 
 Contrato: `docs/24` §19.8 / `docs/25` §67.
 
-**Status:** Parte 1 **implementada** — aguardando auditoria. Endpoint: `GET /api/v1/receivables`. Classe: `ReceivablesApiTest` (HTTP + Testcontainers + `Clock` fixo em `2026-08-17T15:00:00Z` / hoje financeiro `2026-08-17` em `America/Sao_Paulo`; override de bean apenas neste teste). **Não** declarar a Fase 17 concluída. **Não** criar infraestrutura especial de concorrência (D30).
+**Status:** Parte 1 **CONCLUÍDA E APROVADA**. Auditoria: **APROVADA COM RESSALVAS** (não bloqueantes). Endpoint: `GET /api/v1/receivables`. Classe: `ReceivablesApiTest` — **35/35**. `Clock` fixo em `2026-08-17T15:00:00Z` / hoje financeiro `2026-08-17` em `America/Sao_Paulo`; override de bean apenas neste teste.
+
+Regressão no fechamento: `IncomeApiTest` 15/15; `PayablesApiTest` 14/14; `mvn verify` **460/460**; BUILD SUCCESS.
+
+**Não** declarar a Fase 17 inteira concluída. A Parte 2 permanece futura. **Não** criar infraestrutura especial de concorrência (D30).
+
+Melhorias futuras de teste (não são falhas da Parte 1): token inválido/expirado; período só com `startDate` ou só com `endDate`; fronteira UTC/São Paulo à meia-noite; `categoryId`/`accountId` de outro usuário.
 
 **Não** testar a Parte 2 (movimentações/baixas). **Não** persistir remaining. **Não** criar tabela `receivables`. **Não** testar `dueDate` como alias. **Não** testar receita sem `expectedDate`.
 
@@ -879,7 +885,7 @@ que estorno **não** resulta em `CANCELLED`;
 que cancelamento **não** é tratado como estorno.
 
 
-A Fase 6 não testa responsável em receitas (`responsibleType` / `responsibleName`). A evolução futura do cadastro de Income (RN306) e os testes da visão `GET /api/v1/receivables` (`docs/27` §40F) são contratos **separados** e ainda não implementados.
+A Fase 6 não testa responsável em receitas (`responsibleType` / `responsibleName`). A evolução futura do cadastro de Income (RN306) é contrato **separado** da visão `GET /api/v1/receivables` (`docs/27` §40F), já implementada e aprovada na Parte 1. Não misturar essa evolução com a Parte 2.
 
 
 # 44. Receita esperada

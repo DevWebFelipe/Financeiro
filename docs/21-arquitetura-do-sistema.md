@@ -384,11 +384,12 @@ Pacotes da Fase 16 (`CONCLUÍDA E APROVADA`):
 - **Sem** entidade JPA `Payable`, **sem** tabela `payables`, **sem** remaining persistido.
 - Remaining e totais derivados das fórmulas já oficiais (RN231, `docs/23` §§196–197). Contrato: `docs/24` §19.7.
 
-Pacotes da Fase 17 (contrato da Parte 1 documentado — **não implementado**):
+Pacotes da Fase 17 — Parte 1 (`CONCLUÍDA E APROVADA`):
 
-- `receivables` — visão consolidada de contas a receber (`ReceivablesController` → `ReceivablesService` → consultas de leitura sobre `incomes`).
+- `receivables` — visão de leitura de contas a receber (`ReceivablesController` → `ReceivablesService` → consultas em `IncomeRepository`).
 - **Sem** entidade JPA `Receivable`, **sem** tabela `receivables`, **sem** remaining persistido.
-- Vocabulário de data: `expectedDate` (sem alias `dueDate`). Filtros/ordenação/paginação **no banco** (não copiar o filtro em memória de payables). Contrato: `docs/24` §19.8.
+- Vocabulário de data: `expectedDate` (sem alias `dueDate`). Filtros, ordenação, paginação e resumo **no banco** (não copiar o filtro em memória de payables). Contrato: `docs/24` §19.8.
+- A Fase 17 inteira permanece em andamento. Parte 2 (baixas/movimentações) e escrita de responsável em Income (RN306) são futuras.
 
 Pacotes da Fase 5:
 

@@ -490,7 +490,7 @@ FK composta `(account_id, user_id)` é nullable.
 
 `responsible_type` é nullable (migration V16). Não persistir valor artificial para preencher a coluna. O CHECK de valores (`MINE`, `GIULIA`, `EDERSON`, `ELISIANE`, `OTHER`) permanece inalterado. `responsible_name` permanece e aceita ausência de responsável.
 
-**Fase 17 (contrato; não implementado nesta etapa):** o responsável é necessário para receitas. A evolução do cadastro/edição de Income para aceitar esses campos é trabalho **separado** da visão `GET /api/v1/receivables` e da Parte 2 de movimentações. Não inventar colunas. Não tornar `expected_date` nullable. Detalhe: `docs/24` §19.8.12 / RN306.
+**Fase 17:** a visão `GET /api/v1/receivables` (Parte 1, `CONCLUÍDA E APROVADA`) lê e filtra `responsible_type` / `responsible_name` nas colunas existentes. A evolução do cadastro/edição de Income para **gravar** esses campos (RN306) é trabalho **separado** da visão e da Parte 2 de movimentações, e **não** está implementada. Não inventar colunas. Não tornar `expected_date` nullable. Detalhe: `docs/24` §19.8.12 / RN306.
 
 
 # 37. Receita

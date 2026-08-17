@@ -2093,15 +2093,13 @@ Dashboard, projeções, frontend, escritas, `GET /payables/{id}`, migration, tab
 
 # 67. Contas a receber (Fase 17 — Parte 1)
 
-**Status:** contrato oficial `docs/24` §19.8 — **não implementado**. Não documentar este endpoint como existente no código até a implementação.
-
-Endpoint único previsto:
+**Status:** `docs/24` §19.8 — Parte 1 **CONCLUÍDA E APROVADA**. Auditoria: **APROVADA COM RESSALVAS** (não bloqueantes). Endpoint existente:
 
 ```text
 GET /api/v1/receivables
 ```
 
-Pacote previsto: `receivables`. **Não** utilizar `/api/v1/accounts-receivable`.
+Pacote: `receivables`. **Não** utilizar `/api/v1/accounts-receivable`.
 
 Auth: Bearer obrigatório. Sem token / token inválido / expirado / usuário desativado → **401** `UNAUTHORIZED`. Dono = usuário autenticado (JWT). Não existe `userId` na query. Recurso de outro usuário não é distinguido: filtros que não casam com o dono devolvem lista vazia (**200**), sem vazar existência.
 
@@ -2147,7 +2145,7 @@ Filtros combinam por interseção quando compatíveis. `startDate` > `endDate` �
 
 `page < 0`, `size < 1` ou `size > 100` → **400** `BUSINESS_RULE_VIOLATION`.
 
-## Response 200 (contrato; ainda não implementado)
+## Response 200
 
 ```json
 {

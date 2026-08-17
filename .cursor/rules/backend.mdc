@@ -27,7 +27,7 @@ Controller → Service → Repository
 
 Controller does not access Repository.
 
-Default: one Service per module (`AccountService`, `ExpenseService`, `IncomeService`, `TransferService`, `BalanceAdjustmentService`, `PaymentService`, `CreditCardService`, `CreditCardInvoiceService`, `FinancialGoalService`, `PayablesService` — Fase 16, consulta; **sem** entidade JPA; `CONCLUÍDA E APROVADA`, `docs/24` §19.7; `ReceivablesService` — Fase 17 Parte 1, consulta prevista; **sem** entidade JPA; contrato `docs/24` §19.8 — **não implementado**).
+Default: one Service per module (`AccountService`, `ExpenseService`, `IncomeService`, `TransferService`, `BalanceAdjustmentService`, `PaymentService`, `CreditCardService`, `CreditCardInvoiceService`, `FinancialGoalService`, `PayablesService` — Fase 16, consulta; **sem** entidade JPA; `CONCLUÍDA E APROVADA`, `docs/24` §19.7; `ReceivablesService` — Fase 17 Parte 1, consulta; **sem** entidade JPA; `CONCLUÍDA E APROVADA`, `docs/24` §19.8 — **não** recriar o endpoint; Parte 2 futura).
 
 Do not create `CreateExpenseUseCase`, `GetExpenseUseCase`, `ListExpenseUseCase`.
 

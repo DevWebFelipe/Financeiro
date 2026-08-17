@@ -3525,11 +3525,11 @@ Nenhum POST/PUT/PATCH/DELETE em `/payables`. Nenhum `GET /payables/{id}` nesta f
 
 # 19.8 Contrato da Fase 17 — Contas a receber (Parte 1)
 
-**Status:** contrato oficial da **Parte 1** documentado — **não implementado**. Endpoint previsto: `GET /api/v1/receivables`. Pacote previsto: `receivables`.
+**Status:** Parte 1 **CONCLUÍDA E APROVADA**. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes). Endpoint: `GET /api/v1/receivables`. Pacote: `receivables`.
 
 Autoridade: `AGENTS.md` §28 → esta seção → `docs/25` §67 → `docs/27` §40F / `docs/28`.
 
-Não declarar a Fase 17 concluída. Não declarar a Fase 15 `CONCLUÍDA E APROVADA` nesta etapa. Fluxo oficial (D71): decisões → documentação → testes → implementação → auditoria → fechamento. Esta seção é **documentação**.
+Não declarar a Fase 17 inteira concluída. A Parte 2 (baixas/movimentações) permanece futura. Não declarar a Fase 15 `CONCLUÍDA E APROVADA` nesta etapa.
 
 Receivables **não** cria fato financeiro novo. A fonte de verdade permanece `incomes` (Fase 6). A visão apenas lê.
 
@@ -3537,7 +3537,7 @@ Receivables **não** cria fato financeiro novo. A fonte de verdade permanece `in
 
 ## 19.8.1 Escopo da Parte 1
 
-**Inclui (quando implementada):**
+**Inclui:**
 
 1. Visão operacional de leitura das duplicatas de receita já existentes;
 2. Unidade da linha: um `Income` elegível (`EXPECTED` ou `RECEIVED`);
@@ -3749,12 +3749,14 @@ Não criar `GET /receivables/{id}`. Recebimento, estorno, cancelamento e ediçã
 
 Filtros, ordenação e paginação **ocorrem no banco**. Não carregar todas as receitas do usuário para filtrar/paginar em Java. **Não** copiar o comportamento atual de `PayablesService` (filtro/paginação em memória).
 
-Índices: analisar o SQL real na implementação. Candidatos:
+A Parte 1 utiliza os índices existentes `idx_incomes_user_id` e `idx_incomes_user_status`. Sem migration nova.
+
+Candidatos futuros, somente se `EXPLAIN` / plano de execução justificar:
 
 - `(user_id, status, expected_date)`
 - `(user_id, status, received_date)`
 
-Índices adicionais somente se `EXPLAIN` / plano de execução justificar. Não criar índices por antecipação. Não assumir migration estrutural para a Parte 1 (D36, D53).
+Não criar índices por antecipação. Não criar migration estrutural para a Parte 1 (D36, D53).
 
 ---
 
@@ -3762,7 +3764,9 @@ Filtros, ordenação e paginação **ocorrem no banco**. Não carregar todas as 
 
 Confirmado (D54, D69): receitas precisam de responsável (ex.: salário do Felipe, salário da esposa, receitas de outras pessoas).
 
-Estado atual (Fase 6, inalterado até a evolução ser implementada):
+A visão `GET /api/v1/receivables` **já lê e filtra** `responsibleType` / `responsibleName` nas colunas existentes. A API de Income da Fase 6 **continua** sem aceitar esses campos na escrita.
+
+Estado atual da escrita (Fase 6, inalterado até a evolução ser implementada):
 
 1. as colunas `responsible_type` e `responsible_name` **já existem** em `incomes`;
 2. a API de Income **não** permite informar esses campos (`FAIL_ON_UNKNOWN_PROPERTIES`);
@@ -3828,17 +3832,19 @@ A Parte 1 permanece leitura da duplicata integral (`incomes.amount` + `status`).
 
 Dono = `userId` do JWT. A consulta filtra na query por esse usuário. Recurso/filtro de outro usuário não devolve dados alheios (lista vazia; sem vazar existência).
 
-Pacote previsto: `br.com.financialcontrol.receivables` — Controller → Service → consultas de leitura sobre `Income` / `IncomeRepository`. Sem entidade JPA `Receivable`. Sem UseCase por filtro. DTOs próprios da visão (D28). Sem alterar o domínio de Income sem necessidade real da Parte 1 (D45); a evolução de responsável é o único acréscimo previsto ao cadastro, em trabalho separado.
+Pacote: `br.com.financialcontrol.receivables` — `ReceivablesController` → `ReceivablesService` → consultas de leitura em `IncomeRepository`. Sem entidade JPA `Receivable`. Sem UseCase por filtro. DTOs próprios da visão (D28). Sem alterar o domínio de Income sem necessidade real da Parte 1 (D45); a evolução de responsável na escrita de Income permanece trabalho separado (RN306).
 
 Timezone: `America/Sao_Paulo`. Convenções: inglês no código/rotas/pacotes/DTOs/banco; documentação funcional em português (D72).
 
-Fase 17 Parte 1 = somente backend/API, quando implementada.
+Fase 17 Parte 1 = somente backend/API. A Fase 17 inteira permanece em andamento até a Parte 2.
 
 ---
 
 ## 19.8.15 Registro D51–D72
 
 As decisões D51–D72 (e o contrato preliminar D01–D50 da auditoria, na medida em que não contradisserem D51–D72) estão refletidas nesta seção e em `docs/25` §67. Em conflito, prevalecem D51–D72 e esta seção. Lacuna nova → parar e perguntar.
+
+RN293–RN305 estão **implementadas** na Parte 1. RN306: a visão já lê e filtra `responsibleType` / `responsibleName`; a evolução da **escrita** em `POST`/`PUT /incomes` permanece futura. RN307: a Parte 2 permanece futura (não implementar agora).
 
 ---
 
