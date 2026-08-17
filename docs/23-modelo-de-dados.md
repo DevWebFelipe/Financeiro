@@ -490,7 +490,9 @@ FK composta `(account_id, user_id)` é nullable.
 
 `responsible_type` é nullable (migration V16). Não persistir valor artificial para preencher a coluna. O CHECK de valores (`MINE`, `GIULIA`, `EDERSON`, `ELISIANE`, `OTHER`) permanece inalterado. `responsible_name` permanece e aceita ausência de responsável.
 
-**Fase 17:** a visão `GET /api/v1/receivables` (Parte 1, `CONCLUÍDA E APROVADA`) lê e filtra `responsible_type` / `responsible_name` nas colunas existentes. A evolução do cadastro/edição de Income para **gravar** esses campos (RN306) é trabalho **separado** da visão e da Parte 2 de movimentações, e **não** está implementada. Não inventar colunas. Não tornar `expected_date` nullable. Detalhe: `docs/24` §19.8.12 / RN306.
+**Fase 17:** a visão `GET /api/v1/receivables` (Parte 1, `CONCLUÍDA E APROVADA`) lê e filtra `responsible_type` / `responsible_name` nas colunas existentes. A escrita desses campos no cadastro/edição de Income está no contrato da **Parte 2** (`docs/24` §19.9 / RN306) e **não** está implementada. Não inventar colunas. Não tornar `expected_date` nullable.
+
+**Fase 17 — Parte 2 (contrato consolidado / implementação pendente):** não criar tabela `receivables`. Tabela oficial única: `income_movements` (**D87-A** / D85). `incomes.amount` é o valor original (**D75-A**); sem movimentação `OPENING`. Não persistir remaining/recebido/acumulado em `incomes`. `account_id` / `received_date` no cabeçalho são **legado/transição** (**D76-A**) — **não remover as colunas**. Backfill obrigatório das `RECEIVED` atuais (**D83**). Índice `(user_id, income_id)`. **D86** omitido de propósito. Detalhe: `docs/23` §40.5 e §269.6. Decisões D73–D93 **fechadas**. **Não criar a tabela agora.**
 
 
 # 37. Receita
@@ -576,7 +578,7 @@ Não permitidas nesta fase: `RECEIVED` → `CANCELLED`; `CANCELLED` → `EXPECTE
 
 O caminho composto `RECEIVED` → reverse → `EXPECTED` → cancel → `CANCELLED` já é possível pela composição das operações definidas.
 
-**DECISÃO PENDENTE DO DESENVOLVEDOR:** cancelamento direto de receita já `RECEIVED`. A Fase 6 rejeita essa transição. Não está definido se, em fase posterior, ela existirá. Não implementar até decisão explícita.
+**Fase 6 (implementado):** rejeita `RECEIVED` → `CANCELLED`. **Parte 2 (D73 — fechado, não implementado):** essa transição **não** existe. Cancelar somente sem RECEIPT `ACTIVE`. Sem estorno automático. `docs/24` §19.9.8.
 
 
 # 40.2 Estorno de receita
@@ -659,6 +661,37 @@ Não há efeito financeiro a reverter.
 
 Ver RN045 e RN207.
 
+**Fase 17 Parte 2 (D73 — fechado, não implementado):** cancelar somente sem RECEIPT `ACTIVE`. Não apagar movimentações. Sem estorno automático. `docs/24` §19.9.8.
+
+
+# 40.5 Fase 17 Parte 2 — movimentações de receita (contrato fechado — não criar agora)
+
+**CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE.** Fonte: `docs/24` §19.9. Decisões D73–D93 **fechadas**.
+
+Não criar migration nesta etapa. Não criar tabela `receivables`. Não persistir remaining.
+
+`incomes` permanece a duplicata. O histórico financeiro **não** é colunas `received_amount` / `remaining_amount` no cabeçalho. `incomes.amount` é o fato cadastral original (**D75-A**). Sem linha `OPENING`/`ORIGINAL` no histórico.
+
+```text
+incomes 1:N income_movements
+```
+
+```text
+remaining = incomes.amount
+          + SUM(ACCRUAL ACTIVE)
+          − SUM(RECEIPT ACTIVE)
+```
+
+Tabela oficial única (**D87-A** / D85): `income_movements` — `id` (UUID v7), `user_id`, `income_id`, `type` (`ACCRUAL` | `RECEIPT`), `status` (`ACTIVE` | `REVERSED`), `amount NUMERIC(19,2)` > 0, `movement_date DATE` NOT NULL, `account_id` (obrigatório em `RECEIPT`, nulo em `ACCRUAL`), `created_at`, `updated_at`, `reversed_at`. FKs compostas. Sem `ON DELETE CASCADE`. Índice `(user_id, income_id)`. Não criar outros índices sem evidência.
+
+`incomes.account_id` e `incomes.received_date` são **legado/transição** (**D76-A**). Fonte de verdade das movimentações: `income_movements` (**D84**).
+
+Backfill obrigatório (**D83**): cada `RECEIVED` atual → um RECEIPT `ACTIVE` (`amount` / `account_id` / `movement_date` a partir do cabeçalho), na mesma migração que a troca de RN240. Não reconstruir receitas já estornadas quando os dados do cabeçalho não existirem mais.
+
+**D86:** omitido de propósito (salto D85 → D87). Não criar D86 fictícia.
+
+A migration continua bloqueada até autorização explícita de implementar.
+
 
 # 41. Receita
 
@@ -667,7 +700,9 @@ expected_date representa a data prevista.
 
 # 42. Receita
 
-received_date representa a data real de recebimento.
+received_date representa a data real de recebimento **na Fase 6** (cabeçalho).
+
+**Fase 17 Parte 2 (D76-A — não implementado):** a coluna permanece como **legado/transição**. A data real de cada recebimento passa a ser `income_movements.movement_date` do RECEIPT. Não remover a coluna. Não usá-la como fonte de verdade.
 
 
 # 43. Receita
@@ -2276,6 +2311,13 @@ users
 incomes
 
 
+incomes
+
+1:N
+
+income_movements  (Fase 17 Parte 2 — contrato fechado; **não criar agora**; D87-A)
+
+
 users
 
 1:N
@@ -3346,6 +3388,8 @@ FKs compostas obrigatórias:
 | credit_cards | — | users |
 | incomes | `(category_id, user_id)` | categories |
 | incomes | `(account_id, user_id)` | accounts (nullable) |
+| income_movements (Fase 17 Parte 2 — contrato fechado; **não criar agora**) | `(income_id, user_id)` | incomes |
+| income_movements (contrato fechado; **não criar agora**) | `(account_id, user_id)` | accounts (nullable; obrigatório se `RECEIPT`) |
 | expenses | `(category_id, user_id)` | categories |
 | expenses | `(account_id, user_id)` | accounts (nullable) |
 | expenses | `(credit_card_id, user_id)` | credit_cards (nullable) |
@@ -3455,6 +3499,8 @@ Nenhuma lacuna abaixo pode ser preenchida por suposição técnica.
 
 Itens **ainda bloqueados**: 269.1 (`payments.type`); 269.2.7 (edição de parcela já em fatura).
 
+**Fase 17 Parte 2:** contrato consolidado em `docs/24` §19.9; D73–D93 **fechadas** (§269.6). **Não** é item 269 clássico de lacuna do modelo V1. A **implementação** (migration de `income_movements`) permanece bloqueada até autorização explícita. **D86** omitido de propósito.
+
 O item 269.2 está **fechado** para ACCOUNT/NONE na Fase 8. O item **269.3 está fechado** na Fase 9 (rateio RN247; status da fatura RN090/RN091). O item **269.4 está fechado** na Fase 9 (RN117). O item **269.5 está fechado** (Fase 13 D1–D11 — `docs/24` §19.4).
 
 A Fase 13 está **`CONCLUÍDA E APROVADA`**.
@@ -3551,3 +3597,36 @@ Resumo (D1–D11 + emenda RN254 no código):
 8. Plano iguais — D9=A; `contractedTotal >= financedAmount`.
 9. `CANCELLED` reservado — D10=A.
 10. `used_limit` = **contractedTotal** — D11.
+
+
+## 269.6 Fase 17 Parte 2 — decisões D73–D93 (FECHADAS)
+
+Contrato: `docs/24` §19.9. Auditoria: **APROVADA COM RESSALVAS**. Decisões **fechadas**. **Não** criar Flyway, entidade, enum, CHECK, teste de código nem endpoint até autorização explícita de implementar.
+
+Enunciados fechados: `docs/24` §19.9.18. **D86** omitido de propósito (salto D85 → D87). Não criar D86 fictícia.
+
+| Id | Decisão |
+|---|---|
+| D73 | Cancelar somente sem RECEIPT `ACTIVE`. Sem estorno automático. Sem `RECEIVED` → `CANCELLED`. |
+| D74-A | Canônicos: `/accruals`, `/receipts`, `/movements`, `/movements/{id}/reverse`. `/receive` e `/reverse` = legado. Sem reverse em massa. |
+| D75-A | Original só em `incomes.amount`. Sem `OPENING`. |
+| D76-A | `account_id` / `received_date` do cabeçalho = legado. Não remover. |
+| D77-A | Item aditivo: `amount` original + `accruedAmount` / `receivedAmount` / `remainingAmount` derivados. |
+| D78-A | `accountId` = ≥1 RECEIPT ACTIVE na conta; `dateType=RECEIVED` = `movement_date` do RECEIPT. |
+| D79 | `PUT amount` rejeitado se existir qualquer movimentação (inclusive REVERSED). |
+| D80 | Estorno de RECEIPT mantém RN200 (saldo da conta pode ficar negativo). |
+| D81 | `CANCELLED` sem RECEIPT ACTIVE (D73). Sem novas movimentações. |
+| D82 | `movement_date` não futura (`America/Sao_Paulo`). Retroativa permitida. |
+| D83 | Backfill obrigatório das `RECEIVED` atuais na mesma migração que RN240. |
+| D84 | Fonte do histórico = `income_movements`. |
+| D85 | Nomes: tabela `income_movements`; tipos `ACCRUAL`/`RECEIPT`; status `ACTIVE`/`REVERSED`. |
+| D86 | **Omitido.** |
+| D87-A | Uma tabela. Índice `(user_id, income_id)`. |
+| D88 | `status=EXPECTED` + `dateType=RECEIVED` permitido. |
+| D89 | POST/PUT/GET Income com responsável. |
+| D90 | POST create **201**; GET movements paginado; reverse **200**. Create não idempotente. |
+| D91-A | RN010A: qualquer RECEIPT (ACTIVE ou REVERSED). |
+| D92-B | `summary.receivedAmount` = SUM(RECEIPT ACTIVE) do universo filtrado. |
+| D93 | PUT só `EXPECTED`. Sem exceção para RECEIVED. |
+
+Não restam D73–D93 em aberto. A implementação continua bloqueada até autorização explícita.

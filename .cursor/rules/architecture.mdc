@@ -52,7 +52,7 @@ Use the official V1 concepts:
 - `credit_card_invoices`
 - `financial_goals`
 - `payables` (Fase 16 — `CONCLUÍDA E APROVADA` — visão de leitura `GET /api/v1/payables`; **sem** tabela/entidade JPA; contrato `docs/24` §19.7)
-- `receivables` (Fase 17 Parte 1 — `CONCLUÍDA E APROVADA` — visão de leitura `GET /api/v1/receivables`; **sem** tabela/entidade JPA; sem alias `dueDate`; contrato `docs/24` §19.8. Parte 2 futura. **Não** recriar o endpoint.)
+- `receivables` (Fase 17 Parte 1 — `CONCLUÍDA E APROVADA` — visão de leitura `GET /api/v1/receivables`; **sem** tabela/entidade JPA; sem alias `dueDate`; contrato `docs/24` §19.8. Parte 2: **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE** — `docs/24` §19.9. D73–D93 **fechadas**. **Não** recriar o endpoint da Parte 1. **Não** implementar movimentações agora.)
 
 Do not create a generic `transactions`, `cards`, or `goals` module.
 

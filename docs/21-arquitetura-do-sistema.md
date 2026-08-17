@@ -389,7 +389,7 @@ Pacotes da Fase 17 — Parte 1 (`CONCLUÍDA E APROVADA`):
 - `receivables` — visão de leitura de contas a receber (`ReceivablesController` → `ReceivablesService` → consultas em `IncomeRepository`).
 - **Sem** entidade JPA `Receivable`, **sem** tabela `receivables`, **sem** remaining persistido.
 - Vocabulário de data: `expectedDate` (sem alias `dueDate`). Filtros, ordenação, paginação e resumo **no banco** (não copiar o filtro em memória de payables). Contrato: `docs/24` §19.8.
-- A Fase 17 inteira permanece em andamento. Parte 2 (baixas/movimentações) e escrita de responsável em Income (RN306) são futuras.
+- A Fase 17 inteira permanece em andamento. Parte 2: **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE** (`docs/24` §19.9). D73–D93 **fechadas**. Escrita de responsável em Income faz parte da Parte 2 (RN306 / D89) e **não** está implementada. Não criar tabela `receivables`. Não criar `income_movements` até autorização.
 
 Pacotes da Fase 5:
 
@@ -424,9 +424,11 @@ Conta
 
 Isso não autoriza criar agora uma entidade genérica `Transaction`.
 
-A implementação concreta ocorre por domínio (`incomes`, `expenses`, `transfers`, `balance_adjustments`, …), sem ledger paralelo.
+A implementação concreta ocorre por domínio (`incomes`, `expenses`, `transfers`, `balance_adjustments`, …), sem ledger paralelo. A Parte 2 de receitas contrata fatos `income_movements` **dentro** do domínio `incomes` — não um `Transaction` genérico (`docs/24` §19.9.14). **Não criar agora.**
 
 Na Fase 6, receita `RECEIVED` passa a participar positivamente do saldo da conta informada (`+ amount`). Receita `EXPECTED` ou `CANCELLED` não participa do saldo efetivo.
+
+**Fase 17 Parte 2 (contrato fechado — implementação pendente):** o efeito no saldo passa a ser a soma dos RECEIPT `ACTIVE` (`docs/24` §19.9.11 / emenda futura de RN240 / D83). Acréscimos não movimentam conta. Estorno de RECEIPT mantém RN200 (D80). Não implementar agora.
 
 A partir da Fase 7, pagamentos de despesa cuja despesa não está `CANCELLED` nem `REFUNDED` participam negativamente (`− payments.amount`). Criação de despesa não altera saldo. Estorno de despesa (`REFUNDED`) faz esses pagamentos deixarem de ser subtraídos; as linhas de `payments` permanecem.
 

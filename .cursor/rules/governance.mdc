@@ -34,7 +34,9 @@ Do not create provisional code, preparatory migrations, presumed enums/CHECKs, o
 
 **Phase 16 — `CONCLUÍDA E APROVADA`:** `docs/24` §19.7 — `GET /api/v1/payables` derived view; no `payables` table.
 
-**Phase 17 Part 1 — `CONCLUÍDA E APROVADA`:** `docs/24` §19.8 — `GET /api/v1/receivables` exists; no `receivables` table; `expectedDate` remains required. Do **not** recreate the endpoint. Part 2 movements and Income responsible **write** remain separate/future. Do **not** declare Phase 15 or the whole Phase 17 approved here.
+**Phase 17 Part 1 — `CONCLUÍDA E APROVADA`:** `docs/24` §19.8 — `GET /api/v1/receivables` exists; no `receivables` table; `expectedDate` remains required. Do **not** recreate the endpoint.
+
+**Phase 17 Part 2 — CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE:** `docs/24` §19.9 / `docs/23` §269.6. D73–D93 **closed**. Income responsible **write** is part of Part 2 (RN306 / D89). Do **not** implement code, Flyway, endpoints, or test classes until explicit authorization. Do **not** declare Phase 15 or the whole Phase 17 approved here.
 
 Mandatory remaining questions: `docs/23-modelo-de-dados.md` seção 269 (`payments.type`; §269.2.7).
 

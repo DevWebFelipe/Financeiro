@@ -1004,7 +1004,7 @@ Testes: `docs/27` §40E (`PayablesApiTest`, 14 testes). Suíte no fechamento: 42
 
 **Status da Parte 1:** **CONCLUÍDA E APROVADA** (`docs/24` §19.8 / `docs/25` §67 / `docs/27` §40F). Auditoria: **APROVADA COM RESSALVAS** (não bloqueantes).
 
-A Fase 17 inteira **não** está concluída. A Parte 2 (baixas/movimentações) permanece futura.
+A Fase 17 inteira **não** está concluída. A Parte 2 tem contrato consolidado (`docs/24` §19.9 / `docs/25` §67A / `docs/27` §40G); D73–D93 **fechadas**; **IMPLEMENTAÇÃO PENDENTE**. Não implementar código até autorização explícita.
 
 Objetivo da Parte 1:
 
@@ -1021,7 +1021,7 @@ Exibir, via `GET /api/v1/receivables` (pacote `receivables`):
 
 **Não** utilizar `/api/v1/accounts-receivable`. **Não** criar alias `dueDate`. `expectedDate` permanece obrigatória. `CANCELLED` fica fora. Consulta padrão: somente `EXPECTED`. Resumo no mesmo GET, respeitando filtros. Filtros/ordenação/paginação no banco. `size` máximo 100. Sem `year` / `month` / `search`. Sem escrita em `/receivables`.
 
-Fora da Parte 1: frontend, dashboard, PDF, baixas/movimentações (Parte 2), evolução da API de Income para gravar responsável (trabalho separado — RN306).
+Fora da Parte 1: frontend, dashboard, PDF, baixas/movimentações (Parte 2). A escrita de responsável em Income foi absorvida pelo contrato da Parte 2 (RN306 / `docs/24` §19.9) e **não** está implementada.
 
 
 # 92. Critério da Parte 1
@@ -1036,7 +1036,35 @@ incluindo futuras, vencidas, total a receber, recebidas quando solicitadas, filt
 
 Testes: `docs/27` §40F (`ReceivablesApiTest`, 35/35). Regressão no fechamento: `IncomeApiTest` 15/15; `PayablesApiTest` 14/14; suíte `mvn verify` 460/460.
 
-A Parte 2 (futura) estudará movimentações/histórico de recebíveis e **não** deve ser reduzida a `amount` / `receivedAmount` / `remainingAmount` na duplicata. Não implementar a Parte 2 agora.
+A Parte 2 **não** deve ser reduzida a `amount` / `receivedAmount` / `remainingAmount` na duplicata como fonte de verdade. Contrato consolidado: `docs/24` §19.9. **IMPLEMENTAÇÃO PENDENTE.**
+
+
+# 92A. Fase 17 — Parte 2
+
+**Status:** **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE.** Decisões D73–D93 **fechadas**. Auditoria: **APROVADA COM RESSALVAS**.
+
+Objetivo: acréscimos, recebimentos parciais, histórico, estorno por movimentação, escrita de responsável em Income, evolução da visão `GET /receivables`.
+
+Não criar tabela `receivables`. Não criar `income_movements` até autorização explícita de implementar.
+
+Próxima etapa desta parte: **implementação após autorização explícita** — não reabrir D73–D93.
+
+Fora da Parte 2: frontend, dashboard, PDF, Excel, projeções, over-receipt, patrimônio por responsável.
+
+
+# 92B. Critério da Parte 2 (implementação futura)
+
+Usuário deve conseguir:
+
+- lançar acréscimos sem mover conta;
+- receber parcialmente e integralmente (remaining = 0 fecha `RECEIVED`);
+- reabrir `RECEIVED` com novo acréscimo;
+- estornar movimentação individual;
+- consultar histórico;
+- informar responsável no cadastro;
+- ver a visão de contas a receber coerente com remaining / recebimentos válidos.
+
+A Fase 17 só será `CONCLUÍDA E APROVADA` depois de implementação, testes, auditoria, consolidação final e aprovação.
 
 
 # 93. Fase 18 — Projeções
@@ -1634,9 +1662,9 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 Fases 0 a 9: CONCLUÍDAS. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**.
 
-Próxima etapa: **auditoria final da Fase 15 — Metas**. **Fase 17 — Parte 1:** `CONCLUÍDA E APROVADA`. A Fase 17 inteira permanece em andamento (Parte 2 futura). Não iniciar a Parte 2 sem autorização.
+Próxima etapa: **implementação da Fase 17 — Parte 2** (`docs/24` §19.9), **somente após autorização explícita**. D73–D93 **fechadas**. **Não implementar** agora. Em paralelo, permanece pendente a **auditoria final da Fase 15 — Metas**. **Fase 17 — Parte 1:** `CONCLUÍDA E APROVADA`. A Fase 17 inteira permanece em andamento.
 
-Status da Fase 17 Parte 1: `CONCLUÍDA E APROVADA`. Endpoint existente: `GET /api/v1/receivables`. Sem tabela `receivables`. Parte 2 (baixas/movimentações) e escrita de responsável em Income (RN306) permanecem futuras.
+Status da Fase 17 Parte 1: `CONCLUÍDA E APROVADA`. Endpoint existente: `GET /api/v1/receivables`. Sem tabela `receivables`. Parte 2: **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE** (`docs/24` §19.9). Escrita de responsável em Income faz parte da Parte 2 (RN306 / D89) e **não** está implementada.
 
 Status da Fase 16: `CONCLUÍDA E APROVADA` (`docs/24` §19.7 / `docs/25` §66). Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
 

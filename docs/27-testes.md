@@ -781,11 +781,11 @@ Contrato: `docs/24` §19.8 / `docs/25` §67.
 
 Regressão no fechamento: `IncomeApiTest` 15/15; `PayablesApiTest` 14/14; `mvn verify` **460/460**; BUILD SUCCESS.
 
-**Não** declarar a Fase 17 inteira concluída. A Parte 2 permanece futura. **Não** criar infraestrutura especial de concorrência (D30).
+**Não** declarar a Fase 17 inteira concluída. A Parte 2 tem contrato consolidado (`docs/24` §19.9); D73–D93 **fechadas**; **IMPLEMENTAÇÃO PENDENTE**. **Não** criar infraestrutura especial de concorrência na Parte 1 (D30).
 
 Melhorias futuras de teste (não são falhas da Parte 1): token inválido/expirado; período só com `startDate` ou só com `endDate`; fronteira UTC/São Paulo à meia-noite; `categoryId`/`accountId` de outro usuário.
 
-**Não** testar a Parte 2 (movimentações/baixas). **Não** persistir remaining. **Não** criar tabela `receivables`. **Não** testar `dueDate` como alias. **Não** testar receita sem `expectedDate`.
+**Não** testar a Parte 2 nesta suíte da Parte 1. A suíte da Parte 2 é §40G (ainda sem código). **Não** persistir remaining. **Não** criar tabela `receivables`. **Não** testar `dueDate` como alias. **Não** testar receita sem `expectedDate`.
 
 **Elegibilidade**
 
@@ -801,7 +801,7 @@ Melhorias futuras de teste (não são falhas da Parte 1): token inválido/expira
 - período inclusivo sobre `expectedDate` quando `dateType=EXPECTED`;
 - período sobre `receivedDate` quando `dateType=RECEIVED`;
 - período sem `dateType` → 400;
-- `status=EXPECTED` + `dateType=RECEIVED` → 400;
+- `status=EXPECTED` + `dateType=RECEIVED` → 400 **na Parte 1** (D88 / Parte 2: passa a ser permitido — §40G);
 - `status=RECEIVED` + `dateType=EXPECTED` → 400;
 - `status=RECEIVED` + `overdue` → 400;
 - sem datas: operacional (abertas `EXPECTED`).
@@ -819,7 +819,7 @@ Melhorias futuras de teste (não são falhas da Parte 1): token inválido/expira
 - item **não** contém `remainingAmount` nem `receivedAmount`;
 - item contém `expectedDate`, `overdue`, `responsibleType`, `responsibleName` (estes dois podem ser nulos até a evolução de Income);
 - `summary` do universo filtrado: `futureAmount`, `overdueAmount`, `totalReceivableAmount` (= soma dos dois), `receivedAmount`;
-- consulta padrão: `receivedAmount = 0.00`;
+- consulta padrão: `receivedAmount = 0.00` **na Parte 1** (D92-B / Parte 2: pode ser > 0 por RECEIPT parciais no universo EXPECTED — §40G);
 - `status=RECEIVED`: totais a receber `0.00` e `receivedAmount` das filtradas.
 
 **Ordenação e paginação**
@@ -840,7 +840,121 @@ Melhorias futuras de teste (não são falhas da Parte 1): token inválido/expira
 
 - a visão filtra/retorna as colunas existentes;
 - enquanto Income não gravar responsável, filtros por responsável podem devolver vazio;
-- a evolução do `POST`/`PUT /incomes` é suíte **separada**, não misturar com a Parte 2.
+- a evolução do `POST`/`PUT /incomes` para gravar responsável está no contrato da Parte 2 (`docs/24` §19.9 / RN306) e será coberta em §40G; **não** alterar `ReceivablesApiTest` da Parte 1 para simular escrita ainda inexistente.
+
+
+# 40G. Contas a receber — Fase 17 Parte 2 (contrato — implementação pendente)
+
+Contrato: `docs/24` §19.9 / `docs/25` §67A.
+
+**Status:** **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE.** Decisões D73–D93 **fechadas**. Não criar classe de teste agora. Não alterar `ReceivablesApiTest` nem `IncomeApiTest` nesta etapa. Não implementar estes casos até autorização.
+
+Classe prevista: `IncomeMovementsApiTest` (nome de trabalho). Reutilizar `Clock` / timezone `America/Sao_Paulo` e o padrão de API existente (`IncomeApiTest`, `ReceivablesApiTest`). Concorrência: locks na ordem de `docs/24` §19.9; sem infraestrutura especial.
+
+## Acréscimos
+
+- acréscimo simples (não movimenta conta);
+- múltiplos acréscimos;
+- acréscimo após recebimento parcial;
+- acréscimo após `RECEIVED` (`RECEIVED` → `EXPECTED`);
+- acréscimo em receita `CANCELLED` → 400;
+- data futura → 400;
+- data retroativa (inclusive `< expectedDate`) → permitido;
+- POST **201** + objeto da movimentação;
+- POST equivalente duas vezes cria dois fatos (não idempotente).
+
+## Recebimentos
+
+- recebimento parcial (status permanece `EXPECTED`);
+- duas contas para a mesma receita;
+- recebimento integral (remaining = 0 → `RECEIVED`);
+- over-receipt → 400;
+- recebimento com remaining = 0 → 400;
+- recebimento sem conta → 400;
+- conta de outro usuário;
+- conta inativa no create;
+- saldo da conta após RECEIPT (`+ valor`);
+- data futura → 400;
+- data retroativa → permitido;
+- POST **201** + objeto da movimentação.
+
+## Status e cancelamento (D73)
+
+- `EXPECTED` → `RECEIVED` ao zerar;
+- `EXPECTED` permanece `EXPECTED` após baixa parcial;
+- `RECEIVED` → `EXPECTED` após novo acréscimo;
+- `EXPECTED` sem RECEIPT ACTIVE → cancelar → `CANCELLED`;
+- `EXPECTED` com RECEIPT ACTIVE → cancelar → 400;
+- `EXPECTED` apenas com RECEIPT REVERSED → cancelar → `CANCELLED`;
+- `RECEIVED` → cancelar → 400;
+- `RECEIVED` + acréscimo → `EXPECTED` com RECEIPT ACTIVE → cancelar → 400;
+- `CANCELLED` → cancelar → 400;
+- receita `CANCELLED` sem novas movimentações (ACCRUAL / RECEIPT);
+- sem estorno automático no cancelamento;
+- histórico permanece após cancelar.
+
+## Estornos
+
+- estorno de RECEIPT (conta do próprio RECEIPT, remaining, status) → **200** + movimento `REVERSED`;
+- estorno de ACCRUAL;
+- estorno de ACCRUAL que deixaria remaining < 0 → 400;
+- tentar estornar duas vezes → 400;
+- saldo da conta após reverse (RN200: pode ficar negativo; não exige conta ativa);
+- retorno do remaining e do status `RECEIVED` → `EXPECTED`;
+- reverse após `CANCELLED` de fato já `REVERSED` → 400;
+- se existir ACTIVE inconsistente em `CANCELLED` → rejeitar até saneamento.
+
+## Histórico (`GET /incomes/{id}/movements`)
+
+- fatos permanecem; reverse não apaga;
+- sem linha artificial para `incomes.amount` (D75-A);
+- paginação: `items`, `page`, `size`, `totalItems`, `totalPages`;
+- ordenação: `movementDate ASC`, `id ASC`;
+- datas, valores, conta de cada RECEIPT.
+
+## Cadastro / responsável (D89 / D93 / D79)
+
+- responsável em POST;
+- responsável em PUT `EXPECTED`;
+- responsável em GET listagem e GET por id;
+- `OTHER` com nome / sem nome → 400;
+- PUT só `EXPECTED`; `RECEIVED` não edita (nem responsável);
+- `amount` editado após qualquer movimento (inclusive REVERSED) → 400;
+- `amount` em `EXPECTED` sem movimentações → permitido.
+
+## Segurança e contrato HTTP
+
+- 401 sem Bearer;
+- ownership (receita / conta de outro usuário → 404);
+- UUID inválido → 400;
+- propriedades desconhecidas → 400.
+
+## Visão `GET /receivables`
+
+- item aditivo: `amount` original, `accruedAmount`, `receivedAmount`, `remainingAmount`;
+- `CANCELLED` continua fora;
+- overdue da obrigação (`expectedDate`), não da movimentação;
+- `status=EXPECTED` + `dateType=RECEIVED` permitido;
+- `status=RECEIVED` + `dateType=EXPECTED` → 400;
+- `status=RECEIVED` + `overdue` → 400;
+- resumo com recebimento parcial no universo EXPECTED (`receivedAmount` > 0; `futureAmount`/`overdueAmount` = remaining);
+- agregação no banco, não em memória.
+
+## RN240 / RN010A / backfill
+
+- RN240 após backfill (saldo preservado; sem zerar nem duplicar);
+- RN010A após RECEIPT parcial (qualquer RECEIPT, inclusive REVERSED);
+- backfill das `RECEIVED` históricas;
+- limitação: não reconstruir já estornadas sem dados no cabeçalho.
+
+## Concorrência
+
+- remaining 100; A recebe 70 e B recebe 50; B deve ver remaining 30 e ser rejeitado;
+- nunca calcular remaining antes do lock da Income.
+
+## Regressão obrigatória na implementação
+
+Os 35 testes da Parte 1 (`ReceivablesApiTest`); `IncomeApiTest`; `PayablesApiTest`; `mvn verify`. Atualizar somente o que a evolução aditiva exigir.
 
 
 # 41. Atomicidade
@@ -885,7 +999,7 @@ que estorno **não** resulta em `CANCELLED`;
 que cancelamento **não** é tratado como estorno.
 
 
-A Fase 6 não testa responsável em receitas (`responsibleType` / `responsibleName`). A evolução futura do cadastro de Income (RN306) é contrato **separado** da visão `GET /api/v1/receivables` (`docs/27` §40F), já implementada e aprovada na Parte 1. Não misturar essa evolução com a Parte 2.
+A Fase 6 não testa responsável em receitas (`responsibleType` / `responsibleName`). A escrita desses campos no cadastro de Income está no contrato da Parte 2 (`docs/24` §19.9 / RN306 / `docs/27` §40G) e **não** está implementada.
 
 
 # 44. Receita esperada

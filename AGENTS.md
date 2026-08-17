@@ -157,7 +157,7 @@ Environment Contract completo: `docs/22-stack-tecnologica.md` (seção 30). Diag
 - Pacote Java: `br.com.financialcontrol`
 - Pacotes de domínio no plural, alinhados ao modelo real: `accounts`, `expenses`, `incomes`, `transfers`, `balance_adjustments`, `payments`, `credit_cards`, `credit_card_invoices`, `financial_goals`
 - Pacote de consulta da Fase 16 (`CONCLUÍDA E APROVADA`): `payables` — visão de leitura; **sem** tabela/entidade JPA
-- Pacote de consulta da Fase 17 Parte 1 (`CONCLUÍDA E APROVADA`): `receivables` — visão de leitura `GET /api/v1/receivables`; **sem** tabela/entidade JPA; contrato `docs/24` §19.8. A Fase 17 inteira permanece em andamento (Parte 2 futura). **Não** recriar o endpoint. **Não** criar tabela `receivables`.
+- Pacote de consulta da Fase 17 Parte 1 (`CONCLUÍDA E APROVADA`): `receivables` — visão de leitura `GET /api/v1/receivables`; **sem** tabela/entidade JPA; contrato `docs/24` §19.8. A Fase 17 inteira permanece em andamento. Parte 2: **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE** (`docs/24` §19.9). D73–D93 **fechadas**. **Não** recriar o endpoint da Parte 1. **Não** criar tabela `receivables`. **Não** implementar movimentações nem migration até autorização.
 - Não criar módulo genérico `transactions` para agrupar operações financeiras diferentes
 - API: `/api/v1`
 - Moeda V1: BRL
@@ -330,9 +330,10 @@ EXPECTED
 - Cancelamento: `EXPECTED` → `CANCELLED` (`POST /incomes/{id}/cancel`); não é reversão de recebimento
 - Estorno de recebimento: `RECEIVED` → `EXPECTED` (`POST /incomes/{id}/reverse`); **não cancela** a duplicata; ela permanece ativa como não recebida e pode ser recebida novamente; não cria status `REVERSED`; limpa `account_id` e `received_date`
 - Receita `RECEIVED` não deve ser editada de forma que altere silenciosamente a movimentação já realizada; correção = estornar → editar → receber novamente (o próximo receive informa conta e data de novo)
-- Receitas não utilizam responsável na Fase 6; `incomes.responsible_type` é nullable; as colunas físicas permanecem. A Fase 17 confirma a necessidade de informar responsável no cadastro de Income (RN306); essa evolução é **separada** da visão `GET /api/v1/receivables` e da Parte 2 de movimentações, e **não** está implementada. A API da Fase 6 continua rejeitando `responsibleType` / `responsibleName`.
-- Contas a receber na V1 (Fase 17 Parte 1 — contrato `docs/24` §19.8 / `docs/25` §67 — `CONCLUÍDA E APROVADA`): visão derivada `GET /api/v1/receivables`; linha = `Income` `EXPECTED` ou `RECEIVED`; `CANCELLED` fora; `overdue` derivado de `EXPECTED` + `expectedDate` < hoje; sem tabela; sem alias `dueDate`. A Fase 17 inteira **não** está concluída (Parte 2 futura).
-- **DECISÃO PENDENTE DO DESENVOLVEDOR:** cancelamento direto de receita já `RECEIVED` (sem estornar antes). A Fase 6 rejeita `RECEIVED` → `CANCELLED`. O caminho composto estornar e depois cancelar já é possível. Não está definido se, em fase posterior, a transição direta existirá.
+- Receitas não utilizam responsável na Fase 6; `incomes.responsible_type` é nullable; as colunas físicas permanecem. A Fase 17 Parte 2 **contrata** informar responsável no POST/PUT e devolvê-lo no GET (RN306 / D89 / `docs/24` §19.9) e **não** está implementada. A API da Fase 6 continua rejeitando `responsibleType` / `responsibleName`.
+- Contas a receber na V1 (Fase 17 Parte 1 — contrato `docs/24` §19.8 / `docs/25` §67 — `CONCLUÍDA E APROVADA`): visão derivada `GET /api/v1/receivables`; linha = `Income` `EXPECTED` ou `RECEIVED`; `CANCELLED` fora; `overdue` derivado de `EXPECTED` + `expectedDate` < hoje; sem tabela; sem alias `dueDate`. A Fase 17 inteira **não** está concluída. Parte 2: **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE** (`docs/24` §19.9).
+- **Fase 17 Parte 2 (contrato fechado — não implementar agora):** histórico `income_movements` (ACCRUAL / RECEIPT; ACTIVE / REVERSED) é a fonte de verdade dos totais; remaining = `incomes.amount` + acréscimos ACTIVE − RECEIPT ACTIVE; recebimento > remaining é rejeitado; `RECEIVED` + acréscimo reabre `EXPECTED`. Cancelar somente sem RECEIPT ACTIVE (**D73**). Decisões D73–D93 **fechadas**. Não criar código até autorização explícita.
+- **D73 (fechado):** cancelamento direto `RECEIVED` → `CANCELLED` **não** existe. A Fase 6 rejeita. A Parte 2 mantém a rejeição: se houver RECEIPT ACTIVE, primeiro estornar a movimentação.
 
 ### 11.2 Despesas — status oficiais
 
@@ -421,7 +422,7 @@ Contrato: `docs/24` §19.5. Status da Fase 14: `CONCLUÍDA E APROVADA`.
 
 Operações normais não permitem saldo negativo (transferências e suas reversões, acertos de saldo e suas reversões quando o efeito for de saída, pagamento de despesas, pagamento de fatura limitado ao saldo da conta).
 
-Estorno de receita recebida é correção: não é bloqueado se o saldo resultante for negativo.
+Estorno de receita recebida é correção: não é bloqueado se o saldo resultante for negativo. **Fase 17 Parte 2 (D80 — fechado, não implementado):** o estorno de cada RECEIPT **mantém** RN200 (conta do RECEIPT; lock; ownership; conta não precisa estar ativa; saldo da conta pode ficar negativo).
 
 Estorno de despesa **não** herda essa exceção: devolve o valor dos payments **ACTIVE** à fórmula de saldo (RN216, emendada na Fase 8 por RN240) e não autoriza pagamento que deixe saldo negativo. Reverse de payment (`REVERSED`) e refund da despesa `ACCOUNT`/`NONE` também retiram o efeito daqueles payments do saldo. Refund `CREDIT_CARD` com `settlement = ACCOUNT` **soma** a devolução (`bankLiquidated`) e **não** reverte pagamentos de fatura (RN117).
 
@@ -441,7 +442,7 @@ Saldo inicial (RN010 / RN010A / Fase 14): começa em `0,00`; `initialBalance` op
 
 Fonte de verdade: movimentações. Saldo derivado delas, a partir do saldo inicial.
 
-**Saldo financeiro total** (`totalBalance`): fórmula RN240 — saldo inicial + receitas recebidas − payments ACTIVE − pagamentos de fatura ACTIVE + devoluções ACCOUNT + transferências ACTIVE (entrada − saída) + acertos de saldo ACTIVE. Contribuições/resgates de meta **não** alteram o total.
+**Saldo financeiro total** (`totalBalance`): fórmula RN240 — saldo inicial + receitas recebidas − payments ACTIVE − pagamentos de fatura ACTIVE + devoluções ACCOUNT + transferências ACTIVE (entrada − saída) + acertos de saldo ACTIVE. Contribuições/resgates de meta **não** alteram o total. **Fase 17 Parte 2 (contrato fechado — não implementado):** o termo de receitas passa a ser `SUM(RECEIPT ACTIVE)` na conta, não `incomes.amount` das `RECEIVED` (`docs/24` §19.9.11 / D83). RN010A passa a consultar qualquer RECEIPT, inclusive `REVERSED` (**D91-A**).
 
 **Fase 15 (implementação concluída — aguardando auditoria final):** cada conta expõe também **valor reservado em metas** (`reservedAmount`) e **saldo disponível** (`availableBalance = totalBalance − reservedAmount`). Contribuição classifica dinheiro como reservado (reduz disponível); resgate devolve à conta vinculada. Operações financeiras normais validam **saldo disponível**, não o total. Contrato: `docs/24` §19.6.
 
@@ -557,7 +558,7 @@ Campo opcional na despesa, para cópia no pagamento. O sistema não gera boletos
 
 - Metas na V1 (Fase 15 — contrato `docs/24` §19.6): reserva vinculada a uma conta; nome, valor alvo, acumulado derivado (`contributions − redemptions`), data alvo opcional, progresso derivado (`HALF_UP`, escala 2), status (`ACTIVE`/`COMPLETED`/`CANCELLED`); contribuição, resgate (inclusive em `COMPLETED`), conclusão manual e cancelamento (com reservado zero, somente `ACTIVE`).
 - Contas a pagar na V1 (Fase 16 — contrato `docs/24` §19.7 / `docs/25` §66 — `CONCLUÍDA E APROVADA`): visão derivada `GET /api/v1/payables`; linha = parcela ACCOUNT/NONE com remaining > 0 **ou** fatura com remaining > 0; **sem** tabela `payables`. `reservedAmount` de meta **não** é conta a pagar.
-- Contas a receber na V1 (Fase 17 Parte 1 — contrato `docs/24` §19.8 / `docs/25` §67 — `CONCLUÍDA E APROVADA`): visão derivada `GET /api/v1/receivables`; linha = `Income` `EXPECTED`/`RECEIVED`; **sem** tabela `receivables`; `expectedDate` obrigatória; Parte 2 (movimentações) fora desta parte.
+- Contas a receber na V1 (Fase 17 Parte 1 — contrato `docs/24` §19.8 / `docs/25` §67 — `CONCLUÍDA E APROVADA`): visão derivada `GET /api/v1/receivables`; linha = `Income` `EXPECTED`/`RECEIVED`; **sem** tabela `receivables`; `expectedDate` obrigatória. Parte 2: **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE** (`docs/24` §19.9 / `docs/25` §67A). D73–D93 **fechadas**. Escrita de responsável em Income faz parte da Parte 2 (RN306 / D89).
 - Projeções: receitas/despesas futuras, parcelas, faturas, compromissos; excluir `CANCELLED`/`REFUNDED` e receitas canceladas.
 - PDF: **OpenPDF** (ex.: relatório por responsável em cartão de terceiro).
 - Gráficos: **Apache ECharts**.
@@ -717,7 +718,9 @@ Até decisão explícita, **não** implementar Flyway, entidade, enum, CHECK, te
 
 **Fase 16 — Contas a pagar:** contrato `docs/24` §19.7 / API `docs/25` §66 / testes `docs/27` §40E — `CONCLUÍDA E APROVADA`. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes; não reabrem a fase). **Não** criar tabela `payables` nem persistir remaining. Fora do escopo: frontend, dashboard, projeções, escritas, `GET /payables/{id}`.
 
-**Fase 17 — Contas a receber (Parte 1):** contrato `docs/24` §19.8 / API `docs/25` §67 / testes `docs/27` §40F — `CONCLUÍDA E APROVADA`. Auditoria: **APROVADA COM RESSALVAS** (não bloqueantes). Rota existente `GET /api/v1/receivables`. **Não** recriar o endpoint. **Não** criar tabela `receivables`. **Não** alias `dueDate`. **Não** tornar `expected_date` nullable. Evolução de responsável na escrita de Income (RN306) é trabalho separado. Parte 2 (movimentações/baixas) **não** implementar agora. A Fase 17 inteira permanece em andamento. **Não** declarar a Fase 15 `CONCLUÍDA E APROVADA` nesta etapa.
+**Fase 17 — Contas a receber (Parte 1):** contrato `docs/24` §19.8 / API `docs/25` §67 / testes `docs/27` §40F — `CONCLUÍDA E APROVADA`. Auditoria: **APROVADA COM RESSALVAS** (não bloqueantes). Rota existente `GET /api/v1/receivables`. **Não** recriar o endpoint. **Não** criar tabela `receivables`. **Não** alias `dueDate`. **Não** tornar `expected_date` nullable.
+
+**Fase 17 — Parte 2:** `docs/24` §19.9 / `docs/25` §67A / `docs/27` §40G / `docs/23` §269.6 — **CONTRATO CONSOLIDADO / IMPLEMENTAÇÃO PENDENTE**. Decisões D73–D93 **fechadas**. Escrita de responsável em Income (RN306 / D89) faz parte desta parte. **Não** implementar código, migration, endpoint, entidade nem teste de código até autorização explícita. A Fase 17 inteira permanece em andamento. **Não** declarar a Fase 15 `CONCLUÍDA E APROVADA` nesta etapa. **Não** declarar a Fase 17 concluída nesta etapa.
 
 **SUPERADO (Fase 9):** o antigo item 269.3 (rateio). Rateio proporcional ao remaining, ordenação remaining ASC, empate `due_date` ASC depois `id` ASC, residual na última, persistido como alocação. Status da fatura **não** muda por pagamento parcial. Detalhe: `docs/23` §269.3 e `docs/24` RN247.
 
@@ -738,7 +741,7 @@ O restante do modelo já consolidado continua válido e é fonte de verdade.
 ### 28.5 Banco, derivados, ownership, JPA, testes
 
 - Migration: se entidade, FK, nullable, CHECK, enum, índice, derivado vs persistido, cascade ou exclusão depender de decisão em aberto, **não criar a migration**.
-- Não criar colunas para valores definidos como derivados (`total_amount` / `paid_amount` / `remaining_amount` da fatura; `used_limit` / `available_limit` do cartão; `current_amount` da meta; `paid_amount` / `remaining_amount` / `discount_total` / `surcharge_total` / `early_payment_savings` da despesa ou parcela; totais da visão Contas a Pagar; totais da visão Contas a Receber). A Fase 16 **não** cria tabela `payables`. A Fase 17 Parte 1 **não** cria tabela `receivables` e **não** expõe `remainingAmount` / `receivedAmount` no item. Otimização não autoriza segunda fonte de verdade. `status` de despesa, parcela, payment, adjustment, fatura e crédito **é** persistido por decisão explícita. Alocação de rateio **é** fato persistido (não é coluna derivada na parcela).
+- Não criar colunas para valores definidos como derivados (`total_amount` / `paid_amount` / `remaining_amount` da fatura; `used_limit` / `available_limit` do cartão; `current_amount` da meta; `paid_amount` / `remaining_amount` / `discount_total` / `surcharge_total` / `early_payment_savings` da despesa ou parcela; totais da visão Contas a Pagar; totais da visão Contas a Receber). A Fase 16 **não** cria tabela `payables`. A Fase 17 Parte 1 **não** cria tabela `receivables`. A Fase 17 Parte 2 **não** persiste remaining/recebido/acumulado em `incomes` (fonte = movimentações + valor original; `docs/24` §19.9). A evolução aditiva do item de `/receivables` (D77) **não** autoriza segunda fonte persistida. Otimização não autoriza segunda fonte de verdade. `status` de despesa, parcela, payment, adjustment, fatura e crédito **é** persistido por decisão explícita. Alocação de rateio **é** fato persistido (não é coluna derivada na parcela). Status da movimentação de receita (`ACTIVE` / `REVERSED`) **é** persistido na proposta da Parte 2.
 - Ownership: FK composta `(referenced_id, user_id) → (parent.id, parent.user_id)`. Não trocar por FK simples só para facilitar o JPA. Service usa `user_id` do contexto autenticado; o banco também impede cruzamento.
 - JPA não altera o modelo físico. Constraint no banco + mapeamento JPA compatível.
 - Teste de regra indefinida é proibido (`TESTE NÃO DEFINIDO → REGRA NÃO DEFINIDA → IMPLEMENTAÇÃO BLOQUEADA`). Depois: decisão → documentação → teste → implementação.
