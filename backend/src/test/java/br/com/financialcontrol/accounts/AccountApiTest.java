@@ -310,10 +310,17 @@ class AccountApiTest {
                     .header(HttpHeaders.AUTHORIZATION, bearer(token)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.accountId").value(created.id().toString()))
+            .andExpect(jsonPath("$.totalBalance").value(1500.00))
+            .andExpect(jsonPath("$.reservedAmount").value(0.00))
+            .andExpect(jsonPath("$.availableBalance").value(1500.00))
+            .andExpect(jsonPath("$.balance").value(1500.00))
             .andReturn();
 
     AccountBalanceResponse body = read(result, AccountBalanceResponse.class);
     assertThat(body.balance()).isEqualByComparingTo("1500.00");
+    assertThat(body.totalBalance()).isEqualByComparingTo("1500.00");
+    assertThat(body.reservedAmount()).isEqualByComparingTo("0.00");
+    assertThat(body.availableBalance()).isEqualByComparingTo("1500.00");
   }
 
   @Test

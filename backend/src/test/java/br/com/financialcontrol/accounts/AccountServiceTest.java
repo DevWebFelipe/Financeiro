@@ -19,6 +19,8 @@ import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.NotFoundException;
 import br.com.financialcontrol.credit_card_invoices.CreditCardInvoicePaymentRepository;
 import br.com.financialcontrol.credit_cards.CardPurchaseAccountRefundRepository;
+import br.com.financialcontrol.financial_goals.GoalContributionRepository;
+import br.com.financialcontrol.financial_goals.GoalRedemptionRepository;
 import br.com.financialcontrol.incomes.IncomeRepository;
 import br.com.financialcontrol.payments.PaymentRepository;
 import br.com.financialcontrol.security.AuthenticatedUser;
@@ -52,6 +54,8 @@ class AccountServiceTest {
   @Mock private CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository;
   @Mock private TransferRepository transferRepository;
   @Mock private AccountBalanceAdjustmentRepository balanceAdjustmentRepository;
+  @Mock private GoalContributionRepository goalContributionRepository;
+  @Mock private GoalRedemptionRepository goalRedemptionRepository;
 
   private AccountService accountService;
 
@@ -66,6 +70,8 @@ class AccountServiceTest {
             cardPurchaseAccountRefundRepository,
             transferRepository,
             balanceAdjustmentRepository,
+            goalContributionRepository,
+            goalRedemptionRepository,
             Clock.fixed(NOW, ZoneOffset.UTC));
     stubZeroBalanceParts();
   }
@@ -102,6 +108,16 @@ class AccountServiceTest {
     lenient()
         .when(
             balanceAdjustmentRepository.sumActiveAmountByAccountIdAndUserId(
+                eq(ACCOUNT_ID), eq(USER_A), isNull()))
+        .thenReturn(BigDecimal.ZERO);
+    lenient()
+        .when(
+            goalContributionRepository.sumAmountByAccountIdAndUserIdAsOf(
+                eq(ACCOUNT_ID), eq(USER_A), isNull()))
+        .thenReturn(BigDecimal.ZERO);
+    lenient()
+        .when(
+            goalRedemptionRepository.sumAmountByAccountIdAndUserIdAsOf(
                 eq(ACCOUNT_ID), eq(USER_A), isNull()))
         .thenReturn(BigDecimal.ZERO);
   }
@@ -265,6 +281,9 @@ class AccountServiceTest {
 
     assertThat(response.accountId()).isEqualTo(ACCOUNT_ID);
     assertThat(response.balance()).isEqualByComparingTo("1500.00");
+    assertThat(response.totalBalance()).isEqualByComparingTo("1500.00");
+    assertThat(response.reservedAmount()).isEqualByComparingTo("0.00");
+    assertThat(response.availableBalance()).isEqualByComparingTo("1500.00");
     assertThat(accountService.calculateCurrentBalance(account)).isEqualByComparingTo("1500.00");
   }
 
@@ -297,6 +316,40 @@ class AccountServiceTest {
         accountService.getBalance(new AuthenticatedUser(USER_A), ACCOUNT_ID);
 
     assertThat(response.balance()).isEqualByComparingTo("2200.00");
+  }
+
+  @Test
+  void shouldKeepTotalBalanceUnchangedAndReduceAvailableWhenGoalIsReserved() {
+    Account account = ownedAccount(true);
+    when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
+    when(goalContributionRepository.sumAmountByAccountIdAndUserIdAsOf(
+            eq(ACCOUNT_ID), eq(USER_A), isNull()))
+        .thenReturn(new BigDecimal("600.00"));
+
+    AccountBalanceResponse response =
+        accountService.getBalance(new AuthenticatedUser(USER_A), ACCOUNT_ID);
+
+    assertThat(response.totalBalance()).isEqualByComparingTo("1500.00");
+    assertThat(response.balance()).isEqualByComparingTo("1500.00");
+    assertThat(response.reservedAmount()).isEqualByComparingTo("600.00");
+    assertThat(response.availableBalance()).isEqualByComparingTo("900.00");
+    assertThat(accountService.calculateCurrentBalance(account)).isEqualByComparingTo("1500.00");
+    assertThat(accountService.calculateAvailableBalance(account)).isEqualByComparingTo("900.00");
+  }
+
+  @Test
+  void shouldRejectDeactivateWhenReservedAmountIsPositiveEvenIfTotalIsZero() {
+    Account account = ownedAccount(true);
+    account.setInitialBalance(BigDecimal.ZERO);
+    when(accountRepository.findByIdAndUserIdForUpdate(ACCOUNT_ID, USER_A))
+        .thenReturn(Optional.of(account));
+    when(goalContributionRepository.sumAmountByAccountIdAndUserIdAsOf(
+            eq(ACCOUNT_ID), eq(USER_A), isNull()))
+        .thenReturn(new BigDecimal("100.00"));
+
+    assertThatThrownBy(() -> accountService.deactivate(new AuthenticatedUser(USER_A), ACCOUNT_ID))
+        .isInstanceOf(BusinessRuleException.class)
+        .hasMessage(AccountService.CANNOT_DEACTIVATE_WITH_RESERVED);
   }
 
   @Test

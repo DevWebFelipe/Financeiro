@@ -865,7 +865,7 @@ public class ExpenseService {
     if (amount.compareTo(remaining) > 0) {
       throw new BusinessRuleException(PAYMENT_EXCEEDS_DUE);
     }
-    if (accountService.calculateCurrentBalance(account).compareTo(amount) < 0) {
+    if (accountService.calculateAvailableBalance(account).compareTo(amount) < 0) {
       throw new BusinessRuleException(INSUFFICIENT_BALANCE);
     }
 

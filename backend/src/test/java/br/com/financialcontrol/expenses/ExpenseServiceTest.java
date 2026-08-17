@@ -479,7 +479,7 @@ class ExpenseServiceTest {
   void shouldRejectPaymentWhenBalanceIsInsufficient() {
     Expense expense = openAccountExpense();
     stubPayLookup(expense, singleInstallment(expense), BigDecimal.ZERO);
-    when(accountService.calculateCurrentBalance(any(Account.class)))
+    when(accountService.calculateAvailableBalance(any(Account.class)))
         .thenReturn(new BigDecimal("149.99"));
 
     assertThatThrownBy(
@@ -509,7 +509,7 @@ class ExpenseServiceTest {
         .thenReturn(new BigDecimal("150.00"));
     when(accountService.requireActiveOwnedAccountForUpdate(USER_A, OTHER_ACCOUNT_ID))
         .thenReturn(otherAccount);
-    when(accountService.calculateCurrentBalance(otherAccount))
+    when(accountService.calculateAvailableBalance(otherAccount))
         .thenReturn(new BigDecimal("1500.00"));
     when(paymentRepository.save(any(Payment.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -843,7 +843,7 @@ class ExpenseServiceTest {
   private void stubPay(
       Expense expense, ExpenseInstallment installment, BigDecimal alreadyPaid, String balance) {
     stubPayLookup(expense, installment, alreadyPaid);
-    when(accountService.calculateCurrentBalance(any(Account.class)))
+    when(accountService.calculateAvailableBalance(any(Account.class)))
         .thenReturn(new BigDecimal(balance));
     when(paymentRepository.save(any(Payment.class)))
         .thenAnswer(

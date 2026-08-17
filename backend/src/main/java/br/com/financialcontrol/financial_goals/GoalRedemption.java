@@ -16,11 +16,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "goal_contributions")
+@Table(name = "goal_redemptions")
 @Getter
 @Setter
 @NoArgsConstructor
-public class GoalContribution {
+public class GoalRedemption {
 
   @Id
   @Column(name = "id", nullable = false, updatable = false)
@@ -36,8 +36,8 @@ public class GoalContribution {
   @Column(name = "amount", nullable = false, precision = 19, scale = 2)
   private BigDecimal amount;
 
-  @Column(name = "contribution_date", nullable = false)
-  private LocalDate contributionDate;
+  @Column(name = "redemption_date", nullable = false)
+  private LocalDate redemptionDate;
 
   @Column(name = "notes")
   private String notes;

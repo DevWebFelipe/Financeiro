@@ -89,7 +89,7 @@ public class TransferService {
     assertBankAccount(destination);
 
     BigDecimal amount = normalize(request.amount());
-    if (accountService.calculateCurrentBalance(source).compareTo(amount) < 0) {
+    if (accountService.calculateAvailableBalance(source).compareTo(amount) < 0) {
       throw new BusinessRuleException(INSUFFICIENT_BALANCE);
     }
 
@@ -139,7 +139,7 @@ public class TransferService {
     Account destination = first.getId().equals(destinationId) ? first : second;
 
     // Reverse debits destination (undo credit)
-    if (accountService.calculateCurrentBalance(destination).compareTo(transfer.getAmount()) < 0) {
+    if (accountService.calculateAvailableBalance(destination).compareTo(transfer.getAmount()) < 0) {
       throw new BusinessRuleException(INSUFFICIENT_BALANCE);
     }
 

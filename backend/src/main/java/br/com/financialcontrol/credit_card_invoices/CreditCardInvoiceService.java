@@ -249,7 +249,7 @@ public class CreditCardInvoiceService {
     if (amount.compareTo(remaining) > 0) {
       throw new BusinessRuleException(PAYMENT_EXCEEDS_REMAINING);
     }
-    if (amount.compareTo(accountService.calculateCurrentBalance(account)) > 0) {
+    if (amount.compareTo(accountService.calculateAvailableBalance(account)) > 0) {
       throw new BusinessRuleException(INSUFFICIENT_BALANCE);
     }
     Instant now = Instant.now(clock);

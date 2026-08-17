@@ -192,7 +192,7 @@ public class CreditCardInvoiceAgreementService {
     }
     Account account =
         accountService.requireActiveOwnedAccountForUpdate(userId, request.accountId());
-    if (amount.compareTo(accountService.calculateCurrentBalance(account)) > 0) {
+    if (amount.compareTo(accountService.calculateAvailableBalance(account)) > 0) {
       throw new BusinessRuleException(INSUFFICIENT_BALANCE);
     }
 

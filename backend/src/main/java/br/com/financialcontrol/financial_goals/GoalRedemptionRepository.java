@@ -8,19 +8,19 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface GoalContributionRepository extends JpaRepository<GoalContribution, UUID> {
+public interface GoalRedemptionRepository extends JpaRepository<GoalRedemption, UUID> {
 
-  Optional<GoalContribution> findByIdAndUserId(UUID id, UUID userId);
+  Optional<GoalRedemption> findByIdAndUserId(UUID id, UUID userId);
 
   boolean existsByGoal_Account_IdAndUserId(UUID accountId, UUID userId);
 
   @Query(
       """
-      SELECT COALESCE(SUM(c.amount), 0)
-      FROM GoalContribution c
-      WHERE c.userId = :userId
-        AND c.goal.id = :goalId
-        AND (CAST(:asOfDate AS LocalDate) IS NULL OR c.contributionDate <= :asOfDate)
+      SELECT COALESCE(SUM(r.amount), 0)
+      FROM GoalRedemption r
+      WHERE r.userId = :userId
+        AND r.goal.id = :goalId
+        AND (CAST(:asOfDate AS LocalDate) IS NULL OR r.redemptionDate <= :asOfDate)
       """)
   BigDecimal sumAmountByGoalIdAndUserIdAsOf(
       @Param("goalId") UUID goalId,
@@ -29,11 +29,11 @@ public interface GoalContributionRepository extends JpaRepository<GoalContributi
 
   @Query(
       """
-      SELECT COALESCE(SUM(c.amount), 0)
-      FROM GoalContribution c
-      WHERE c.userId = :userId
-        AND c.goal.account.id = :accountId
-        AND (CAST(:asOfDate AS LocalDate) IS NULL OR c.contributionDate <= :asOfDate)
+      SELECT COALESCE(SUM(r.amount), 0)
+      FROM GoalRedemption r
+      WHERE r.userId = :userId
+        AND r.goal.account.id = :accountId
+        AND (CAST(:asOfDate AS LocalDate) IS NULL OR r.redemptionDate <= :asOfDate)
       """)
   BigDecimal sumAmountByAccountIdAndUserIdAsOf(
       @Param("accountId") UUID accountId,

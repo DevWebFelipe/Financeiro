@@ -54,7 +54,8 @@ class SchemaContractTest {
             "credit_card_invoice_agreement_settlement_allocations",
             "card_purchase_account_refunds",
             "financial_goals",
-            "goal_contributions");
+            "goal_contributions",
+            "goal_redemptions");
   }
 
   @Test
@@ -116,6 +117,20 @@ class SchemaContractTest {
   @Test
   void shouldNotPersistDerivedGoalCurrentAmount() {
     assertThat(columnsOf("financial_goals")).doesNotContain("current_amount");
+    assertThat(columnsOf("accounts")).doesNotContain("reserved_amount", "available_balance");
+  }
+
+  @Test
+  void shouldExposePhase15GoalSchemaInvariants() {
+    assertThat(columnsOf("financial_goals")).contains("account_id");
+    assertThat(columnsOf("goal_contributions")).doesNotContain("account_id");
+    assertThat(columnsOf("goal_redemptions"))
+        .contains("id", "user_id", "goal_id", "amount", "redemption_date", "notes", "created_at");
+    assertThat(constraintNames("financial_goals"))
+        .contains("fk_financial_goals_account_ownership", "ck_financial_goals_target_amount");
+    assertThat(constraintNames("goal_contributions")).contains("ck_goal_contributions_amount");
+    assertThat(constraintNames("goal_redemptions"))
+        .contains("ck_goal_redemptions_amount", "fk_goal_redemptions_goal_ownership");
   }
 
   @Test

@@ -89,6 +89,11 @@ public class BalanceAdjustmentService {
     if (currentAfter.compareTo(BigDecimal.ZERO) < 0) {
       throw new BusinessRuleException(NEGATIVE_RESULT);
     }
+    BigDecimal availableAfter =
+        normalize(accountService.calculateAvailableBalance(account).add(adjustmentAmount));
+    if (availableAfter.compareTo(BigDecimal.ZERO) < 0) {
+      throw new BusinessRuleException(INSUFFICIENT_BALANCE);
+    }
 
     Instant now = Instant.now(clock);
     AccountBalanceAdjustment adjustment = new AccountBalanceAdjustment();
@@ -129,7 +134,7 @@ public class BalanceAdjustmentService {
     BigDecimal inverse = adjustment.getAdjustmentAmount().negate();
     if (inverse.compareTo(BigDecimal.ZERO) < 0) {
       BigDecimal debit = inverse.abs();
-      if (accountService.calculateCurrentBalance(account).compareTo(debit) < 0) {
+      if (accountService.calculateAvailableBalance(account).compareTo(debit) < 0) {
         throw new BusinessRuleException(INSUFFICIENT_BALANCE);
       }
     }

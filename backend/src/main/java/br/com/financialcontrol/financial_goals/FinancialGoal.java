@@ -1,12 +1,17 @@
 package br.com.financialcontrol.financial_goals;
 
+import br.com.financialcontrol.accounts.Account;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -27,6 +32,10 @@ public class FinancialGoal {
 
   @Column(name = "user_id", nullable = false)
   private UUID userId;
+
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "account_id", nullable = false)
+  private Account account;
 
   @Column(name = "name", nullable = false)
   private String name;
@@ -49,4 +58,10 @@ public class FinancialGoal {
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  public static BigDecimal progressPercent(BigDecimal currentAmount, BigDecimal targetAmount) {
+    return currentAmount
+        .multiply(new BigDecimal("100"))
+        .divide(targetAmount, 2, RoundingMode.HALF_UP);
+  }
 }

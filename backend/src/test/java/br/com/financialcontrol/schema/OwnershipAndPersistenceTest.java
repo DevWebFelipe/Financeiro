@@ -30,6 +30,8 @@ import br.com.financialcontrol.financial_goals.FinancialGoalRepository;
 import br.com.financialcontrol.financial_goals.FinancialGoalStatus;
 import br.com.financialcontrol.financial_goals.GoalContribution;
 import br.com.financialcontrol.financial_goals.GoalContributionRepository;
+import br.com.financialcontrol.financial_goals.GoalRedemption;
+import br.com.financialcontrol.financial_goals.GoalRedemptionRepository;
 import br.com.financialcontrol.incomes.Income;
 import br.com.financialcontrol.incomes.IncomeRepository;
 import br.com.financialcontrol.incomes.IncomeStatus;
@@ -73,6 +75,7 @@ class OwnershipAndPersistenceTest {
   @Autowired private CreditCardInvoicePaymentRepository creditCardInvoicePaymentRepository;
   @Autowired private FinancialGoalRepository financialGoalRepository;
   @Autowired private GoalContributionRepository goalContributionRepository;
+  @Autowired private GoalRedemptionRepository goalRedemptionRepository;
 
   @Test
   void shouldPersistAccountExpenseInstallmentAndPaymentForSameUser() {
@@ -201,6 +204,26 @@ class OwnershipAndPersistenceTest {
   }
 
   @Test
+  void shouldRejectGoalLinkedToAccountOfAnotherUser() {
+    User owner = persistUser("goal-owner@example.com");
+    User other = persistUser("goal-other@example.com");
+    Account foreignAccount = persistAccount(other.getId(), "Alheia");
+
+    FinancialGoal goal = new FinancialGoal();
+    goal.setId(UuidV7.create());
+    goal.setUserId(owner.getId());
+    goal.setAccount(foreignAccount);
+    goal.setName("Cruzada");
+    goal.setTargetAmount(new BigDecimal("100.00"));
+    goal.setStatus(FinancialGoalStatus.ACTIVE);
+    goal.setCreatedAt(NOW);
+    goal.setUpdatedAt(NOW);
+
+    assertThatThrownBy(() -> financialGoalRepository.saveAndFlush(goal))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
   void shouldPersistTransferIncomeGoalAndInvoicePaymentForSameUser() {
     User owner = persistUser("full@example.com");
     Account source = persistAccount(owner.getId(), "Nubank");
@@ -251,6 +274,7 @@ class OwnershipAndPersistenceTest {
     FinancialGoal goal = new FinancialGoal();
     goal.setId(UuidV7.create());
     goal.setUserId(owner.getId());
+    goal.setAccount(source);
     goal.setName("Reserva");
     goal.setTargetAmount(new BigDecimal("1000.00"));
     goal.setStatus(FinancialGoalStatus.ACTIVE);
@@ -262,11 +286,19 @@ class OwnershipAndPersistenceTest {
     contribution.setId(UuidV7.create());
     contribution.setUserId(owner.getId());
     contribution.setGoal(goal);
-    contribution.setAccount(source);
     contribution.setAmount(new BigDecimal("100.00"));
     contribution.setContributionDate(TODAY);
     contribution.setCreatedAt(NOW);
     goalContributionRepository.saveAndFlush(contribution);
+
+    GoalRedemption redemption = new GoalRedemption();
+    redemption.setId(UuidV7.create());
+    redemption.setUserId(owner.getId());
+    redemption.setGoal(goal);
+    redemption.setAmount(new BigDecimal("40.00"));
+    redemption.setRedemptionDate(TODAY);
+    redemption.setCreatedAt(NOW);
+    goalRedemptionRepository.saveAndFlush(redemption);
 
     CreditCardInvoicePayment invoicePayment = new CreditCardInvoicePayment();
     invoicePayment.setId(UuidV7.create());
@@ -283,6 +315,7 @@ class OwnershipAndPersistenceTest {
     assertThat(transferRepository.findById(transfer.getId())).isPresent();
     assertThat(incomeRepository.findById(income.getId())).isPresent();
     assertThat(goalContributionRepository.findById(contribution.getId())).isPresent();
+    assertThat(goalRedemptionRepository.findById(redemption.getId())).isPresent();
     assertThat(creditCardInvoicePaymentRepository.findById(invoicePayment.getId())).isPresent();
   }
 

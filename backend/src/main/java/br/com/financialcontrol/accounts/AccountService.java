@@ -11,6 +11,8 @@ import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.NotFoundException;
 import br.com.financialcontrol.credit_card_invoices.CreditCardInvoicePaymentRepository;
 import br.com.financialcontrol.credit_cards.CardPurchaseAccountRefundRepository;
+import br.com.financialcontrol.financial_goals.GoalContributionRepository;
+import br.com.financialcontrol.financial_goals.GoalRedemptionRepository;
 import br.com.financialcontrol.incomes.IncomeRepository;
 import br.com.financialcontrol.incomes.IncomeStatus;
 import br.com.financialcontrol.payments.PaymentRepository;
@@ -38,6 +40,8 @@ public class AccountService {
       "O saldo inicial não pode ser alterado após a primeira movimentação financeira da conta.";
   static final String CANNOT_DEACTIVATE_WITH_BALANCE =
       "Não é permitido desativar conta com saldo diferente de zero.";
+  static final String CANNOT_DEACTIVATE_WITH_RESERVED =
+      "Não é permitido desativar conta com valor reservado em metas.";
 
   static final ZoneId FINANCIAL_ZONE = ZoneId.of("America/Sao_Paulo");
 
@@ -48,6 +52,8 @@ public class AccountService {
   private final CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository;
   private final TransferRepository transferRepository;
   private final AccountBalanceAdjustmentRepository balanceAdjustmentRepository;
+  private final GoalContributionRepository goalContributionRepository;
+  private final GoalRedemptionRepository goalRedemptionRepository;
   private final Clock clock;
 
   public AccountService(
@@ -58,6 +64,8 @@ public class AccountService {
       CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository,
       TransferRepository transferRepository,
       AccountBalanceAdjustmentRepository balanceAdjustmentRepository,
+      GoalContributionRepository goalContributionRepository,
+      GoalRedemptionRepository goalRedemptionRepository,
       Clock clock) {
     this.accountRepository = accountRepository;
     this.incomeRepository = incomeRepository;
@@ -66,6 +74,8 @@ public class AccountService {
     this.cardPurchaseAccountRefundRepository = cardPurchaseAccountRefundRepository;
     this.transferRepository = transferRepository;
     this.balanceAdjustmentRepository = balanceAdjustmentRepository;
+    this.goalContributionRepository = goalContributionRepository;
+    this.goalRedemptionRepository = goalRedemptionRepository;
     this.clock = clock;
   }
 
@@ -122,9 +132,14 @@ public class AccountService {
   @Transactional
   public AccountResponse deactivate(AuthenticatedUser authenticatedUser, UUID accountId) {
     Account account = requireOwnedAccountForUpdate(authenticatedUser.userId(), accountId);
-    BigDecimal balance = calculateCurrentBalance(account);
-    if (balance.compareTo(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)) != 0) {
+    BigDecimal totalBalance = calculateCurrentBalance(account);
+    if (totalBalance.compareTo(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)) != 0) {
       throw new BusinessRuleException(CANNOT_DEACTIVATE_WITH_BALANCE);
+    }
+    if (calculateReservedAmount(account)
+            .compareTo(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP))
+        > 0) {
+      throw new BusinessRuleException(CANNOT_DEACTIVATE_WITH_RESERVED);
     }
     account.setActive(false);
     account.setUpdatedAt(Instant.now(clock));
@@ -142,12 +157,14 @@ public class AccountService {
   @Transactional(readOnly = true)
   public AccountBalanceResponse getBalance(AuthenticatedUser authenticatedUser, UUID accountId) {
     Account account = requireOwnedAccount(authenticatedUser.userId(), accountId);
-    return new AccountBalanceResponse(account.getId(), calculateCurrentBalance(account));
+    return AccountBalanceResponse.of(
+        account.getId(), calculateCurrentBalance(account), calculateReservedAmount(account));
   }
 
   /**
-   * Saldo atual (RN240 / Fase 14): initial + RECEIVED + refunds - payments ACTIVE - invoice
-   * payments ACTIVE + transfers ACTIVE in - transfers ACTIVE out + balance adjustments ACTIVE.
+   * Saldo financeiro total atual (RN240 / Fase 14): initial + RECEIVED + refunds - payments ACTIVE
+   * - invoice payments ACTIVE + transfers ACTIVE in - transfers ACTIVE out + balance adjustments
+   * ACTIVE. Contribuições/resgates de meta não entram nesta fórmula.
    */
   public BigDecimal calculateCurrentBalance(Account account) {
     return calculateBalanceAsOf(account, null);
@@ -205,6 +222,42 @@ public class AccountService {
             .add(adjustments));
   }
 
+  public BigDecimal calculateReservedAmount(Account account) {
+    return calculateReservedAmountAsOf(account, null);
+  }
+
+  public BigDecimal calculateReservedAmountAsOf(Account account, LocalDate asOfDate) {
+    BigDecimal contributions =
+        zeroIfNull(
+            goalContributionRepository.sumAmountByAccountIdAndUserIdAsOf(
+                account.getId(), account.getUserId(), asOfDate));
+    BigDecimal redemptions =
+        zeroIfNull(
+            goalRedemptionRepository.sumAmountByAccountIdAndUserIdAsOf(
+                account.getId(), account.getUserId(), asOfDate));
+    return normalizeMoney(contributions.subtract(redemptions));
+  }
+
+  public BigDecimal calculateAvailableBalance(Account account) {
+    return calculateAvailableBalanceAsOf(account, null);
+  }
+
+  public BigDecimal calculateAvailableBalanceAsOf(Account account, LocalDate asOfDate) {
+    return normalizeMoney(
+        calculateBalanceAsOf(account, asOfDate)
+            .subtract(calculateReservedAmountAsOf(account, asOfDate)));
+  }
+
+  public BigDecimal calculateGoalCurrentAmount(UUID goalId, UUID userId, LocalDate asOfDate) {
+    BigDecimal contributions =
+        zeroIfNull(
+            goalContributionRepository.sumAmountByGoalIdAndUserIdAsOf(goalId, userId, asOfDate));
+    BigDecimal redemptions =
+        zeroIfNull(
+            goalRedemptionRepository.sumAmountByGoalIdAndUserIdAsOf(goalId, userId, asOfDate));
+    return normalizeMoney(contributions.subtract(redemptions));
+  }
+
   public void markInitialBalanceLocked(Account account) {
     if (!account.isInitialBalanceLocked()) {
       account.setInitialBalanceLocked(true);
@@ -227,7 +280,9 @@ public class AccountService {
             || cardPurchaseAccountRefundRepository.existsByAccount_IdAndUserId(accountId, userId)
             || transferRepository.existsBySourceAccount_IdAndUserId(accountId, userId)
             || transferRepository.existsByDestinationAccount_IdAndUserId(accountId, userId)
-            || balanceAdjustmentRepository.existsByAccount_IdAndUserId(accountId, userId);
+            || balanceAdjustmentRepository.existsByAccount_IdAndUserId(accountId, userId)
+            || goalContributionRepository.existsByGoal_Account_IdAndUserId(accountId, userId)
+            || goalRedemptionRepository.existsByGoal_Account_IdAndUserId(accountId, userId);
     if (moved) {
       markInitialBalanceLocked(account);
     }
