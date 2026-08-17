@@ -2,6 +2,7 @@ package br.com.financialcontrol.financial_goals;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,9 @@ import org.springframework.data.repository.query.Param;
 public interface GoalContributionRepository extends JpaRepository<GoalContribution, UUID> {
 
   Optional<GoalContribution> findByIdAndUserId(UUID id, UUID userId);
+
+  List<GoalContribution> findAllByGoal_IdAndUserIdOrderByContributionDateAscCreatedAtAscIdAsc(
+      UUID goalId, UUID userId);
 
   boolean existsByGoal_Account_IdAndUserId(UUID accountId, UUID userId);
 
