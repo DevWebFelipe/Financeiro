@@ -3021,7 +3021,7 @@ Não existe reativação de receita cancelada nesta fase.
 
 Não existe status `REVERSED`.
 
-**DECISÃO PENDENTE DO DESENVOLVEDOR:** cancelamento direto de receita já `RECEIVED`. A Fase 6 rejeita essa transição. O caminho composto estornar e depois cancelar já é possível. Não implementar a transição direta até decisão explícita.
+**Fase 17 Parte 2 (D73 — fechado, não implementado):** cancelamento direto `RECEIVED` → `CANCELLED` **não** existe. Cancelar somente sem RECEIPT `ACTIVE`. Sem estorno automático. Caminho: estornar RECEIPT ACTIVE e depois cancelar. `docs/24` §19.9.8.
 
 
 # 177. Fluxo — Acerto de Saldos (Fase 14 — implementado)
