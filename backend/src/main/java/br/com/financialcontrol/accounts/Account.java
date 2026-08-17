@@ -37,6 +37,9 @@ public class Account {
   @Column(name = "initial_balance", nullable = false, precision = 19, scale = 2)
   private BigDecimal initialBalance;
 
+  @Column(name = "initial_balance_locked", nullable = false)
+  private boolean initialBalanceLocked;
+
   @Column(name = "active", nullable = false)
   private boolean active;
 

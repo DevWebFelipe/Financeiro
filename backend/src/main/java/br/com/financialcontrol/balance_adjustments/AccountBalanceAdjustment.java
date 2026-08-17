@@ -1,4 +1,4 @@
-package br.com.financialcontrol.transfers;
+package br.com.financialcontrol.balance_adjustments;
 
 import br.com.financialcontrol.accounts.Account;
 import jakarta.persistence.Column;
@@ -19,11 +19,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "transfers")
+@Table(name = "account_balance_adjustments")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Transfer {
+public class AccountBalanceAdjustment {
 
   @Id
   @Column(name = "id", nullable = false, updatable = false)
@@ -33,26 +33,28 @@ public class Transfer {
   private UUID userId;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "source_account_id", nullable = false)
-  private Account sourceAccount;
+  @JoinColumn(name = "account_id", nullable = false)
+  private Account account;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "destination_account_id", nullable = false)
-  private Account destinationAccount;
+  @Column(name = "adjustment_date", nullable = false)
+  private LocalDate adjustmentDate;
 
-  @Column(name = "amount", nullable = false, precision = 19, scale = 2)
-  private BigDecimal amount;
+  @Column(name = "calculated_balance", nullable = false, precision = 19, scale = 2)
+  private BigDecimal calculatedBalance;
 
-  @Column(name = "transfer_date", nullable = false)
-  private LocalDate transferDate;
+  @Column(name = "reported_balance", nullable = false, precision = 19, scale = 2)
+  private BigDecimal reportedBalance;
 
-  @Column(name = "description")
-  private String description;
+  @Column(name = "adjustment_amount", nullable = false, precision = 19, scale = 2)
+  private BigDecimal adjustmentAmount;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false)
-  private TransferStatus status = TransferStatus.ACTIVE;
+  private BalanceAdjustmentStatus status = BalanceAdjustmentStatus.ACTIVE;
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
+
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 }

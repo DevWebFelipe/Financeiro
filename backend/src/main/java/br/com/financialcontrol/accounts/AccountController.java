@@ -4,6 +4,7 @@ import br.com.financialcontrol.accounts.dto.AccountBalanceResponse;
 import br.com.financialcontrol.accounts.dto.AccountResponse;
 import br.com.financialcontrol.accounts.dto.CreateAccountRequest;
 import br.com.financialcontrol.accounts.dto.UpdateAccountRequest;
+import br.com.financialcontrol.accounts.dto.UpdateInitialBalanceRequest;
 import br.com.financialcontrol.config.OpenApiConfig;
 import br.com.financialcontrol.security.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -110,6 +111,21 @@ public class AccountController {
   public AccountResponse activate(
       @AuthenticationPrincipal AuthenticatedUser authenticatedUser, @PathVariable UUID id) {
     return accountService.activate(authenticatedUser, id);
+  }
+
+  @PutMapping("/{id}/initial-balance")
+  @Operation(summary = "Definir ou alterar o saldo inicial (somente sem movimentação)")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Saldo inicial atualizado"),
+    @ApiResponse(responseCode = "400", description = "Dados inválidos ou conta já movimentada"),
+    @ApiResponse(responseCode = "401", description = "Não autenticado"),
+    @ApiResponse(responseCode = "404", description = "Conta não encontrada")
+  })
+  public AccountResponse updateInitialBalance(
+      @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+      @PathVariable UUID id,
+      @Valid @RequestBody UpdateInitialBalanceRequest request) {
+    return accountService.updateInitialBalance(authenticatedUser, id, request);
   }
 
   @GetMapping("/{id}/balance")

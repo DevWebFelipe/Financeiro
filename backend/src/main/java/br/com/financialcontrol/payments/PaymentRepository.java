@@ -2,6 +2,7 @@ package br.com.financialcontrol.payments;
 
 import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -79,10 +80,6 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
   BigDecimal sumValidExpensePaymentsByAccountIdAndUserId(
       @Param("accountId") UUID accountId, @Param("userId") UUID userId);
 
-  /**
-   * Fact aggregation for future RN240 account balance: only ACTIVE payments. Not wired into
-   * AccountService in this step.
-   */
   @Query(
       """
       SELECT COALESCE(SUM(p.amount), 0)
@@ -93,7 +90,12 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
         AND p.expense.status NOT IN (
             br.com.financialcontrol.expenses.ExpenseStatus.CANCELLED,
             br.com.financialcontrol.expenses.ExpenseStatus.REFUNDED)
+        AND (CAST(:asOfDate AS LocalDate) IS NULL OR p.paymentDate <= :asOfDate)
       """)
-  BigDecimal sumActiveValidExpensePaymentsByAccountIdAndUserId(
-      @Param("accountId") UUID accountId, @Param("userId") UUID userId);
+  BigDecimal sumActiveValidExpensePaymentsByAccountIdAndUserIdAsOf(
+      @Param("accountId") UUID accountId,
+      @Param("userId") UUID userId,
+      @Param("asOfDate") LocalDate asOfDate);
+
+  boolean existsByAccount_IdAndUserId(UUID accountId, UUID userId);
 }

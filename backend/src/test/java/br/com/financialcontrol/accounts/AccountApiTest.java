@@ -259,7 +259,7 @@ class AccountApiTest {
   @Test
   void shouldDeactivateAndReactivateWithoutPhysicalDelete() throws Exception {
     String token = registerAndLogin("Alice", uniqueEmail("state"), "senha-segura");
-    AccountResponse created = createAccount(token, "Nubank", "BANK_ACCOUNT", "1500.00");
+    AccountResponse created = createAccount(token, "Nubank", "BANK_ACCOUNT", "0.00");
 
     mockMvc
         .perform(

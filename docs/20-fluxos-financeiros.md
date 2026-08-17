@@ -2912,7 +2912,7 @@ Não existe status `REVERSED`.
 **DECISÃO PENDENTE DO DESENVOLVEDOR:** cancelamento direto de receita já `RECEIVED`. A Fase 6 rejeita essa transição. O caminho composto estornar e depois cancelar já é possível. Não implementar a transição direta até decisão explícita.
 
 
-# 177. Fluxo — Acerto de Saldos (Fase 14 — contrato)
+# 177. Fluxo — Acerto de Saldos (Fase 14 — implementado)
 
 Um acerto (`BALANCE_ADJUSTMENT` / tabela `account_balance_adjustments`) reconcilia o saldo calculado com o saldo real da conta.
 
@@ -2942,7 +2942,7 @@ Acerto: +R$ 50
 Novo saldo: R$ 1.050
 ```
 
-Contrato oficial: `docs/24` §19.5. Status: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`.
+Contrato oficial: `docs/24` §19.5. Status: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
 
 
 # 178. Conceito — Saldo em datas e períodos

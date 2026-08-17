@@ -38,6 +38,7 @@ import br.com.financialcontrol.payments.PaymentRepository;
 import br.com.financialcontrol.payments.PaymentStatus;
 import br.com.financialcontrol.transfers.Transfer;
 import br.com.financialcontrol.transfers.TransferRepository;
+import br.com.financialcontrol.transfers.TransferStatus;
 import br.com.financialcontrol.users.User;
 import br.com.financialcontrol.users.UserRepository;
 import java.math.BigDecimal;
@@ -192,6 +193,7 @@ class OwnershipAndPersistenceTest {
     transfer.setDestinationAccount(foreignDestination);
     transfer.setAmount(new BigDecimal("50.00"));
     transfer.setTransferDate(TODAY);
+    transfer.setStatus(TransferStatus.ACTIVE);
     transfer.setCreatedAt(NOW);
 
     assertThatThrownBy(() -> transferRepository.saveAndFlush(transfer))
@@ -214,6 +216,7 @@ class OwnershipAndPersistenceTest {
     transfer.setDestinationAccount(destination);
     transfer.setAmount(new BigDecimal("80.00"));
     transfer.setTransferDate(TODAY);
+    transfer.setStatus(TransferStatus.ACTIVE);
     transfer.setCreatedAt(NOW);
     transferRepository.saveAndFlush(transfer);
 

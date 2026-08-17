@@ -436,7 +436,7 @@ class ExpenseServiceTest {
     assertThat(expense.getStatus()).isEqualTo(ExpenseStatus.PAID);
     assertThat(installment.getStatus()).isEqualTo(ExpenseStatus.PAID);
     assertThat(response.status()).isEqualTo(ExpenseStatus.PAID);
-    verify(accountService).requireActiveOwnedAccount(USER_A, ACCOUNT_ID);
+    verify(accountService).requireActiveOwnedAccountForUpdate(USER_A, ACCOUNT_ID);
   }
 
   @Test
@@ -507,7 +507,7 @@ class ExpenseServiceTest {
     when(paymentRepository.sumActiveAmountByInstallmentIdAndUserId(INSTALLMENT_ID, USER_A))
         .thenReturn(BigDecimal.ZERO)
         .thenReturn(new BigDecimal("150.00"));
-    when(accountService.requireActiveOwnedAccount(USER_A, OTHER_ACCOUNT_ID))
+    when(accountService.requireActiveOwnedAccountForUpdate(USER_A, OTHER_ACCOUNT_ID))
         .thenReturn(otherAccount);
     when(accountService.calculateCurrentBalance(otherAccount))
         .thenReturn(new BigDecimal("1500.00"));
@@ -530,7 +530,8 @@ class ExpenseServiceTest {
     Expense expense = openNoneExpense();
     ExpenseInstallment installment = singleInstallment(expense);
     stubPay(expense, installment, BigDecimal.ZERO, "1500.00");
-    when(accountService.requireActiveOwnedAccount(USER_A, ACCOUNT_ID)).thenReturn(activeAccount());
+    when(accountService.requireActiveOwnedAccountForUpdate(USER_A, ACCOUNT_ID))
+        .thenReturn(activeAccount());
 
     ExpenseResponse response =
         expenseService.pay(
@@ -834,7 +835,7 @@ class ExpenseServiceTest {
     when(paymentRepository.sumActiveAmountByInstallmentIdAndUserId(INSTALLMENT_ID, USER_A))
         .thenReturn(alreadyPaid);
     if (expense.getPaymentMethod() == PaymentMethod.ACCOUNT) {
-      when(accountService.requireActiveOwnedAccount(USER_A, ACCOUNT_ID))
+      when(accountService.requireActiveOwnedAccountForUpdate(USER_A, ACCOUNT_ID))
           .thenReturn(expense.getAccount());
     }
   }

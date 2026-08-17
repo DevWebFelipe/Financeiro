@@ -5,17 +5,24 @@ import br.com.financialcontrol.accounts.dto.AccountBalanceResponse;
 import br.com.financialcontrol.accounts.dto.AccountResponse;
 import br.com.financialcontrol.accounts.dto.CreateAccountRequest;
 import br.com.financialcontrol.accounts.dto.UpdateAccountRequest;
+import br.com.financialcontrol.accounts.dto.UpdateInitialBalanceRequest;
+import br.com.financialcontrol.balance_adjustments.AccountBalanceAdjustmentRepository;
 import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.NotFoundException;
 import br.com.financialcontrol.credit_card_invoices.CreditCardInvoicePaymentRepository;
 import br.com.financialcontrol.credit_cards.CardPurchaseAccountRefundRepository;
 import br.com.financialcontrol.incomes.IncomeRepository;
+import br.com.financialcontrol.incomes.IncomeStatus;
 import br.com.financialcontrol.payments.PaymentRepository;
 import br.com.financialcontrol.security.AuthenticatedUser;
+import br.com.financialcontrol.transfers.TransferRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -27,12 +34,20 @@ public class AccountService {
   static final String ACCOUNT_NOT_FOUND = "Conta não encontrada.";
   static final String ACCOUNT_INACTIVE =
       "Somente contas ativas podem ser utilizadas em novas operações.";
+  static final String INITIAL_BALANCE_LOCKED =
+      "O saldo inicial não pode ser alterado após a primeira movimentação financeira da conta.";
+  static final String CANNOT_DEACTIVATE_WITH_BALANCE =
+      "Não é permitido desativar conta com saldo diferente de zero.";
+
+  static final ZoneId FINANCIAL_ZONE = ZoneId.of("America/Sao_Paulo");
 
   private final AccountRepository accountRepository;
   private final IncomeRepository incomeRepository;
   private final PaymentRepository paymentRepository;
   private final CreditCardInvoicePaymentRepository invoicePaymentRepository;
   private final CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository;
+  private final TransferRepository transferRepository;
+  private final AccountBalanceAdjustmentRepository balanceAdjustmentRepository;
   private final Clock clock;
 
   public AccountService(
@@ -41,12 +56,16 @@ public class AccountService {
       PaymentRepository paymentRepository,
       CreditCardInvoicePaymentRepository invoicePaymentRepository,
       CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository,
+      TransferRepository transferRepository,
+      AccountBalanceAdjustmentRepository balanceAdjustmentRepository,
       Clock clock) {
     this.accountRepository = accountRepository;
     this.incomeRepository = incomeRepository;
     this.paymentRepository = paymentRepository;
     this.invoicePaymentRepository = invoicePaymentRepository;
     this.cardPurchaseAccountRefundRepository = cardPurchaseAccountRefundRepository;
+    this.transferRepository = transferRepository;
+    this.balanceAdjustmentRepository = balanceAdjustmentRepository;
     this.clock = clock;
   }
 
@@ -70,7 +89,10 @@ public class AccountService {
     account.setUserId(authenticatedUser.userId());
     account.setName(request.name());
     account.setType(request.type());
-    account.setInitialBalance(normalizeMoney(request.initialBalance()));
+    BigDecimal initial =
+        request.initialBalance() == null ? BigDecimal.ZERO : request.initialBalance();
+    account.setInitialBalance(normalizeMoney(initial));
+    account.setInitialBalanceLocked(false);
     account.setActive(true);
     account.setCreatedAt(now);
     account.setUpdatedAt(now);
@@ -88,8 +110,22 @@ public class AccountService {
   }
 
   @Transactional
+  public AccountResponse updateInitialBalance(
+      AuthenticatedUser authenticatedUser, UUID accountId, UpdateInitialBalanceRequest request) {
+    Account account = requireOwnedAccountForUpdate(authenticatedUser.userId(), accountId);
+    assertInitialBalanceEditable(account);
+    account.setInitialBalance(normalizeMoney(request.initialBalance()));
+    account.setUpdatedAt(Instant.now(clock));
+    return AccountResponse.from(accountRepository.save(account));
+  }
+
+  @Transactional
   public AccountResponse deactivate(AuthenticatedUser authenticatedUser, UUID accountId) {
-    Account account = requireOwnedAccount(authenticatedUser.userId(), accountId);
+    Account account = requireOwnedAccountForUpdate(authenticatedUser.userId(), accountId);
+    BigDecimal balance = calculateCurrentBalance(account);
+    if (balance.compareTo(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)) != 0) {
+      throw new BusinessRuleException(CANNOT_DEACTIVATE_WITH_BALANCE);
+    }
     account.setActive(false);
     account.setUpdatedAt(Instant.now(clock));
     return AccountResponse.from(accountRepository.save(account));
@@ -110,42 +146,98 @@ public class AccountService {
   }
 
   /**
-   * Saldo derivado (RN240 / RN216 emendada, Fase 9): saldo inicial + receitas RECEIVED − payments
-   * ACTIVE de despesas ACCOUNT/NONE não CANCELLED/REFUNDED − pagamentos ACTIVE de fatura +
-   * devoluções ACCOUNT de compra no cartão (RN117). Adjustments e crédito de cartão não entram.
+   * Saldo atual (RN240 / Fase 14): initial + RECEIVED + refunds - payments ACTIVE - invoice
+   * payments ACTIVE + transfers ACTIVE in - transfers ACTIVE out + balance adjustments ACTIVE.
    */
   public BigDecimal calculateCurrentBalance(Account account) {
+    return calculateBalanceAsOf(account, null);
+  }
+
+  /**
+   * Saldo as-of-date. {@code asOfDate == null} means current (all eligible facts). When set, only
+   * facts with financial date &lt;= asOfDate (refunds: createdAt &lt;= end of that day in
+   * America/Sao_Paulo).
+   */
+  public BigDecimal calculateBalanceAsOf(Account account, LocalDate asOfDate) {
     BigDecimal received =
-        incomeRepository.sumReceivedAmountByAccountIdAndUserId(
-            account.getId(), account.getUserId());
-    if (received == null) {
-      received = BigDecimal.ZERO;
-    }
+        zeroIfNull(
+            incomeRepository.sumReceivedAmountByAccountIdAndUserIdAsOf(
+                account.getId(), account.getUserId(), asOfDate));
     BigDecimal paid =
-        paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserId(
-            account.getId(), account.getUserId());
-    if (paid == null) {
-      paid = BigDecimal.ZERO;
-    }
+        zeroIfNull(
+            paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserIdAsOf(
+                account.getId(), account.getUserId(), asOfDate));
     BigDecimal invoicePaid =
-        invoicePaymentRepository.sumActiveAmountByAccountIdAndUserId(
-            account.getId(), account.getUserId());
-    if (invoicePaid == null) {
-      invoicePaid = BigDecimal.ZERO;
-    }
+        zeroIfNull(
+            invoicePaymentRepository.sumActiveAmountByAccountIdAndUserIdAsOf(
+                account.getId(), account.getUserId(), asOfDate));
+    // Instant null breaks PostgreSQL type inference; split current vs as-of.
     BigDecimal cardRefunds =
-        cardPurchaseAccountRefundRepository.sumAmountByAccountIdAndUserId(
-            account.getId(), account.getUserId());
-    if (cardRefunds == null) {
-      cardRefunds = BigDecimal.ZERO;
-    }
+        asOfDate == null
+            ? zeroIfNull(
+                cardPurchaseAccountRefundRepository.sumAmountByAccountIdAndUserId(
+                    account.getId(), account.getUserId()))
+            : zeroIfNull(
+                cardPurchaseAccountRefundRepository.sumAmountByAccountIdAndUserIdAsOf(
+                    account.getId(), account.getUserId(), endOfFinancialDay(asOfDate)));
+    BigDecimal transferIn =
+        zeroIfNull(
+            transferRepository.sumActiveIncomingByAccountIdAndUserId(
+                account.getId(), account.getUserId(), asOfDate));
+    BigDecimal transferOut =
+        zeroIfNull(
+            transferRepository.sumActiveOutgoingByAccountIdAndUserId(
+                account.getId(), account.getUserId(), asOfDate));
+    BigDecimal adjustments =
+        zeroIfNull(
+            balanceAdjustmentRepository.sumActiveAmountByAccountIdAndUserId(
+                account.getId(), account.getUserId(), asOfDate));
+
     return normalizeMoney(
         account
             .getInitialBalance()
             .add(received)
             .subtract(paid)
             .subtract(invoicePaid)
-            .add(cardRefunds));
+            .add(cardRefunds)
+            .add(transferIn)
+            .subtract(transferOut)
+            .add(adjustments));
+  }
+
+  public void markInitialBalanceLocked(Account account) {
+    if (!account.isInitialBalanceLocked()) {
+      account.setInitialBalanceLocked(true);
+      account.setUpdatedAt(Instant.now(clock));
+      accountRepository.save(account);
+    }
+  }
+
+  public boolean hasFinancialMovements(Account account) {
+    if (account.isInitialBalanceLocked()) {
+      return true;
+    }
+    UUID accountId = account.getId();
+    UUID userId = account.getUserId();
+    boolean moved =
+        incomeRepository.existsByAccount_IdAndUserIdAndStatus(
+                accountId, userId, IncomeStatus.RECEIVED)
+            || paymentRepository.existsByAccount_IdAndUserId(accountId, userId)
+            || invoicePaymentRepository.existsByAccount_IdAndUserId(accountId, userId)
+            || cardPurchaseAccountRefundRepository.existsByAccount_IdAndUserId(accountId, userId)
+            || transferRepository.existsBySourceAccount_IdAndUserId(accountId, userId)
+            || transferRepository.existsByDestinationAccount_IdAndUserId(accountId, userId)
+            || balanceAdjustmentRepository.existsByAccount_IdAndUserId(accountId, userId);
+    if (moved) {
+      markInitialBalanceLocked(account);
+    }
+    return moved;
+  }
+
+  public void assertInitialBalanceEditable(Account account) {
+    if (hasFinancialMovements(account)) {
+      throw new BusinessRuleException(INITIAL_BALANCE_LOCKED);
+    }
   }
 
   public Account requireActiveOwnedAccountForUpdate(UUID userId, UUID accountId) {
@@ -159,7 +251,13 @@ public class AccountService {
     return account;
   }
 
-  Account requireOwnedAccount(UUID userId, UUID accountId) {
+  public Account requireOwnedAccountForUpdate(UUID userId, UUID accountId) {
+    return accountRepository
+        .findByIdAndUserIdForUpdate(accountId, userId)
+        .orElseThrow(() -> new NotFoundException(ACCOUNT_NOT_FOUND));
+  }
+
+  public Account requireOwnedAccount(UUID userId, UUID accountId) {
     return accountRepository
         .findByIdAndUserId(accountId, userId)
         .orElseThrow(() -> new NotFoundException(ACCOUNT_NOT_FOUND));
@@ -171,6 +269,18 @@ public class AccountService {
       throw new BusinessRuleException(ACCOUNT_INACTIVE);
     }
     return account;
+  }
+
+  public LocalDate today() {
+    return LocalDate.now(clock.withZone(FINANCIAL_ZONE));
+  }
+
+  private Instant endOfFinancialDay(LocalDate date) {
+    return date.atTime(LocalTime.MAX).atZone(FINANCIAL_ZONE).toInstant();
+  }
+
+  private static BigDecimal zeroIfNull(BigDecimal value) {
+    return value == null ? BigDecimal.ZERO : value;
   }
 
   private static BigDecimal normalizeMoney(BigDecimal value) {

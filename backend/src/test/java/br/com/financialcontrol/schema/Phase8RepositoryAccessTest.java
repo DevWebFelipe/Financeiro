@@ -203,8 +203,8 @@ class Phase8RepositoryAccessTest {
                 account.getId(), owner.getId()))
         .isEqualByComparingTo("50.00");
     assertThat(
-            paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserId(
-                account.getId(), owner.getId()))
+            paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserIdAsOf(
+                account.getId(), owner.getId(), null))
         .isEqualByComparingTo("30.00");
   }
 

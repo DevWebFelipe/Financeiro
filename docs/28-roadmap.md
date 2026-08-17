@@ -434,7 +434,7 @@ Status:
 
 CONCLUÍDA
 
-A documentação oficial da Fase 6 foi refinada antes da implementação: cancelamento inutiliza a duplicata (`EXPECTED` → `CANCELLED`); estorno desfaz o recebimento e mantém a duplicata ativa (`RECEIVED` → `EXPECTED`; limpa `account_id` e `received_date`; pode deixar saldo negativo); responsável fora desta fase (`responsible_type` nullable); saldo derivado; acerto de saldos como conceito futuro (hoje: Fase 14 §19.5 — `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`).
+A documentação oficial da Fase 6 foi refinada antes da implementação: cancelamento inutiliza a duplicata (`EXPECTED` → `CANCELLED`); estorno desfaz o recebimento e mantém a duplicata ativa (`RECEIVED` → `EXPECTED`; limpa `account_id` e `received_date`; pode deixar saldo negativo); responsável fora desta fase (`responsible_type` nullable); saldo derivado; acerto de saldos como conceito futuro (hoje: Fase 14 §19.5 — `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`).
 
 Objetivo:
 
@@ -820,12 +820,12 @@ Parcelamento/negociação de fatura ≠ compra parcelada. V13 sem uso de negóci
 
 # 76. Fase 13 — Próximo passo
 
-Fase 13 **concluída**. Próxima fase: **Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial**.
+Fase 13 **concluída**. A Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial — está implementada e aguarda auditoria.
 
 
 # 77. Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial
 
-**Status:** `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`.
+**Status:** `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
 
 Objetivo:
 
@@ -836,7 +836,7 @@ Contrato oficial: `docs/24` §19.5.
 
 # 78. Fase 14 — Escopo
 
-Implementar (quando autorizada):
+Implementado:
 
 - transferência (criar, listar, consultar, reverter);
 - somente `BANK_ACCOUNT`; CASH excluído de transferências;
@@ -859,7 +859,7 @@ Transferência e acerto devem ser atômicos. Sem saldo negativo nas operações 
 
 # 80. Testes
 
-Testar (quando implementar):
+Cobertura implementada em `Phase14ApiTest`:
 
 - saldo e patrimônio;
 - BANK_ACCOUNT vs CASH;
@@ -878,7 +878,7 @@ Detalhe: `docs/27-testes.md` §§34–40C.
 
 Usuário consegue movimentar dinheiro entre `BANK_ACCOUNT` próprias, reverter, conciliar via acerto e gerir saldo inicial conforme RN010 / RN010A — com testes e docs alinhados.
 
-**Não marcar a fase como concluída até implementação + aprovação.**
+**A implementação está concluída; a fase aguarda auditoria.**
 
 
 # 82. Fase 15 — Metas
@@ -1571,12 +1571,12 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 9: CONCLUÍDAS. Fase 13: **CONCLUÍDA E APROVADA**.
+Fases 0 a 9: CONCLUÍDAS. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA**.
 
-Próxima fase: **Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial**.
+Próxima etapa: **auditoria da Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial**.
 
-Status da Fase 14: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE` (`docs/24` §19.5).
+Status da Fase 14: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA` (`docs/24` §19.5).
 
 Status da Fase 13: `CONCLUÍDA E APROVADA` (`docs/24` §19.4 / RN254; `docs/23` §269.5 D1–D11 FECHADO).
 
-A IA não deve implementar a Fase 14, Refresh Token, logout backend, relatórios/PDF, frontend financeiro, `payments.type`, extrato `/statement` nem auditoria genérica sem autorização. Itens ainda deferidos: §269.1, §269.2.7. Fechados: §269.3, §269.4, **§269.5**.
+A IA não deve implementar Refresh Token, logout backend, relatórios/PDF, frontend financeiro, `payments.type`, extrato `/statement` nem auditoria genérica sem autorização. Itens ainda deferidos: §269.1, §269.2.7. Fechados: §269.3, §269.4, **§269.5**.

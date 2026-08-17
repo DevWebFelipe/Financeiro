@@ -2,6 +2,7 @@ package br.com.financialcontrol.credit_card_invoices;
 
 import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,7 +36,12 @@ public interface CreditCardInvoicePaymentRepository
       WHERE p.account.id = :accountId
         AND p.userId = :userId
         AND p.status = br.com.financialcontrol.credit_card_invoices.InvoicePaymentStatus.ACTIVE
+        AND (CAST(:asOfDate AS LocalDate) IS NULL OR p.paymentDate <= :asOfDate)
       """)
-  BigDecimal sumActiveAmountByAccountIdAndUserId(
-      @Param("accountId") UUID accountId, @Param("userId") UUID userId);
+  BigDecimal sumActiveAmountByAccountIdAndUserIdAsOf(
+      @Param("accountId") UUID accountId,
+      @Param("userId") UUID userId,
+      @Param("asOfDate") LocalDate asOfDate);
+
+  boolean existsByAccount_IdAndUserId(UUID accountId, UUID userId);
 }

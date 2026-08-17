@@ -883,6 +883,7 @@ public class ExpenseService {
     payment.setNotes(request.notes());
     payment.setCreatedAt(now);
     paymentRepository.save(payment);
+    accountService.markInitialBalanceLocked(account);
 
     recalculateFinancialStatuses(expense, installment, now);
     return toResponse(expense, requireInstallments(expense));
@@ -1021,7 +1022,8 @@ public class ExpenseService {
       if (request.accountId() == null) {
         throw new BusinessRuleException(SETTLEMENT_ACCOUNT_REQUIRED);
       }
-      refundAccount = accountService.requireActiveOwnedAccount(userId, request.accountId());
+      refundAccount =
+          accountService.requireActiveOwnedAccountForUpdate(userId, request.accountId());
     }
 
     Instant now = Instant.now(clock);
@@ -1059,6 +1061,7 @@ public class ExpenseService {
         refund.setAmount(bankLiquidated);
         refund.setCreatedAt(now);
         cardPurchaseAccountRefundRepository.save(refund);
+        accountService.markInitialBalanceLocked(refundAccount);
       }
       creditCardInvoiceService.persistCredit(
           card,
@@ -1144,17 +1147,20 @@ public class ExpenseService {
     }
   }
 
-  /** RN228: payments.account_id may differ from expenses.account_id. */
+  /**
+   * RN228: payments.account_id may differ from expenses.account_id. Locks account for
+   * balance/RN010A.
+   */
   private Account resolvePaymentAccount(UUID userId, Expense expense, UUID requestedAccountId) {
     if (expense.getPaymentMethod() == PaymentMethod.ACCOUNT) {
       UUID accountId =
           requestedAccountId == null ? expense.getAccount().getId() : requestedAccountId;
-      return accountService.requireActiveOwnedAccount(userId, accountId);
+      return accountService.requireActiveOwnedAccountForUpdate(userId, accountId);
     }
     if (requestedAccountId == null) {
       throw new BusinessRuleException(ACCOUNT_REQUIRED_FOR_PAYMENT);
     }
-    return accountService.requireActiveOwnedAccount(userId, requestedAccountId);
+    return accountService.requireActiveOwnedAccountForUpdate(userId, requestedAccountId);
   }
 
   private static String resolveResponsibleName(ResponsibleType type, String responsibleName) {

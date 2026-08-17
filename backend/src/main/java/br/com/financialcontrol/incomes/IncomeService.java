@@ -148,9 +148,11 @@ public class IncomeService {
       throw new BusinessRuleException(ONLY_EXPECTED_CAN_BE_RECEIVED);
     }
     Account account =
-        accountService.requireActiveOwnedAccount(authenticatedUser.userId(), request.accountId());
+        accountService.requireActiveOwnedAccountForUpdate(
+            authenticatedUser.userId(), request.accountId());
     income.receive(account, request.receivedDate());
     income.setUpdatedAt(Instant.now(clock));
+    accountService.markInitialBalanceLocked(account);
     return IncomeResponse.from(incomeRepository.save(income));
   }
 
@@ -159,6 +161,14 @@ public class IncomeService {
     Income income = requireOwnedIncomeForUpdate(authenticatedUser.userId(), incomeId);
     if (income.getStatus() != IncomeStatus.RECEIVED) {
       throw new BusinessRuleException(ONLY_RECEIVED_CAN_BE_REVERSED);
+    }
+    // Capture account before reverse clears account_id (Phase 6); RN010A must remain locked.
+    Account receivedAccount = income.getAccount();
+    if (receivedAccount != null) {
+      Account locked =
+          accountService.requireOwnedAccountForUpdate(
+              authenticatedUser.userId(), receivedAccount.getId());
+      accountService.markInitialBalanceLocked(locked);
     }
     income.reverse();
     income.setUpdatedAt(Instant.now(clock));

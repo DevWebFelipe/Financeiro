@@ -129,6 +129,8 @@ type
 
 initial_balance
 
+initial_balance_locked
+
 active
 
 created_at
@@ -145,6 +147,8 @@ Não utilizar `current_balance` como fonte independente de verdade.
 Se no futuro existir saldo materializado/cacheado, ele deverá ser mantido de forma transacionalmente consistente com as movimentações.
 
 `initial_balance` é ponto de partida da linha temporal (RN010 / RN010A / Fase 14). Começa conceitualmente em `0,00`. Em `POST /accounts`, `initialBalance` é **opcional** (omitido ⇒ `0,00`). Definição/alteração posterior somente via `PUT /api/v1/accounts/{id}/initial-balance`, enquanto a conta **nunca** tiver tido movimentação financeira efetiva (RN010A). Após a primeira movimentação (mesmo que depois cancelada/revertida), correções usam **Acerto de Saldos** (`BALANCE_ADJUSTMENT` / tabela `account_balance_adjustments`), não edição de `initial_balance`.
+
+`initial_balance_locked` foi adicionado pela migration V28 e registra de forma persistente o encerramento da mutabilidade do saldo inicial após a primeira movimentação efetiva, conforme RN010A.
 
 
 # 11. Tipo de conta
@@ -201,7 +205,7 @@ movimentações.
 
 O saldo atual não deve ser alterado arbitrariamente por operações que não representam movimentação real.
 
-**Acerto de Saldos** (`BALANCE_ADJUSTMENT`), quando implementado (Fase 14), é fato real de conciliação — não edição direta de um campo de saldo corrente. Persistência do fato: `calculated_balance`, `reported_balance`, `adjustment_amount` (não são `current_balance` da conta). Tabela oficial: `account_balance_adjustments`.
+**Acerto de Saldos** (`BALANCE_ADJUSTMENT`), implementado na Fase 14, é fato real de conciliação — não edição direta de um campo de saldo corrente. Persistência do fato: `calculated_balance`, `reported_balance`, `adjustment_amount` (não são `current_balance` da conta). Tabela oficial: `account_balance_adjustments`.
 
 
 # 17. Conta
@@ -1555,6 +1559,8 @@ Não é receita (`incomes`). Não é reverse de `credit_card_invoice_payments`. 
 
 Campos: id, user_id, expense_id, account_id, amount (`bankLiquidated`), created_at.
 
+**Sem data financeira dedicada** (modelo Fase 9). No cálculo as-of-date (RN263 / Fase 14), a inclusão temporal usa `created_at` ≤ fim do dia da data solicitada em `America/Sao_Paulo`.
+
 Ownership: FKs compostas. Entra na fórmula de saldo (RN240) como parcela positiva.
 
 
@@ -1638,7 +1644,7 @@ Tabela:
 
 transfers
 
-Contrato oficial: `docs/24` §19.5. Status da Fase 14: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`.
+Contrato oficial: `docs/24` §19.5. Status da Fase 14: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
 
 
 # 124. Transferência
@@ -1664,11 +1670,11 @@ transfer_date
 
 description
 
-status (`ACTIVE` | `REVERSED`) — **contrato Fase 14**; coluna a ser adicionada na implementação (migration futura; **não** criar nesta etapa documental)
+status (`ACTIVE` | `REVERSED`) — coluna adicionada pela migration V28
 
 created_at
 
-Observação: a tabela física atual (V11) ainda **não** possui `status`. A implementação da Fase 14 deve adicioná-lo sem alterar o significado das demais colunas.
+Observação: a migration V28 adicionou `status` à tabela física sem alterar o significado das demais colunas.
 
 
 # 126. Regra
@@ -2585,7 +2591,7 @@ Extrato unificado / `GET /accounts/{id}/statement` e relatórios de apresentaç�
 
 Nome conceitual: **Acerto de Saldos**. Identificador técnico: `BALANCE_ADJUSTMENT`.
 
-Tabela oficial contratada (migration **futura**, não criar nesta etapa):
+Tabela criada pela migration V28:
 
 **`account_balance_adjustments`**
 
@@ -2608,9 +2614,7 @@ Pode ser positivo, zero ou negativo. Altera o saldo derivado. Não é receita. N
 
 `reported_balance >= 0`. Contas participantes: `BANK_ACCOUNT` e `CASH` ativas. Cartões excluídos.
 
-Contrato: `docs/24` §19.5 / RN204–RN206 / RN259–RN263. Status: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`.
-
-Não criar tabela, endpoint, entidade nem migration sem autorização de implementação da Fase 14.
+Contrato: `docs/24` §19.5 / RN204–RN206 / RN259–RN263. Status: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
 
 
 # 210. Cartão
@@ -2984,7 +2988,7 @@ USER
 │
 ├── TRANSFERS
 │
-├── ACCOUNT_BALANCE_ADJUSTMENTS (BALANCE_ADJUSTMENT — Fase 14; contrato)
+├── ACCOUNT_BALANCE_ADJUSTMENTS (BALANCE_ADJUSTMENT — Fase 14; implementado)
 │
 └── FINANCIAL_GOALS
     └── GOAL_CONTRIBUTIONS

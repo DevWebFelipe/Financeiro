@@ -295,9 +295,9 @@ O proprietário é sempre o usuário autenticado (claim `sub`). Propriedades des
 Conta de outro usuário ou UUID inexistente: **404** (`code`: `NOT_FOUND`, mensagem `Conta não encontrada.`). A API não distingue esses casos, para não vazar existência do recurso.
 
 
-## Fase 4 — não implementado / fora da Fase 14
+## Fora do escopo da Fase 14
 
-- `GET /api/v1/accounts/{id}/statement` — extrato unificado **fora do escopo da Fase 14**. O modelo permanece compatível com representação futura; não implementar nesta fase.
+- `GET /api/v1/accounts/{id}/statement` — extrato unificado **fora do escopo da Fase 14** e não implementado. O modelo permanece compatível com representação futura.
 
 
 Endpoint:
@@ -381,7 +381,7 @@ Exemplos válidos:
 
 Response **201 Created**: mesmo formato de `GET /api/v1/accounts/{id}`.
 
-**Nota de implementação:** o código da Fase 4 ainda trata `initialBalance` como obrigatório. A opcionalidade e o default `0,00` são contrato da Fase 14 — aplicar na implementação autorizada, sem alterar comportamento antes disso.
+**Nota de implementação:** a Fase 14 tornou `initialBalance` opcional e aplica o default `0,00` quando o campo é omitido.
 
 
 # 16. Atualizar conta
@@ -473,7 +473,7 @@ page
 
 size
 
-Não implementar na Fase 14. Dependência: contrato futuro de extrato unificado. O modelo deve permanecer compatível.
+Não implementado. Dependência: contrato futuro de extrato unificado. O modelo deve permanecer compatível.
 
 
 # 21. Cartões
@@ -1333,9 +1333,9 @@ RN234 (payment + adjustment no mesmo ato): permanece regra de domínio. **Não**
 A edição de parcela × total da despesa para ACCOUNT/NONE está **fechada** (docs/23 §269.2). Parcela já em fatura permanece **DEFERIDA**.
 
 
-# 52. Transferências (Fase 14 — contrato; implementação pendente)
+# 52. Transferências (Fase 14 — implementado)
 
-**Status:** contrato oficial `docs/24` §19.5 — `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`. **Não implementado.**
+**Status:** contrato oficial `docs/24` §19.5 — `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
 
 Endpoint:
 
@@ -1412,7 +1412,7 @@ Comportamento: `ACTIVE` → `REVERSED`. Exige saldo suficiente na conta debitada
 Response **200**: transferência com `status = REVERSED`.
 
 
-# 54B. Definir / alterar saldo inicial (Fase 14 — contrato)
+# 54B. Definir / alterar saldo inicial (Fase 14 — implementado)
 
 Endpoint oficial (único para definição/alteração após a criação):
 
@@ -1439,15 +1439,15 @@ Regras (RN010 / RN010A):
 Response **200**: conta atualizada.
 
 
-# 54C. Acerto de Saldos — listar / criar (Fase 14 — contrato)
+# 54C. Acerto de Saldos — listar / criar (Fase 14 — implementado)
 
 Identificador técnico: `BALANCE_ADJUSTMENT`.
 
-Tabela oficial contratada (migration futura): **`account_balance_adjustments`**.
+Tabela criada pela migration V28: **`account_balance_adjustments`**.
 
 Não confundir com adjustments de parcela/fatura (`expense_installment_adjustments` / ajustes de fatura).
 
-Endpoints previstos:
+Endpoints implementados:
 
 ```text
 GET  /api/v1/accounts/{accountId}/balance-adjustments
@@ -2351,9 +2351,9 @@ Fluxo:
 Não gravar `total_amount` / `paid_amount` / `remaining_amount` como colunas. Pagamento parcial **não** transita a fatura para `PARTIALLY_PAID`. Status persistido: `SCHEDULED` / `OPEN` / `CLOSED` / `PAID`. Rateio persistido em alocações. Atualizar remaining das parcelas e o limite usado na mesma transação.
 
 
-# 118. Transferência (Fase 14 — contrato)
+# 118. Transferência (Fase 14 — implementado)
 
-Endpoint: `POST /api/v1/transfers` (implementação pendente).
+Endpoint implementado: `POST /api/v1/transfers`.
 
 Fluxo:
 

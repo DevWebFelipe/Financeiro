@@ -186,7 +186,7 @@ saldo inicial
 + receitas efetivamente recebidas até a data
 − payments ACTIVE de despesas não CANCELLED/REFUNDED até a data
 − pagamentos de fatura ACTIVE até a data
-+ devoluções ACCOUNT de compra no cartão (quando aplicáveis à data)
++ devoluções ACCOUNT de compra no cartão (quando aplicáveis à data; ver RN263 — exceção `created_at`)
 + transferências ACTIVE de entrada até a data
 − transferências ACTIVE de saída até a data
 + acertos de saldo ACTIVE (adjustment_amount) até a data
@@ -2585,9 +2585,7 @@ Cenários L01–L36 permanecem a base. A emenda exige cobertura de L13–L16/L36
 
 # 19.5 Contrato da Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial
 
-**Status:** `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`.
-
-Não implementar código, migrations nem testes de implementação até autorização explícita.
+**Status:** `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
 
 Autoridade: `AGENTS.md` §28 → esta seção → `docs/23` (modelo) → `docs/25` (API) → `docs/27` / `docs/28`.
 
@@ -2650,6 +2648,8 @@ Filtros oficiais: `startDate`, `endDate`, `accountId` (origem ou destino). **Nã
 ### Reversão
 
 Não editável. `POST .../reverse`: mantém registro; `ACTIVE` → `REVERSED`; efeito inverso; exige saldo suficiente na conta debitada pela reversão; sem "desreversão" (RN019A, RN022B).
+
+Reversão de transferência (e de acerto) **não** exige conta ativa: é correção de fato já existente, alinhada ao padrão de reverse de payment (RN007 restringe **novas** operações, não a desfazimento de fatos ACTIVE).
 
 ### Histórico lógico
 
@@ -2749,6 +2749,10 @@ Na criação, `calculated_balance` = saldo da conta **até** a data financeira d
 
 A Fase 14 exige cálculo interno de saldo até uma data financeira. Uso principal: acerto retroativo. Expor data em `GET /accounts/{id}/balance` **não** é obrigatório nesta fase.
 
+Datas financeiras por domínio (as-of): `incomes.received_date`, `payments.payment_date`, `credit_card_invoice_payments.payment_date`, `transfers.transfer_date`, `account_balance_adjustments.adjustment_date`.
+
+**Exceção formal (Fase 9 / RN117):** a tabela `card_purchase_account_refunds` **não** possui data financeira contratada — apenas `created_at`. No as-of-date, a devolução ACCOUNT entra quando `created_at` ≤ fim do dia da data solicitada em `America/Sao_Paulo`. Não inventar data financeira retroativa para esse fato.
+
 ---
 
 ## 19.5.4 Saldo inicial
@@ -2777,7 +2781,7 @@ Manter domínio modular. **Não** criar `Transaction` / ledger genérico. Pacote
 
 ---
 
-## 19.5.7 Critério de conclusão da implementação (futuro)
+## 19.5.7 Critério de conclusão da implementação
 
 Usuário consegue: transferir entre `BANK_ACCOUNT` próprias; reverter transferência; registrar/reverter acerto; definir saldo inicial só antes da primeira movimentação; inativar apenas conta com saldo zero; saldo derivado coerente com RN240.
 
@@ -3391,9 +3395,7 @@ Futuramente, um relatório poderá apresentar receitas, despesas, transferência
 
 A funcionalidade de acerto de saldos não pertence à Fase 6 nem à Fase 7.
 
-Contrato oficial e implementação: **Fase 14** (`docs/24` §19.5). Status documental: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`.
-
-Não criar endpoint, DTO, entidade, service, controller, migration nem testes de implementação sem autorização explícita da Fase 14.
+Contrato oficial e implementação: **Fase 14** (`docs/24` §19.5). Status documental: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
 
 
 # 42. Regra final

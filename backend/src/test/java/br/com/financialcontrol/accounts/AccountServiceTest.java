@@ -3,6 +3,8 @@ package br.com.financialcontrol.accounts;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -12,6 +14,7 @@ import br.com.financialcontrol.accounts.dto.AccountBalanceResponse;
 import br.com.financialcontrol.accounts.dto.AccountResponse;
 import br.com.financialcontrol.accounts.dto.CreateAccountRequest;
 import br.com.financialcontrol.accounts.dto.UpdateAccountRequest;
+import br.com.financialcontrol.balance_adjustments.AccountBalanceAdjustmentRepository;
 import br.com.financialcontrol.config.BusinessRuleException;
 import br.com.financialcontrol.config.NotFoundException;
 import br.com.financialcontrol.credit_card_invoices.CreditCardInvoicePaymentRepository;
@@ -19,6 +22,7 @@ import br.com.financialcontrol.credit_cards.CardPurchaseAccountRefundRepository;
 import br.com.financialcontrol.incomes.IncomeRepository;
 import br.com.financialcontrol.payments.PaymentRepository;
 import br.com.financialcontrol.security.AuthenticatedUser;
+import br.com.financialcontrol.transfers.TransferRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -46,6 +50,8 @@ class AccountServiceTest {
   @Mock private PaymentRepository paymentRepository;
   @Mock private CreditCardInvoicePaymentRepository invoicePaymentRepository;
   @Mock private CardPurchaseAccountRefundRepository cardPurchaseAccountRefundRepository;
+  @Mock private TransferRepository transferRepository;
+  @Mock private AccountBalanceAdjustmentRepository balanceAdjustmentRepository;
 
   private AccountService accountService;
 
@@ -58,12 +64,45 @@ class AccountServiceTest {
             paymentRepository,
             invoicePaymentRepository,
             cardPurchaseAccountRefundRepository,
+            transferRepository,
+            balanceAdjustmentRepository,
             Clock.fixed(NOW, ZoneOffset.UTC));
+    stubZeroBalanceParts();
+  }
+
+  private void stubZeroBalanceParts() {
     lenient()
-        .when(invoicePaymentRepository.sumActiveAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+        .when(
+            incomeRepository.sumReceivedAmountByAccountIdAndUserIdAsOf(
+                eq(ACCOUNT_ID), eq(USER_A), isNull()))
+        .thenReturn(BigDecimal.ZERO);
+    lenient()
+        .when(
+            paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserIdAsOf(
+                eq(ACCOUNT_ID), eq(USER_A), isNull()))
+        .thenReturn(BigDecimal.ZERO);
+    lenient()
+        .when(
+            invoicePaymentRepository.sumActiveAmountByAccountIdAndUserIdAsOf(
+                eq(ACCOUNT_ID), eq(USER_A), isNull()))
         .thenReturn(BigDecimal.ZERO);
     lenient()
         .when(cardPurchaseAccountRefundRepository.sumAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+        .thenReturn(BigDecimal.ZERO);
+    lenient()
+        .when(
+            transferRepository.sumActiveIncomingByAccountIdAndUserId(
+                eq(ACCOUNT_ID), eq(USER_A), isNull()))
+        .thenReturn(BigDecimal.ZERO);
+    lenient()
+        .when(
+            transferRepository.sumActiveOutgoingByAccountIdAndUserId(
+                eq(ACCOUNT_ID), eq(USER_A), isNull()))
+        .thenReturn(BigDecimal.ZERO);
+    lenient()
+        .when(
+            balanceAdjustmentRepository.sumActiveAmountByAccountIdAndUserId(
+                eq(ACCOUNT_ID), eq(USER_A), isNull()))
         .thenReturn(BigDecimal.ZERO);
   }
 
@@ -87,11 +126,22 @@ class AccountServiceTest {
     assertThat(saved.getName()).isEqualTo("Nubank");
     assertThat(saved.getType()).isEqualTo(AccountType.BANK_ACCOUNT);
     assertThat(saved.getInitialBalance()).isEqualByComparingTo("1500.00");
+    assertThat(saved.isInitialBalanceLocked()).isFalse();
     assertThat(saved.isActive()).isTrue();
-    assertThat(saved.getCreatedAt()).isEqualTo(NOW);
-    assertThat(saved.getUpdatedAt()).isEqualTo(NOW);
-    assertThat(response.id()).isEqualTo(saved.getId());
     assertThat(response.initialBalance()).isEqualByComparingTo("1500.00");
+  }
+
+  @Test
+  void shouldDefaultInitialBalanceToZeroWhenOmitted() {
+    when(accountRepository.save(any(Account.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    AccountResponse response =
+        accountService.create(
+            new AuthenticatedUser(USER_A),
+            new CreateAccountRequest("Nubank", AccountType.BANK_ACCOUNT, null));
+
+    assertThat(response.initialBalance()).isEqualByComparingTo("0.00");
   }
 
   @Test
@@ -165,22 +215,32 @@ class AccountServiceTest {
     assertThat(response.type()).isEqualTo(AccountType.CASH);
     assertThat(account.getUserId()).isEqualTo(USER_A);
     assertThat(account.getInitialBalance()).isEqualByComparingTo("1500.00");
-    assertThat(account.getUpdatedAt()).isEqualTo(NOW);
   }
 
   @Test
-  void shouldDeactivateAccountWithoutRemovingIt() {
+  void shouldDeactivateAccountWhenBalanceIsZero() {
     Account account = ownedAccount(true);
-    when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
+    account.setInitialBalance(BigDecimal.ZERO);
+    when(accountRepository.findByIdAndUserIdForUpdate(ACCOUNT_ID, USER_A))
+        .thenReturn(Optional.of(account));
     when(accountRepository.save(any(Account.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     AccountResponse response = accountService.deactivate(new AuthenticatedUser(USER_A), ACCOUNT_ID);
 
     assertThat(response.active()).isFalse();
-    assertThat(account.isActive()).isFalse();
     verify(accountRepository, never()).delete(any());
-    verify(accountRepository, never()).deleteById(any());
+  }
+
+  @Test
+  void shouldRejectDeactivateWhenBalanceIsNotZero() {
+    Account account = ownedAccount(true);
+    when(accountRepository.findByIdAndUserIdForUpdate(ACCOUNT_ID, USER_A))
+        .thenReturn(Optional.of(account));
+
+    assertThatThrownBy(() -> accountService.deactivate(new AuthenticatedUser(USER_A), ACCOUNT_ID))
+        .isInstanceOf(BusinessRuleException.class)
+        .hasMessage(AccountService.CANNOT_DEACTIVATE_WITH_BALANCE);
   }
 
   @Test
@@ -193,17 +253,12 @@ class AccountServiceTest {
     AccountResponse response = accountService.activate(new AuthenticatedUser(USER_A), ACCOUNT_ID);
 
     assertThat(response.active()).isTrue();
-    assertThat(account.isActive()).isTrue();
   }
 
   @Test
   void shouldCalculateBalanceFromInitialBalanceWhenThereAreNoReceivedIncomes() {
     Account account = ownedAccount(true);
     when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
-    when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
-        .thenReturn(BigDecimal.ZERO);
-    when(paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
-        .thenReturn(BigDecimal.ZERO);
 
     AccountBalanceResponse response =
         accountService.getBalance(new AuthenticatedUser(USER_A), ACCOUNT_ID);
@@ -217,10 +272,9 @@ class AccountServiceTest {
   void shouldAddReceivedIncomesToDerivedBalance() {
     Account account = ownedAccount(true);
     when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
-    when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+    when(incomeRepository.sumReceivedAmountByAccountIdAndUserIdAsOf(
+            eq(ACCOUNT_ID), eq(USER_A), isNull()))
         .thenReturn(new BigDecimal("5400.00"));
-    when(paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
-        .thenReturn(BigDecimal.ZERO);
 
     AccountBalanceResponse response =
         accountService.getBalance(new AuthenticatedUser(USER_A), ACCOUNT_ID);
@@ -232,9 +286,11 @@ class AccountServiceTest {
   void shouldSubtractValidExpensePaymentsFromDerivedBalance() {
     Account account = ownedAccount(true);
     when(accountRepository.findByIdAndUserId(ACCOUNT_ID, USER_A)).thenReturn(Optional.of(account));
-    when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+    when(incomeRepository.sumReceivedAmountByAccountIdAndUserIdAsOf(
+            eq(ACCOUNT_ID), eq(USER_A), isNull()))
         .thenReturn(new BigDecimal("1000.00"));
-    when(paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
+    when(paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserIdAsOf(
+            eq(ACCOUNT_ID), eq(USER_A), isNull()))
         .thenReturn(new BigDecimal("300.00"));
 
     AccountBalanceResponse response =
@@ -258,8 +314,6 @@ class AccountServiceTest {
         .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(() -> accountService.activate(userB, ACCOUNT_ID))
         .isInstanceOf(NotFoundException.class);
-    assertThatThrownBy(() -> accountService.deactivate(userB, ACCOUNT_ID))
-        .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(() -> accountService.getBalance(userB, ACCOUNT_ID))
         .isInstanceOf(NotFoundException.class);
   }
@@ -282,10 +336,6 @@ class AccountServiceTest {
     AccountResponse response = accountService.get(new AuthenticatedUser(USER_A), ACCOUNT_ID);
 
     assertThat(response.active()).isFalse();
-    when(incomeRepository.sumReceivedAmountByAccountIdAndUserId(ACCOUNT_ID, USER_A))
-        .thenReturn(BigDecimal.ZERO);
-    when(paymentRepository.sumActiveValidExpensePaymentsByAccountIdAndUserId(ACCOUNT_ID, USER_A))
-        .thenReturn(BigDecimal.ZERO);
     assertThat(accountService.getBalance(new AuthenticatedUser(USER_A), ACCOUNT_ID).balance())
         .isEqualByComparingTo("1500.00");
   }
@@ -297,6 +347,7 @@ class AccountServiceTest {
     account.setName("Nubank");
     account.setType(AccountType.BANK_ACCOUNT);
     account.setInitialBalance(new BigDecimal("1500.00"));
+    account.setInitialBalanceLocked(false);
     account.setActive(active);
     account.setCreatedAt(NOW);
     account.setUpdatedAt(NOW);

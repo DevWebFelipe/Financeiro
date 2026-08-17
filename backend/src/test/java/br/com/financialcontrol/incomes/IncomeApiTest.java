@@ -374,7 +374,7 @@ class IncomeApiTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(tokenA)))
         .andExpect(status().isOk());
     AccountResponse foreignAccount = createAccount(tokenB);
-    AccountResponse inactiveAccount = createAccount(tokenA, "10.00");
+    AccountResponse inactiveAccount = createAccount(tokenA, "0.00");
     mockMvc
         .perform(
             post("/api/v1/accounts/" + inactiveAccount.id() + "/deactivate")

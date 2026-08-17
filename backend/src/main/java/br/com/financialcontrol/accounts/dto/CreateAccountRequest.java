@@ -12,8 +12,7 @@ public record CreateAccountRequest(
         @Size(min = 1, max = 255, message = "O nome deve ter no máximo 255 caracteres.")
         String name,
     @NotNull(message = "O tipo é obrigatório.") AccountType type,
-    @NotNull(message = "O saldo inicial é obrigatório.")
-        @Digits(
+    @Digits(
             integer = 17,
             fraction = 2,
             message = "O saldo inicial deve ter no máximo 17 dígitos inteiros e 2 decimais.")

@@ -348,7 +348,7 @@ class ExpenseApiTest {
     AccountResponse account = createAccount(tokenA, "1500.00");
     AccountResponse otherAccount = createAccount(tokenA, "900.00", "Caixa");
     AccountResponse foreign = createAccount(tokenB, "500.00");
-    AccountResponse inactive = createAccount(tokenA, "200.00", "Inativa");
+    AccountResponse inactive = createAccount(tokenA, "0.00", "Inativa");
     AccountResponse poor = createAccount(tokenA, "10.00", "Pobre");
     ExpenseResponse expense =
         createExpense(tokenA, category.id(), "Luz", "100.00", "ACCOUNT", account.id());

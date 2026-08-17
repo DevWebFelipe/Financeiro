@@ -50,7 +50,12 @@ public interface IncomeRepository extends JpaRepository<Income, UUID> {
       WHERE i.userId = :userId
         AND i.account.id = :accountId
         AND i.status = br.com.financialcontrol.incomes.IncomeStatus.RECEIVED
+        AND (CAST(:asOfDate AS LocalDate) IS NULL OR i.receivedDate <= :asOfDate)
       """)
-  BigDecimal sumReceivedAmountByAccountIdAndUserId(
-      @Param("accountId") UUID accountId, @Param("userId") UUID userId);
+  BigDecimal sumReceivedAmountByAccountIdAndUserIdAsOf(
+      @Param("accountId") UUID accountId,
+      @Param("userId") UUID userId,
+      @Param("asOfDate") LocalDate asOfDate);
+
+  boolean existsByAccount_IdAndUserIdAndStatus(UUID accountId, UUID userId, IncomeStatus status);
 }

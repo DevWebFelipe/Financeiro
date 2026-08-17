@@ -363,6 +363,11 @@ Pacotes da Fase 4:
 
 - `accounts` — contas financeiras (`AccountController` → `AccountService` → `AccountRepository`).
 
+Pacotes da Fase 14:
+
+- `transfers` — transferências entre contas (`TransferController` → `TransferService` → `TransferRepository`);
+- `balance_adjustments` — Acerto de Saldos (`BalanceAdjustmentController` → `BalanceAdjustmentService` → `AccountBalanceAdjustmentRepository`).
+
 Pacotes da Fase 5:
 
 - `categories` — categorias (`CategoryController` → `CategoryService` → `CategoryRepository`).
@@ -406,7 +411,7 @@ O estorno de receita desfaz exatamente a movimentação (`− amount`), devolve 
 
 O cancelamento (`EXPECTED` → `CANCELLED` em receita; `OPEN` → `CANCELLED` em despesa) não altera saldo. Cancelamento e estorno não são a mesma operação.
 
-**Acerto de Saldos** (`BALANCE_ADJUSTMENT` / tabela `account_balance_adjustments`) é conceito oficial da Fase 14 (`docs/24` §19.5). Status: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`. Não implementar sem autorização. A arquitetura não usa ledger genérico.
+**Acerto de Saldos** (`BALANCE_ADJUSTMENT` / tabela `account_balance_adjustments`) está implementado na Fase 14 (`docs/24` §19.5). Status: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`. A arquitetura não usa ledger genérico.
 
 
 # 29.2 Saldo em datas e períodos

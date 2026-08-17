@@ -182,7 +182,8 @@ class IncomeServiceTest {
     Income income = expectedIncome();
     when(incomeRepository.findByIdAndUserIdForUpdate(INCOME_ID, USER_A))
         .thenReturn(Optional.of(income));
-    when(accountService.requireActiveOwnedAccount(USER_A, ACCOUNT_ID)).thenReturn(activeAccount());
+    when(accountService.requireActiveOwnedAccountForUpdate(USER_A, ACCOUNT_ID))
+        .thenReturn(activeAccount());
     when(incomeRepository.save(any(Income.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -203,6 +204,8 @@ class IncomeServiceTest {
     Income income = receivedIncome();
     when(incomeRepository.findByIdAndUserIdForUpdate(INCOME_ID, USER_A))
         .thenReturn(Optional.of(income));
+    when(accountService.requireOwnedAccountForUpdate(USER_A, ACCOUNT_ID))
+        .thenReturn(activeAccount());
     when(incomeRepository.save(any(Income.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -215,7 +218,7 @@ class IncomeServiceTest {
     assertThat(income.getStatus()).isEqualTo(IncomeStatus.EXPECTED);
     assertThat(income.getAccount()).isNull();
     assertThat(income.getReceivedDate()).isNull();
-    verify(accountService, never()).requireActiveOwnedAccount(any(), any());
+    verify(accountService).markInitialBalanceLocked(any(Account.class));
   }
 
   @Test
@@ -223,7 +226,8 @@ class IncomeServiceTest {
     Income income = expectedIncome();
     when(incomeRepository.findByIdAndUserIdForUpdate(INCOME_ID, USER_A))
         .thenReturn(Optional.of(income));
-    when(accountService.requireActiveOwnedAccount(USER_A, ACCOUNT_ID)).thenReturn(activeAccount());
+    when(accountService.requireActiveOwnedAccountForUpdate(USER_A, ACCOUNT_ID))
+        .thenReturn(activeAccount());
     when(incomeRepository.save(any(Income.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -248,6 +252,8 @@ class IncomeServiceTest {
     Income income = receivedIncome();
     when(incomeRepository.findByIdAndUserIdForUpdate(INCOME_ID, USER_A))
         .thenReturn(Optional.of(income));
+    when(accountService.requireOwnedAccountForUpdate(USER_A, ACCOUNT_ID))
+        .thenReturn(activeAccount());
     when(incomeRepository.save(any(Income.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 

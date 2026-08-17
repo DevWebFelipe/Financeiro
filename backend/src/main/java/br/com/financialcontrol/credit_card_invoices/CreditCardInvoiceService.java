@@ -264,6 +264,7 @@ public class CreditCardInvoiceService {
     payment.setStatus(InvoicePaymentStatus.ACTIVE);
     payment.setCreatedAt(now);
     invoicePaymentRepository.save(payment);
+    accountService.markInitialBalanceLocked(account);
     persistPaymentAllocations(payment, allocateOnInvoice(invoice, amount), now);
     refreshInstallmentsOfInvoice(invoice, now);
     markPaidIfClosedAndZero(invoice, now);

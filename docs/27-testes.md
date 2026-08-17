@@ -493,9 +493,9 @@ pagamento de fatura limitado ao saldo da conta.
 
 # 34. Transferência (Fase 14)
 
-Contrato: `docs/24` §19.5. Status: implementação pendente.
+Contrato: `docs/24` §19.5. Status: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
 
-Testar quando implementar:
+Cobertura de API implementada em `Phase14ApiTest`:
 
 conta A (`BANK_ACCOUNT`) -> conta B (`BANK_ACCOUNT`).
 

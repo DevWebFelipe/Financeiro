@@ -412,7 +412,7 @@ Operação própria, atômica: saída na origem + entrada no destino. Não é re
 
 Somente contas `BANK_ACCOUNT` ativas do mesmo usuário; origem ≠ destino; `CASH` e cartões excluídos. Valor positivo; sem saldo insuficiente (criação e reversão). Status: `ACTIVE` / `REVERSED`. Retroativa permitida; futura não. Não editável — correção = reverter + criar nova. Listagem MVP sem filtro de `status` (pode retornar ACTIVE e REVERSED).
 
-Contrato: `docs/24` §19.5. Status da Fase 14: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`.
+Contrato: `docs/24` §19.5. Status da Fase 14: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
 
 ### 11.7 Saldo negativo
 
@@ -440,11 +440,11 @@ Fonte de verdade: movimentações. Saldo derivado delas, a partir do saldo inici
 
 Conceitualmente: saldo inicial + receitas recebidas − payments ACTIVE − pagamentos de fatura ACTIVE + devoluções ACCOUNT + transferências ACTIVE (entrada − saída) + acertos de saldo ACTIVE (`BALANCE_ADJUSTMENT` / `account_balance_adjustments`).
 
-A partir da Fase 8 (RN240): o subtraendo de despesas `ACCOUNT`/`NONE` usa somente payments `ACTIVE` de despesas não `CANCELLED`/`REFUNDED`. A partir da Fase 9, o saldo também subtrai pagamentos `ACTIVE` de fatura (`credit_card_invoice_payments`) na conta utilizada e **soma** devoluções `ACCOUNT` de compra no cartão (RN117). A Fase 14 inclui transferências e acertos `ACTIVE`. Crédito de cartão **não** movimenta conta. `GET /accounts/{id}/balance` é leitura derivada do saldo atual; as-of-date é capacidade interna (Fase 14); o contrato não exige lock pessimista da conta só para essa leitura.
+A partir da Fase 8 (RN240): o subtraendo de despesas `ACCOUNT`/`NONE` usa somente payments `ACTIVE` de despesas não `CANCELLED`/`REFUNDED`. A partir da Fase 9, o saldo também subtrai pagamentos `ACTIVE` de fatura (`credit_card_invoice_payments`) na conta utilizada e **soma** devoluções `ACCOUNT` de compra no cartão (RN117). A Fase 14 inclui transferências e acertos `ACTIVE`. Crédito de cartão **não** movimenta conta. `GET /accounts/{id}/balance` é leitura derivada do saldo atual; as-of-date é capacidade interna (Fase 14); o contrato não exige lock pessimista da conta só para essa leitura. **Exceção as-of (RN263):** `card_purchase_account_refunds` não tem data financeira — o as-of usa `created_at` (fim do dia em `America/Sao_Paulo`).
 
 Cache/`current_balance` só se mantido transacionalmente consistente com as movimentações — nunca duas fontes independentes.
 
-**Acerto de Saldos** (nome conceitual; técnico `BALANCE_ADJUSTMENT`; tabela `account_balance_adjustments`) é fato próprio de conciliação (não é receita, despesa, transferência nem adjustment de parcela/fatura). Contrato: `docs/24` §19.5. Status: `CONTRATO FECHADO / IMPLEMENTAÇÃO PENDENTE`. Não criar entidade genérica `Transaction`. Extrato unificado `/statement` fora da Fase 14.
+**Acerto de Saldos** (nome conceitual; técnico `BALANCE_ADJUSTMENT`; tabela `account_balance_adjustments`) é fato próprio de conciliação (não é receita, despesa, transferência nem adjustment de parcela/fatura). Contrato: `docs/24` §19.5. Status: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`. Não criar entidade genérica `Transaction`. Extrato unificado `/statement` fora da Fase 14.
 
 ---
 
