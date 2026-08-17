@@ -430,7 +430,7 @@ Não usar: `CHECKING`, `SAVINGS`, `PERSONAL_WALLET`, `OTHER`.
 
 `CASH` = dinheiro em espécie (ex.: Carteira Felipe). Sem entidade separada de carteira.
 
-Conta com saldo derivado ≠ `0,00` **não** pode ser inativada (RN007A / Fase 14).
+Conta com saldo financeiro total ≠ `0,00` **ou** valor reservado em metas > `0,00` **não** pode ser inativada (RN007A / RN274 — Fase 15 emenda Fase 14).
 
 Saldo inicial (RN010 / RN010A / Fase 14): começa em `0,00`; `initialBalance` opcional na criação; definição/alteração só via `PUT /accounts/{id}/initial-balance` enquanto a conta nunca tiver tido movimentação efetiva; após a primeira movimentação (mesmo cancelada/revertida), correção = Acerto de Saldos. **Limitação histórica inevitável:** incomes totalmente revertidos **antes** da V28 podem ser indetectáveis no backfill, porque a Fase 6 remove o vínculo com a conta. Isso não é bug da Fase 14.
 
@@ -438,9 +438,11 @@ Saldo inicial (RN010 / RN010A / Fase 14): começa em `0,00`; `initialBalance` op
 
 Fonte de verdade: movimentações. Saldo derivado delas, a partir do saldo inicial.
 
-Conceitualmente: saldo inicial + receitas recebidas − payments ACTIVE − pagamentos de fatura ACTIVE + devoluções ACCOUNT + transferências ACTIVE (entrada − saída) + acertos de saldo ACTIVE (`BALANCE_ADJUSTMENT` / `account_balance_adjustments`).
+**Saldo financeiro total** (`totalBalance`): fórmula RN240 — saldo inicial + receitas recebidas − payments ACTIVE − pagamentos de fatura ACTIVE + devoluções ACCOUNT + transferências ACTIVE (entrada − saída) + acertos de saldo ACTIVE. Contribuições/resgates de meta **não** alteram o total.
 
-A partir da Fase 8 (RN240): o subtraendo de despesas `ACCOUNT`/`NONE` usa somente payments `ACTIVE` de despesas não `CANCELLED`/`REFUNDED`. A partir da Fase 9, o saldo também subtrai pagamentos `ACTIVE` de fatura (`credit_card_invoice_payments`) na conta utilizada e **soma** devoluções `ACCOUNT` de compra no cartão (RN117). A Fase 14 inclui transferências e acertos `ACTIVE`. Crédito de cartão **não** movimenta conta. `GET /accounts/{id}/balance` é leitura derivada do saldo atual; as-of-date é capacidade interna (Fase 14); o contrato não exige lock pessimista da conta só para essa leitura. **Exceção as-of (RN263):** `card_purchase_account_refunds` não tem data financeira — o as-of usa `created_at` (fim do dia em `America/Sao_Paulo`).
+**Fase 15 (contrato aprovado; implementação pendente):** cada conta expõe também **valor reservado em metas** (`reservedAmount`) e **saldo disponível** (`availableBalance = totalBalance − reservedAmount`). Contribuição classifica dinheiro como reservado (reduz disponível); resgate devolve à conta vinculada. Operações financeiras normais validam **saldo disponível**, não o total. Contrato: `docs/24` §19.6.
+
+A partir da Fase 8 (RN240): o subtraendo de despesas `ACCOUNT`/`NONE` usa somente payments `ACTIVE` de despesas não `CANCELLED`/`REFUNDED`. A partir da Fase 9, o saldo também subtrai pagamentos `ACTIVE` de fatura (`credit_card_invoice_payments`) na conta utilizada e **soma** devoluções `ACCOUNT` de compra no cartão (RN117). A Fase 14 inclui transferências e acertos `ACTIVE`. Crédito de cartão **não** movimenta conta. `GET /accounts/{id}/balance` é leitura derivada; as-of-date é capacidade interna (Fase 14). **Exceção as-of (RN263):** `card_purchase_account_refunds` usa `created_at`.
 
 Cache/`current_balance` só se mantido transacionalmente consistente com as movimentações — nunca duas fontes independentes.
 
@@ -550,7 +552,7 @@ Campo opcional na despesa, para cópia no pagamento. O sistema não gera boletos
 
 ## 17. Metas, projeções, relatórios e gráficos
 
-- Metas na V1: nome, valor alvo, acumulado (derivado das contribuições), data alvo, progresso (derivado), situação.
+- Metas na V1 (Fase 15 — contrato `docs/24` §19.6): reserva vinculada a uma conta; nome, valor alvo, acumulado derivado (`contributions − redemptions`), data alvo opcional, progresso derivado (`HALF_UP`, escala 2), status (`ACTIVE`/`COMPLETED`/`CANCELLED`); contribuição, resgate (inclusive em `COMPLETED`), conclusão manual e cancelamento (com reservado zero, somente `ACTIVE`).
 - Projeções: receitas/despesas futuras, parcelas, faturas, compromissos; excluir `CANCELLED`/`REFUNDED` e receitas canceladas.
 - PDF: **OpenPDF** (ex.: relatório por responsável em cartão de terceiro).
 - Gráficos: **Apache ECharts**.
@@ -705,6 +707,8 @@ Até decisão explícita, **não** implementar Flyway, entidade, enum, CHECK, te
 **SUPERADO (Fase 13 D1–D11):** o antigo bloqueio §269.5. Decisões fechadas. Emenda de renegociação (RN254) **implementada e aprovada**. Status: `CONCLUÍDA E APROVADA`. Detalhe: `docs/24` §19.4 e `docs/23` §269.5.
 
 **SUPERADO (Fase 14):** transferências, Acerto de Saldos (`BALANCE_ADJUSTMENT` / `account_balance_adjustments`), saldo inicial (RN010 / RN010A) e inativação com saldo zero (RN007A). Status: `CONCLUÍDA E APROVADA`. Detalhe: `docs/24` §19.5.
+
+**Fase 15 — Metas:** contrato aprovado em `docs/24` §19.6 — `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`. Não implementar sem autorização explícita.
 
 **SUPERADO (Fase 9):** o antigo item 269.3 (rateio). Rateio proporcional ao remaining, ordenação remaining ASC, empate `due_date` ASC depois `id` ASC, residual na última, persistido como alocação. Status da fatura **não** muda por pagamento parcial. Detalhe: `docs/23` §269.3 e `docs/24` RN247.
 

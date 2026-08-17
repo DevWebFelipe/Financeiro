@@ -889,41 +889,51 @@ Usuário consegue movimentar dinheiro entre `BANK_ACCOUNT` próprias, reverter, 
 
 # 82. Fase 15 — Metas
 
+**Status:** `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`.
+
 Objetivo:
 
-Implementar metas financeiras.
+Implementar metas financeiras como reservas (caixinhas) vinculadas a uma conta.
+
+Contrato oficial: `docs/24` §19.6 / `docs/25` §54E.
 
 
-# 83. Fase 15
+# 83. Fase 15 — Escopo
 
 Implementar:
 
-- criação;
-- edição;
-- contribuição;
-- acompanhamento;
-- conclusão.
+- criação de meta vinculada a conta (`BANK_ACCOUNT` / `CASH`);
+- edição cadastral (`ACTIVE`);
+- contribuição (`goal_contributions`);
+- resgate (`goal_redemptions`);
+- conclusão explícita (`COMPLETED`); resgate permitido também em `COMPLETED`;
+- cancelamento (`CANCELLED`, somente com reservado zero);
+- acompanhamento (`currentAmount`, `progressPercent` derivados);
+- extensão de saldo da conta (`totalBalance`, `reservedAmount`, `availableBalance`).
+
+Fora do escopo: frontend, dashboard, projeções, reverse de contribuição/resgate, transferência entre metas, pagamento de despesa pela meta, ledger genérico.
 
 
-# 84. Fase 15
+# 84. Fase 15 — Regras fechadas
 
-Permitir:
+- meta ≠ despesa; meta ≠ conta independente;
+- `totalBalance` (RN240) inalterado por contribuição/resgate;
+- `availableBalance = totalBalance − reservedAmount`;
+- `targetAmount` não é teto; progresso pode exceder 100%;
+- conclusão manual; não automática ao atingir 100%;
+- resgate permitido em `ACTIVE` e `COMPLETED`; resgate **não** altera status;
+- cancelamento exige `currentAmount = 0` (somente `ACTIVE`); **não** permitir `COMPLETED` → `CANCELLED`;
+- contribuição/resgate imutáveis nesta fase (sem reverse);
+- RN010A inclui contribuição/resgate;
+- inativação de conta bloqueada se `reservedAmount > 0` (RN274);
+- schema: `account_id` em `financial_goals`; tabela `goal_redemptions`; remover `account_id` de `goal_contributions` (migration na implementação).
 
-valor alvo;
-
-data alvo;
-
-valor acumulado.
+Detalhe: `docs/24` §19.6 (RN264–RN280).
 
 
 # 85. Testes
 
-Testar:
-
-- contribuição;
-- saldo;
-- conclusão;
-- valores inválidos.
+Ver `docs/27-testes.md` §40D. Incluir: contribuição, resgate, saldo disponível/reservado/total, conclusão, cancelamento, valores inválidos, ownership, concorrência, RN010A.
 
 
 # 86. Fase 16 — Contas a pagar
@@ -1579,7 +1589,9 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 Fases 0 a 9: CONCLUÍDAS. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**.
 
-Próxima etapa: **Fase 15 — Metas** (já definida neste roadmap; não implementar sem autorização explícita).
+Próxima etapa: **Fase 15 — Metas** — contrato aprovado (`docs/24` §19.6); **implementação pendente de autorização explícita**.
+
+Status da Fase 15: `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE` (`docs/24` §19.6).
 
 Status da Fase 14: `CONCLUÍDA E APROVADA` (`docs/24` §19.5).
 

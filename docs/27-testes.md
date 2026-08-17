@@ -605,12 +605,85 @@ Testar:
 - correção posterior via acerto.
 
 
-# 40C. Inativação com saldo (Fase 14)
+# 40C. Inativação com saldo (Fase 14; emendada Fase 15)
 
 Testar:
 
-- saldo ≠ 0 → rejeitar deactivate;
-- saldo == 0 → permitir.
+- `totalBalance != 0` → rejeitar deactivate;
+- `reservedAmount > 0` (mesmo com `totalBalance == 0`) → rejeitar deactivate;
+- `totalBalance == 0` **e** `reservedAmount == 0` → permitir.
+
+
+# 40D. Metas financeiras (Fase 15)
+
+Contrato: `docs/24` §19.6 / `docs/25` §54E. **Implementação pendente** — catálogo de testes previstos:
+
+**Cadastro e edição**
+
+- criar meta vinculada a `BANK_ACCOUNT` e a `CASH`;
+- rejeitar conta inativa ou de outro usuário;
+- editar `name`, `description`, `targetAmount`, `targetDate` em `ACTIVE`;
+- rejeitar edição em `COMPLETED` / `CANCELLED`;
+- rejeitar `targetAmount <= 0`;
+- permitir nomes duplicados no mesmo usuário.
+
+**Contribuição**
+
+- contribuição válida reduz `availableBalance`, não altera `totalBalance`;
+- contribuição acima do objetivo (`progressPercent > 100%`);
+- rejeitar contribuição em `COMPLETED` / `CANCELLED`;
+- rejeitar contribuição com `availableBalance` insuficiente;
+- rejeitar data futura;
+- rejeitar `amount <= 0`.
+
+**Resgate**
+
+- resgate em `ACTIVE` → permitido;
+- resgate parcial em `ACTIVE` → permitido;
+- resgate total em `ACTIVE` → permitido;
+- resgate em `COMPLETED` → permitido;
+- resgate parcial em `COMPLETED` → permitido;
+- resgate total em `COMPLETED` → permitido;
+- resgate em `CANCELLED` → rejeitado;
+- resgate **não** altera `status` da meta;
+- após resgate total de `COMPLETED`, status permanece `COMPLETED`;
+- resgate aumenta `availableBalance`, não altera `totalBalance`;
+- rejeitar resgate > `currentAmount`;
+- resgate retorna sempre à conta vinculada (sem escolha de conta).
+
+**Derivados**
+
+- `currentAmount = SUM(contributions) − SUM(redemptions)`;
+- `progressPercent` com `HALF_UP`, escala 2, sem teto;
+- meta `ACTIVE` com `currentAmount = 0` após resgate total;
+- `COMPLETED` + `currentAmount > 0` é válido;
+- `COMPLETED` + `currentAmount = 0` é válido;
+- `COMPLETED` + `progressPercent = 0%` após resgate total — status permanece `COMPLETED`.
+
+**Conclusão e cancelamento**
+
+- concluir abaixo de 100%, em 100% e acima de 100%;
+- concluir **não** altera automaticamente ao atingir 100% por contribuição;
+- cancelar com `currentAmount = 0` (somente `ACTIVE`);
+- rejeitar cancelar com reservado > 0;
+- rejeitar `COMPLETED` → `CANCELLED`;
+- `COMPLETED` bloqueia contribuição e edição; **permite** resgate;
+- `CANCELLED` bloqueia contribuição, resgate e edição;
+- `COMPLETED` não pode voltar para `ACTIVE`.
+
+**Saldo e conta**
+
+- `GET /accounts/{id}/balance` expõe `totalBalance`, `reservedAmount`, `availableBalance`;
+- operações existentes (pay, transfer, invoice pay) respeitam `availableBalance`;
+- contribuição conta como primeira movimentação (RN010A);
+- rejeitar inativação com reservado > 0.
+
+**Segurança e concorrência**
+
+- isolamento entre usuários (404);
+- dois aportes concorrentes não ultrapassam `availableBalance`.
+
+Classe sugerida na implementação: `Phase15FinancialGoalsApiTest` (ou equivalente alinhado ao padrão do projeto).
 
 
 # 41. Atomicidade

@@ -1237,11 +1237,16 @@ Permitir enviar a fatura para o proprietário do cartão.
 
 # 63. Fluxo — Meta
 
-Usuário cria:
+Usuário cria meta vinculada à conta **Banco Principal**:
 
 Meta:
 
-Viagem
+Viagem Chile
+
+
+Conta vinculada:
+
+Banco Principal
 
 
 Objetivo:
@@ -1261,9 +1266,18 @@ Meta:
 ACTIVE
 
 
-Valor acumulado:
+Valor acumulado (`currentAmount`):
 
 R$ 0
+
+
+Conta:
+
+Saldo financeiro total: R$ 10.000
+
+Reservado: R$ 0
+
+Disponível: R$ 10.000
 
 
 # 65. Fluxo — Contribuição para meta
@@ -1273,38 +1287,79 @@ Usuário separa:
 R$ 500
 
 
-Conta:
-
-Nubank
-
-
 Meta:
 
-Viagem
+Viagem Chile
+
+
+(conta = Banco Principal — vinculada; usuário não escolhe outra)
 
 
 # 66. Resultado
 
 Meta:
 
-R$ 500
+R$ 500 (reservado)
 
 
 Conta:
 
-- R$ 500
+Saldo financeiro total: R$ 10.000 (inalterado)
+
+Reservado: R$ 500
+
+Disponível: R$ 9.500
 
 
-# 67. Fluxo — Meta concluída
+# 67. Fluxo — Resgate parcial
+
+Meta reservada:
+
+R$ 6.000
+
+
+Resgate:
+
+R$ 2.000
+
+
+Resultado:
+
+Meta reservada:
+
+R$ 4.000
+
+
+Conta:
+
+Disponível aumenta R$ 2.000
+
+
+# 68. Fluxo — Meta concluída
 
 Meta:
 
-R$ 5.000
+Objetivo R$ 5.000
 
 
 Acumulado:
 
-R$ 5.000
+R$ 3.500 (70%)
+
+
+Usuário decide concluir (promoção — objetivo realizado):
+
+
+Status:
+
+COMPLETED (ação explícita; **não** automática ao atingir 100%)
+
+
+# 68A. Fluxo — Resgate após conclusão
+
+Meta:
+
+Viagem Chile
 
 
 Status:
@@ -1312,7 +1367,37 @@ Status:
 COMPLETED
 
 
-# 68. Fluxo — Dashboard
+Reservado:
+
+R$ 5.000
+
+
+Usuário resgata totalmente para a conta vinculada:
+
+
+Resultado:
+
+Status:
+
+COMPLETED (inalterado)
+
+
+Reservado:
+
+R$ 0
+
+
+progressPercent:
+
+0% (recalculado; **não** reabre a meta)
+
+
+Conta:
+
+Disponível aumenta R$ 5.000
+
+
+# 69. Fluxo — Dashboard
 
 Ao abrir o sistema:
 

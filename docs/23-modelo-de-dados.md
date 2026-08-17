@@ -1737,6 +1737,8 @@ id
 
 user_id
 
+account_id
+
 name
 
 description
@@ -1752,7 +1754,9 @@ created_at
 updated_at
 
 
-`current_amount` (acumulado) é derivado das contribuições. Não é coluna persistida independente. Ver seção 140.
+`account_id`: conta vinculada (obrigatória; imutável após criação). Tipos aceitos: `BANK_ACCOUNT`, `CASH` (RN273). FK composta `(account_id, user_id) → accounts (id, user_id)`.
+
+`current_amount` (acumulado) é derivado das contribuições menos resgates. Não é coluna persistida independente. Ver seção 140.
 
 
 # 132. Status
@@ -1764,6 +1768,15 @@ COMPLETED
 CANCELLED
 
 
+Semântica (Fase 15 / §19.6):
+
+- `ACTIVE` — objetivo em andamento; contribuição, resgate, edição e cancelamento (se `currentAmount = 0`) permitidos;
+- `COMPLETED` — objetivo considerado realizado; **permite resgate**; **não** permite contribuição, edição nem cancelamento;
+- `CANCELLED` — objetivo abandonado; terminal; sem contribuição, resgate nem edição.
+
+`status` (objetivo) e `currentAmount` (dinheiro reservado) são **independentes**. Resgate **não** altera `status`. **Não** existe `COMPLETED` → `ACTIVE` nem `COMPLETED` → `CANCELLED`.
+
+
 # 133. Contribuição para meta
 
 Tabela:
@@ -1771,15 +1784,13 @@ Tabela:
 goal_contributions
 
 
-# 134. Campos:
+# 134. Campos (contribuição):
 
 id
 
 user_id
 
 goal_id
-
-account_id
 
 amount
 
@@ -1790,14 +1801,46 @@ notes
 created_at
 
 
+A conta efetiva é a **conta vinculada da meta** (`financial_goals.account_id`). A migration da Fase 15 **remove** `account_id` de `goal_contributions` (coluna redundante introduzida em V14).
+
+
+# 134A. Resgate de meta
+
+Tabela:
+
+goal_redemptions
+
+
+Campos:
+
+id
+
+user_id
+
+goal_id
+
+amount
+
+redemption_date
+
+notes
+
+created_at
+
+
+FK composta: `(goal_id, user_id) → financial_goals (id, user_id)`.
+
+Sem `status` nesta fase (sem reverse — RN280).
+
+
 # 135. Regra
 
-Contribuição para meta representa dinheiro separado da conta.
+Contribuição para meta representa dinheiro **classificado como reservado** dentro da conta vinculada. Não é despesa de consumo (RN131).
 
 
 # 136. Regra
 
-Contribuição reduz o dinheiro disponível da conta.
+Contribuição aumenta o valor reservado da meta e reduz o **saldo disponível** da conta vinculada. **Não** altera o saldo financeiro total (RN265 / RN266).
 
 
 # 137. Meta
@@ -1807,12 +1850,27 @@ A contribuição não deve ser contabilizada como despesa de consumo.
 
 # 138. Exemplo
 
-Conta:
+Conta (saldo financeiro total):
 
 R$ 5.000
 
 
+Reservado em metas:
+
+R$ 0
+
+
 Contribuição para meta:
+
+R$ 500
+
+
+Saldo financeiro total:
+
+R$ 5.000 (inalterado)
+
+
+Reservado:
 
 R$ 500
 
@@ -1836,13 +1894,23 @@ current_amount (derivado)
 
 # 140. Regra
 
-`current_amount` = soma de `goal_contributions.amount` da meta.
+```text
+currentAmount = SUM(goal_contributions.amount) − SUM(goal_redemptions.amount)
+```
 
-Não persistir acumulado como fonte independente (RN182, RN183, RN187).
+Não persistir acumulado como fonte independente (RN182, RN183, RN268).
 
-A API pode expor `currentAmount` e o percentual de progresso, ambos calculados na leitura.
+A API expõe `currentAmount` e `progressPercent` (`HALF_UP`, escala 2; sem teto — RN269), ambos calculados na leitura.
 
 `status` (`ACTIVE`, `COMPLETED`, `CANCELLED`) continua persistido.
+
+Saldo da conta (Fase 15):
+
+```text
+totalBalance     = RN240
+reservedAmount   = SUM(currentAmount) das metas ACTIVE/COMPLETED vinculadas
+availableBalance = totalBalance − reservedAmount
+```
 
 
 # 141. Auditoria
@@ -2562,6 +2630,8 @@ devoluções ACCOUNT de compra no cartão;
 transferências `ACTIVE`;
 
 acertos de saldo `ACTIVE` (`BALANCE_ADJUSTMENT` / `account_balance_adjustments`).
+
+Contribuições e resgates de meta **não** alteram o saldo financeiro total (RN240). Alteram `reservedAmount` e `availableBalance` (Fase 15 / §19.6).
 
 Receita `EXPECTED` ou `CANCELLED` não participa do saldo efetivo.
 
@@ -3286,9 +3356,9 @@ FKs compostas obrigatórias:
 | transfers | `(source_account_id, user_id)` | accounts |
 | transfers | `(destination_account_id, user_id)` | accounts |
 | account_balance_adjustments (Fase 14) | `(account_id, user_id)` | accounts |
-| financial_goals | — | users |
+| financial_goals | `(account_id, user_id)` | accounts |
 | goal_contributions | `(goal_id, user_id)` | financial_goals |
-| goal_contributions | `(account_id, user_id)` | accounts |
+| goal_redemptions | `(goal_id, user_id)` | financial_goals |
 
 Todas as tabelas acima (exceto `users`) também referenciam `users(id)` via `user_id`.
 

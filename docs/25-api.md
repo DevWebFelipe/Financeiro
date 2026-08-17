@@ -420,7 +420,7 @@ Desativação lógica. Não excluir fisicamente. Não existe `DELETE /api/v1/acc
 
 A conta permanece persistida e consultável. Somente contas ativas poderão ser utilizadas em novas operações financeiras (RN007).
 
-**Fase 14 (RN007A):** se o saldo derivado atual for diferente de `0,00`, rejeitar (**400**, `BUSINESS_RULE_VIOLATION`). Somente saldo `0,00` permite inativação.
+**Fase 14 (RN007A; emendada Fase 15 / RN274):** rejeitar se o **saldo financeiro total** for diferente de `0,00` **ou** se existir **valor reservado em metas** (`reservedAmount > 0`). Somente `totalBalance == 0` **e** `reservedAmount == 0` permitem inativação.
 
 Response **200** com a conta (`active = false`). A operação é idempotente quando já inativa e elegível.
 
@@ -449,11 +449,19 @@ Response:
 ```json
 {
   "accountId": "...",
-  "balance": 1500.00
+  "totalBalance": 10000.00,
+  "reservedAmount": 6000.00,
+  "availableBalance": 4000.00,
+  "balance": 10000.00
 }
 ```
 
-Na Fase 4 o saldo derivado é igual ao `initialBalance`. A partir da Fase 6, receitas `RECEIVED` passam a somar. A partir da Fase 7, pagamentos de despesas cuja despesa **não** está `CANCELLED` nem `REFUNDED` passam a subtrair (RN216). A Fase 8 **emenda** a fórmula (RN240): somente payments **`ACTIVE`** entram no subtraendo. A Fase 9 inclui pagamentos de fatura `ACTIVE` e devoluções ACCOUNT. A **Fase 14** inclui transferências `ACTIVE` e acertos de saldo `ACTIVE` (`BALANCE_ADJUSTMENT`). Não existe coluna `current_balance`. Este endpoint é **leitura derivada** do saldo **atual**; não exige lock pessimista da conta. Saldo as-of-date é capacidade **interna** da Fase 14 (não obrigatório expor `date` neste GET nesta fase).
+- `totalBalance` — saldo financeiro total (RN240);
+- `reservedAmount` — soma dos `currentAmount` das metas `ACTIVE` ou `COMPLETED` vinculadas à conta (Fase 15 / RN265);
+- `availableBalance` — `totalBalance − reservedAmount` (RN276);
+- `balance` — alias legado de `totalBalance` (compatibilidade retroativa).
+
+Na Fase 4 o saldo derivado é igual ao `initialBalance` (neste caso `totalBalance = availableBalance`, `reservedAmount = 0`). A partir da Fase 6, receitas `RECEIVED` passam a somar. A partir da Fase 7, pagamentos de despesas cuja despesa **não** está `CANCELLED` nem `REFUNDED` passam a subtrair (RN216). A Fase 8 **emenda** a fórmula (RN240): somente payments **`ACTIVE`** entram no subtraendo. A Fase 9 inclui pagamentos de fatura `ACTIVE` e devoluções ACCOUNT. A **Fase 14** inclui transferências `ACTIVE` e acertos de saldo `ACTIVE` (`BALANCE_ADJUSTMENT`). A **Fase 15** adiciona `reservedAmount` e `availableBalance`; contribuições/resgates de meta **não** alteram `totalBalance`. Não existe coluna `current_balance`. Este endpoint é **leitura derivada**; não exige lock pessimista da conta. Saldo as-of-date é capacidade **interna** da Fase 14 (não obrigatório expor `date` neste GET nesta fase).
 
 
 # 20. Extrato da conta
@@ -1494,6 +1502,209 @@ POST /api/v1/accounts/{accountId}/balance-adjustments/{id}/reverse
 Body: vazio.
 
 `ACTIVE` → `REVERSED`. Exige saldo suficiente quando o efeito inverso for saída. Já `REVERSED` → **400**. Sem desreversão.
+
+
+# 54E. Metas financeiras (Fase 15 — contrato; implementação pendente)
+
+**Status:** contrato oficial `docs/24` §19.6 — `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`.
+
+Base: `/api/v1/financial-goals`. Auth: Bearer. Ownership: somente recursos do usuário autenticado; mismatch → **404** (sem distinguir).
+
+## Conceito
+
+Meta = reserva (caixinha) vinculada a **uma** conta. Contribuição classifica dinheiro como reservado (reduz `availableBalance`, não altera `totalBalance`). Resgate devolve à **mesma** conta vinculada.
+
+## Criar meta
+
+```text
+POST /api/v1/financial-goals
+```
+
+Request:
+
+```json
+{
+  "accountId": "...",
+  "name": "Viagem Chile",
+  "description": "Férias de julho",
+  "targetAmount": 5000.00,
+  "targetDate": "2026-12-20"
+}
+```
+
+Regras:
+
+- `accountId` obrigatório; conta `BANK_ACCOUNT` ou `CASH` **ativa** do usuário;
+- `targetAmount > 0`;
+- `targetDate` opcional;
+- `name` obrigatório; `description` opcional;
+- status inicial: `ACTIVE`;
+- **não** aceitar `userId`, `status`, `currentAmount`, `progressPercent`.
+
+Response **201**: meta com `id`, campos persistidos, `accountId`, `status`, `currentAmount` (`0.00`), `progressPercent` (`0.00`), timestamps.
+
+## Listar metas
+
+```text
+GET /api/v1/financial-goals
+```
+
+Query: paginação padrão (`page`, `size`); filtro opcional `status` (`ACTIVE`, `COMPLETED`, `CANCELLED`).
+
+Response **200**: página (`items`, `page`, `size`, `totalItems`, `totalPages`); cada item inclui derivados `currentAmount`, `progressPercent`, `accountId`.
+
+## Consultar meta
+
+```text
+GET /api/v1/financial-goals/{id}
+```
+
+Response **200** ou **404**.
+
+## Editar meta
+
+```text
+PUT /api/v1/financial-goals/{id}
+```
+
+Somente meta `ACTIVE`. Request (substituição dos campos editáveis):
+
+```json
+{
+  "name": "Viagem Chile",
+  "description": null,
+  "targetAmount": 6000.00,
+  "targetDate": "2027-01-15"
+}
+```
+
+Regras:
+
+- `targetAmount > 0`;
+- alterar `targetAmount` **não** altera contribuições/resgates/reservado;
+- `accountId` **não** editável;
+- `COMPLETED` / `CANCELLED` → **400** `BUSINESS_RULE_VIOLATION`.
+
+Response **200**: meta atualizada com derivados recalculados.
+
+## Contribuir
+
+```text
+POST /api/v1/financial-goals/{id}/contributions
+```
+
+Request:
+
+```json
+{
+  "amount": 500.00,
+  "contributionDate": "2026-08-17",
+  "notes": "Primeiro aporte"
+}
+```
+
+Regras:
+
+- meta `ACTIVE`;
+- `amount > 0`;
+- `contributionDate` não futura (`America/Sao_Paulo`);
+- `availableBalance` da conta vinculada `>= amount`;
+- conta vinculada ativa;
+- fato imutável; sem `DELETE`; sem reverse nesta fase.
+
+Response **201**: contribuição + meta atualizada (ou incluir meta no response conforme padrão do projeto).
+
+## Listar contribuições
+
+```text
+GET /api/v1/financial-goals/{id}/contributions
+```
+
+Response **200**: array ou página (seguir padrão adotado na implementação; contrato mínimo: listagem completa ou paginada documentada).
+
+## Resgatar
+
+```text
+POST /api/v1/financial-goals/{id}/redemptions
+```
+
+Request:
+
+```json
+{
+  "amount": 200.00,
+  "redemptionDate": "2026-08-17",
+  "notes": null
+}
+```
+
+Regras:
+
+- meta `ACTIVE` **ou** `COMPLETED`;
+- `amount > 0`; `amount <= currentAmount`;
+- `redemptionDate` não futura;
+- retorno **sempre** à conta vinculada; sem escolha de conta;
+- resgate **não** altera `status` da meta;
+- fato imutável; sem reverse nesta fase;
+- rejeitar resgate em `CANCELLED`.
+
+Response **201**: resgate + meta atualizada.
+
+## Listar resgates
+
+```text
+GET /api/v1/financial-goals/{id}/redemptions
+```
+
+## Concluir meta
+
+```text
+POST /api/v1/financial-goals/{id}/complete
+```
+
+Body: vazio.
+
+Regras:
+
+- somente `ACTIVE` → `COMPLETED`;
+- permitido independentemente de `currentAmount` vs `targetAmount`;
+- terminal; sem reabertura nesta fase.
+
+Response **200**: meta com `status = COMPLETED`.
+
+## Cancelar meta
+
+```text
+POST /api/v1/financial-goals/{id}/cancel
+```
+
+Body: vazio.
+
+Regras:
+
+- somente `ACTIVE` → `CANCELLED`;
+- exige `currentAmount = 0`; caso contrário **400** `BUSINESS_RULE_VIOLATION`;
+- terminal.
+
+Response **200**: meta com `status = CANCELLED`.
+
+## Erros comuns
+
+| Situação | HTTP | code |
+|---|---|---|
+| meta/ contribuição de outro usuário | 404 | `NOT_FOUND` |
+| contribuição/resgate/edição em status inválido | 400 | `BUSINESS_RULE_VIOLATION` |
+| contribuição em `COMPLETED` / `CANCELLED` | 400 | `BUSINESS_RULE_VIOLATION` |
+| resgate em `CANCELLED` | 400 | `BUSINESS_RULE_VIOLATION` |
+| edição em `COMPLETED` / `CANCELLED` | 400 | `BUSINESS_RULE_VIOLATION` |
+| cancelamento de meta `COMPLETED` | 400 | `BUSINESS_RULE_VIOLATION` |
+| saldo disponível insuficiente | 400 | `BUSINESS_RULE_VIOLATION` |
+| resgate > currentAmount | 400 | `BUSINESS_RULE_VIOLATION` |
+| cancelar com reservado > 0 | 400 | `BUSINESS_RULE_VIOLATION` |
+| data futura | 400 | `VALIDATION_ERROR` ou `BUSINESS_RULE_VIOLATION` |
+| `targetAmount <= 0` | 400 | `VALIDATION_ERROR` |
+
+**Não** criar `DELETE` de meta, contribuição ou resgate.
 
 
 # 55. Faturas

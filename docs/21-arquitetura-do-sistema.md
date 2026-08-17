@@ -368,6 +368,12 @@ Pacotes da Fase 14:
 - `transfers` — transferências entre contas (`TransferController` → `TransferService` → `TransferRepository`);
 - `balance_adjustments` — Acerto de Saldos (`BalanceAdjustmentController` → `BalanceAdjustmentService` → `AccountBalanceAdjustmentRepository`).
 
+Pacotes da Fase 15 (contrato aprovado; implementação pendente):
+
+- `financial_goals` — metas financeiras (`FinancialGoalController` → `FinancialGoalService` → `FinancialGoalRepository`, `GoalContributionRepository`, `GoalRedemptionRepository`).
+
+Contrato: `docs/24` §19.6.
+
 Pacotes da Fase 5:
 
 - `categories` — categorias (`CategoryController` → `CategoryService` → `CategoryRepository`).
@@ -639,7 +645,7 @@ toda a operação deve ser revertida.
 
 Operações financeiras devem considerar concorrência.
 
-Leitura de saldo derivado (`GET /accounts/{id}/balance`) **não** exige lock pessimista da conta. Locks pessimistas aplicam-se às operações de escrita financeira (despesa, parcela, payment, transferência, acerto de saldos), conforme as RNs de pagamento, a Fase 8 (RN244 / RN240) e a Fase 14 (RN258). Não existe `current_balance` persistido nem ledger genérico.
+Leitura de saldo derivado (`GET /accounts/{id}/balance`) **não** exige lock pessimista da conta. Locks pessimistas aplicam-se às operações de escrita financeira (despesa, parcela, payment, transferência, acerto de saldos, **contribuição e resgate de meta** — Fase 15), conforme as RNs de pagamento, a Fase 8 (RN244 / RN240), a Fase 14 (RN258) e a Fase 15 (RN277). Não existe `current_balance` persistido nem ledger genérico.
 
 
 # 53. Pagamentos

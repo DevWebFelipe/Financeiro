@@ -79,17 +79,20 @@ CASH
 Somente contas ativas podem ser utilizadas em novas operações.
 
 
-## RN007A — Inativação com saldo (Fase 14)
+## RN007A — Inativação com saldo (Fase 14; emendada na Fase 15)
 
-Uma conta com saldo derivado diferente de zero **não** pode ser inativada.
+Uma conta **não** pode ser inativada enquanto possuir saldo financeiro total diferente de zero **ou** valor reservado em metas diferente de zero.
 
 Antes de desativar (`POST /accounts/{id}/deactivate`):
 
-1. calcular o saldo atual da conta;
-2. se `saldo != 0,00` → rejeitar (**400**, `BUSINESS_RULE_VIOLATION`);
-3. se `saldo == 0,00` → permitir.
+1. calcular o **saldo financeiro total** da conta (RN240 / RN265);
+2. calcular o **valor reservado em metas** vinculadas à conta (RN265 / RN274);
+3. se `totalBalance != 0,00` **ou** `reservedAmount != 0,00` → rejeitar (**400**, `BUSINESS_RULE_VIOLATION`);
+4. se ambos forem `0,00` → permitir.
 
 A regra é aplicada no backend. Contas inativas não participam de novas operações financeiras (RN007).
+
+Detalhe da Fase 15: §19.6 / RN274.
 
 
 ## RN008 — Conta com histórico
@@ -138,7 +141,9 @@ Correções posteriores usam **Acerto de Saldos** (RN204 / `BALANCE_ADJUSTMENT`)
 3. Pagamento `ACTIVE` de fatura que produza saída da conta;
 4. Refund de compra no cartão que produza entrada na conta (`settlement = ACCOUNT`);
 5. Transferência `ACTIVE`;
-6. Acerto de Saldos `ACTIVE` (`BALANCE_ADJUSTMENT`).
+6. Acerto de Saldos `ACTIVE` (`BALANCE_ADJUSTMENT`);
+7. Contribuição para meta (`goal_contributions`) vinculada à conta (Fase 15 / RN275);
+8. Resgate de meta (`goal_redemptions`) vinculado à conta (Fase 15 / RN275).
 
 Uma vez que qualquer desses fatos tenha ocorrido, a conta passa a ser considerada "já movimentada" **definitivamente**, mesmo que o fato seja depois cancelado, revertido ou estornado. Cancelamento/reversão **não** reabre a possibilidade de definir ou alterar o saldo inicial. Isso permanece verdadeiro após reverse, cancelamento, transferência revertida, payment revertido, invoice payment revertido e acerto revertido.
 
@@ -164,7 +169,13 @@ O saldo da conta é derivado das movimentações financeiras efetivas, tendo o s
 
 Não utilizar um campo `current_balance` como fonte de verdade.
 
-O saldo deve refletir:
+A partir da **Fase 15**, a conta distingue três conceitos derivados (RN265):
+
+1. **Saldo financeiro total** (`totalBalance`) — fórmula RN240; **não** é alterado por contribuição/resgate de meta;
+2. **Valor reservado em metas** (`reservedAmount`) — soma dos `currentAmount` das metas `ACTIVE` ou `COMPLETED` vinculadas à conta;
+3. **Saldo disponível** (`availableBalance`) — `totalBalance − reservedAmount`; base para operações financeiras normais (RN276).
+
+O **saldo financeiro total** deve refletir:
 
 saldo inicial;
 
@@ -180,10 +191,12 @@ transferências `ACTIVE` (entrada/saída);
 
 acertos de saldo `ACTIVE` (`BALANCE_ADJUSTMENT`).
 
+Contribuições e resgates de meta **não** entram na fórmula do saldo financeiro total. Eles alteram somente a classificação interna entre reservado e disponível (RN266, RN267).
+
 Conceitualmente:
 
 ```text
-Saldo em uma data =
+Saldo financeiro total em uma data =
 saldo inicial
 + receitas efetivamente recebidas até a data
 − payments ACTIVE de despesas não CANCELLED/REFUNDED até a data
@@ -194,6 +207,10 @@ saldo inicial
 + acertos de saldo ACTIVE (adjustment_amount) até a data
 ```
 
+```text
+availableBalance = totalBalance − reservedAmount
+```
+
 A partir da Fase 7, "despesas efetivamente realizadas" significa a soma dos `payments.amount` da conta cuja despesa **não** está em `CANCELLED` nem `REFUNDED` (RN216).
 
 A Fase 8 **emenda** essa fórmula: somente payments **`ACTIVE`** entram na soma; payments **`REVERSED`** não movimentam saldo; adjustments de **parcela/fatura** **não** movimentam saldo da conta (RN240). Refund da despesa continua excluindo os payments daquela despesa.
@@ -202,14 +219,16 @@ A Fase 9 inclui pagamentos de fatura `ACTIVE` e devoluções ACCOUNT (RN117 / RN
 
 A **Fase 14** inclui transferências `ACTIVE` e acertos de saldo `ACTIVE` (`BALANCE_ADJUSTMENT`). Transferências/acertos `REVERSED` não movimentam saldo. Contrato: §19.5.
 
+A **Fase 15** introduz reserva por metas sem alterar RN240. Contrato: §19.6.
+
 **Acerto de Saldos** (nome conceitual oficial) / identificador técnico `BALANCE_ADJUSTMENT` é fato próprio de conciliação (RN204). Não é receita, despesa, transferência, payment nem adjustment de parcela/fatura. Tabela oficial: `account_balance_adjustments`.
 
 
 ## RN012 — Saldo negativo
 
-A V1 não permite que operações financeiras normais deixem a conta com saldo negativo.
+A V1 não permite que operações financeiras normais deixem a conta com **saldo disponível** negativo (RN276).
 
-Inclui: transferências (criação e reversão), acertos de saldo (criação e reversão quando o efeito for de saída), pagamento de despesas e pagamento de fatura (limitado ao saldo da conta).
+Inclui: transferências (criação e reversão), acertos de saldo (criação e reversão quando o efeito for de saída), pagamento de despesas, pagamento de fatura (limitado ao saldo disponível da conta) e **contribuição para meta** (Fase 15 / RN266).
 
 Esta regra **não** se aplica ao estorno de receita recebida. O estorno é operação de correção (RN200), não despesa, não pagamento, não transferência e não consumo normal de saldo.
 
@@ -1024,9 +1043,9 @@ A soma dos payments **ACTIVE** não pode ultrapassar o valor devido da parcela (
 
 ## RN076A — Saldo da conta
 
-Pagamento de despesa não pode exceder o saldo disponível da conta utilizada.
+Pagamento de despesa, pagamento de fatura, transferência, acerto de saldo (quando o efeito for saída) e **contribuição para meta** (Fase 15) não podem exceder o **saldo disponível** da conta utilizada (RN276).
 
-Não permitir saldo negativo.
+Não permitir saldo **disponível** negativo.
 
 
 ## RN077 — Pagamento parcial
@@ -2149,7 +2168,9 @@ Somente payments `ACTIVE` de despesa `ACCOUNT`/`NONE` (despesa não `CANCELLED`/
 
 **Fase 14:** transferências `ACTIVE` e acertos de saldo `ACTIVE` (`BALANCE_ADJUSTMENT` / tabela `account_balance_adjustments`) entram na fórmula; `REVERSED` não entra. Sem `current_balance` persistido.
 
-**Leitura do saldo (`GET /accounts/{id}/balance`):** é cálculo derivado sob demanda (saldo atual). O contrato da Fase 14 exige capacidade **interna** de saldo **as-of-date** para acerto retroativo; **não** obriga expor data nesse GET nesta fase. O contrato **não** exige `SELECT FOR UPDATE` da conta apenas para essa leitura. A proteção contra saldo negativo (RN076A) e a concorrência de escrita (RN244) aplicam-se às **operações** que criam/reverterem facts financeiros (pay, reverse, transfer, balance adjustment, etc.), com locks nas entidades financeiras envolvidas, no padrão das fases anteriores. Não introduzir lock explícito de conta só para GET de saldo sem decisão arquitetural futura.
+**Fase 15:** contribuições e resgates de meta **não** alteram o resultado de RN240. Eles afetam somente `reservedAmount` e `availableBalance` (RN265–RN267). A fórmula acima continua sendo a definição de **saldo financeiro total**.
+
+**Leitura do saldo (`GET /accounts/{id}/balance`):** é cálculo derivado sob demanda. A partir da Fase 15, a resposta expõe `totalBalance`, `reservedAmount` e `availableBalance` (RN265). O campo legado `balance`, quando presente, representa o **saldo financeiro total** (equivalente a `totalBalance`). O contrato da Fase 14 exige capacidade **interna** de saldo **as-of-date** para acerto retroativo; **não** obriga expor data nesse GET nesta fase. O contrato **não** exige `SELECT FOR UPDATE` da conta apenas para essa leitura. A proteção contra saldo negativo (RN076A / RN276) e a concorrência de escrita (RN244 / RN277) aplicam-se às **operações** que criam/reverterem facts financeiros (pay, reverse, transfer, balance adjustment, contribuição, resgate, etc.), com locks nas entidades financeiras envolvidas, no padrão das fases anteriores. Não introduzir lock explícito de conta só para GET de saldo sem decisão arquitetural futura.
 
 
 ## RN241 — Overdue da parcela
@@ -2790,7 +2811,419 @@ Manter domínio modular. **Não** criar `Transaction` / ledger genérico. Pacote
 Usuário consegue: transferir entre `BANK_ACCOUNT` próprias; reverter transferência; registrar/reverter acerto; definir saldo inicial só antes da primeira movimentação; inativar apenas conta com saldo zero; saldo derivado coerente com RN240.
 
 
+# 19.6 Contrato da Fase 15 — Metas
+
+**Status:** `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`.
+
+**Emenda (resgate em COMPLETED):** meta `COMPLETED` **permite** resgate (parcial ou total); resgate **não** altera o status. Ver §19.6.4, §19.6.6 e §19.6.14.
+
+Autoridade: `AGENTS.md` §28 → esta seção → `docs/23` (modelo) → `docs/25` (API) → `docs/27` / `docs/28`.
+
+---
+
+## 19.6.1 Escopo
+
+**Inclui:**
+
+1. Metas financeiras como **caixinhas/reservas** vinculadas a **uma** conta (`BANK_ACCOUNT` ou `CASH`);
+2. CRUD cadastral de meta (`ACTIVE` apenas para edição);
+3. Contribuições (`goal_contributions`) — aumentam reservado, reduzem disponível, **não** alteram saldo financeiro total;
+4. Resgates (`goal_redemptions`) — reduzem reservado, aumentam disponível, **não** alteram saldo financeiro total;
+5. Conclusão explícita (`ACTIVE` → `COMPLETED`) — ação manual; **não** automática ao atingir 100%;
+6. Cancelamento (`ACTIVE` → `CANCELLED`) — somente com `currentAmount = 0`;
+7. Distinção **saldo financeiro total** / **valor reservado** / **saldo disponível** (RN265);
+8. Extensão de `GET /accounts/{id}/balance` para expor os três valores;
+9. Emenda de RN010A, RN007A, RN012, RN076A e validações de saldo disponível nas operações existentes;
+10. Concorrência transacional em contribuição/resgate (RN277).
+
+**Fora do escopo:**
+
+- Angular / telas / dashboard / projeções / relatórios PDF;
+- investimentos, juros, rendimento;
+- metas ou contas compartilhadas;
+- agendamento de contribuição/resgate;
+- transferência entre metas ou resgate para outra conta;
+- pagamento de despesa diretamente pela meta;
+- ledger genérico / entidade `Transaction`;
+- `DELETE` físico de meta, contribuição ou resgate;
+- reverse/estorno de contribuição ou resgate (reservado para fase futura — RN280);
+- itens deferidos oficiais (§269.1, §269.2.7).
+
+---
+
+## 19.6.2 Conceito
+
+Meta = finalidade financeira para a qual parte do dinheiro **já existente** na conta vinculada é **classificada como reservada**.
+
+- Meta **não** é despesa de consumo (RN131);
+- Meta **não** é conta bancária independente;
+- Meta **não** cria dinheiro;
+- Uma conta pode possuir várias metas;
+- Cada meta pertence a **exatamente uma** conta;
+- Não existe transferência direta entre metas.
+
+Relação conceitual da conta:
+
+```text
+totalBalance = availableBalance + reservedAmount
+```
+
+Operações financeiras normais (pagamento, transferência, contribuição) consomem **availableBalance**, nunca o trecho reservado.
+
+---
+
+## 19.6.3 Modelo de dados (contrato; migration na implementação)
+
+### `financial_goals` (ajuste necessário)
+
+Campos persistidos:
+
+- `id`, `user_id`, **`account_id`** (NOVO — conta vinculada; imutável após criação);
+- `name`, `description`, `target_amount`, `target_date`, `status`;
+- `created_at`, `updated_at`.
+
+**Não** persistir `current_amount`.
+
+FK composta: `(account_id, user_id) → accounts (id, user_id)`.
+
+Tipos de conta aceitos: `BANK_ACCOUNT`, `CASH` (RN273).
+
+### `goal_contributions` (ajuste necessário)
+
+Fato histórico de aporte. Campos:
+
+- `id`, `user_id`, `goal_id`, `amount`, `contribution_date`, `notes`, `created_at`.
+
+A conta efetiva é a **conta vinculada da meta** (`financial_goals.account_id`). A coluna `account_id` existente em `V14` **deve ser removida** na migration da Fase 15 (redundante; a meta já define a conta).
+
+### `goal_redemptions` (NOVA tabela)
+
+Fato histórico de resgate. Campos:
+
+- `id`, `user_id`, `goal_id`, `amount`, `redemption_date`, `notes`, `created_at`.
+
+FK composta: `(goal_id, user_id) → financial_goals (id, user_id)`.
+
+**Não** persistir `status` nesta fase (sem reverse — RN280).
+
+### Derivados
+
+```text
+currentAmount = SUM(goal_contributions.amount) − SUM(goal_redemptions.amount)
+```
+
+```text
+progressPercent = (currentAmount / targetAmount) × 100
+  — escala 2; RoundingMode.HALF_UP; sem teto superior (RN269)
+```
+
+```text
+reservedAmount (conta) =
+  SUM(currentAmount das metas vinculadas à conta
+      WHERE status IN (ACTIVE, COMPLETED) AND currentAmount > 0)
+```
+
+Metas `CANCELLED` exigem `currentAmount = 0` e não entram no reservado.
+
+---
+
+## 19.6.4 Status e transições
+
+| Status | Contribuição | Resgate | Edição | Cancelamento | Significado |
+|---|---|---|---|---|---|
+| `ACTIVE` | Sim | Sim | Sim | Sim (se `currentAmount = 0`) | Objetivo em andamento |
+| `COMPLETED` | Não | Sim | Não | Não | Objetivo considerado realizado pelo usuário |
+| `CANCELLED` | Não | Não | Não | — | Objetivo abandonado (terminal) |
+
+**Independência status × reservado:** `status` representa o estado do **objetivo**; `currentAmount` representa o dinheiro **atualmente reservado**. São conceitos independentes.
+
+- `COMPLETED` **não** exige `currentAmount = targetAmount`;
+- `COMPLETED` **pode** ocorrer abaixo, exatamente em ou acima de 100%;
+- `COMPLETED` **pode** possuir `currentAmount > 0` ou `currentAmount = 0`;
+- resgate **não** altera o status; **não** existe `COMPLETED` → `ACTIVE`;
+- **não** existe `COMPLETED` → `CANCELLED`.
+
+- Atingir 100% (ou ultrapassar) **não** conclui automaticamente (RN270);
+- Meta `ACTIVE` com `currentAmount = 0` permanece válida;
+- Após resgate total de meta `COMPLETED`, `progressPercent` pode voltar a `0%` — o status permanece `COMPLETED` (RN269);
+- `targetAmount` é objetivo de referência, **não** teto (RN278).
+
+---
+
+## 19.6.5 Contribuição
+
+- `amount > 0` (RN128);
+- meta `ACTIVE`;
+- conta vinculada **ativa**;
+- `contributionDate` não futura (`America/Sao_Paulo`);
+- `availableBalance >= amount` (RN266, RN276);
+- fato imutável; sem `DELETE`; sem edição; sem reverse nesta fase (RN280);
+- `notes` opcional.
+
+Efeito:
+
+- `reservedAmount` da meta ↑;
+- `availableBalance` da conta ↓;
+- `totalBalance` **inalterado**.
+
+---
+
+## 19.6.6 Resgate
+
+Operação financeira **independente** do status de conclusão (exceto `CANCELLED`).
+
+- `amount > 0`;
+- meta `ACTIVE` **ou** `COMPLETED` (RN267);
+- `amount <= currentAmount`;
+- `redemptionDate` não futura;
+- fato imutável; sem `DELETE`; sem reverse nesta fase (RN280);
+- retorno **sempre** para a conta vinculada da meta; usuário **não** escolhe outra conta;
+- resgate **não** altera `status` da meta;
+- `notes` opcional.
+
+Efeito:
+
+- `currentAmount` da meta ↓;
+- `reservedAmount` da conta ↓;
+- `availableBalance` da conta ↑;
+- `totalBalance` **inalterado**;
+- `progressPercent` recalculado (pode voltar a `0%` após resgate total — status permanece).
+
+---
+
+## 19.6.7 Conclusão e cancelamento
+
+**Conclusão** — `POST .../complete`:
+
+- somente meta `ACTIVE`;
+- permitida **independentemente** de `currentAmount` vs `targetAmount` (RN270);
+- transição terminal para `COMPLETED`; sem reabertura nesta fase.
+
+**Cancelamento** — `POST .../cancel`:
+
+- somente meta `ACTIVE`;
+- exige `currentAmount = 0` (RN271);
+- se `currentAmount > 0`: rejeitar; usuário deve resgatar antes;
+- transição terminal para `CANCELLED`; sem perda automática de dinheiro;
+- **não** permitir `COMPLETED` → `CANCELLED`.
+
+---
+
+## 19.6.8 Edição (`PUT` da meta)
+
+Somente meta `ACTIVE`. Campos editáveis:
+
+- `name`, `description`, `targetAmount`, `targetDate`.
+
+`targetAmount > 0` (RN127). Alterar `targetAmount` **não** altera contribuições, resgates, reservado nem redistribui dinheiro — apenas recalcula `progressPercent`.
+
+`account_id` **não** é editável após criação.
+
+Metas `COMPLETED` e `CANCELLED`: rejeitar edição.
+
+---
+
+## 19.6.9 API HTTP
+
+Base: `/api/v1/financial-goals`. Auth: Bearer. Ownership: usuário autenticado; recurso de outro usuário → **404** (padrão do projeto).
+
+| Método | Rota | Ação |
+|---|---|---|
+| `POST` | `/api/v1/financial-goals` | Criar meta (`ACTIVE`) |
+| `GET` | `/api/v1/financial-goals` | Listar (paginação; filtro opcional `status`) |
+| `GET` | `/api/v1/financial-goals/{id}` | Consultar |
+| `PUT` | `/api/v1/financial-goals/{id}` | Editar cadastral (`ACTIVE`) |
+| `POST` | `/api/v1/financial-goals/{id}/contributions` | Contribuir |
+| `GET` | `/api/v1/financial-goals/{id}/contributions` | Listar contribuições |
+| `POST` | `/api/v1/financial-goals/{id}/redemptions` | Resgatar |
+| `GET` | `/api/v1/financial-goals/{id}/redemptions` | Listar resgates |
+| `POST` | `/api/v1/financial-goals/{id}/complete` | Concluir |
+| `POST` | `/api/v1/financial-goals/{id}/cancel` | Cancelar |
+
+**Não** criar `DELETE`.
+
+Response da meta inclui derivados: `currentAmount`, `progressPercent`, `accountId` (conta vinculada).
+
+Detalhe de request/response/erros: `docs/25-api.md` §54E.
+
+---
+
+## 19.6.10 Saldo da conta (emenda)
+
+`GET /api/v1/accounts/{id}/balance` passa a expor:
+
+```json
+{
+  "accountId": "...",
+  "totalBalance": 10000.00,
+  "reservedAmount": 6000.00,
+  "availableBalance": 4000.00,
+  "balance": 10000.00
+}
+```
+
+- `totalBalance` = RN240;
+- `reservedAmount` = RN265;
+- `availableBalance` = `totalBalance − reservedAmount`;
+- `balance` = alias legado de `totalBalance` (compatibilidade).
+
+Operações existentes que validam saldo (pay, transfer, invoice pay, balance adjustment, contribuição) devem usar **availableBalance** onde aplicável (RN276).
+
+---
+
+## 19.6.11 RN010A e inativação
+
+Contribuição e resgate contam como **primeira movimentação financeira efetiva** da conta vinculada (RN275) — bloqueiam alteração posterior de `initial_balance`.
+
+Inativação: rejeitar se `totalBalance != 0` **ou** `reservedAmount != 0` (RN274 / emenda RN007A).
+
+---
+
+## 19.6.12 Concorrência
+
+Contribuição e resgate: `@Transactional` com lock pessimista na meta e/ou conta vinculada (padrão RN258 / RN277). Dois aportes concorrentes não podem aprovar soma superior ao `availableBalance` real.
+
+---
+
+## 19.6.13 Nome duplicado
+
+Metas do mesmo usuário **podem** possuir o mesmo `name`. **Não** criar `UNIQUE (user_id, name)` (RN279).
+
+---
+
+## 19.6.14 COMPLETED e resgate
+
+Meta `COMPLETED` representa que o **objetivo foi considerado realizado** pelo usuário — **não** que o dinheiro reservado foi liberado automaticamente.
+
+Se o usuário concluir uma meta `ACTIVE` com `currentAmount > 0`, o valor permanece classificado como reservado (`reservedAmount` da conta) e indisponível para operações normais **até resgate explícito** via `POST .../redemptions`.
+
+Exemplos válidos:
+
+```text
+COMPLETED + currentAmount = R$ 5.000  → resgate permitido (parcial ou total)
+COMPLETED + currentAmount = R$ 0       → após resgate total; status permanece COMPLETED
+COMPLETED + progressPercent = 0%      → após resgate total; não reabre a meta
+COMPLETED abaixo de 100%             → conclusão permitida; resgate posterior permitido
+```
+
+Regras:
+
+- conclusão **não** libera reservado automaticamente;
+- resgate em `COMPLETED` **não** altera o status;
+- **não** existe reabertura (`COMPLETED` → `ACTIVE`);
+- **não** existe cancelamento retroativo (`COMPLETED` → `CANCELLED`).
+
+---
+
+## 19.6.15 Critério de conclusão da implementação
+
+Usuário consegue: criar meta vinculada a conta; contribuir e resgatar; acompanhar `currentAmount` e `progressPercent`; concluir ou cancelar conforme regras; ver saldo total, reservado e disponível; operações normais respeitam saldo disponível; ownership e concorrência corretos — com testes e docs alinhados.
+
+
+## RN264 — Meta vinculada a conta
+
+Toda meta possui exatamente uma conta vinculada (`account_id`), definida na criação e imutável. Tipos aceitos: `BANK_ACCOUNT`, `CASH` ativa do usuário autenticado.
+
+
+## RN265 — Saldo total, reservado e disponível
+
+```text
+totalBalance     = RN240
+reservedAmount   = SUM(currentAmount) das metas ACTIVE/COMPLETED da conta
+availableBalance = totalBalance − reservedAmount
+```
+
+Contribuição/resgate alteram reservado e disponível, **não** o total.
+
+
+## RN266 — Contribuição
+
+Contribuição aumenta `currentAmount` da meta e `reservedAmount` da conta; reduz `availableBalance`. Exige `availableBalance >= amount`. Não altera `totalBalance`.
+
+
+## RN267 — Resgate
+
+Resgate permitido em meta `ACTIVE` ou `COMPLETED`. Proibido em `CANCELLED`.
+
+Resgate reduz `currentAmount` da meta e `reservedAmount` da conta; aumenta `availableBalance`. Exige `amount <= currentAmount`. Retorno sempre à conta vinculada. **Não** altera `status` da meta. **Não** altera `totalBalance`.
+
+
+## RN268 — currentAmount derivado
+
+```text
+currentAmount = SUM(contributions) − SUM(redemptions)
+```
+
+Não persistir como coluna independente (RN187 emendada).
+
+
+## RN269 — progressPercent
+
+```text
+progressPercent = (currentAmount / targetAmount) × 100
+```
+
+`RoundingMode.HALF_UP`, escala 2. Sem teto em 100%.
+
+
+## RN270 — Conclusão manual
+
+Conclusão é ação explícita (`POST .../complete`). **Não** automática ao atingir 100%. Permitida com `currentAmount` abaixo, igual ou acima de `targetAmount`.
+
+
+## RN271 — Cancelamento de meta
+
+Somente `ACTIVE` → `CANCELLED`. Exige `currentAmount = 0`. Sem perda automática de dinheiro. **Não** permitir `COMPLETED` → `CANCELLED`.
+
+
+## RN272 — Edição de meta
+
+Somente `ACTIVE`. Editáveis: `name`, `description`, `targetAmount`, `targetDate`. `targetAmount > 0`. Alterar alvo não redistribui reservado.
+
+
+## RN273 — Contas elegíveis para meta
+
+`BANK_ACCOUNT` e `CASH` ativas do usuário autenticado.
+
+
+## RN274 — Inativação com reservado
+
+Conta não inativa se `totalBalance != 0` ou `reservedAmount != 0`.
+
+
+## RN275 — RN010A inclui metas
+
+Contribuição e resgate na conta vinculada contam como primeira movimentação efetiva (RN010A).
+
+
+## RN276 — Saldo disponível nas operações
+
+Operações financeiras normais validam `availableBalance`, não apenas `totalBalance`.
+
+
+## RN277 — Concorrência de meta
+
+Contribuição e resgate transacionais com locking; impedir aprovação concorrente acima do disponível.
+
+
+## RN278 — targetAmount não é teto
+
+Contribuição permitida acima do objetivo; sem bloqueio, corte ou redistribuição automática.
+
+
+## RN279 — Nome duplicado
+
+Permitido repetir `name` entre metas do mesmo usuário.
+
+
+## RN280 — Sem reverse nesta fase
+
+Contribuições e resgates não possuem reverse/estorno HTTP na Fase 15. Correção futura exige decisão explícita.
+
+
 # 20. Metas
+
+Regras gerais consolidadas na **Fase 15** (`§19.6`). Esta seção mantém referência resumida; em conflito, prevalece §19.6.
 
 ## RN126 — Meta
 
@@ -2798,11 +3231,13 @@ Meta possui:
 
 nome;
 
-valor alvo;
+valor alvo (`targetAmount`);
 
-data alvo opcional;
+data alvo opcional (`targetDate`);
 
-status.
+status;
+
+**conta vinculada** (`accountId` — uma conta; imutável após criação).
 
 
 ## RN127 — Valor
@@ -2815,14 +3250,14 @@ Valor alvo deve ser maior que zero.
 Contribuição deve possuir valor maior que zero.
 
 
-## RN129 — Conta
+## RN129 — Conta vinculada
 
-Contribuição deve indicar a conta de origem.
+Toda meta possui uma conta vinculada. Contribuições e resgates utilizam **sempre** essa conta. O usuário não escolhe outra conta no resgate.
 
 
-## RN130 — Saldo
+## RN130 — Saldo disponível
 
-A contribuição reduz o dinheiro disponível na conta.
+A contribuição reduz o **saldo disponível** da conta vinculada. **Não** reduz o saldo financeiro total (RN265 / RN266).
 
 
 ## RN131 — Despesa
@@ -2832,14 +3267,7 @@ Contribuição para meta não é despesa de consumo.
 
 ## RN132 — Meta concluída
 
-Quando:
-
-current_amount >= target_amount
-
-
-a meta pode ser marcada como:
-
-COMPLETED
+Conclusão é ação **explícita** do usuário (`POST .../complete`). **Não** depende de `currentAmount >= targetAmount`. Status terminal: `COMPLETED`.
 
 
 # 21. Projeções
@@ -3204,7 +3632,9 @@ LocalDate
 
 Valores como:
 
-saldo da conta;
+saldo financeiro total da conta (RN240);
+
+saldo disponível e valor reservado em metas (Fase 15 / RN265);
 
 total da fatura;
 
@@ -3254,9 +3684,13 @@ Soma das parcelas deve corresponder ao valor parcelado.
 
 ## RN187 — Meta
 
-Valor acumulado (`current_amount`) é derivado da soma das contribuições.
+Valor acumulado (`currentAmount`) é derivado:
 
-Não persistir acumulado como fonte independente.
+```text
+SUM(goal_contributions.amount) − SUM(goal_redemptions.amount)
+```
+
+Não persistir acumulado como fonte independente. Contrato: §19.6 / RN268.
 
 
 # 36. Usuários
