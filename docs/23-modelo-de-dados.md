@@ -148,7 +148,7 @@ Se no futuro existir saldo materializado/cacheado, ele deverá ser mantido de fo
 
 `initial_balance` é ponto de partida da linha temporal (RN010 / RN010A / Fase 14). Começa conceitualmente em `0,00`. Em `POST /accounts`, `initialBalance` é **opcional** (omitido ⇒ `0,00`). Definição/alteração posterior somente via `PUT /api/v1/accounts/{id}/initial-balance`, enquanto a conta **nunca** tiver tido movimentação financeira efetiva (RN010A). Após a primeira movimentação (mesmo que depois cancelada/revertida), correções usam **Acerto de Saldos** (`BALANCE_ADJUSTMENT` / tabela `account_balance_adjustments`), não edição de `initial_balance`.
 
-`initial_balance_locked` foi adicionado pela migration V28 e registra de forma persistente o encerramento da mutabilidade do saldo inicial após a primeira movimentação efetiva, conforme RN010A.
+`initial_balance_locked` foi adicionado pela migration V28 e registra de forma persistente o encerramento da mutabilidade do saldo inicial após a primeira movimentação efetiva, conforme RN010A. Reverse/cancelamento posterior **não** desbloqueia. **Limitação histórica inevitável:** incomes totalmente revertidos **antes** da V28 podem ser indetectáveis no backfill (contrato da Fase 6 remove `account_id` / `received_date`). Isso não é bug da Fase 14.
 
 
 # 11. Tipo de conta
@@ -1644,7 +1644,7 @@ Tabela:
 
 transfers
 
-Contrato oficial: `docs/24` §19.5. Status da Fase 14: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
+Contrato oficial: `docs/24` §19.5. Status da Fase 14: `CONCLUÍDA E APROVADA`.
 
 
 # 124. Transferência
@@ -2496,6 +2496,8 @@ A fonte de verdade financeira deve ser baseada nas **movimentações**.
 
 O saldo de uma conta é derivado das movimentações efetivas, tendo o saldo inicial como ponto de partida.
 
+Não existe `current_balance` persistido. Saldo é sempre derivado das movimentações elegíveis.
+
 Não utilizar `current_balance` como fonte de verdade.
 
 
@@ -2614,7 +2616,7 @@ Pode ser positivo, zero ou negativo. Altera o saldo derivado. Não é receita. N
 
 `reported_balance >= 0`. Contas participantes: `BANK_ACCOUNT` e `CASH` ativas. Cartões excluídos.
 
-Contrato: `docs/24` §19.5 / RN204–RN206 / RN259–RN263. Status: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
+Contrato: `docs/24` §19.5 / RN204–RN206 / RN259–RN263. Status: `CONCLUÍDA E APROVADA`.
 
 
 # 210. Cartão

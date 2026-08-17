@@ -434,7 +434,7 @@ Status:
 
 CONCLUÍDA
 
-A documentação oficial da Fase 6 foi refinada antes da implementação: cancelamento inutiliza a duplicata (`EXPECTED` → `CANCELLED`); estorno desfaz o recebimento e mantém a duplicata ativa (`RECEIVED` → `EXPECTED`; limpa `account_id` e `received_date`; pode deixar saldo negativo); responsável fora desta fase (`responsible_type` nullable); saldo derivado; acerto de saldos como conceito futuro (hoje: Fase 14 §19.5 — `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`).
+A documentação oficial da Fase 6 foi refinada antes da implementação: cancelamento inutiliza a duplicata (`EXPECTED` → `CANCELLED`); estorno desfaz o recebimento e mantém a duplicata ativa (`RECEIVED` → `EXPECTED`; limpa `account_id` e `received_date`; pode deixar saldo negativo); responsável fora desta fase (`responsible_type` nullable); saldo derivado; acerto de saldos como conceito futuro (hoje: Fase 14 §19.5 — `CONCLUÍDA E APROVADA`).
 
 Objetivo:
 
@@ -820,12 +820,14 @@ Parcelamento/negociação de fatura ≠ compra parcelada. V13 sem uso de negóci
 
 # 76. Fase 13 — Próximo passo
 
-Fase 13 **concluída**. A Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial — está implementada e aguarda auditoria.
+Fase 13 **concluída**. Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial — **CONCLUÍDA E APROVADA**.
 
 
 # 77. Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial
 
-**Status:** `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
+**Status:** `CONCLUÍDA E APROVADA`.
+
+Percurso: implementação → auditoria (`APROVADO COM CORREÇÕES`) → correções → reauditoria (`APROVADO`). Encerramento: `CONCLUÍDA E APROVADA / IMPLEMENTAÇÃO E AUDITORIA ENCERRADAS`.
 
 Objetivo:
 
@@ -859,7 +861,9 @@ Transferência e acerto devem ser atômicos. Sem saldo negativo nas operações 
 
 # 80. Testes
 
-Cobertura implementada em `Phase14ApiTest`:
+Resultado final da suíte no encerramento: Total 374; passaram 374; falharam 0; `mvn test` = PASS; `mvn verify` = PASS.
+
+Cobertura implementada em `Phase14ApiTest`, `Phase14Rn010aApiTest`, `Phase14ConcurrencyExtraTest`, `TransferConcurrencyTest` e `SchemaContractTest`:
 
 - saldo e patrimônio;
 - BANK_ACCOUNT vs CASH;
@@ -869,6 +873,8 @@ Cobertura implementada em `Phase14ApiTest`:
 - isolamento;
 - acerto as-of-date;
 - saldo inicial após primeira movimentação (mesmo revertida) — RN010A;
+- backfill V28 / schema V28;
+- concorrência (payment × transfer; transfer A→B × B→A; duas saídas simultâneas);
 - inativação com saldo ≠ 0.
 
 Detalhe: `docs/27-testes.md` §§34–40C.
@@ -878,7 +884,7 @@ Detalhe: `docs/27-testes.md` §§34–40C.
 
 Usuário consegue movimentar dinheiro entre `BANK_ACCOUNT` próprias, reverter, conciliar via acerto e gerir saldo inicial conforme RN010 / RN010A — com testes e docs alinhados.
 
-**A implementação está concluída; a fase aguarda auditoria.**
+**Critério atendido. Fase 14 — CONCLUÍDA E APROVADA.**
 
 
 # 82. Fase 15 — Metas
@@ -1571,11 +1577,11 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 9: CONCLUÍDAS. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA**.
+Fases 0 a 9: CONCLUÍDAS. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**.
 
-Próxima etapa: **auditoria da Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial**.
+Próxima etapa: **Fase 15 — Metas** (já definida neste roadmap; não implementar sem autorização explícita).
 
-Status da Fase 14: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA` (`docs/24` §19.5).
+Status da Fase 14: `CONCLUÍDA E APROVADA` (`docs/24` §19.5).
 
 Status da Fase 13: `CONCLUÍDA E APROVADA` (`docs/24` §19.4 / RN254; `docs/23` §269.5 D1–D11 FECHADO).
 

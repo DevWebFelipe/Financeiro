@@ -412,7 +412,7 @@ Operação própria, atômica: saída na origem + entrada no destino. Não é re
 
 Somente contas `BANK_ACCOUNT` ativas do mesmo usuário; origem ≠ destino; `CASH` e cartões excluídos. Valor positivo; sem saldo insuficiente (criação e reversão). Status: `ACTIVE` / `REVERSED`. Retroativa permitida; futura não. Não editável — correção = reverter + criar nova. Listagem MVP sem filtro de `status` (pode retornar ACTIVE e REVERSED).
 
-Contrato: `docs/24` §19.5. Status da Fase 14: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
+Contrato: `docs/24` §19.5. Status da Fase 14: `CONCLUÍDA E APROVADA`.
 
 ### 11.7 Saldo negativo
 
@@ -432,7 +432,7 @@ Não usar: `CHECKING`, `SAVINGS`, `PERSONAL_WALLET`, `OTHER`.
 
 Conta com saldo derivado ≠ `0,00` **não** pode ser inativada (RN007A / Fase 14).
 
-Saldo inicial (RN010 / RN010A / Fase 14): começa em `0,00`; `initialBalance` opcional na criação; definição/alteração só via `PUT /accounts/{id}/initial-balance` enquanto a conta nunca tiver tido movimentação efetiva; após a primeira movimentação (mesmo cancelada/revertida), correção = Acerto de Saldos.
+Saldo inicial (RN010 / RN010A / Fase 14): começa em `0,00`; `initialBalance` opcional na criação; definição/alteração só via `PUT /accounts/{id}/initial-balance` enquanto a conta nunca tiver tido movimentação efetiva; após a primeira movimentação (mesmo cancelada/revertida), correção = Acerto de Saldos. **Limitação histórica inevitável:** incomes totalmente revertidos **antes** da V28 podem ser indetectáveis no backfill, porque a Fase 6 remove o vínculo com a conta. Isso não é bug da Fase 14.
 
 ### 11.9 Saldo
 
@@ -444,7 +444,7 @@ A partir da Fase 8 (RN240): o subtraendo de despesas `ACCOUNT`/`NONE` usa soment
 
 Cache/`current_balance` só se mantido transacionalmente consistente com as movimentações — nunca duas fontes independentes.
 
-**Acerto de Saldos** (nome conceitual; técnico `BALANCE_ADJUSTMENT`; tabela `account_balance_adjustments`) é fato próprio de conciliação (não é receita, despesa, transferência nem adjustment de parcela/fatura). Contrato: `docs/24` §19.5. Status: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`. Não criar entidade genérica `Transaction`. Extrato unificado `/statement` fora da Fase 14.
+**Acerto de Saldos** (nome conceitual; técnico `BALANCE_ADJUSTMENT`; tabela `account_balance_adjustments`) é fato próprio de conciliação (não é receita, despesa, transferência nem adjustment de parcela/fatura). Contrato: `docs/24` §19.5. Status: `CONCLUÍDA E APROVADA`. Não criar entidade genérica `Transaction`. Extrato unificado `/statement` fora da Fase 14.
 
 ---
 
@@ -703,6 +703,8 @@ Até decisão explícita, **não** implementar Flyway, entidade, enum, CHECK, te
 2. Edição de parcela já vinculada a fatura × `expenses.total_amount` — a edição cadastral de parcela `OPEN` **sem fatura** (ACCOUNT/NONE) está **fechada** no contrato da Fase 8 (RN227): `total_amount` não muda; soma das parcelas deve continuar igual ao total; sem redistribuição; rollback se não fechar. A pergunta do §269.2 sobre parcela **já pertencente a uma fatura** permanece **DEFERIDA**.
 
 **SUPERADO (Fase 13 D1–D11):** o antigo bloqueio §269.5. Decisões fechadas. Emenda de renegociação (RN254) **implementada e aprovada**. Status: `CONCLUÍDA E APROVADA`. Detalhe: `docs/24` §19.4 e `docs/23` §269.5.
+
+**SUPERADO (Fase 14):** transferências, Acerto de Saldos (`BALANCE_ADJUSTMENT` / `account_balance_adjustments`), saldo inicial (RN010 / RN010A) e inativação com saldo zero (RN007A). Status: `CONCLUÍDA E APROVADA`. Detalhe: `docs/24` §19.5.
 
 **SUPERADO (Fase 9):** o antigo item 269.3 (rateio). Rateio proporcional ao remaining, ordenação remaining ASC, empate `due_date` ASC depois `id` ASC, residual na última, persistido como alocação. Status da fatura **não** muda por pagamento parcial. Detalhe: `docs/23` §269.3 e `docs/24` RN247.
 

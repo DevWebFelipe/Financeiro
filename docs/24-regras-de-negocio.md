@@ -140,7 +140,9 @@ Correções posteriores usam **Acerto de Saldos** (RN204 / `BALANCE_ADJUSTMENT`)
 5. Transferência `ACTIVE`;
 6. Acerto de Saldos `ACTIVE` (`BALANCE_ADJUSTMENT`).
 
-Uma vez que qualquer desses fatos tenha ocorrido, a conta passa a ser considerada "já movimentada" **definitivamente**, mesmo que o fato seja depois cancelado, revertido ou estornado. Cancelamento/reversão **não** reabre a possibilidade de definir ou alterar o saldo inicial.
+Uma vez que qualquer desses fatos tenha ocorrido, a conta passa a ser considerada "já movimentada" **definitivamente**, mesmo que o fato seja depois cancelado, revertido ou estornado. Cancelamento/reversão **não** reabre a possibilidade de definir ou alterar o saldo inicial. Isso permanece verdadeiro após reverse, cancelamento, transferência revertida, payment revertido, invoice payment revertido e acerto revertido.
+
+**Limitação histórica inevitável (upgrade V27 → V28):** movimentações de income que foram totalmente revertidas **antes** da V28 podem ser indetectáveis no backfill, porque o contrato da Fase 6 (`Income.reverse()`) remove o vínculo com a conta (`account_id` e `received_date`). Isso **não** é bug da Fase 14. Da V28 em diante, receive/reverse marcam `initial_balance_locked` enquanto a conta ainda está referenciada.
 
 **Não contam** (não bloqueiam o saldo inicial):
 
@@ -2585,7 +2587,9 @@ Cenários L01–L36 permanecem a base. A emenda exige cobertura de L13–L16/L36
 
 # 19.5 Contrato da Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial
 
-**Status:** `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
+**Status:** `CONCLUÍDA E APROVADA`.
+
+Percurso: implementação → auditoria (`APROVADO COM CORREÇÕES`) → correções → reauditoria (`APROVADO`). Encerramento: `CONCLUÍDA E APROVADA / IMPLEMENTAÇÃO E AUDITORIA ENCERRADAS`.
 
 Autoridade: `AGENTS.md` §28 → esta seção → `docs/23` (modelo) → `docs/25` (API) → `docs/27` / `docs/28`.
 
@@ -3395,7 +3399,7 @@ Futuramente, um relatório poderá apresentar receitas, despesas, transferência
 
 A funcionalidade de acerto de saldos não pertence à Fase 6 nem à Fase 7.
 
-Contrato oficial e implementação: **Fase 14** (`docs/24` §19.5). Status documental: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
+Contrato oficial e implementação: **Fase 14** (`docs/24` §19.5). Status documental: `CONCLUÍDA E APROVADA`.
 
 
 # 42. Regra final

@@ -2942,7 +2942,38 @@ Acerto: +R$ 50
 Novo saldo: R$ 1.050
 ```
 
-Contrato oficial: `docs/24` §19.5. Status: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
+Contrato oficial: `docs/24` §19.5. Status: `CONCLUÍDA E APROVADA`.
+
+Reversão do acerto: `POST /api/v1/accounts/{accountId}/balance-adjustments/{id}/reverse`. Não apaga o fato. `ACTIVE` → `REVERSED`. Efeito inverso com checagem de saldo quando a reversão for saída. Não reabre saldo inicial (RN010A). Pode ocorrer em conta inativa (correção de fato já existente). Data omitida na criação = hoje em `America/Sao_Paulo`.
+
+
+# 177A. Fluxo — Reversão de transferência (Fase 14)
+
+`POST /api/v1/transfers/{id}/reverse`.
+
+1. localizar transferência `ACTIVE` do usuário autenticado;
+2. aplicar movimento inverso (destino −, origem +) com checagem de saldo na conta debitada pela reversão;
+3. transitar `ACTIVE` → `REVERSED`;
+4. não apagar; não desreverter;
+5. patrimônio consolidado permanece inalterado.
+
+Contas inativas: a reversão **não** exige conta ativa. Novas transferências exigem contas `BANK_ACCOUNT` ativas.
+
+
+# 177B. Fluxo — Saldo inicial (Fase 14)
+
+Criação: `initialBalance` opcional; omitido ⇒ `0,00`.
+
+Alteração: somente `PUT /api/v1/accounts/{id}/initial-balance`, enquanto a conta nunca tiver tido movimentação efetiva (RN010A).
+
+Após a primeira movimentação (mesmo depois revertida/cancelada): bloqueio permanente. Correção = Acerto de Saldos. O saldo inicial **não** é recalculado automaticamente.
+
+
+# 177C. Fluxo — Inativação de conta (Fase 14 / RN007A)
+
+Saldo derivado atual ≠ `0,00` → rejeitar inativação.
+
+Saldo derivado atual = `0,00` → permitir.
 
 
 # 178. Conceito — Saldo em datas e períodos

@@ -493,7 +493,20 @@ pagamento de fatura limitado ao saldo da conta.
 
 # 34. Transferência (Fase 14)
 
-Contrato: `docs/24` §19.5. Status: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
+Contrato: `docs/24` §19.5. Status: `CONCLUÍDA E APROVADA`.
+
+Resultado final factual da suíte no encerramento da Fase 14:
+
+- Total: 374
+- Passaram: 374
+- Falharam: 0
+- `mvn test` = PASS
+- `mvn verify` = PASS
+- Flyway / Testcontainers = PASS
+
+Grupos principais de cobertura adicionados: RN010A; backfill V28; concorrência; payment × transfer; transfer A→B × B→A; duas saídas simultâneas; acerto; saldo; inativação; schema V28. Classes: `Phase14ApiTest`, `Phase14Rn010aApiTest`, `Phase14ConcurrencyExtraTest`, `TransferConcurrencyTest`, `SchemaContractTest`.
+
+Pendências classificadas pela reauditoria como **COBERTURA / NÃO BLOQUEANTES** (não reabrem a Fase 14): cobertura adicional de reverse de pagamento de fatura; cobertura adicional de refund ACCOUNT; algumas combinações de corrida `PUT` initial-balance × primeira movimentação; inconsistência menor de `markInitialBalanceLocked` no fluxo de antecipação de Agreement (o payment ainda bloqueia RN010A).
 
 Cobertura de API implementada em `Phase14ApiTest`:
 

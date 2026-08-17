@@ -411,7 +411,7 @@ O estorno de receita desfaz exatamente a movimentação (`− amount`), devolve 
 
 O cancelamento (`EXPECTED` → `CANCELLED` em receita; `OPEN` → `CANCELLED` em despesa) não altera saldo. Cancelamento e estorno não são a mesma operação.
 
-**Acerto de Saldos** (`BALANCE_ADJUSTMENT` / tabela `account_balance_adjustments`) está implementado na Fase 14 (`docs/24` §19.5). Status: `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`. A arquitetura não usa ledger genérico.
+**Acerto de Saldos** (`BALANCE_ADJUSTMENT` / tabela `account_balance_adjustments`) está implementado na Fase 14 (`docs/24` §19.5). Status: `CONCLUÍDA E APROVADA`. A arquitetura não usa ledger genérico.
 
 
 # 29.2 Saldo em datas e períodos
@@ -639,7 +639,7 @@ toda a operação deve ser revertida.
 
 Operações financeiras devem considerar concorrência.
 
-Leitura de saldo derivado (`GET /accounts/{id}/balance`) **não** exige lock pessimista da conta. Locks pessimistas aplicam-se às operações de escrita financeira (despesa, parcela, payment), conforme as RNs de pagamento e a Fase 8 (RN244 / RN240).
+Leitura de saldo derivado (`GET /accounts/{id}/balance`) **não** exige lock pessimista da conta. Locks pessimistas aplicam-se às operações de escrita financeira (despesa, parcela, payment, transferência, acerto de saldos), conforme as RNs de pagamento, a Fase 8 (RN244 / RN240) e a Fase 14 (RN258). Não existe `current_balance` persistido nem ledger genérico.
 
 
 # 53. Pagamentos

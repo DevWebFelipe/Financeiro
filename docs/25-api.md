@@ -1335,7 +1335,7 @@ A edição de parcela × total da despesa para ACCOUNT/NONE está **fechada** (d
 
 # 52. Transferências (Fase 14 — implementado)
 
-**Status:** contrato oficial `docs/24` §19.5 — `IMPLEMENTAÇÃO CONCLUÍDA / AGUARDANDO AUDITORIA`.
+**Status:** contrato oficial `docs/24` §19.5 — `CONCLUÍDA E APROVADA`.
 
 Endpoint:
 
