@@ -1504,11 +1504,11 @@ Body: vazio.
 `ACTIVE` → `REVERSED`. Exige saldo suficiente quando o efeito inverso for saída. Já `REVERSED` → **400**. Sem desreversão.
 
 
-# 54E. Metas financeiras (Fase 15 — contrato; implementação pendente)
+# 54E. Metas financeiras (Fase 15)
 
-**Status:** contrato oficial `docs/24` §19.6 — `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`.
+**Status:** contrato oficial `docs/24` §19.6 — implementação concluída; aguardando auditoria final da fase.
 
-Base: `/api/v1/financial-goals`. Auth: Bearer. Ownership: somente recursos do usuário autenticado; mismatch → **404** (sem distinguir).
+Base: `/api/v1/financial-goals`. Auth: Bearer. Ownership: somente recursos do usuário autenticado; mismatch → **404** (sem distinguir). Propriedades JSON desconhecidas → **400** `VALIDATION_ERROR` (`FAIL_ON_UNKNOWN_PROPERTIES`).
 
 ## Conceito
 
@@ -1540,6 +1540,7 @@ Regras:
 - `name` obrigatório; `description` opcional;
 - status inicial: `ACTIVE`;
 - **não** aceitar `userId`, `status`, `currentAmount`, `progressPercent`.
+- nomes duplicados são permitidos (RN279).
 
 Response **201**: meta com `id`, campos persistidos, `accountId`, `status`, `currentAmount` (`0.00`), `progressPercent` (`0.00`), timestamps.
 
@@ -1549,7 +1550,9 @@ Response **201**: meta com `id`, campos persistidos, `accountId`, `status`, `cur
 GET /api/v1/financial-goals
 ```
 
-Query: paginação padrão (`page`, `size`); filtro opcional `status` (`ACTIVE`, `COMPLETED`, `CANCELLED`).
+Query: paginação padrão (`page` default `0`, `size` default `20`); filtro opcional `status` (`ACTIVE`, `COMPLETED`, `CANCELLED`). Ordenação: `createdAt` ASC.
+
+`page < 0` ou `size < 1` → **400** `BUSINESS_RULE_VIOLATION`.
 
 Response **200**: página (`items`, `page`, `size`, `totalItems`, `totalPages`); cada item inclui derivados `currentAmount`, `progressPercent`, `accountId`.
 
@@ -1611,8 +1614,16 @@ Regras:
 - `availableBalance` da conta vinculada `>= amount`;
 - conta vinculada ativa;
 - fato imutável; sem `DELETE`; sem reverse nesta fase.
+- request **não** recebe `accountId`.
 
-Response **201**: contribuição + meta atualizada (ou incluir meta no response conforme padrão do projeto).
+Response **201**:
+
+```json
+{
+  "contribution": { "id": "...", "goalId": "...", "amount": 500.00, "contributionDate": "2026-08-17", "notes": "Primeiro aporte", "createdAt": "..." },
+  "goal": { }
+}
+```
 
 ## Listar contribuições
 
@@ -1620,7 +1631,7 @@ Response **201**: contribuição + meta atualizada (ou incluir meta no response 
 GET /api/v1/financial-goals/{id}/contributions
 ```
 
-Response **200**: array ou página (seguir padrão adotado na implementação; contrato mínimo: listagem completa ou paginada documentada).
+Response **200**: array JSON (sem envelope paginado), ordenado por `contributionDate` ASC, `createdAt` ASC, `id` ASC. Recurso de outro usuário → **404**.
 
 ## Resgatar
 
@@ -1647,14 +1658,24 @@ Regras:
 - resgate **não** altera `status` da meta;
 - fato imutável; sem reverse nesta fase;
 - rejeitar resgate em `CANCELLED`.
+- request **não** recebe `accountId` (propriedade desconhecida → **400** `VALIDATION_ERROR`).
 
-Response **201**: resgate + meta atualizada.
+Response **201**:
+
+```json
+{
+  "redemption": { "id": "...", "goalId": "...", "amount": 200.00, "redemptionDate": "2026-08-17", "notes": null, "createdAt": "..." },
+  "goal": { }
+}
+```
 
 ## Listar resgates
 
 ```text
 GET /api/v1/financial-goals/{id}/redemptions
 ```
+
+Response **200**: array JSON (sem envelope paginado), ordenado por `redemptionDate` ASC, `createdAt` ASC, `id` ASC. Recurso de outro usuário → **404**.
 
 ## Concluir meta
 
@@ -1667,7 +1688,7 @@ Body: vazio.
 Regras:
 
 - somente `ACTIVE` → `COMPLETED`;
-- permitido independentemente de `currentAmount` vs `targetAmount`;
+- permitido independentemente de `currentAmount` vs `targetAmount` (inclusive `currentAmount = 0`);
 - terminal; sem reabertura nesta fase.
 
 Response **200**: meta com `status = COMPLETED`.
@@ -1701,8 +1722,12 @@ Response **200**: meta com `status = CANCELLED`.
 | saldo disponível insuficiente | 400 | `BUSINESS_RULE_VIOLATION` |
 | resgate > currentAmount | 400 | `BUSINESS_RULE_VIOLATION` |
 | cancelar com reservado > 0 | 400 | `BUSINESS_RULE_VIOLATION` |
-| data futura | 400 | `VALIDATION_ERROR` ou `BUSINESS_RULE_VIOLATION` |
-| `targetAmount <= 0` | 400 | `VALIDATION_ERROR` |
+| data futura | 400 | `BUSINESS_RULE_VIOLATION` |
+| `targetAmount <= 0` / `amount <= 0` | 400 | `VALIDATION_ERROR` |
+| `page < 0` / `size < 1` | 400 | `BUSINESS_RULE_VIOLATION` |
+| propriedade JSON desconhecida (ex.: `accountId` no resgate) | 400 | `VALIDATION_ERROR` |
+| conta inexistente ou de outro usuário na criação | 404 | `NOT_FOUND` |
+| conta inativa na criação/contribuição | 400 | `BUSINESS_RULE_VIOLATION` |
 
 **Não** criar `DELETE` de meta, contribuição ou resgate.
 

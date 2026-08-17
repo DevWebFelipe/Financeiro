@@ -1,0 +1,14 @@
+$kind: http-request
+description: page < 0. size < 1 também é rejeitado com BUSINESS_RULE_VIOLATION.
+url: "{{baseUrl}}/api/v1/financial-goals?page=-1&size=20"
+method: GET
+queryParams:
+  - key: page
+    value: "-1"
+  - key: size
+    value: "20"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 400 Bad Request\", function () {\r\n    pm.response.to.have.status(400);\r\n});\r\n\r\npm.test(\"Código de erro deve ser BUSINESS_RULE_VIOLATION\", function () {\r\n    pm.expect(json.code).to.eql(\"BUSINESS_RULE_VIOLATION\");\r\n});\r\n\r\npm.test(\"Mensagem deve indicar página inválida\", function () {\r\n    pm.expect(json.message).to.eql(\"A página deve ser maior ou igual a zero.\");\r\n});\r"
+    language: text/javascript
+order: 7000

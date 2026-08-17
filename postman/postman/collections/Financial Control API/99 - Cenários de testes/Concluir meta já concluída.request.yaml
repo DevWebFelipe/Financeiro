@@ -1,0 +1,9 @@
+$kind: http-request
+description: Contribuir, resgatar, editar ou cancelar COMPLETED/CANCELLED retorna 400. Este exemplo tenta concluir de novo.
+url: "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/complete"
+method: POST
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 400 Bad Request\", function () {\r\n    pm.response.to.have.status(400);\r\n});\r\n\r\npm.test(\"Código de erro deve ser BUSINESS_RULE_VIOLATION\", function () {\r\n    pm.expect(json.code).to.eql(\"BUSINESS_RULE_VIOLATION\");\r\n});\r"
+    language: text/javascript
+order: 10000

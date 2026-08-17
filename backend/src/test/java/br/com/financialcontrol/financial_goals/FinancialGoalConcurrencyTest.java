@@ -122,6 +122,93 @@ class FinancialGoalConcurrencyTest {
     assertThat(balance.availableBalance()).isEqualByComparingTo("200.00");
   }
 
+  @Test
+  void shouldKeepConsistencyWhenContributeAndRedeemConcurrently() throws Exception {
+    String token = registerAndLogin(uniqueEmail("contrib-redeem-race"));
+    AccountResponse account = createAccount(token, "Banco", "180.00");
+    FinancialGoalResponse goal = createGoal(token, account.id(), "Corrida", "500.00");
+    mockMvc
+        .perform(
+            post("/api/v1/financial-goals/" + goal.id() + "/contributions")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(contributionJson("80.00")))
+        .andExpect(status().isCreated());
+
+    CountDownLatch start = new CountDownLatch(1);
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+    MvcResult contributeResult;
+    MvcResult redeemResult;
+    try {
+      Future<MvcResult> contribute =
+          pool.submit(() -> contributeResult(token, goal.id(), contributionJson("100.00"), start));
+      Future<MvcResult> redeem =
+          pool.submit(() -> redeemResult(token, goal.id(), redemptionJson("80.00"), start));
+      start.countDown();
+      contributeResult = contribute.get(30, TimeUnit.SECONDS);
+      redeemResult = redeem.get(30, TimeUnit.SECONDS);
+    } finally {
+      pool.shutdownNow();
+    }
+
+    assertThat(contributeResult.getResponse().getStatus()).isEqualTo(201);
+    assertThat(redeemResult.getResponse().getStatus()).isEqualTo(201);
+
+    FinancialGoalResponse after = readGoal(token, goal.id());
+    assertThat(after.currentAmount()).isEqualByComparingTo("100.00");
+    assertThat(after.status()).isEqualTo(FinancialGoalStatus.ACTIVE);
+
+    AccountBalanceResponse balance = readBalance(token, account.id());
+    assertThat(balance.totalBalance()).isEqualByComparingTo("180.00");
+    assertThat(balance.reservedAmount()).isEqualByComparingTo("100.00");
+    assertThat(balance.availableBalance()).isEqualByComparingTo("80.00");
+  }
+
+  @Test
+  void shouldSerializeTwoGoalsCompetingForSameAvailableBalance() throws Exception {
+    String token = registerAndLogin(uniqueEmail("two-goals-race"));
+    AccountResponse account = createAccount(token, "Banco", "100.00");
+    FinancialGoalResponse first = createGoal(token, account.id(), "Primeira", "500.00");
+    FinancialGoalResponse second = createGoal(token, account.id(), "Segunda", "500.00");
+    String body = contributionJson("100.00");
+    CountDownLatch start = new CountDownLatch(1);
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+
+    MvcResult firstResult;
+    MvcResult secondResult;
+    try {
+      Future<MvcResult> firstCall =
+          pool.submit(() -> contributeResult(token, first.id(), body, start));
+      Future<MvcResult> secondCall =
+          pool.submit(() -> contributeResult(token, second.id(), body, start));
+      start.countDown();
+      firstResult = firstCall.get(30, TimeUnit.SECONDS);
+      secondResult = secondCall.get(30, TimeUnit.SECONDS);
+    } finally {
+      pool.shutdownNow();
+    }
+
+    List<Integer> statuses =
+        List.of(firstResult.getResponse().getStatus(), secondResult.getResponse().getStatus());
+    assertThat(statuses).containsExactlyInAnyOrder(201, 400);
+
+    MvcResult failure = firstResult.getResponse().getStatus() == 400 ? firstResult : secondResult;
+    assertThat(JsonPath.<String>read(failure.getResponse().getContentAsString(), "$.code"))
+        .isEqualTo("BUSINESS_RULE_VIOLATION");
+    assertThat(JsonPath.<String>read(failure.getResponse().getContentAsString(), "$.message"))
+        .isEqualTo(FinancialGoalService.INSUFFICIENT_BALANCE);
+
+    AccountBalanceResponse balance = readBalance(token, account.id());
+    assertThat(balance.totalBalance()).isEqualByComparingTo("100.00");
+    assertThat(balance.reservedAmount()).isEqualByComparingTo("100.00");
+    assertThat(balance.availableBalance()).isEqualByComparingTo("0.00");
+
+    FinancialGoalResponse firstAfter = readGoal(token, first.id());
+    FinancialGoalResponse secondAfter = readGoal(token, second.id());
+    assertThat(firstAfter.currentAmount().add(secondAfter.currentAmount()))
+        .isEqualByComparingTo("100.00");
+  }
+
   private MvcResult contributeResult(String token, UUID goalId, String body, CountDownLatch start)
       throws Exception {
     start.await(10, TimeUnit.SECONDS);
@@ -193,6 +280,18 @@ class FinancialGoalConcurrencyTest {
             .andReturn();
     return jsonMapper.readValue(
         result.getResponse().getContentAsString(), AccountBalanceResponse.class);
+  }
+
+  private FinancialGoalResponse readGoal(String token, UUID goalId) throws Exception {
+    MvcResult result =
+        mockMvc
+            .perform(
+                get("/api/v1/financial-goals/" + goalId)
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+            .andExpect(status().isOk())
+            .andReturn();
+    return jsonMapper.readValue(
+        result.getResponse().getContentAsString(), FinancialGoalResponse.class);
   }
 
   private String registerAndLogin(String email) throws Exception {

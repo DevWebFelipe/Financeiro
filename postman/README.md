@@ -28,6 +28,7 @@ Financial Control API
 │   ├── Autenticação
 │   ├── Despesas
 │   ├── Faturas
+│   ├── Metas
 │   ├── Negociações
 │   ├── Pagamentos
 │   ├── Receitas
@@ -47,6 +48,7 @@ Estado da collection em relação às fases implementadas:
 - Fase 9: cartões, créditos, faturas e pagamentos/ajustes de fatura.
 - Fase 13: negociações, renegociação e antecipação de parcela.
 - Fase 14: transferências, acerto de saldos e `PUT /accounts/{id}/initial-balance`.
+- Fase 15: metas financeiras (10 rotas em `02 - Processos → Metas`).
 
 Não adicionar requests de endpoints que ainda não existem no backend. Não existem, por exemplo:
 
@@ -154,6 +156,7 @@ O ambiente utiliza as seguintes variáveis:
 | `agreementInstallmentId` | ID da parcela da negociação |
 | `transferId` | ID da transferência |
 | `balanceAdjustmentId` | ID do acerto de saldo |
+| `financialGoalId` | ID da meta financeira |
 
 A Collection também possui:
 
@@ -320,6 +323,21 @@ Não confundir acerto de saldos com ajustes de parcela ou de fatura.
 
 ---
 
+# Metas
+
+`02 - Processos → Metas` cobre as 10 rotas da Fase 15:
+
+- `Listar` / `Consultar` / `Criar` / `Alterar`
+- `Contribuir` / `Listar contribuições`
+- `Resgatar` / `Listar resgates`
+- `Concluir` / `Cancelar`
+
+`Criar` preenche `{{financialGoalId}}`. Contribuição e resgate usam a conta vinculada da meta — o body **não** envia `accountId`. Não existem `DELETE` nem reverse.
+
+`Concluir` é manual (permitido com `currentAmount = 0`). `Cancelar` exige meta `ACTIVE` com reservado zero. Resgate também é permitido em `COMPLETED` e não reabre a meta.
+
+---
+
 # Testes automatizados das requests
 
 As requests possuem scripts de **Post-response** para validar as respostas da API.
@@ -375,7 +393,7 @@ Criar categoria
  ↓
 {{expenseCategoryId}} / {{incomeCategoryId}}
  ↓
-Criar cartão / receita / despesa / transferência
+Criar cartão / receita / despesa / transferência / meta
  ↓
 IDs correspondentes preenchidos pelos scripts
 ```
@@ -391,7 +409,13 @@ A data `{{today}}` é definida automaticamente antes de cada request, no fuso `A
 - login com credenciais inválidas (**401**);
 - consulta autenticada sem token (**401**);
 - conta inexistente (**404**);
-- transferência com saldo insuficiente (**400** `BUSINESS_RULE_VIOLATION`).
+- transferência com saldo insuficiente (**400** `BUSINESS_RULE_VIOLATION`);
+- contribuição com saldo disponível insuficiente (**400** `BUSINESS_RULE_VIOLATION`);
+- resgate acima do `currentAmount` (**400** `BUSINESS_RULE_VIOLATION`);
+- listagem de metas com `page < 0` (**400** `BUSINESS_RULE_VIOLATION`);
+- criar meta com conta inexistente (**404**);
+- consultar meta inexistente (**404**);
+- concluir meta já concluída (**400** `BUSINESS_RULE_VIOLATION`).
 
 ---
 

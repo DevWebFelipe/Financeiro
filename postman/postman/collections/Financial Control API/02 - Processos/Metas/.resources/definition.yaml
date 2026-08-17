@@ -1,0 +1,3 @@
+$kind: collection
+description: Reserva vinculada a uma conta. Sem DELETE e sem reverse de contribuição/resgate. Resgate permitido em ACTIVE e COMPLETED.
+order: 4500

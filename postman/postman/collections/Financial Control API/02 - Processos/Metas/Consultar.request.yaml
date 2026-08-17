@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"ID da meta deve corresponder ao solicitado\", function () {\r\n    pm.expect(json.id).to.eql(pm.environment.get(\"financialGoalId\"));\r\n});\r\n\r\npm.test(\"Meta deve expor derivados\", function () {\r\n    pm.expect(json.currentAmount).to.exist;\r\n    pm.expect(json.progressPercent).to.exist;\r\n    pm.expect(json.accountId).to.exist;\r\n    pm.expect(json.status).to.exist;\r\n});\r"
+    language: text/javascript
+order: 2000

@@ -368,9 +368,11 @@ Pacotes da Fase 14:
 - `transfers` — transferências entre contas (`TransferController` → `TransferService` → `TransferRepository`);
 - `balance_adjustments` — Acerto de Saldos (`BalanceAdjustmentController` → `BalanceAdjustmentService` → `AccountBalanceAdjustmentRepository`).
 
-Pacotes da Fase 15 (contrato aprovado; implementação pendente):
+Pacotes da Fase 15 (implementação concluída — aguardando auditoria final):
 
 - `financial_goals` — metas financeiras (`FinancialGoalController` → `FinancialGoalService` → `FinancialGoalRepository`, `GoalContributionRepository`, `GoalRedemptionRepository`).
+- Contribuição e resgate: `@Transactional` + lock pessimista da conta vinculada (`AccountService.requireActiveOwnedAccountForUpdate`) e da meta (`findByIdAndUserIdForUpdate`).
+- Sem ledger genérico, sem entidade `Transaction`, sem `DELETE` nem reverse de contribuição/resgate.
 
 Contrato: `docs/24` §19.6.
 

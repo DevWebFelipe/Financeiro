@@ -1,0 +1,17 @@
+$kind: http-request
+description: Paginação padrão (page, size). Filtro opcional status=ACTIVE|COMPLETED|CANCELLED.
+url: "{{baseUrl}}/api/v1/financial-goals?page=0&size=20"
+method: GET
+queryParams:
+  - key: status
+    value: ACTIVE
+    disabled: true
+  - key: page
+    value: "0"
+  - key: size
+    value: "20"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Resposta deve possuir items\", function () {\r\n    pm.expect(json.items).to.be.an(\"array\");\r\n});\r\n\r\npm.test(\"Resposta deve possuir paginação\", function () {\r\n    pm.expect(json.page).to.exist;\r\n    pm.expect(json.size).to.exist;\r\n    pm.expect(json.totalItems).to.exist;\r\n    pm.expect(json.totalPages).to.exist;\r\n});\r"
+    language: text/javascript
+order: 1000

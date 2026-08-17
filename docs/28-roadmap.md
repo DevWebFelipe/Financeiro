@@ -889,13 +889,17 @@ Usuário consegue movimentar dinheiro entre `BANK_ACCOUNT` próprias, reverter, 
 
 # 82. Fase 15 — Metas
 
-**Status:** `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`.
+**Status:** implementação concluída — aguardando auditoria final da fase.
 
 Objetivo:
 
 Implementar metas financeiras como reservas (caixinhas) vinculadas a uma conta.
 
 Contrato oficial: `docs/24` §19.6 / `docs/25` §54E.
+
+Migration: **V29** (`account_id` em `financial_goals`; `goal_redemptions`; remoção de `account_id` em `goal_contributions`).
+
+**Observação operacional (V29):** em banco local já populado, a V29 falha se existirem metas sem contribuição (não há `account_id` para backfill). Ambientes novos (Flyway do zero / Testcontainers) aplicam a V29 normalmente. Não altera regra de negócio; não inventar estratégia de migração sem decisão explícita.
 
 
 # 83. Fase 15 — Escopo
@@ -926,14 +930,14 @@ Fora do escopo: frontend, dashboard, projeções, reverse de contribuição/resg
 - contribuição/resgate imutáveis nesta fase (sem reverse);
 - RN010A inclui contribuição/resgate;
 - inativação de conta bloqueada se `reservedAmount > 0` (RN274);
-- schema: `account_id` em `financial_goals`; tabela `goal_redemptions`; remover `account_id` de `goal_contributions` (migration na implementação).
+- schema: `account_id` em `financial_goals`; tabela `goal_redemptions`; `account_id` removido de `goal_contributions` (migration **V29**).
 
 Detalhe: `docs/24` §19.6 (RN264–RN280).
 
 
 # 85. Testes
 
-Ver `docs/27-testes.md` §40D. Incluir: contribuição, resgate, saldo disponível/reservado/total, conclusão, cancelamento, valores inválidos, ownership, concorrência, RN010A.
+Ver `docs/27-testes.md` §40D. Classes: `FinancialGoalApiTest`, `FinancialGoalConcurrencyTest`, `GoalProgressTest`, `GoalReservationFoundationTest`.
 
 
 # 86. Fase 16 — Contas a pagar
@@ -1589,9 +1593,9 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 Fases 0 a 9: CONCLUÍDAS. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**.
 
-Próxima etapa: **Fase 15 — Metas** — contrato aprovado (`docs/24` §19.6); **implementação pendente de autorização explícita**.
+Próxima etapa: **auditoria final da Fase 15 — Metas**.
 
-Status da Fase 15: `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE` (`docs/24` §19.6).
+Status da Fase 15: implementação concluída — aguardando auditoria final (`docs/24` §19.6 / `docs/25` §54E). **Não** declarar a fase `CONCLUÍDA E APROVADA` antes dessa auditoria.
 
 Status da Fase 14: `CONCLUÍDA E APROVADA` (`docs/24` §19.5).
 

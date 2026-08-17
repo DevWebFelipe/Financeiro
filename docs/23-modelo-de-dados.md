@@ -1754,7 +1754,7 @@ created_at
 updated_at
 
 
-`account_id`: conta vinculada (obrigatória; imutável após criação). Tipos aceitos: `BANK_ACCOUNT`, `CASH` (RN273). FK composta `(account_id, user_id) → accounts (id, user_id)`.
+`account_id`: conta vinculada (obrigatória; imutável após criação). Tipos aceitos: `BANK_ACCOUNT`, `CASH` (RN273). FK composta `(account_id, user_id) → accounts (id, user_id)`. Coluna adicionada pela migration **V29**.
 
 `current_amount` (acumulado) é derivado das contribuições menos resgates. Não é coluna persistida independente. Ver seção 140.
 
@@ -1801,7 +1801,7 @@ notes
 created_at
 
 
-A conta efetiva é a **conta vinculada da meta** (`financial_goals.account_id`). A migration da Fase 15 **remove** `account_id` de `goal_contributions` (coluna redundante introduzida em V14).
+A conta efetiva é a **conta vinculada da meta** (`financial_goals.account_id`). A migration **V29** removeu `account_id` de `goal_contributions` (coluna redundante introduzida em V14).
 
 
 # 134A. Resgate de meta
@@ -1809,6 +1809,8 @@ A conta efetiva é a **conta vinculada da meta** (`financial_goals.account_id`).
 Tabela:
 
 goal_redemptions
+
+Criada pela migration **V29**. Fato histórico imutável nesta fase (sem reverse).
 
 
 Campos:
@@ -1938,6 +1940,8 @@ credit_card_invoice_payments
 credit_card_invoice_installments
 
 goal_contributions
+
+goal_redemptions
 
 payments
 

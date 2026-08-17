@@ -440,7 +440,7 @@ Fonte de verdade: movimentações. Saldo derivado delas, a partir do saldo inici
 
 **Saldo financeiro total** (`totalBalance`): fórmula RN240 — saldo inicial + receitas recebidas − payments ACTIVE − pagamentos de fatura ACTIVE + devoluções ACCOUNT + transferências ACTIVE (entrada − saída) + acertos de saldo ACTIVE. Contribuições/resgates de meta **não** alteram o total.
 
-**Fase 15 (contrato aprovado; implementação pendente):** cada conta expõe também **valor reservado em metas** (`reservedAmount`) e **saldo disponível** (`availableBalance = totalBalance − reservedAmount`). Contribuição classifica dinheiro como reservado (reduz disponível); resgate devolve à conta vinculada. Operações financeiras normais validam **saldo disponível**, não o total. Contrato: `docs/24` §19.6.
+**Fase 15 (implementação concluída — aguardando auditoria final):** cada conta expõe também **valor reservado em metas** (`reservedAmount`) e **saldo disponível** (`availableBalance = totalBalance − reservedAmount`). Contribuição classifica dinheiro como reservado (reduz disponível); resgate devolve à conta vinculada. Operações financeiras normais validam **saldo disponível**, não o total. Contrato: `docs/24` §19.6.
 
 A partir da Fase 8 (RN240): o subtraendo de despesas `ACCOUNT`/`NONE` usa somente payments `ACTIVE` de despesas não `CANCELLED`/`REFUNDED`. A partir da Fase 9, o saldo também subtrai pagamentos `ACTIVE` de fatura (`credit_card_invoice_payments`) na conta utilizada e **soma** devoluções `ACCOUNT` de compra no cartão (RN117). A Fase 14 inclui transferências e acertos `ACTIVE`. Crédito de cartão **não** movimenta conta. `GET /accounts/{id}/balance` é leitura derivada; as-of-date é capacidade interna (Fase 14). **Exceção as-of (RN263):** `card_purchase_account_refunds` usa `created_at`.
 
@@ -708,7 +708,7 @@ Até decisão explícita, **não** implementar Flyway, entidade, enum, CHECK, te
 
 **SUPERADO (Fase 14):** transferências, Acerto de Saldos (`BALANCE_ADJUSTMENT` / `account_balance_adjustments`), saldo inicial (RN010 / RN010A) e inativação com saldo zero (RN007A). Status: `CONCLUÍDA E APROVADA`. Detalhe: `docs/24` §19.5.
 
-**Fase 15 — Metas:** contrato aprovado em `docs/24` §19.6 — `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`. Não implementar sem autorização explícita.
+**Fase 15 — Metas:** contrato `docs/24` §19.6 / API `docs/25` §54E — implementação concluída, aguardando auditoria final da fase. **Não** declarar `CONCLUÍDA E APROVADA` antes dessa auditoria. Fora do escopo: frontend, dashboard, projeções, reverse de contribuição/resgate, DELETE, ledger genérico.
 
 **SUPERADO (Fase 9):** o antigo item 269.3 (rateio). Rateio proporcional ao remaining, ordenação remaining ASC, empate `due_date` ASC depois `id` ASC, residual na última, persistido como alocação. Status da fatura **não** muda por pagamento parcial. Detalhe: `docs/23` §269.3 e `docs/24` RN247.
 

@@ -2813,7 +2813,7 @@ Usuário consegue: transferir entre `BANK_ACCOUNT` próprias; reverter transfer�
 
 # 19.6 Contrato da Fase 15 — Metas
 
-**Status:** `CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`.
+**Status:** implementação concluída — aguardando auditoria final da fase.
 
 **Emenda (resgate em COMPLETED):** meta `COMPLETED` **permite** resgate (parcial ou total); resgate **não** altera o status. Ver §19.6.4, §19.6.6 e §19.6.14.
 
@@ -2872,13 +2872,13 @@ Operações financeiras normais (pagamento, transferência, contribuição) cons
 
 ---
 
-## 19.6.3 Modelo de dados (contrato; migration na implementação)
+## 19.6.3 Modelo de dados (implementado — migration V29)
 
-### `financial_goals` (ajuste necessário)
+### `financial_goals`
 
 Campos persistidos:
 
-- `id`, `user_id`, **`account_id`** (NOVO — conta vinculada; imutável após criação);
+- `id`, `user_id`, **`account_id`** (conta vinculada; imutável após criação);
 - `name`, `description`, `target_amount`, `target_date`, `status`;
 - `created_at`, `updated_at`.
 
@@ -2888,15 +2888,15 @@ FK composta: `(account_id, user_id) → accounts (id, user_id)`.
 
 Tipos de conta aceitos: `BANK_ACCOUNT`, `CASH` (RN273).
 
-### `goal_contributions` (ajuste necessário)
+### `goal_contributions`
 
 Fato histórico de aporte. Campos:
 
 - `id`, `user_id`, `goal_id`, `amount`, `contribution_date`, `notes`, `created_at`.
 
-A conta efetiva é a **conta vinculada da meta** (`financial_goals.account_id`). A coluna `account_id` existente em `V14` **deve ser removida** na migration da Fase 15 (redundante; a meta já define a conta).
+A conta efetiva é a **conta vinculada da meta** (`financial_goals.account_id`). A coluna `account_id` introduzida em `V14` **foi removida** na migration `V29` (redundante; a meta já define a conta).
 
-### `goal_redemptions` (NOVA tabela)
+### `goal_redemptions`
 
 Fato histórico de resgate. Campos:
 

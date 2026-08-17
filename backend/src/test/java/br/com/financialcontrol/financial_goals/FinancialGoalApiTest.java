@@ -388,6 +388,159 @@ class FinancialGoalApiTest {
     mockMvc.perform(get("/api/v1/financial-goals")).andExpect(status().isUnauthorized());
   }
 
+  @Test
+  void shouldCompleteActiveGoalWithZeroCurrentAmount() throws Exception {
+    String token = registerAndLogin(uniqueEmail("complete-zero"));
+    AccountResponse account = createAccount(token, "Banco", "BANK_ACCOUNT", "100.00");
+    FinancialGoalResponse goal = createGoal(token, account.id(), "Vazia", "500.00", null);
+
+    FinancialGoalResponse completed = complete(token, goal.id());
+    assertThat(completed.status()).isEqualTo(FinancialGoalStatus.COMPLETED);
+    assertThat(completed.currentAmount()).isEqualByComparingTo("0.00");
+    assertThat(completed.progressPercent()).isEqualByComparingTo("0.00");
+    assertThat(readBalance(token, account.id()).reservedAmount()).isEqualByComparingTo("0.00");
+  }
+
+  @Test
+  void shouldContributeUsingEntireAvailableBalance() throws Exception {
+    String token = registerAndLogin(uniqueEmail("exact-available"));
+    AccountResponse account = createAccount(token, "Banco", "BANK_ACCOUNT", "100.00");
+    FinancialGoalResponse goal = createGoal(token, account.id(), "Meta", "500.00", null);
+
+    CreateGoalContributionResponse created = contribute(token, goal.id(), "100.00");
+    assertThat(created.goal().currentAmount()).isEqualByComparingTo("100.00");
+
+    AccountBalanceResponse balance = readBalance(token, account.id());
+    assertThat(balance.totalBalance()).isEqualByComparingTo("100.00");
+    assertThat(balance.reservedAmount()).isEqualByComparingTo("100.00");
+    assertThat(balance.availableBalance()).isEqualByComparingTo("0.00");
+  }
+
+  @Test
+  void shouldRejectFutureRedemptionDateWithoutChangingCurrentAmount() throws Exception {
+    String token = registerAndLogin(uniqueEmail("future-redeem"));
+    AccountResponse account = createAccount(token, "Banco", "BANK_ACCOUNT", "200.00");
+    FinancialGoalResponse goal = createGoal(token, account.id(), "Meta", "200.00", null);
+    contribute(token, goal.id(), "50.00");
+
+    mockMvc
+        .perform(
+            post("/api/v1/financial-goals/" + goal.id() + "/redemptions")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(redemptionJson("10.00", today().plusDays(1))))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("BUSINESS_RULE_VIOLATION"))
+        .andExpect(jsonPath("$.message").value(FinancialGoalService.FUTURE_REDEMPTION_DATE));
+
+    mockMvc
+        .perform(
+            get("/api/v1/financial-goals/" + goal.id())
+                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.currentAmount").value(50.00));
+    mockMvc
+        .perform(
+            get("/api/v1/financial-goals/" + goal.id() + "/redemptions")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(0));
+  }
+
+  @Test
+  void shouldRejectForeignMutationsWithNotFound() throws Exception {
+    String tokenA = registerAndLogin(uniqueEmail("owner-mut"));
+    String tokenB = registerAndLogin(uniqueEmail("other-mut"));
+    AccountResponse accountA = createAccount(tokenA, "A", "BANK_ACCOUNT", "300.00");
+    FinancialGoalResponse goal = createGoal(tokenA, accountA.id(), "Privada", "200.00", null);
+    contribute(tokenA, goal.id(), "40.00");
+
+    mockMvc
+        .perform(
+            post("/api/v1/financial-goals/" + goal.id() + "/contributions")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenB))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(contributionJson("10.00", today())))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    mockMvc
+        .perform(
+            post("/api/v1/financial-goals/" + goal.id() + "/redemptions")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenB))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(redemptionJson("10.00", today())))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    mockMvc
+        .perform(
+            post("/api/v1/financial-goals/" + goal.id() + "/complete")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenB)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    mockMvc
+        .perform(
+            post("/api/v1/financial-goals/" + goal.id() + "/cancel")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenB)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+    mockMvc
+        .perform(
+            get("/api/v1/financial-goals/" + goal.id())
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenA)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("ACTIVE"))
+        .andExpect(jsonPath("$.currentAmount").value(40.00));
+    AccountBalanceResponse balance = readBalance(tokenA, accountA.id());
+    assertThat(balance.reservedAmount()).isEqualByComparingTo("40.00");
+    assertThat(balance.totalBalance()).isEqualByComparingTo("300.00");
+  }
+
+  @Test
+  void shouldRejectInvalidPagination() throws Exception {
+    String token = registerAndLogin(uniqueEmail("page-invalid"));
+
+    mockMvc
+        .perform(
+            get("/api/v1/financial-goals?page=-1").header(HttpHeaders.AUTHORIZATION, bearer(token)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("BUSINESS_RULE_VIOLATION"))
+        .andExpect(jsonPath("$.message").value(FinancialGoalService.INVALID_PAGE));
+
+    mockMvc
+        .perform(
+            get("/api/v1/financial-goals?size=0").header(HttpHeaders.AUTHORIZATION, bearer(token)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("BUSINESS_RULE_VIOLATION"))
+        .andExpect(jsonPath("$.message").value(FinancialGoalService.INVALID_PAGE_SIZE));
+  }
+
+  @Test
+  void shouldRedeemPartiallyThenFullyFromCompletedGoal() throws Exception {
+    String token = registerAndLogin(uniqueEmail("completed-redeem"));
+    AccountResponse account = createAccount(token, "Banco", "BANK_ACCOUNT", "1000.00");
+    FinancialGoalResponse goal = createGoal(token, account.id(), "Viagem", "800.00", null);
+    contribute(token, goal.id(), "300.00");
+    complete(token, goal.id());
+
+    CreateGoalRedemptionResponse partial = redeem(token, goal.id(), "100.00");
+    assertThat(partial.goal().status()).isEqualTo(FinancialGoalStatus.COMPLETED);
+    assertThat(partial.goal().currentAmount()).isEqualByComparingTo("200.00");
+    AccountBalanceResponse afterPartial = readBalance(token, account.id());
+    assertThat(afterPartial.totalBalance()).isEqualByComparingTo("1000.00");
+    assertThat(afterPartial.reservedAmount()).isEqualByComparingTo("200.00");
+    assertThat(afterPartial.availableBalance()).isEqualByComparingTo("800.00");
+
+    CreateGoalRedemptionResponse remaining = redeem(token, goal.id(), "200.00");
+    assertThat(remaining.goal().status()).isEqualTo(FinancialGoalStatus.COMPLETED);
+    assertThat(remaining.goal().currentAmount()).isEqualByComparingTo("0.00");
+    assertThat(remaining.goal().progressPercent()).isEqualByComparingTo("0.00");
+    AccountBalanceResponse afterFull = readBalance(token, account.id());
+    assertThat(afterFull.totalBalance()).isEqualByComparingTo("1000.00");
+    assertThat(afterFull.reservedAmount()).isEqualByComparingTo("0.00");
+    assertThat(afterFull.availableBalance()).isEqualByComparingTo("1000.00");
+  }
+
   private FinancialGoalResponse createGoal(
       String token, UUID accountId, String name, String target, String targetDate)
       throws Exception {

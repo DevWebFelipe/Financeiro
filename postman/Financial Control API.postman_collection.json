@@ -3056,6 +3056,536 @@
           "description": "Não existe POST /invoices/{id}/close. Não existe GET /invoices (listagem geral). Listagem é por cartão."
         },
         {
+          "name": "Metas",
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/financial-goals?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "financial-goals"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "ACTIVE",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Paginação padrão (page, size). Filtro opcional status=ACTIVE|COMPLETED|CANCELLED."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir items\", function () {\r",
+                      "    pm.expect(json.items).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir paginação\", function () {\r",
+                      "    pm.expect(json.page).to.exist;\r",
+                      "    pm.expect(json.size).to.exist;\r",
+                      "    pm.expect(json.totalItems).to.exist;\r",
+                      "    pm.expect(json.totalPages).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "financial-goals",
+                    "{{financialGoalId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da meta deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"financialGoalId\"));\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Meta deve expor derivados\", function () {\r",
+                      "    pm.expect(json.currentAmount).to.exist;\r",
+                      "    pm.expect(json.progressPercent).to.exist;\r",
+                      "    pm.expect(json.accountId).to.exist;\r",
+                      "    pm.expect(json.status).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Criar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"accountId\": \"{{accountId}}\",\r\n  \"name\": \"Viagem Chile\",\r\n  \"description\": \"Férias de julho\",\r\n  \"targetAmount\": 5000,\r\n  \"targetDate\": \"2026-12-20\"\r\n}\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/financial-goals",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "financial-goals"
+                  ]
+                },
+                "description": "Conta BANK_ACCOUNT ou CASH ativa do usuário. Status inicial ACTIVE."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "if (json.id) {\r",
+                      "    pm.environment.set(\"financialGoalId\", json.id);\r",
+                      "}\r",
+                      "\r",
+                      "pm.test(\"Meta deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status inicial deve ser ACTIVE\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"ACTIVE\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"currentAmount inicial deve ser zero\", function () {\r",
+                      "    pm.expect(Number(json.currentAmount)).to.eql(0);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"accountId deve ser o da conta vinculada\", function () {\r",
+                      "    pm.expect(json.accountId).to.eql(pm.environment.get(\"accountId\"));\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Alterar",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"name\": \"Viagem Chile\",\r\n  \"description\": null,\r\n  \"targetAmount\": 6000,\r\n  \"targetDate\": \"2027-01-15\"\r\n}\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "financial-goals",
+                    "{{financialGoalId}}"
+                  ]
+                },
+                "description": "Somente meta ACTIVE. accountId não é editável."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da meta deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"financialGoalId\"));\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"targetAmount deve ser atualizado\", function () {\r",
+                      "    pm.expect(Number(json.targetAmount)).to.eql(6000);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"accountId permanece o da criação\", function () {\r",
+                      "    pm.expect(json.accountId).to.eql(pm.environment.get(\"accountId\"));\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Contribuir",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"amount\": 500,\r\n  \"contributionDate\": \"{{today}}\",\r\n  \"notes\": \"Primeiro aporte\"\r\n}\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/contributions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "financial-goals",
+                    "{{financialGoalId}}",
+                    "contributions"
+                  ]
+                },
+                "description": "Somente ACTIVE. Sem accountId. Valida availableBalance. Não altera totalBalance."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve incluir contribution e goal\", function () {\r",
+                      "    pm.expect(json.contribution).to.exist;\r",
+                      "    pm.expect(json.goal).to.exist;\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Contribuição deve possuir ID\", function () {\r",
+                      "    pm.expect(json.contribution.id).to.exist;\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Meta deve permanecer ACTIVE\", function () {\r",
+                      "    pm.expect(json.goal.status).to.eql(\"ACTIVE\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar contribuições",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/contributions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "financial-goals",
+                    "{{financialGoalId}}",
+                    "contributions"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve ser um array\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Resgatar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"amount\": 200,\r\n  \"redemptionDate\": \"{{today}}\",\r\n  \"notes\": null\r\n}\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/redemptions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "financial-goals",
+                    "{{financialGoalId}}",
+                    "redemptions"
+                  ]
+                },
+                "description": "Permitido em ACTIVE e COMPLETED. Sem accountId. Não altera status nem totalBalance."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve incluir redemption e goal\", function () {\r",
+                      "    pm.expect(json.redemption).to.exist;\r",
+                      "    pm.expect(json.goal).to.exist;\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resgate deve possuir ID\", function () {\r",
+                      "    pm.expect(json.redemption.id).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar resgates",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/redemptions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "financial-goals",
+                    "{{financialGoalId}}",
+                    "redemptions"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve ser um array\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Concluir",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/complete",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "financial-goals",
+                    "{{financialGoalId}}",
+                    "complete"
+                  ]
+                },
+                "description": "Somente ACTIVE. Manual; permitido com currentAmount = 0, abaixo, em 100% ou acima. Body vazio."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status da meta deve ser COMPLETED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"COMPLETED\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Cancelar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "financial-goals",
+                    "{{financialGoalId}}",
+                    "cancel"
+                  ]
+                },
+                "description": "Somente ACTIVE com currentAmount = 0. Body vazio. COMPLETED não cancela."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status da meta deve ser CANCELLED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"CANCELLED\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Reserva vinculada a uma conta. Sem DELETE e sem reverse de contribuição/resgate. Resgate permitido em ACTIVE e COMPLETED."
+        },
+        {
           "name": "Negociações",
           "item": [
             {
@@ -4286,9 +4816,327 @@
               }
             }
           ]
+        },
+        {
+          "name": "Contribuição com saldo insuficiente",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"amount\": 99999999,\r\n  \"contributionDate\": \"{{today}}\",\r\n  \"notes\": \"Saldo insuficiente\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/contributions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "financial-goals",
+                "{{financialGoalId}}",
+                "contributions"
+              ]
+            },
+            "description": "Requer meta ACTIVE e availableBalance menor que o amount."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 400 Bad Request\", function () {\r",
+                  "    pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Erro deve possuir o formato oficial\", function () {\r",
+                  "    pm.expect(json.timestamp).to.exist;\r",
+                  "    pm.expect(json.status).to.exist;\r",
+                  "    pm.expect(json.code).to.exist;\r",
+                  "    pm.expect(json.message).to.exist;\r",
+                  "    pm.expect(json.path).to.exist;\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser BUSINESS_RULE_VIOLATION\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"BUSINESS_RULE_VIOLATION\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Mensagem deve indicar saldo insuficiente\", function () {\r",
+                  "    pm.expect(json.message).to.eql(\"Saldo insuficiente para realizar a operação.\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resgate acima do currentAmount",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"amount\": 99999999,\r\n  \"redemptionDate\": \"{{today}}\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/redemptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "financial-goals",
+                "{{financialGoalId}}",
+                "redemptions"
+              ]
+            },
+            "description": "amount maior que currentAmount da meta."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 400 Bad Request\", function () {\r",
+                  "    pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Erro deve possuir o formato oficial\", function () {\r",
+                  "    pm.expect(json.timestamp).to.exist;\r",
+                  "    pm.expect(json.status).to.exist;\r",
+                  "    pm.expect(json.code).to.exist;\r",
+                  "    pm.expect(json.message).to.exist;\r",
+                  "    pm.expect(json.path).to.exist;\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser BUSINESS_RULE_VIOLATION\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"BUSINESS_RULE_VIOLATION\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Mensagem deve indicar resgate acima do acumulado\", function () {\r",
+                  "    pm.expect(json.message).to.eql(\"O valor do resgate não pode exceder o valor acumulado da meta.\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar metas com página inválida",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/financial-goals?page=-1&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "financial-goals"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "-1"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "page < 0. size < 1 também é rejeitado com BUSINESS_RULE_VIOLATION."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 400 Bad Request\", function () {\r",
+                  "    pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser BUSINESS_RULE_VIOLATION\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"BUSINESS_RULE_VIOLATION\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Mensagem deve indicar página inválida\", function () {\r",
+                  "    pm.expect(json.message).to.eql(\"A página deve ser maior ou igual a zero.\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar meta com conta inexistente",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"accountId\": \"00000000-0000-0000-0000-000000000000\",\r\n  \"name\": \"Conta inválida\",\r\n  \"targetAmount\": 100\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/financial-goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "financial-goals"
+              ]
+            },
+            "description": "accountId inexistente. Conta de outro usuário também retorna 404."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 404 Not Found\", function () {\r",
+                  "    pm.response.to.have.status(404);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser NOT_FOUND\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"NOT_FOUND\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar meta inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/financial-goals/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "financial-goals",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "description": "Recurso de outro usuário ou ID inexistente retorna 404 sem distinguir."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 404 Not Found\", function () {\r",
+                  "    pm.response.to.have.status(404);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser NOT_FOUND\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"NOT_FOUND\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Concluir meta já concluída",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "financial-goals",
+                "{{financialGoalId}}",
+                "complete"
+              ]
+            },
+            "description": "Contribuir, resgatar, editar ou cancelar COMPLETED/CANCELLED retorna 400. Este exemplo tenta concluir de novo."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 400 Bad Request\", function () {\r",
+                  "    pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser BUSINESS_RULE_VIOLATION\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"BUSINESS_RULE_VIOLATION\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
         }
       ],
-      "description": "Cenários negativos pontuais. Não cobrem todas as regras; priorizam autenticação, ownership e saldo insuficiente."
+      "description": "Cenários negativos pontuais. Não cobrem todas as regras; priorizam autenticação, ownership, saldo insuficiente e metas."
     }
   ],
   "auth": {

@@ -193,7 +193,7 @@ Implementado: criar, listar, consultar, editar (`name` e `type`), desativar, rea
 | `POST` | `/api/v1/accounts/{id}/activate` | Bearer | `200` |
 | `GET` | `/api/v1/accounts/{id}/balance` | Bearer | `200` `{ accountId, totalBalance, reservedAmount, availableBalance, balance }` (Fase 15 contrato; `balance` = alias de `totalBalance`) |
 
-O saldo financeiro total é derivado (RN240; sem `current_balance`). A Fase 15 (contrato aprovado) adiciona `reservedAmount` e `availableBalance`. Extrato (`/statement`) não foi implementado.
+O saldo financeiro total é derivado (RN240; sem `current_balance`). A Fase 15 adiciona `reservedAmount` e `availableBalance`. Extrato (`/statement`) não foi implementado.
 
 Não existe `DELETE` de conta.
 
@@ -270,6 +270,28 @@ Implementado: despesas parceladas (`installmentCount`), pagamento por parcela, `
 | `POST` | `/api/v1/payments/{id}/reverse` | Bearer | `200` |
 
 Fora da Fase 8: semântica de `payments.type`, JSON aninhado completo da despesa N>1, endpoint composto payment+adjustment. Cartão, fatura e rateio estão no contrato da **Fase 9** (**CONCLUÍDA** / **APROVADA**).
+
+---
+
+## Metas (Fase 15)
+
+Implementado: meta vinculada a uma conta (`BANK_ACCOUNT` / `CASH`); contribuição; resgate em `ACTIVE` e `COMPLETED`; conclusão manual; cancelamento com `currentAmount = 0`. `currentAmount` e `progressPercent` são derivados. Contribuição/resgate não alteram `totalBalance`.
+
+| Método | Caminho | Autenticação | Resposta |
+|--------|---------|--------------|----------|
+| `POST` | `/api/v1/financial-goals` | Bearer | `201` (`ACTIVE`) |
+| `GET` | `/api/v1/financial-goals` | Bearer | `200` página (`items`, `page`, `size`, `totalItems`, `totalPages`) |
+| `GET` | `/api/v1/financial-goals/{id}` | Bearer | `200`; `404` se não for do usuário |
+| `PUT` | `/api/v1/financial-goals/{id}` | Bearer | `200`; somente `ACTIVE` |
+| `POST` | `/api/v1/financial-goals/{id}/contributions` | Bearer | `201` |
+| `GET` | `/api/v1/financial-goals/{id}/contributions` | Bearer | `200` array |
+| `POST` | `/api/v1/financial-goals/{id}/redemptions` | Bearer | `201` |
+| `GET` | `/api/v1/financial-goals/{id}/redemptions` | Bearer | `200` array |
+| `POST` | `/api/v1/financial-goals/{id}/complete` | Bearer | `200` (`COMPLETED`) |
+| `POST` | `/api/v1/financial-goals/{id}/cancel` | Bearer | `200` (`CANCELLED`; exige reservado zero) |
+
+Não existe `DELETE` nem reverse de contribuição/resgate. Detalhes: `docs/25-api.md` §54E.
+
 ---
 
 ## Regras financeiras (resumo)
@@ -290,8 +312,8 @@ Fora da Fase 8: semântica de `payments.type`, JSON aninhado completo da despesa
 | Transferência | Atômica; só `BANK_ACCOUNT`; status `ACTIVE`/`REVERSED`; não é receita/despesa; sem saldo insuficiente (criação e reversão); listagem MVP sem filtro de status |
 | Acerto de Saldos | Fato `BALANCE_ADJUSTMENT` (tabela `account_balance_adjustments`); usuário informa saldo real; diferença calculada; `BANK_ACCOUNT` e `CASH` |
 | Saldo inicial | Opcional na criação (default `0,00`); alteração só via `PUT .../initial-balance` até a primeira movimentação efetiva (RN010A) |
-| Saldo | Derivado: **total** (RN240), **reservado em metas** e **disponível** (Fase 15 contrato); operações normais usam disponível; sem `current_balance` |
-| Metas (Fase 15 contrato) | Reserva vinculada a conta; contribuição; resgate em `ACTIVE` e `COMPLETED`; conclusão manual; `currentAmount` e `progressPercent` derivados |
+| Saldo | Derivado: **total** (RN240), **reservado em metas** e **disponível** (Fase 15); operações normais usam disponível; sem `current_balance` |
+| Metas (Fase 15) | Reserva vinculada a conta; contribuição; resgate em `ACTIVE` e `COMPLETED`; conclusão manual; cancelamento só com `currentAmount = 0`; `currentAmount` e `progressPercent` derivados |
 | Receita | `EXPECTED` / `RECEIVED` / `CANCELLED`; cancelar inutiliza (`EXPECTED` → `CANCELLED`); estornar desfaz recebimento e mantém ativa (`RECEIVED` → `EXPECTED`); limpa `account_id` e `received_date`; pode deixar saldo negativo; sem `REVERSED`; sem responsável na Fase 6 (`responsible_type` nullable) |
 | Despesa (Fase 7) | `ACCOUNT` e `NONE`; criação `OPEN` sem payment; parcela 1/1 interna; `POST /expenses/{id}/pay`; cancelar só `OPEN`; estornar `PARTIALLY_PAID`/`PAID` → `REFUNDED`; `overdue` derivado; cartão fora. A RN210 (payment na mesma conta) foi **SUPERADA** no contrato da Fase 8. |
 | Pagamentos | Sem saldo negativo em operações normais; fatura parcial limitada ao saldo da conta |
@@ -472,11 +494,11 @@ Fase 8 — Parcelamento de despesas — CONCLUÍDA
 Fase 9 — Cartões / faturas (expandida) — CONCLUÍDA / APROVADA
 Fase 13 — Parcelamento / negociação / renegociação de fatura — CONCLUÍDA E APROVADA
 Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial — CONCLUÍDA E APROVADA
-Fase 15 — Metas — CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE
+Fase 15 — Metas — implementação concluída — aguardando auditoria final
 ```
 
-Estado atual do backend (Fases 1–9 + 13 + 14): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas, despesas, parcelamento (Fase 8), cartões/faturas (Fase 9), Agreements (Fase 13), transferências e Acerto de Saldos (Fase 14). **Metas:** schema parcial (Fase 2); contrato Fase 15 aprovado — implementação pendente.
+Estado atual do backend (Fases 1–9 + 13 + 14 + 15): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas, despesas, parcelamento (Fase 8), cartões/faturas (Fase 9), Agreements (Fase 13), transferências e Acerto de Saldos (Fase 14), metas financeiras (Fase 15).
 
-Fase 13 — **CONCLUÍDA E APROVADA** (`docs/24` §19.4 / RN254). **Fase 14** — **`CONCLUÍDA E APROVADA`**. **Fase 15** — Metas: contrato em `docs/24` §19.6 / `docs/25` §54E — **`CONTRATO APROVADO — IMPLEMENTAÇÃO PENDENTE`**. Não implementar Refresh Token, `payments.type`, relatórios/PDF, frontend financeiro, auditoria genérica, extrato `/statement` nem `POST /invoices/{id}/close` sem autorização.
+Fase 13 — **CONCLUÍDA E APROVADA** (`docs/24` §19.4 / RN254). **Fase 14** — **`CONCLUÍDA E APROVADA`**. **Fase 15** — Metas: contrato em `docs/24` §19.6 / `docs/25` §54E — implementação concluída, **aguardando auditoria final**. Não implementar Refresh Token, `payments.type`, relatórios/PDF, frontend financeiro, auditoria genérica, extrato `/statement` nem `POST /invoices/{id}/close` sem autorização.
 
 Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend financeiro, relatórios/PDF, auditoria genérica nem `payments.type` sem autorização. A edição de parcela já em fatura (§269.2.7) permanece **deferida**. Fechados: §269.3, §269.4, **§269.5** (Fase 13 — `CONCLUÍDA E APROVADA`).

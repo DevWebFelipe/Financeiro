@@ -1,0 +1,9 @@
+$kind: http-request
+description: Somente ACTIVE com currentAmount = 0. Body vazio. COMPLETED não cancela.
+url: "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/cancel"
+method: POST
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Status da meta deve ser CANCELLED\", function () {\r\n    pm.expect(json.status).to.eql(\"CANCELLED\");\r\n});\r"
+    language: text/javascript
+order: 10000

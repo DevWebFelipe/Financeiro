@@ -1397,6 +1397,43 @@ Conta:
 Disponível aumenta R$ 5.000
 
 
+# 68B. Fluxo — Cancelamento de meta
+
+Meta:
+
+Reserva extra
+
+
+Status:
+
+ACTIVE
+
+
+Acumulado:
+
+R$ 0
+
+
+Usuário cancela:
+
+
+Status:
+
+CANCELLED
+
+
+Conta:
+
+Saldo financeiro total inalterado
+
+Reservado: R$ 0
+
+Disponível inalterado
+
+
+Meta `ACTIVE` com `currentAmount > 0` **não** cancela — é necessário resgatar antes.
+
+
 # 69. Fluxo — Dashboard
 
 Ao abrir o sistema:

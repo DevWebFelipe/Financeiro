@@ -1,0 +1,12 @@
+$kind: http-request
+description: Permitido em ACTIVE e COMPLETED. Sem accountId. Não altera status nem totalBalance.
+url: "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/redemptions"
+method: POST
+body:
+  type: json
+  content: "{\r\n  \"amount\": 200.00,\r\n  \"redemptionDate\": \"{{today}}\",\r\n  \"notes\": null\r\n}"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 201 Created\", function () {\r\n    pm.response.to.have.status(201);\r\n});\r\n\r\npm.test(\"Resposta deve incluir redemption e goal\", function () {\r\n    pm.expect(json.redemption).to.exist;\r\n    pm.expect(json.goal).to.exist;\r\n});\r\n\r\npm.test(\"Resgate deve possuir ID\", function () {\r\n    pm.expect(json.redemption.id).to.exist;\r\n});\r"
+    language: text/javascript
+order: 7000

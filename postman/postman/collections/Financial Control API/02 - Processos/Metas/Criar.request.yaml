@@ -1,0 +1,12 @@
+$kind: http-request
+description: Conta BANK_ACCOUNT ou CASH ativa do usuário. Status inicial ACTIVE.
+url: "{{baseUrl}}/api/v1/financial-goals"
+method: POST
+body:
+  type: json
+  content: "{\r\n  \"accountId\": \"{{accountId}}\",\r\n  \"name\": \"Viagem Chile\",\r\n  \"description\": \"Férias de julho\",\r\n  \"targetAmount\": 5000.00,\r\n  \"targetDate\": \"2026-12-20\"\r\n}"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 201 Created\", function () {\r\n    pm.response.to.have.status(201);\r\n});\r\n\r\nif (json.id) {\r\n    pm.environment.set(\"financialGoalId\", json.id);\r\n}\r\n\r\npm.test(\"Meta deve possuir ID\", function () {\r\n    pm.expect(json.id).to.exist;\r\n});\r\n\r\npm.test(\"Status inicial deve ser ACTIVE\", function () {\r\n    pm.expect(json.status).to.eql(\"ACTIVE\");\r\n});\r\n\r\npm.test(\"currentAmount inicial deve ser zero\", function () {\r\n    pm.expect(Number(json.currentAmount)).to.eql(0);\r\n});\r\n\r\npm.test(\"accountId deve ser o da conta vinculada\", function () {\r\n    pm.expect(json.accountId).to.eql(pm.environment.get(\"accountId\"));\r\n});\r"
+    language: text/javascript
+order: 3000

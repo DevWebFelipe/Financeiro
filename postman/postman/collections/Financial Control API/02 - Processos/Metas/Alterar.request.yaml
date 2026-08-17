@@ -1,0 +1,12 @@
+$kind: http-request
+description: Somente meta ACTIVE. accountId não é editável.
+url: "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}"
+method: PUT
+body:
+  type: json
+  content: "{\r\n  \"name\": \"Viagem Chile\",\r\n  \"description\": null,\r\n  \"targetAmount\": 6000.00,\r\n  \"targetDate\": \"2027-01-15\"\r\n}"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"ID da meta deve corresponder ao solicitado\", function () {\r\n    pm.expect(json.id).to.eql(pm.environment.get(\"financialGoalId\"));\r\n});\r\n\r\npm.test(\"targetAmount deve ser atualizado\", function () {\r\n    pm.expect(Number(json.targetAmount)).to.eql(6000);\r\n});\r\n\r\npm.test(\"accountId permanece o da criação\", function () {\r\n    pm.expect(json.accountId).to.eql(pm.environment.get(\"accountId\"));\r\n});\r"
+    language: text/javascript
+order: 4000

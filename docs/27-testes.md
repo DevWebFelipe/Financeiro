@@ -616,7 +616,9 @@ Testar:
 
 # 40D. Metas financeiras (Fase 15)
 
-Contrato: `docs/24` §19.6 / `docs/25` §54E. **Implementação pendente** — catálogo de testes previstos:
+Contrato: `docs/24` §19.6 / `docs/25` §54E.
+
+Classes: `FinancialGoalApiTest`, `FinancialGoalConcurrencyTest`, `GoalProgressTest`, `GoalReservationFoundationTest`.
 
 **Cadastro e edição**
 
@@ -630,6 +632,7 @@ Contrato: `docs/24` §19.6 / `docs/25` §54E. **Implementação pendente** — c
 **Contribuição**
 
 - contribuição válida reduz `availableBalance`, não altera `totalBalance`;
+- contribuição usando exatamente todo o `availableBalance`;
 - contribuição acima do objetivo (`progressPercent > 100%`);
 - rejeitar contribuição em `COMPLETED` / `CANCELLED`;
 - rejeitar contribuição com `availableBalance` insuficiente;
@@ -649,12 +652,13 @@ Contrato: `docs/24` §19.6 / `docs/25` §54E. **Implementação pendente** — c
 - após resgate total de `COMPLETED`, status permanece `COMPLETED`;
 - resgate aumenta `availableBalance`, não altera `totalBalance`;
 - rejeitar resgate > `currentAmount`;
+- rejeitar `redemptionDate` futura;
 - resgate retorna sempre à conta vinculada (sem escolha de conta).
 
 **Derivados**
 
 - `currentAmount = SUM(contributions) − SUM(redemptions)`;
-- `progressPercent` com `HALF_UP`, escala 2, sem teto;
+- `progressPercent` com `HALF_UP`, escala 2, sem teto (`33.33%`, `16.67%`, `100%`, `110%`);
 - meta `ACTIVE` com `currentAmount = 0` após resgate total;
 - `COMPLETED` + `currentAmount > 0` é válido;
 - `COMPLETED` + `currentAmount = 0` é válido;
@@ -663,6 +667,7 @@ Contrato: `docs/24` §19.6 / `docs/25` §54E. **Implementação pendente** — c
 **Conclusão e cancelamento**
 
 - concluir abaixo de 100%, em 100% e acima de 100%;
+- concluir com `currentAmount = 0`;
 - concluir **não** altera automaticamente ao atingir 100% por contribuição;
 - cancelar com `currentAmount = 0` (somente `ACTIVE`);
 - rejeitar cancelar com reservado > 0;
@@ -678,12 +683,15 @@ Contrato: `docs/24` §19.6 / `docs/25` §54E. **Implementação pendente** — c
 - contribuição conta como primeira movimentação (RN010A);
 - rejeitar inativação com reservado > 0.
 
-**Segurança e concorrência**
+**Segurança, paginação e concorrência**
 
-- isolamento entre usuários (404);
-- dois aportes concorrentes não ultrapassam `availableBalance`.
-
-Classe sugerida na implementação: `Phase15FinancialGoalsApiTest` (ou equivalente alinhado ao padrão do projeto).
+- isolamento entre usuários (404) em GET e mutações (contribuir, resgatar, completar, cancelar);
+- 401 sem autenticação;
+- `page < 0` e `size < 1` → **400** `BUSINESS_RULE_VIOLATION`;
+- dois aportes concorrentes não ultrapassam `availableBalance`;
+- dois resgates concorrentes não ultrapassam `currentAmount`;
+- aporte e resgate concorrentes na mesma meta mantêm invariantes de saldo;
+- duas metas na mesma conta disputando `availableBalance` são serializadas pelo lock da conta.
 
 
 # 41. Atomicidade

@@ -1,0 +1,9 @@
+$kind: http-request
+description: Somente ACTIVE. Manual; permitido com currentAmount = 0, abaixo, em 100% ou acima. Body vazio.
+url: "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/complete"
+method: POST
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Status da meta deve ser COMPLETED\", function () {\r\n    pm.expect(json.status).to.eql(\"COMPLETED\");\r\n});\r"
+    language: text/javascript
+order: 9000

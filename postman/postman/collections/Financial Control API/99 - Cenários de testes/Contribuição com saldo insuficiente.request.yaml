@@ -1,0 +1,12 @@
+$kind: http-request
+description: Requer meta ACTIVE e availableBalance menor que o amount.
+url: "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/contributions"
+method: POST
+body:
+  type: json
+  content: "{\r\n  \"amount\": 99999999.00,\r\n  \"contributionDate\": \"{{today}}\",\r\n  \"notes\": \"Saldo insuficiente\"\r\n}"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 400 Bad Request\", function () {\r\n    pm.response.to.have.status(400);\r\n});\r\n\r\npm.test(\"Erro deve possuir o formato oficial\", function () {\r\n    pm.expect(json.timestamp).to.exist;\r\n    pm.expect(json.status).to.exist;\r\n    pm.expect(json.code).to.exist;\r\n    pm.expect(json.message).to.exist;\r\n    pm.expect(json.path).to.exist;\r\n});\r\n\r\npm.test(\"Código de erro deve ser BUSINESS_RULE_VIOLATION\", function () {\r\n    pm.expect(json.code).to.eql(\"BUSINESS_RULE_VIOLATION\");\r\n});\r\n\r\npm.test(\"Mensagem deve indicar saldo insuficiente\", function () {\r\n    pm.expect(json.message).to.eql(\"Saldo insuficiente para realizar a operação.\");\r\n});\r"
+    language: text/javascript
+order: 5000

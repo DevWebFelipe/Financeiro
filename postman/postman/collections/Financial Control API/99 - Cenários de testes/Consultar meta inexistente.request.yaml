@@ -1,0 +1,9 @@
+$kind: http-request
+description: Recurso de outro usuário ou ID inexistente retorna 404 sem distinguir.
+url: "{{baseUrl}}/api/v1/financial-goals/00000000-0000-0000-0000-000000000000"
+method: GET
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 404 Not Found\", function () {\r\n    pm.response.to.have.status(404);\r\n});\r\n\r\npm.test(\"Código de erro deve ser NOT_FOUND\", function () {\r\n    pm.expect(json.code).to.eql(\"NOT_FOUND\");\r\n});\r"
+    language: text/javascript
+order: 9000

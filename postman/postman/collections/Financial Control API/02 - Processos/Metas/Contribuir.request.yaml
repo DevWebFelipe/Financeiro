@@ -1,0 +1,12 @@
+$kind: http-request
+description: Somente ACTIVE. Sem accountId. Valida availableBalance. Não altera totalBalance.
+url: "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/contributions"
+method: POST
+body:
+  type: json
+  content: "{\r\n  \"amount\": 500.00,\r\n  \"contributionDate\": \"{{today}}\",\r\n  \"notes\": \"Primeiro aporte\"\r\n}"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 201 Created\", function () {\r\n    pm.response.to.have.status(201);\r\n});\r\n\r\npm.test(\"Resposta deve incluir contribution e goal\", function () {\r\n    pm.expect(json.contribution).to.exist;\r\n    pm.expect(json.goal).to.exist;\r\n});\r\n\r\npm.test(\"Contribuição deve possuir ID\", function () {\r\n    pm.expect(json.contribution.id).to.exist;\r\n});\r\n\r\npm.test(\"Meta deve permanecer ACTIVE\", function () {\r\n    pm.expect(json.goal.status).to.eql(\"ACTIVE\");\r\n});\r"
+    language: text/javascript
+order: 5000

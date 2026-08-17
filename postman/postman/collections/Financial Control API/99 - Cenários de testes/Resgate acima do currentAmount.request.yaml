@@ -1,0 +1,12 @@
+$kind: http-request
+description: amount maior que currentAmount da meta.
+url: "{{baseUrl}}/api/v1/financial-goals/{{financialGoalId}}/redemptions"
+method: POST
+body:
+  type: json
+  content: "{\r\n  \"amount\": 99999999.00,\r\n  \"redemptionDate\": \"{{today}}\"\r\n}"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 400 Bad Request\", function () {\r\n    pm.response.to.have.status(400);\r\n});\r\n\r\npm.test(\"Erro deve possuir o formato oficial\", function () {\r\n    pm.expect(json.timestamp).to.exist;\r\n    pm.expect(json.status).to.exist;\r\n    pm.expect(json.code).to.exist;\r\n    pm.expect(json.message).to.exist;\r\n    pm.expect(json.path).to.exist;\r\n});\r\n\r\npm.test(\"Código de erro deve ser BUSINESS_RULE_VIOLATION\", function () {\r\n    pm.expect(json.code).to.eql(\"BUSINESS_RULE_VIOLATION\");\r\n});\r\n\r\npm.test(\"Mensagem deve indicar resgate acima do acumulado\", function () {\r\n    pm.expect(json.message).to.eql(\"O valor do resgate não pode exceder o valor acumulado da meta.\");\r\n});\r"
+    language: text/javascript
+order: 6000
