@@ -1002,25 +1002,37 @@ Testes: `docs/27` §40E (`PayablesApiTest`, 14 testes). Suíte no fechamento: 42
 
 # 90. Fase 17 — Contas a receber
 
-Objetivo:
+**Status da Parte 1:** contrato oficial documentado (`docs/24` §19.8 / `docs/25` §67 / `docs/27` §40F) — **não implementado**.
 
-Criar visão consolidada de receitas previstas.
+Objetivo da Parte 1:
 
-
-# 91. Fase 17
-
-Exibir:
-
-- receitas esperadas;
-- receitas vencidas;
-- receitas recebidas.
+Visão consolidada de leitura das duplicatas de receita já existentes (`Income`).
 
 
-# 92. Critério
+# 91. Fase 17 — Parte 1
+
+Exibir, via `GET /api/v1/receivables` (pacote `receivables`):
+
+- receitas `EXPECTED` futuras;
+- receitas `EXPECTED` vencidas (`overdue` derivado);
+- receitas `RECEIVED` quando solicitadas.
+
+**Não** utilizar `/api/v1/accounts-receivable`. **Não** criar alias `dueDate`. `expectedDate` permanece obrigatória. `CANCELLED` fica fora. Consulta padrão: somente `EXPECTED`. Resumo no mesmo GET, respeitando filtros. Filtros/ordenação/paginação no banco. `size` máximo 100. Sem `year` / `month` / `search`. Sem escrita em `/receivables`.
+
+Fora da Parte 1: frontend, dashboard, PDF, baixas/movimentações (Parte 2), evolução da API de Income para gravar responsável (trabalho separado — RN306).
+
+
+# 92. Critério da Parte 1
 
 Usuário deve conseguir responder:
 
 "Quanto tenho para receber?"
+
+incluindo futuras, vencidas, total a receber, recebidas quando solicitadas, filtros, ordenação, paginação, ownership, dados agregados, testes e documentação.
+
+**Critério ainda não atendido — Parte 1 não implementada.**
+
+A Parte 2 (futura) estudará movimentações/histórico de recebíveis e **não** deve ser reduzida a `amount` / `receivedAmount` / `remainingAmount` na duplicata. Não implementar a Parte 2 agora.
 
 
 # 93. Fase 18 — Projeções
@@ -1618,7 +1630,9 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 Fases 0 a 9: CONCLUÍDAS. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**.
 
-Próxima etapa: **auditoria final da Fase 15 — Metas**. Próxima fase de implementação prevista (não iniciada): **Fase 17 — Contas a receber**.
+Próxima etapa: **auditoria final da Fase 15 — Metas**. Contrato da **Fase 17 — Parte 1** documentado (`docs/24` §19.8) — **não implementado**. Não iniciar implementação da Fase 17 sem seguir o fluxo D71 (documentação → testes → implementação).
+
+Status da Fase 17 Parte 1: contrato documentado; endpoint `GET /api/v1/receivables` **ainda não existe no código**.
 
 Status da Fase 16: `CONCLUÍDA E APROVADA` (`docs/24` §19.7 / `docs/25` §66). Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
 

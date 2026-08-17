@@ -779,6 +779,10 @@ O CHECK de valores válidos (`MINE`, `GIULIA`, `EDERSON`, `ELISIANE`, `OTHER`) p
 
 Esta regra não altera o uso de responsável em despesas (RN035–RN038).
 
+**Emenda (Fase 17 — contrato; não altera o comportamento implementado da Fase 6):** o responsável é informação de negócio necessária para receitas (salário do titular, salário de cônjuge, receitas de outras pessoas). As colunas físicas já existem; não inventar campos novos. A API de Income da Fase 6 **continua** rejeitando `responsibleType` / `responsibleName` no JSON.
+
+A evolução que permitirá informar responsável no cadastro/edição de Income é **separada** da implementação principal da visão `GET /api/v1/receivables` e **não** se confunde com a Parte 2 (baixas/movimentações). Detalhe: §19.8.12 / RN306. Não implementar essa evolução nesta etapa documental.
+
 
 ## RN207 — Cancelamento de receita prevista
 
@@ -3517,6 +3521,400 @@ Somente obrigações do `userId` autenticado. Usuário B nunca recebe linhas do 
 ## RN292 — Sem escrita em payables
 
 Nenhum POST/PUT/PATCH/DELETE em `/payables`. Nenhum `GET /payables/{id}` nesta fase.
+
+
+# 19.8 Contrato da Fase 17 — Contas a receber (Parte 1)
+
+**Status:** contrato oficial da **Parte 1** documentado — **não implementado**. Endpoint previsto: `GET /api/v1/receivables`. Pacote previsto: `receivables`.
+
+Autoridade: `AGENTS.md` §28 → esta seção → `docs/25` §67 → `docs/27` §40F / `docs/28`.
+
+Não declarar a Fase 17 concluída. Não declarar a Fase 15 `CONCLUÍDA E APROVADA` nesta etapa. Fluxo oficial (D71): decisões → documentação → testes → implementação → auditoria → fechamento. Esta seção é **documentação**.
+
+Receivables **não** cria fato financeiro novo. A fonte de verdade permanece `incomes` (Fase 6). A visão apenas lê.
+
+---
+
+## 19.8.1 Escopo da Parte 1
+
+**Inclui (quando implementada):**
+
+1. Visão operacional de leitura das duplicatas de receita já existentes;
+2. Unidade da linha: um `Income` elegível (`EXPECTED` ou `RECEIVED`);
+3. Filtros de período (`startDate` / `endDate` + `dateType`), `status`, `overdue`, categoria, conta e responsável;
+4. Paginação server-side, ordenação dinâmica e resumo do **universo filtrado**;
+5. Pacote Java `receivables` como fronteira HTTP de consulta (sem entidade JPA / sem tabela).
+
+**Fora do escopo da Parte 1:**
+
+- Angular / telas / dashboard / projeções / relatórios PDF / Excel;
+- `GET /receivables/{id}`;
+- POST/PUT/PATCH/DELETE / receber / estornar / cancelar via `/receivables`;
+- tabela `receivables` / `accounts_receivable`, colunas persistidas de remaining/total, status `OVERDUE`;
+- rota `/api/v1/accounts-receivable`;
+- alias `dueDate` para `expectedDate`;
+- tornar `expected_date` nullable;
+- `year` / `month` / `search`;
+- baixas parciais, múltiplos recebimentos, acréscimos ao saldo a receber, histórico de movimentações (**Parte 2**);
+- evolução da API de Income para gravar responsável (trabalho separado — §19.8.12);
+- itens deferidos oficiais (`payments.type`, §269.2.7).
+
+---
+
+## 19.8.2 Conceito
+
+Contas a receber é uma **visão derivada** de `Income`. Não existe entidade `receivable` persistida. Não existe segunda fonte de verdade.
+
+```text
+Income
+│
+├── EXPECTED
+│   ├── futura
+│   └── vencida
+│
+├── RECEIVED
+│
+└── CANCELLED
+    └── fora da visão
+```
+
+A visão responde: **"Quanto tenho para receber?"** — futuras, vencidas, total a receber e, quando solicitadas, recebidas — com filtros, ordenação, paginação, ownership e resumo.
+
+`CANCELLED` permanece no histórico de `GET /api/v1/incomes` e **nunca** entra na visão nem no resumo. Não há contador de canceladas.
+
+---
+
+## 19.8.3 Unidade da linha e vocabulário de data
+
+Uma linha é **exatamente um** `Income` do usuário autenticado, com status `EXPECTED` ou `RECEIVED`.
+
+A data financeira da duplicata na visão é `expectedDate` (coluna `expected_date`). **Não** criar alias `dueDate` (D52).
+
+`expectedDate` permanece **obrigatória** no cadastro de Income e **NOT NULL** no banco (D53). Não há receita sem data prevista nesta fase. Não criar migration para tornar `expected_date` nullable. Recebimentos recorrentes/acumulativos que ainda não serão recebidos imediatamente usam uma data futura/convencionada informada no cadastro de Income.
+
+`receivedDate` existe somente quando `status = RECEIVED` (nulo em `EXPECTED`, inclusive após estorno).
+
+---
+
+## 19.8.4 Elegibilidade e consulta padrão
+
+**Entram:**
+
+- `EXPECTED` (futura e vencida);
+- `RECEIVED`, **somente** quando o filtro `status=RECEIVED` é informado.
+
+**Não entram:**
+
+- `CANCELLED`;
+- receitas de outro usuário.
+
+**Consulta padrão (sem `status`):** somente `EXPECTED` (futuras + vencidas). `RECEIVED` **não** entra por padrão (D19).
+
+Estorno (`RECEIVED` → `EXPECTED`): a linha volta à visão operacional e a classificação futura/vencida volta a depender de `expectedDate` vs hoje (`America/Sao_Paulo`).
+
+Recebimento integral (`EXPECTED` → `RECEIVED`): a duplicata deixa de ser aberta/vencida. Não existe status persistido de "received late".
+
+---
+
+## 19.8.5 Overdue (derivado)
+
+`OVERDUE` **não** é status persistido nem coluna.
+
+Timezone / "hoje": `America/Sao_Paulo`.
+
+```text
+overdue ⇔ status = EXPECTED AND expectedDate < hoje
+```
+
+`EXPECTED` com `expectedDate >= hoje` não é overdue. `RECEIVED` nunca é overdue. `CANCELLED` está fora da visão.
+
+Filtro `overdue=true|false` é **separado** de `status` (D55, D56):
+
+| Combinação | Resultado |
+|---|---|
+| `status=EXPECTED&overdue=true` | somente `EXPECTED` vencidas |
+| `status=EXPECTED&overdue=false` | somente `EXPECTED` futuras (`expectedDate >= hoje`) |
+| `status=EXPECTED` (sem `overdue`) | `EXPECTED` futuras + vencidas |
+| sem `status` (padrão D19) | idem: todas as `EXPECTED` |
+| sem `status` + `overdue=true\|false` | restringe o universo padrão `EXPECTED` |
+
+`status=RECEIVED` combinado com `overdue` é incompatível → **400** (D58).
+
+---
+
+## 19.8.6 Período e `dateType`
+
+Intervalo **inclusivo** (`startDate` / `endDate`). O período usa a data **do recebível**, não `createdAt` (D21).
+
+Não implementar `year` / `month` (D64). Não implementar `search` (D65).
+
+`dateType`:
+
+| Valor | Coluna filtrada |
+|---|---|
+| `EXPECTED` | `expectedDate` / `expected_date` |
+| `RECEIVED` | `receivedDate` / `received_date` |
+
+Quando `startDate` e/ou `endDate` estão presentes, `dateType` é **obrigatório**. Ausência de período: `dateType` pode ser omitido; se informado, ainda é validado contra `status`.
+
+`startDate` > `endDate` → **400**.
+
+Sem filtro de datas: consulta operacional (padrão = abertas `EXPECTED`), inclusive futuras e vencidas. Histórico de recebidas exige `status=RECEIVED` (e período em `receivedDate` quando houver filtro temporal).
+
+Não criar rota de "próximos X dias": o cliente monta `startDate`/`endDate` no mesmo endpoint.
+
+---
+
+## 19.8.7 Combinações incompatíveis (400)
+
+O backend valida o contrato. Combinações semanticamente incompatíveis → **400** `VALIDATION_ERROR`.
+
+Incompatíveis (lista oficial):
+
+- `status=EXPECTED` (explícito ou padrão, quando `status` omitido) + `dateType=RECEIVED`;
+- `status=RECEIVED` + `dateType=EXPECTED`;
+- `status=RECEIVED` + `overdue` informado;
+- `dateType` ou `status` com valor fora do conjunto oficial;
+- período (`startDate` e/ou `endDate`) sem `dateType`.
+
+**Não** é incompatível (retorna **200**, possivelmente vazio):
+
+- `status=EXPECTED&accountId=<id>` — `EXPECTED` tem `accountId` nulo; o resultado pode ser zero linhas (D68).
+
+Prevenir essas combinações na UI é responsabilidade futura do frontend. Fora desta fase.
+
+---
+
+## 19.8.8 Filtros
+
+Todos os filtros oficiais combinam por interseção quando semanticamente compatíveis. Resultado vazio é **200** com `items` vazio e resumo `0.00`.
+
+| Filtro | Semântica |
+|---|---|
+| `startDate` / `endDate` | `LocalDate` inclusive sobre a coluna indicada por `dateType` |
+| `dateType` | `EXPECTED` \| `RECEIVED` |
+| `status` | um valor: `EXPECTED` \| `RECEIVED`. Sem parâmetro = padrão D19 (`EXPECTED`). `CANCELLED` **não** é valor aceito |
+| `overdue` | `true` \| `false`; derivado; omitido = não restringe |
+| `categoryId` | UUID da categoria da receita |
+| `accountId` | UUID da conta; em `EXPECTED` o campo é nulo (conjunto vazio possível) |
+| `responsibleType` | `MINE`, `GIULIA`, `EDERSON`, `ELISIANE`, `OTHER` |
+| `responsibleName` | igualdade com `incomes.responsible_name` quando informado; omitido = não restringe |
+| `sort` / `direction` | §19.8.9 |
+| `page` / `size` | §19.8.9 |
+
+Query params desconhecidos → **400** `VALIDATION_ERROR` (D67; mesmo rigor de payables).
+
+Enquanto a API de Income da Fase 6 não gravar responsável, `responsibleType` / `responsibleName` persistidos permanecem nulos. Os filtros da visão já fazem parte do contrato e devolvem vazio quando não houver dado (não 400).
+
+---
+
+## 19.8.9 Ordenação, paginação e resumo
+
+Ordenação: `sort` + `direction`. Campos permitidos (somente estes): `amount`, `expectedDate`, `receivedDate`, `description`, `status`, `createdAt`. Ordenação arbitrária por outras colunas é rejeitada (**400**).
+
+Padrão quando `sort` omitido: `expectedDate ASC` (D63). `direction` omitido: `asc`. Desempate **sempre** `id ASC`, inclusive quando `direction=desc` no campo principal. `receivedDate` nulo: por último em `ASC`, por primeiro em `DESC` (mesmo critério de nulos de payables).
+
+Paginação: `page` default `0`; `size` default `20`; máximo `size=100` (D66). `page < 0`, `size < 1` ou `size > 100` → **400** `BUSINESS_RULE_VIOLATION`.
+
+Envelope: `items`, `summary`, `page`, `size`, `totalItems`, `totalPages`.
+
+`summary`:
+
+| Campo | Semântica |
+|---|---|
+| `futureAmount` | soma de `amount` das linhas filtradas `EXPECTED` e não overdue |
+| `overdueAmount` | soma de `amount` das linhas filtradas `EXPECTED` overdue |
+| `totalReceivableAmount` | `futureAmount + overdueAmount` |
+| `receivedAmount` | soma de `amount` das linhas filtradas `RECEIVED` |
+
+O resumo **respeita exatamente os filtros** (D49, D59). Não é um resumo global. Exemplo: `status=RECEIVED` → `futureAmount` / `overdueAmount` / `totalReceivableAmount` = `0.00`; `receivedAmount` = soma das recebidas filtradas. Consulta padrão (só `EXPECTED`) → `receivedAmount` = `0.00`.
+
+`totalItems` / `totalPages` também são do universo filtrado, não só da página. Lista vazia: **200**, `items: []`, resumo `0.00`, `totalItems: 0`, `totalPages: 0`.
+
+Valores monetários: escala 2, `HALF_UP`.
+
+---
+
+## 19.8.10 Item da Parte 1
+
+Campos do item: `id`, `categoryId`, `accountId`, `responsibleType`, `responsibleName`, `description`, `amount`, `expectedDate`, `receivedDate`, `status`, `overdue`.
+
+`amount` é o valor da duplicata (`incomes.amount`). **Não** expor `remainingAmount` nem `receivedAmount` no item (D60). A Parte 2 mudará o modelo de recebimento; esses nomes no item da Parte 1 cristalizariam um contrato falso.
+
+Não criar `GET /receivables/{id}`. Recebimento, estorno, cancelamento e edição permanecem em `/api/v1/incomes`.
+
+---
+
+## 19.8.11 Consulta no banco e índices
+
+Filtros, ordenação e paginação **ocorrem no banco**. Não carregar todas as receitas do usuário para filtrar/paginar em Java. **Não** copiar o comportamento atual de `PayablesService` (filtro/paginação em memória).
+
+Índices: analisar o SQL real na implementação. Candidatos:
+
+- `(user_id, status, expected_date)`
+- `(user_id, status, received_date)`
+
+Índices adicionais somente se `EXPLAIN` / plano de execução justificar. Não criar índices por antecipação. Não assumir migration estrutural para a Parte 1 (D36, D53).
+
+---
+
+## 19.8.12 Responsável — evolução futura de Income (separada)
+
+Confirmado (D54, D69): receitas precisam de responsável (ex.: salário do Felipe, salário da esposa, receitas de outras pessoas).
+
+Estado atual (Fase 6, inalterado até a evolução ser implementada):
+
+1. as colunas `responsible_type` e `responsible_name` **já existem** em `incomes`;
+2. a API de Income **não** permite informar esses campos (`FAIL_ON_UNKNOWN_PROPERTIES`);
+3. create/update grava `null`.
+
+Evolução necessária (não nesta etapa documental; não na Parte 2):
+
+- permitir `responsibleType` / `responsibleName` no cadastro e na edição de Income (`EXPECTED`), com as mesmas regras de valores já usadas em despesas (RN035–RN038);
+- não inventar colunas novas;
+- não reabrir a lista de valores oficiais de responsável.
+
+A visão de Receivables **já contrata** retorno e filtro desses campos. Quando a evolução de Income passar a gravá-los, a visão os reflete sem mudar o contrato HTTP de `/receivables`.
+
+Essa evolução **não** é baixas/movimentações e **não** autoriza alterar o contrato da Parte 1.
+
+---
+
+## 19.8.13 Parte 2 — Baixas e movimentações (futuro confirmado)
+
+**Não implementar nesta fase. Não criar tabela, entidade, endpoint nem DTO de movimentação agora.**
+
+A Parte 2 **não** deve ser modelada simplesmente como:
+
+```text
+Income
+├── amount
+├── receivedAmount
+└── remainingAmount
+```
+
+O domínio futuro deverá suportar um histórico de movimentações. Exemplo confirmado:
+
+```text
++35
++35
+-50
++35
++110
+-100
+```
+
+Resultado:
+
+```text
+total gerado/acumulado = 215
+total recebido          = 150
+saldo a receber         = 65
+```
+
+A Parte 2 deverá estudar um modelo capaz de representar:
+
+- acréscimos ao valor a receber;
+- múltiplos recebimentos;
+- saldo restante;
+- histórico das movimentações;
+- fechamento quando o saldo chegar a zero.
+
+A Parte 1 permanece leitura da duplicata integral (`incomes.amount` + `status`). Após **toda** a Fase 17, e **antes** da Fase 18, haverá atualização geral de roadmap, README, documentação, status, regras, API, arquitetura, testes, `AGENTS.md` e rules operacionais relevantes (D70).
+
+---
+
+## 19.8.14 Isolamento e arquitetura
+
+Dono = `userId` do JWT. A consulta filtra na query por esse usuário. Recurso/filtro de outro usuário não devolve dados alheios (lista vazia; sem vazar existência).
+
+Pacote previsto: `br.com.financialcontrol.receivables` — Controller → Service → consultas de leitura sobre `Income` / `IncomeRepository`. Sem entidade JPA `Receivable`. Sem UseCase por filtro. DTOs próprios da visão (D28). Sem alterar o domínio de Income sem necessidade real da Parte 1 (D45); a evolução de responsável é o único acréscimo previsto ao cadastro, em trabalho separado.
+
+Timezone: `America/Sao_Paulo`. Convenções: inglês no código/rotas/pacotes/DTOs/banco; documentação funcional em português (D72).
+
+Fase 17 Parte 1 = somente backend/API, quando implementada.
+
+---
+
+## 19.8.15 Registro D51–D72
+
+As decisões D51–D72 (e o contrato preliminar D01–D50 da auditoria, na medida em que não contradisserem D51–D72) estão refletidas nesta seção e em `docs/25` §67. Em conflito, prevalecem D51–D72 e esta seção. Lacuna nova → parar e perguntar.
+
+---
+
+## RN293 — Visão derivada de contas a receber
+
+Contas a receber não é fato persistido. Não criar tabela `receivables` nem `accounts_receivable`. Fonte de verdade: `incomes`.
+
+
+## RN294 — Elegibilidade da visão
+
+Linha = `Income` `EXPECTED` ou `RECEIVED` do usuário autenticado. `CANCELLED` nunca entra. Sem `status`, somente `EXPECTED`.
+
+
+## RN295 — Overdue da visão de recebíveis
+
+Derivado. `status = EXPECTED` e `expectedDate` < hoje (`America/Sao_Paulo`). Não persistir. `RECEIVED` nunca é overdue.
+
+
+## RN296 — Consulta padrão
+
+Sem filtro de `status`, a visão operacional considera somente receitas `EXPECTED` (futuras + vencidas). `RECEIVED` não entra por padrão.
+
+
+## RN297 — Tipo de data
+
+`dateType=EXPECTED` filtra `expectedDate`. `dateType=RECEIVED` filtra `receivedDate`. Período (`startDate` / `endDate`) exige `dateType`. Intervalo inclusivo. Não usar `createdAt`. Não implementar `year` / `month`.
+
+
+## RN298 — Combinações incompatíveis
+
+`status=EXPECTED` (explícito ou padrão) + `dateType=RECEIVED`, `status=RECEIVED` + `dateType=EXPECTED`, e `status=RECEIVED` + `overdue` → **400**. `status=EXPECTED` + `accountId` não é 400 (pode ser vazio).
+
+
+## RN299 — Resumo respeita filtros
+
+`futureAmount`, `overdueAmount`, `totalReceivableAmount` e `receivedAmount` somam o universo filtrado, não um global e não só a página.
+
+
+## RN300 — Total a receber
+
+`totalReceivableAmount = futureAmount + overdueAmount`. Vencidas continuam a receber. `CANCELLED` não entra em nenhum total. Não há contador de canceladas.
+
+
+## RN301 — Item da Parte 1
+
+O item expõe o `amount` da duplicata. Não expor `remainingAmount` nem `receivedAmount` no item da Parte 1.
+
+
+## RN302 — Consulta no banco
+
+Filtros, ordenação e paginação da visão executam no banco. Não filtrar/paginar em memória. Não copiar o mecanismo em memória de payables.
+
+
+## RN303 — expectedDate obrigatória
+
+Não tornar `expected_date` nullable. Não criar receita sem `expectedDate` nesta fase. Não criar alias `dueDate`.
+
+
+## RN304 — Sem escrita em receivables
+
+Nenhum POST/PUT/PATCH/DELETE em `/receivables`. Nenhum `GET /receivables/{id}`. Receber / estornar / cancelar / editar permanecem em `/incomes`.
+
+
+## RN305 — Isolamento da visão de recebíveis
+
+Somente receitas do `userId` autenticado. Usuário B nunca recebe linhas do usuário A.
+
+
+## RN306 — Responsável em receita
+
+As colunas já existem. A API da Fase 6 não as aceita. Evolução futura do cadastro/edição de Income (separada da Parte 1 e da Parte 2) permitirá informá-las. A visão de receivables retorna e filtra `responsibleType` / `responsibleName`. Não inventar colunas.
+
+
+## RN307 — Parte 2 de recebíveis (não implementar agora)
+
+A Parte 2 exigirá modelo de movimentações/histórico (acréscimos, múltiplos recebimentos, saldo, fechamento em zero). Não reduzir a Parte 2 a `amount` / `receivedAmount` / `remainingAmount` na duplicata. Não criar artefatos da Parte 2 na Parte 1.
 
 
 # 20. Metas

@@ -32,6 +32,10 @@ Do not create provisional code, preparatory migrations, presumed enums/CHECKs, o
 
 **Phase 14 — `CONCLUÍDA E APROVADA`:** `docs/24` §19.5 — transfers (`BANK_ACCOUNT` only; `ACTIVE`/`REVERSED`; no status filter in MVP listing), Acerto de Saldos (`BALANCE_ADJUSTMENT` / table `account_balance_adjustments`), initial balance (RN010 / RN010A; optional on create; `PUT .../initial-balance`), deactivate only if balance = 0 (RN007A). Unified statement remains out of Phase 14 scope.
 
+**Phase 16 — `CONCLUÍDA E APROVADA`:** `docs/24` §19.7 — `GET /api/v1/payables` derived view; no `payables` table.
+
+**Phase 17 Part 1 — contract documented, not implemented:** `docs/24` §19.8 — `GET /api/v1/receivables`; no `receivables` table; `expectedDate` remains required; Part 2 movements and Income responsible write are separate. Do **not** declare Phase 15 approved here.
+
 Mandatory remaining questions: `docs/23-modelo-de-dados.md` seção 269 (`payments.type`; §269.2.7).
 
 Everything else already consolidated in `docs/23` remains the source of truth.

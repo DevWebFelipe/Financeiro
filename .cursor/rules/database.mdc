@@ -46,6 +46,7 @@ Never modify an already-applied shared/production migration.
 
 - Tables: plural snake_case — `accounts`, `expenses`, `incomes`, `transfers`, `account_balance_adjustments` (Fase 14), `payments`, `credit_cards`, `credit_card_invoices`, `financial_goals`
 - Fase 16 (`payables`, `CONCLUÍDA E APROVADA`): **não** criar tabela `payables` nem colunas de remaining/total da visão (`docs/24` §19.7 / RN281).
+- Fase 17 Parte 1 (`receivables`, contrato documentado — **não implementado**): **não** criar tabela `receivables`; **não** tornar `expected_date` nullable; **não** criar índices só por antecipação (`docs/24` §19.8 / RN293 / RN303).
 - Columns: snake_case
 - Primary key: `id UUID`
 - Foreign keys: `account_id`, `credit_card_id`

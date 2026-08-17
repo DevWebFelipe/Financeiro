@@ -747,7 +747,7 @@ page
 
 size
 
-A Fase 6 **não** utiliza filtro `responsibleType`. `responsibleType` e `responsibleName` não fazem parte do contrato desta fase (RN203).
+A Fase 6 **não** utiliza filtro `responsibleType`. `responsibleType` e `responsibleName` não fazem parte do contrato **implementado** desta fase (RN203). A evolução que permitirá informá-los no cadastro/edição de Income é trabalho **separado** (contrato `docs/24` §19.8.12 / RN306) e **não** está implementada. Até lá, essas propriedades continuam **desconhecidas** neste recurso.
 
 
 Response de item (criação, consulta, listagem, edição e ações):
@@ -2091,22 +2091,121 @@ Não usar 404 para lista vazia.
 Dashboard, projeções, frontend, escritas, `GET /payables/{id}`, migration, tabela `payables`.
 
 
-# 67. Contas a receber
+# 67. Contas a receber (Fase 17 — Parte 1)
 
-Endpoint:
+**Status:** contrato oficial `docs/24` §19.8 — **não implementado**. Não documentar este endpoint como existente no código até a implementação.
 
+Endpoint único previsto:
+
+```text
 GET /api/v1/receivables
+```
 
+Pacote previsto: `receivables`. **Não** utilizar `/api/v1/accounts-receivable`.
 
-Filtros:
+Auth: Bearer obrigatório. Sem token / token inválido / expirado / usuário desativado → **401** `UNAUTHORIZED`. Dono = usuário autenticado (JWT). Não existe `userId` na query. Recurso de outro usuário não é distinguido: filtros que não casam com o dono devolvem lista vazia (**200**), sem vazar existência.
 
-startDate
+Não existem `GET /receivables/{id}`, POST, PUT, PATCH nem DELETE neste recurso. Receber / estornar / cancelar / editar permanecem em `/api/v1/incomes`.
 
-endDate
+Propriedades JSON não se aplicam (GET sem body). Query params desconhecidos: rejeitar (**400** `VALIDATION_ERROR`) — o mesmo rigor de payables.
 
-status
+Visão derivada de `Income`. Sem tabela `receivables`. Sem alias `dueDate`. `expectedDate` continua obrigatória no cadastro de Income.
 
-categoryId
+## Conceito
+
+Linha elegível: um `Income` `EXPECTED` ou `RECEIVED` do usuário autenticado.
+
+`CANCELLED` nunca aparece. Sem `status`: somente `EXPECTED` (futuras + vencidas). `RECEIVED` só entra com `status=RECEIVED`.
+
+`overdue` é derivado (`America/Sao_Paulo`): `status = EXPECTED` **e** `expectedDate` < hoje. Não persistido. Não existe status `OVERDUE`.
+
+## Query params
+
+| Param | Obrigatório | Default | Semântica |
+|---|---|---|---|
+| `startDate` | não | omitido | `LocalDate` inclusive; exige `dateType` quando presente |
+| `endDate` | não | omitido | `LocalDate` inclusive; exige `dateType` quando presente |
+| `dateType` | se houver período | omitido | `EXPECTED` (filtra `expectedDate`) \| `RECEIVED` (filtra `receivedDate`) |
+| `status` | não | omitido = `EXPECTED` | um valor: `EXPECTED` \| `RECEIVED`. `CANCELLED` não é aceito |
+| `overdue` | não | omitido | `true` \| `false`; separado de `status` |
+| `categoryId` | não | omitido | UUID da categoria |
+| `accountId` | não | omitido | UUID da conta. `EXPECTED` tem `accountId` nulo → conjunto vazio possível (**200**, não 400) |
+| `responsibleType` | não | omitido | `MINE`, `GIULIA`, `EDERSON`, `ELISIANE`, `OTHER` |
+| `responsibleName` | não | omitido | igualdade com `incomes.responsible_name` |
+| `sort` | não | `expectedDate` | `amount`, `expectedDate`, `receivedDate`, `description`, `status`, `createdAt` |
+| `direction` | não | `asc` | `asc` \| `desc`. Desempate **sempre** `id ASC` |
+| `page` | não | `0` | ≥ 0 |
+| `size` | não | `20` | 1–100 |
+
+**Não** existem `year`, `month` nem `search`.
+
+Filtros combinam por interseção quando compatíveis. `startDate` > `endDate` → **400** `VALIDATION_ERROR`. Período sem `dateType` → **400** `VALIDATION_ERROR`. `sort` / `direction` / `status` / `overdue` / `dateType` inválidos → **400** `VALIDATION_ERROR`. Combinações incompatíveis (D58 / RN298): **400** `VALIDATION_ERROR`:
+
+- `status=EXPECTED` (explícito ou padrão) + `dateType=RECEIVED`;
+- `status=RECEIVED` + `dateType=EXPECTED`;
+- `status=RECEIVED` + `overdue`.
+
+`page < 0`, `size < 1` ou `size > 100` → **400** `BUSINESS_RULE_VIOLATION`.
+
+## Response 200 (contrato; ainda não implementado)
+
+```json
+{
+  "items": [
+    {
+      "id": "...",
+      "categoryId": "...",
+      "accountId": null,
+      "responsibleType": null,
+      "responsibleName": null,
+      "description": "Salário",
+      "amount": 5400.00,
+      "expectedDate": "2026-08-05",
+      "receivedDate": null,
+      "status": "EXPECTED",
+      "overdue": false
+    }
+  ],
+  "summary": {
+    "futureAmount": 5400.00,
+    "overdueAmount": 0.00,
+    "totalReceivableAmount": 5400.00,
+    "receivedAmount": 0.00
+  },
+  "page": 0,
+  "size": 20,
+  "totalItems": 1,
+  "totalPages": 1
+}
+```
+
+Regras do item:
+
+- `id`: id do `Income`;
+- `amount`: valor da duplicata (`incomes.amount`); **não** expor `remainingAmount` nem `receivedAmount` no item;
+- `expectedDate`: data prevista (obrigatória no cadastro; sem alias `dueDate`);
+- `receivedDate`: preenchido só em `RECEIVED`;
+- `overdue`: derivado; `true` somente se `EXPECTED` e `expectedDate` < hoje;
+- `responsibleType` / `responsibleName`: colunas de `incomes` (nulos enquanto a API de Income da Fase 6 não os gravar);
+- valores monetários escala 2, `HALF_UP`.
+
+`summary.futureAmount` + `summary.overdueAmount` = `summary.totalReceivableAmount`. Os quatro campos do resumo somam o **universo filtrado**, não só `items` e não um global. `totalItems` / `totalPages` idem.
+
+Lista vazia: **200**, `items: []`, resumo `0.00`, `totalItems: 0`, `totalPages: 0`.
+
+## Erros
+
+| Situação | HTTP | `code` |
+|---|---|---|
+| sem Bearer / token inválido | 401 | `UNAUTHORIZED` |
+| query param desconhecido, valor inválido, período sem `dateType`, `startDate` > `endDate`, combinação incompatível | 400 | `VALIDATION_ERROR` |
+| `page < 0` / `size < 1` / `size > 100` | 400 | `BUSINESS_RULE_VIOLATION` |
+
+Não usar 404 para lista vazia.
+
+## Fora desta parte
+
+Dashboard, projeções, frontend, PDF/Excel, escritas, `GET /receivables/{id}`, migration, tabela `receivables`, alias `dueDate`, `year`/`month`/`search`, baixas/movimentações (Parte 2), evolução da API de Income para gravar responsável (trabalho separado).
 
 
 # 68. Projeções

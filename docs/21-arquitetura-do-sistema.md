@@ -350,6 +350,7 @@ br.com.financialcontrol
 ├── credit_card_invoices
 ├── financial_goals
 ├── payables
+├── receivables
 └── ...
 ```
 
@@ -382,6 +383,12 @@ Pacotes da Fase 16 (`CONCLUÍDA E APROVADA`):
 - `payables` — visão consolidada de contas a pagar (`PayablesController` → `PayablesService` → consultas de leitura sobre `expenses` / `expense_installments` / `credit_card_invoices`).
 - **Sem** entidade JPA `Payable`, **sem** tabela `payables`, **sem** remaining persistido.
 - Remaining e totais derivados das fórmulas já oficiais (RN231, `docs/23` §§196–197). Contrato: `docs/24` §19.7.
+
+Pacotes da Fase 17 (contrato da Parte 1 documentado — **não implementado**):
+
+- `receivables` — visão consolidada de contas a receber (`ReceivablesController` → `ReceivablesService` → consultas de leitura sobre `incomes`).
+- **Sem** entidade JPA `Receivable`, **sem** tabela `receivables`, **sem** remaining persistido.
+- Vocabulário de data: `expectedDate` (sem alias `dueDate`). Filtros/ordenação/paginação **no banco** (não copiar o filtro em memória de payables). Contrato: `docs/24` §19.8.
 
 Pacotes da Fase 5:
 
@@ -1526,6 +1533,10 @@ Exemplo:
 /expenses
 
 /incomes
+
+/payables
+
+/receivables
 
 /transfers
 

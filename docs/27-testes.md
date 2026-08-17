@@ -773,6 +773,70 @@ Contrato: `docs/24` §19.7 / `docs/25` §66.
 - payables não inventa fórmula; usa remaining oficial de parcela e de fatura (ajustes, créditos, settlement já refletidos).
 
 
+# 40F. Contas a receber (Fase 17 — Parte 1)
+
+Contrato: `docs/24` §19.8 / `docs/25` §67.
+
+**Status:** contrato documentado — **não implementado**. Não criar testes de código nesta etapa. Quando a implementação começar: classe prevista `ReceivablesApiTest` (HTTP + Testcontainers + clock injetável para `overdue`). **Não** criar infraestrutura especial de concorrência (D30).
+
+**Não** testar a Parte 2 (movimentações/baixas). **Não** persistir remaining. **Não** criar tabela `receivables`. **Não** testar `dueDate` como alias. **Não** testar receita sem `expectedDate`.
+
+**Elegibilidade**
+
+- `EXPECTED` futura aparece na consulta padrão;
+- `EXPECTED` com `expectedDate` < hoje (`America/Sao_Paulo`) é `overdue=true`;
+- `EXPECTED` com `expectedDate >= hoje` é `overdue=false`;
+- `RECEIVED` **não** aparece no padrão; aparece com `status=RECEIVED`;
+- `CANCELLED` nunca aparece nem no resumo;
+- estorno `RECEIVED` → `EXPECTED` recoloca a linha e reclassifica por `expectedDate` vs hoje.
+
+**Período e dateType**
+
+- período inclusivo sobre `expectedDate` quando `dateType=EXPECTED`;
+- período sobre `receivedDate` quando `dateType=RECEIVED`;
+- período sem `dateType` → 400;
+- `status=EXPECTED` + `dateType=RECEIVED` → 400;
+- `status=RECEIVED` + `dateType=EXPECTED` → 400;
+- `status=RECEIVED` + `overdue` → 400;
+- sem datas: operacional (abertas `EXPECTED`).
+
+**Filtros**
+
+- `status`, `overdue`, `categoryId`, `accountId`, `responsibleType`, `responsibleName`;
+- `status=EXPECTED&accountId=<id>` → 200 vazio possível (não 400);
+- combinação por interseção;
+- query param desconhecido → 400;
+- `year` / `month` / `search` **não** existem (desconhecidos → 400).
+
+**Item e resumo**
+
+- item **não** contém `remainingAmount` nem `receivedAmount`;
+- item contém `expectedDate`, `overdue`, `responsibleType`, `responsibleName` (estes dois podem ser nulos até a evolução de Income);
+- `summary` do universo filtrado: `futureAmount`, `overdueAmount`, `totalReceivableAmount` (= soma dos dois), `receivedAmount`;
+- consulta padrão: `receivedAmount = 0.00`;
+- `status=RECEIVED`: totais a receber `0.00` e `receivedAmount` das filtradas.
+
+**Ordenação e paginação**
+
+- `sort` só nos campos oficiais + `direction`; padrão `expectedDate ASC`; desempate `id ASC`;
+- `size` default 20, máximo 100; `page < 0` / `size < 1` / `size > 100` → 400.
+
+**Isolamento e auth**
+
+- usuário B nunca recebe linhas do usuário A;
+- 401 sem Bearer.
+
+**Consulta**
+
+- filtros/ordenação/paginação no banco (contrato RN302). Não copiar a filtragem em memória de payables.
+
+**Responsável**
+
+- a visão filtra/retorna as colunas existentes;
+- enquanto Income não gravar responsável, filtros por responsável podem devolver vazio;
+- a evolução do `POST`/`PUT /incomes` é suíte **separada**, não misturar com a Parte 2.
+
+
 # 41. Atomicidade
 
 Se uma etapa da transferência falhar:
@@ -815,7 +879,7 @@ que estorno **não** resulta em `CANCELLED`;
 que cancelamento **não** é tratado como estorno.
 
 
-A Fase 6 não testa responsável em receitas (`responsibleType` / `responsibleName`).
+A Fase 6 não testa responsável em receitas (`responsibleType` / `responsibleName`). A evolução futura do cadastro de Income (RN306) e os testes da visão `GET /api/v1/receivables` (`docs/27` §40F) são contratos **separados** e ainda não implementados.
 
 
 # 44. Receita esperada
