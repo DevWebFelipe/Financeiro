@@ -1,0 +1,35 @@
+$kind: http-request
+description: Consulta a fatura OPEN do cartão. 404 quando não houver fatura OPEN.
+url: "{{baseUrl}}/api/v1/credit-cards/{{creditCardId}}/invoices/current"
+method: GET
+scripts:
+  - type: afterResponse
+    code: "pm.test(\"Status deve ser 200 ou 404\", function () {\r
+
+      \    pm.expect(pm.response.code).to.be.oneOf([200, 404]);\r
+
+      });\r
+
+      \r
+
+      if (pm.response.code === 200) {\r
+
+      \    const json = pm.response.json();\r
+
+      \    pm.environment.set(\"invoiceId\", json.id);\r
+
+      \    pm.test(\"Fatura atual deve possuir ID\", function () {\r
+
+      \        pm.expect(json.id).to.exist;\r
+
+      \    });\r
+
+      \    pm.test(\"Status da fatura atual deve ser OPEN\", function () {\r
+
+      \        pm.expect(json.status).to.eql(\"OPEN\");\r
+
+      \    });\r
+
+      }\r"
+    language: text/javascript
+order: 2000

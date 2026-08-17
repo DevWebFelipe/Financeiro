@@ -1,0 +1,62 @@
+$kind: http-request
+description: anticipatedFuturesNetAmount é obrigatório. Se não houver futuros, envie 0.
+url: "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/renegotiations"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"entryAmount\": 500.00,\r
+
+    \  \"accountId\": \"{{accountId}}\",\r
+
+    \  \"entryPaymentDate\": \"{{today}}\",\r
+
+    \  \"installmentCount\": 10,\r
+
+    \  \"installmentAmount\": 320.00,\r
+
+    \  \"anticipatedFuturesNetAmount\": 0.00\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 201 Created\", function () {\r
+
+      \    pm.response.to.have.status(201);\r
+
+      });\r
+
+      \r
+
+      if (json.id) {\r
+
+      \    pm.environment.set(\"agreementId\", json.id);\r
+
+      }\r
+
+      if (json.installments && json.installments.length > 0) {\r
+
+      \    pm.environment.set(\"agreementInstallmentId\", json.installments[0].id);\r
+
+      }\r
+
+      \r
+
+      pm.test(\"Renegociação deve possuir ID\", function () {\r
+
+      \    pm.expect(json.id).to.exist;\r
+
+      });\r
+
+      pm.test(\"Renegociação deve possuir financedAmount\", function () {\r
+
+      \    pm.expect(json.financedAmount).to.exist;\r
+
+      });\r"
+    language: text/javascript
+order: 2000

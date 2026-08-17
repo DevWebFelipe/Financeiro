@@ -1,0 +1,49 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/incomes/{{incomeId}}/receive"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"accountId\": \"{{accountId}}\",\r
+
+    \  \"receivedDate\": \"{{today}}\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Status deve ser RECEIVED\", function () {\r
+
+      \    pm.expect(json.status).to.eql(\"RECEIVED\");\r
+
+      });\r
+
+      \r
+
+      pm.test(\"accountId deve ser preenchido\", function () {\r
+
+      \    pm.expect(json.accountId).to.exist;\r
+
+      });\r
+
+      \r
+
+      pm.test(\"receivedDate deve ser preenchida\", function () {\r
+
+      \    pm.expect(json.receivedDate).to.exist;\r
+
+      });\r"
+    language: text/javascript
+order: 5000

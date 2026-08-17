@@ -1,0 +1,21 @@
+$kind: collection
+description: Coleção oficial da API REST do Financial Control. Reflete exclusivamente os endpoints implementados no backend.
+variables:
+  baseUrl: http://localhost:8080
+  today: ""
+scripts:
+  - type: http:beforeRequest
+    code: "const today = new Date().toLocaleDateString(\"en-CA\", {\r
+
+      \    timeZone: \"America/Sao_Paulo\"\r
+
+      });\r
+
+      pm.collectionVariables.set(\"today\", today);\r"
+    language: text/javascript
+auth:
+  - id: 43979500-f2b7-4a3e-ba53-60c0dc279db7
+    type: bearer
+    name: bearer auth
+    credentials:
+      token: "{{accessToken}}"

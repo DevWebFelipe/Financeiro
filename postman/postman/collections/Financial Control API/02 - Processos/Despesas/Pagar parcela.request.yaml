@@ -1,0 +1,42 @@
+$kind: http-request
+description: Pagamento de parcela identificada (N>1 ACCOUNT/NONE). CREDIT_CARD não usa este endpoint.
+url: "{{baseUrl}}/api/v1/expenses/{{expenseId}}/installments/{{installmentId}}/payments"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"accountId\": \"{{accountId}}\",\r
+
+    \  \"amount\": 80.00,\r
+
+    \  \"paymentDate\": \"{{today}}\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"ID da despesa deve corresponder ao solicitado\", function () {\r
+
+      \    pm.expect(json.id).to.eql(pm.environment.get(\"expenseId\"));\r
+
+      });\r
+
+      pm.test(\"Despesa deve possuir status\", function () {\r
+
+      \    pm.expect(json.status).to.exist;\r
+
+      });\r"
+    language: text/javascript
+order: 8000

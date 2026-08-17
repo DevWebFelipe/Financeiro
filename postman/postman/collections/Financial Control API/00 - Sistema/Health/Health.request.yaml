@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/health"
+method: GET
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"API deve estar UP\", function () {\r
+
+      \    pm.expect(json.status).to.eql(\"UP\");\r
+
+      });\r"
+    language: text/javascript
+order: 1000

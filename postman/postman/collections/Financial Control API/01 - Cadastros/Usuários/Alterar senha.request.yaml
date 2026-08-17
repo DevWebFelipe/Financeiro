@@ -1,0 +1,30 @@
+$kind: http-request
+description: O exemplo reenvia a mesma senha para não invalidar a sessão de testes. Em uso real, informe uma nova senha e faça login novamente.
+url: "{{baseUrl}}/api/v1/users/me/password"
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \  \"currentPassword\": \"{{userPassword}}\",\r
+
+    \  \"newPassword\": \"{{userPassword}}\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "pm.test(\"Status deve ser 204 No Content\", function () {\r
+
+      \    pm.response.to.have.status(204);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Resposta não deve ter corpo\", function () {\r
+
+      \    pm.expect(pm.response.text()).to.be.oneOf([\"\", undefined]);\r
+
+      });\r"
+    language: text/javascript
+order: 4000

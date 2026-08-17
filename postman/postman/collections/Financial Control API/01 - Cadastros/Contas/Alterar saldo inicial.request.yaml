@@ -1,0 +1,38 @@
+$kind: http-request
+description: Único endpoint para definir/alterar saldo inicial após a criação. Somente enquanto a conta nunca teve movimentação (RN010 / RN010A).
+url: "{{baseUrl}}/api/v1/accounts/{{accountId}}/initial-balance"
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \  \"initialBalance\": 2500.00\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"ID da conta deve corresponder ao solicitado\", function () {\r
+
+      \    pm.expect(json.id).to.eql(pm.environment.get(\"accountId\"));\r
+
+      });\r
+
+      pm.test(\"Saldo inicial deve ser atualizado\", function () {\r
+
+      \    pm.expect(Number(json.initialBalance)).to.eql(2500);\r
+
+      });\r"
+    language: text/javascript
+order: 6000

@@ -1,0 +1,67 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/credit-cards"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"name\": \"Nubank\",\r
+
+    \  \"holderName\": \"Felipe\",\r
+
+    \  \"lastFourDigits\": \"1234\",\r
+
+    \  \"creditLimit\": 5000.00,\r
+
+    \  \"closingDay\": 10,\r
+
+    \  \"dueDay\": 17\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 201 Created\", function () {\r
+
+      \    pm.response.to.have.status(201);\r
+
+      });\r
+
+      \r
+
+      if (json.id) {\r
+
+      \    pm.environment.set(\"creditCardId\", json.id);\r
+
+      }\r
+
+      \r
+
+      pm.test(\"Cartão deve possuir ID\", function () {\r
+
+      \    pm.expect(json.id).to.exist;\r
+
+      });\r
+
+      pm.test(\"Cartão deve possuir nome\", function () {\r
+
+      \    pm.expect(json.name).to.exist;\r
+
+      });\r
+
+      pm.test(\"Cartão deve possuir limite\", function () {\r
+
+      \    pm.expect(json.creditLimit).to.exist;\r
+
+      });\r
+
+      pm.test(\"Cartão deve estar ativo\", function () {\r
+
+      \    pm.expect(json.active).to.be.true;\r
+
+      });\r"
+    language: text/javascript
+order: 3000

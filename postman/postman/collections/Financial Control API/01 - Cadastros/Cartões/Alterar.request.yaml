@@ -1,0 +1,47 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/credit-cards/{{creditCardId}}"
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \  \"name\": \"Nubank Principal\",\r
+
+    \  \"holderName\": \"Felipe\",\r
+
+    \  \"lastFourDigits\": \"1234\",\r
+
+    \  \"creditLimit\": 6000.00,\r
+
+    \  \"closingDay\": 10,\r
+
+    \  \"dueDay\": 17\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"ID do cartão deve corresponder ao solicitado\", function () {\r
+
+      \    pm.expect(json.id).to.eql(pm.environment.get(\"creditCardId\"));\r
+
+      });\r
+
+      pm.test(\"Nome deve ser atualizado\", function () {\r
+
+      \    pm.expect(json.name).to.eql(\"Nubank Principal\");\r
+
+      });\r"
+    language: text/javascript
+order: 4000

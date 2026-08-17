@@ -1,0 +1,48 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/accounts/00000000-0000-7000-0000-000000000001"
+method: GET
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 404 Not Found\", function () {\r
+
+      \    pm.response.to.have.status(404);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Erro deve possuir o formato oficial\", function () {\r
+
+      \    pm.expect(json.timestamp).to.exist;\r
+
+      \    pm.expect(json.status).to.exist;\r
+
+      \    pm.expect(json.code).to.exist;\r
+
+      \    pm.expect(json.message).to.exist;\r
+
+      \    pm.expect(json.path).to.exist;\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Código de erro deve ser NOT_FOUND\", function () {\r
+
+      \    pm.expect(json.code).to.eql(\"NOT_FOUND\");\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Mensagem não deve vazar existência\", function () {\r
+
+      \    pm.expect(json.message).to.eql(\"Conta não encontrada.\");\r
+
+      });\r"
+    language: text/javascript
+order: 3000

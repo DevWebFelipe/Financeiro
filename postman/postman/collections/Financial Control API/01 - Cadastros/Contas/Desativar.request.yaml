@@ -1,0 +1,25 @@
+$kind: http-request
+description: Rejeitado com 400 se o saldo derivado for diferente de 0,00 (RN007A).
+url: "{{baseUrl}}/api/v1/accounts/{{accountId}}/deactivate"
+method: POST
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Conta deve estar desativada\", function () {\r
+
+      \    pm.expect(json.active).to.be.false;\r
+
+      });\r"
+    language: text/javascript
+order: 8000

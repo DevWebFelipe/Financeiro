@@ -1,0 +1,67 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/auth/login"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"email\": \"{{userEmail}}\",\r
+
+    \  \"password\": \"{{userPassword}}\"\r
+
+    }"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      if (json.accessToken) {\r
+
+      \    pm.environment.set(\"accessToken\", json.accessToken);\r
+
+      }\r
+
+      \r
+
+      pm.test(\"Deve retornar accessToken\", function () {\r
+
+      \    pm.expect(json.accessToken).to.exist;\r
+
+      });\r
+
+      \r
+
+      pm.test(\"tokenType deve ser Bearer\", function () {\r
+
+      \    pm.expect(json.tokenType).to.eql(\"Bearer\");\r
+
+      });\r
+
+      \r
+
+      pm.test(\"expiresIn deve ser 1800\", function () {\r
+
+      \    pm.expect(json.expiresIn).to.eql(1800);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Não deve retornar refreshToken\", function () {\r
+
+      \    pm.expect(json.refreshToken).to.be.undefined;\r
+
+      });\r"
+    language: text/javascript
+order: 1000

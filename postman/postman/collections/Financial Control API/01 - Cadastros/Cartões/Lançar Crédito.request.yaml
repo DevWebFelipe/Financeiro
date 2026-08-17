@@ -1,0 +1,51 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/credit-cards/{{creditCardId}}/credits"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"amount\": 50.00,\r
+
+    \  \"reason\": \"Crédito manual de teste\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 201 Created\", function () {\r
+
+      \    pm.response.to.have.status(201);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Crédito deve possuir ID\", function () {\r
+
+      \    pm.expect(json.id).to.exist;\r
+
+      });\r
+
+      pm.test(\"Crédito deve possuir amount\", function () {\r
+
+      \    pm.expect(json.amount).to.exist;\r
+
+      });\r
+
+      pm.test(\"Crédito deve possuir remainingAmount\", function () {\r
+
+      \    pm.expect(json.remainingAmount).to.exist;\r
+
+      });\r
+
+      pm.test(\"Crédito deve possuir reason\", function () {\r
+
+      \    pm.expect(json.reason).to.exist;\r
+
+      });\r"
+    language: text/javascript
+order: 7000

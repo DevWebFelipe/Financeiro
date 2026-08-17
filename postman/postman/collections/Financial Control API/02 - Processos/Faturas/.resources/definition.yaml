@@ -1,0 +1,3 @@
+$kind: collection
+description: Não existe POST /invoices/{id}/close. Não existe GET /invoices (listagem geral). Listagem é por cartão.
+order: 4000

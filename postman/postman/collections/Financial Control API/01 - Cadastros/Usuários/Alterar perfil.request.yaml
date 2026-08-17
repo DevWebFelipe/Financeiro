@@ -1,0 +1,45 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/users/me"
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \  \"name\": \"{{userName}}\",\r
+
+    \  \"email\": \"{{userEmail}}\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Perfil deve possuir ID\", function () {\r
+
+      \    pm.expect(json.id).to.exist;\r
+
+      });\r
+
+      pm.test(\"Perfil deve possuir nome\", function () {\r
+
+      \    pm.expect(json.name).to.exist;\r
+
+      });\r
+
+      pm.test(\"Perfil deve possuir e-mail\", function () {\r
+
+      \    pm.expect(json.email).to.exist;\r
+
+      });\r"
+    language: text/javascript
+order: 3000

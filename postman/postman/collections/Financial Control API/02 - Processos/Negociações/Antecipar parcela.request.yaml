@@ -1,0 +1,44 @@
+$kind: http-request
+description: settled só existe neste fluxo (não no pagamento de fatura nem no pay ACCOUNT/NONE).
+url: "{{baseUrl}}/api/v1/agreements/{{agreementId}}/installments/{{agreementInstallmentId}}/anticipate"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"accountId\": \"{{accountId}}\",\r
+
+    \  \"amount\": 150.00,\r
+
+    \  \"paymentDate\": \"{{today}}\",\r
+
+    \  \"settled\": true\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"ID da negociação deve corresponder ao solicitado\", function () {\r
+
+      \    pm.expect(json.id).to.eql(pm.environment.get(\"agreementId\"));\r
+
+      });\r
+
+      pm.test(\"Negociação deve possuir status\", function () {\r
+
+      \    pm.expect(json.status).to.exist;\r
+
+      });\r"
+    language: text/javascript
+order: 5000

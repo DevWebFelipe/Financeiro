@@ -1,0 +1,56 @@
+$kind: http-request
+description: SURCHARGE exige remaining > 0 (RN247A). reason é obrigatório.
+url: "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/adjustments"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"type\": \"DISCOUNT\",\r
+
+    \  \"amount\": 5.00,\r
+
+    \  \"reason\": \"Ajuste de fatura de teste\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 201 Created\", function () {\r
+
+      \    pm.response.to.have.status(201);\r
+
+      });\r
+
+      \r
+
+      if (json.id) {\r
+
+      \    pm.environment.set(\"invoiceAdjustmentId\", json.id);\r
+
+      }\r
+
+      \r
+
+      pm.test(\"Ajuste da fatura deve possuir ID\", function () {\r
+
+      \    pm.expect(json.id).to.exist;\r
+
+      });\r
+
+      pm.test(\"Status inicial deve ser ACTIVE\", function () {\r
+
+      \    pm.expect(json.status).to.eql(\"ACTIVE\");\r
+
+      });\r
+
+      pm.test(\"Ajuste deve possuir reason\", function () {\r
+
+      \    pm.expect(json.reason).to.exist;\r
+
+      });\r"
+    language: text/javascript
+order: 8000

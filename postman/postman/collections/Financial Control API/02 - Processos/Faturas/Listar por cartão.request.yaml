@@ -1,0 +1,42 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/credit-cards/{{creditCardId}}/invoices"
+method: GET
+queryParams:
+  - key: year
+    value: ""
+    disabled: true
+  - key: month
+    value: ""
+    disabled: true
+  - key: status
+    value: ""
+    disabled: true
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Resposta deve ser uma lista\", function () {\r
+
+      \    pm.expect(json).to.be.an(\"array\");\r
+
+      });\r
+
+      \r
+
+      if (Array.isArray(json) && json.length > 0) {\r
+
+      \    pm.environment.set(\"invoiceId\", json[0].id);\r
+
+      }\r"
+    language: text/javascript
+order: 1000

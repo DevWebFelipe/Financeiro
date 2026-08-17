@@ -1,0 +1,37 @@
+$kind: http-request
+description: Saldo derivado. O valor absoluto depende das movimentações já executadas nesta sessão.
+url: "{{baseUrl}}/api/v1/accounts/{{accountId}}/balance"
+method: GET
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"AccountId deve corresponder à conta atual\", function () {\r
+
+      \    pm.expect(json.accountId).to.eql(\r
+
+      \        pm.environment.get(\"accountId\")\r
+
+      \    );\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Saldo deve existir\", function () {\r
+
+      \    pm.expect(json.balance).to.exist;\r
+
+      });\r"
+    language: text/javascript
+order: 5000

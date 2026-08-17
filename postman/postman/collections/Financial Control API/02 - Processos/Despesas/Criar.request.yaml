@@ -1,0 +1,74 @@
+$kind: http-request
+description: "Exemplo ACCOUNT 1/1. Para cartão: paymentMethod CREDIT_CARD e creditCardId. installmentCount omitido = 1. Despesa CREDIT_CARD não usa Pagar."
+url: "{{baseUrl}}/api/v1/expenses"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"categoryId\": \"{{expenseCategoryId}}\",\r
+
+    \  \"description\": \"Conta de luz\",\r
+
+    \  \"totalAmount\": 80.00,\r
+
+    \  \"expenseDate\": \"{{today}}\",\r
+
+    \  \"dueDate\": \"{{today}}\",\r
+
+    \  \"paymentMethod\": \"ACCOUNT\",\r
+
+    \  \"accountId\": \"{{accountId}}\",\r
+
+    \  \"responsibleType\": \"MINE\",\r
+
+    \  \"installmentCount\": 1\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 201 Created\", function () {\r
+
+      \    pm.response.to.have.status(201);\r
+
+      });\r
+
+      \r
+
+      if (json.id) {\r
+
+      \    pm.environment.set(\"expenseId\", json.id);\r
+
+      }\r
+
+      if (json.installmentId) {\r
+
+      \    pm.environment.set(\"installmentId\", json.installmentId);\r
+
+      }\r
+
+      \r
+
+      pm.test(\"Despesa deve possuir ID\", function () {\r
+
+      \    pm.expect(json.id).to.exist;\r
+
+      });\r
+
+      pm.test(\"Status inicial deve ser OPEN\", function () {\r
+
+      \    pm.expect(json.status).to.eql(\"OPEN\");\r
+
+      });\r
+
+      pm.test(\"Despesa deve possuir totalAmount\", function () {\r
+
+      \    pm.expect(json.totalAmount).to.exist;\r
+
+      });\r"
+    language: text/javascript
+order: 3000

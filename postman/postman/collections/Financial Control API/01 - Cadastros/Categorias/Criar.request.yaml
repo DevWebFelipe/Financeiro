@@ -1,0 +1,70 @@
+$kind: http-request
+description: Não existe GET /categories/{id} nem activate. Execute de novo com type INCOME para preencher incomeCategoryId (usado em Receitas).
+url: "{{baseUrl}}/api/v1/categories"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"name\": \"Moradia\",\r
+
+    \  \"type\": \"EXPENSE\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 201 Created\", function () {\r
+
+      \    pm.response.to.have.status(201);\r
+
+      });\r
+
+      \r
+
+      if (json.id) {\r
+
+      \    pm.environment.set(\"categoryId\", json.id);\r
+
+      }\r
+
+      if (json.type === \"INCOME\") {\r
+
+      \    pm.environment.set(\"incomeCategoryId\", json.id);\r
+
+      } else {\r
+
+      \    pm.environment.set(\"expenseCategoryId\", json.id);\r
+
+      }\r
+
+      \r
+
+      pm.test(\"Categoria deve possuir ID\", function () {\r
+
+      \    pm.expect(json.id).to.exist;\r
+
+      });\r
+
+      pm.test(\"Categoria deve possuir nome\", function () {\r
+
+      \    pm.expect(json.name).to.exist;\r
+
+      });\r
+
+      pm.test(\"Categoria deve possuir tipo\", function () {\r
+
+      \    pm.expect(json.type).to.exist;\r
+
+      });\r
+
+      pm.test(\"Categoria deve estar ativa\", function () {\r
+
+      \    pm.expect(json.active).to.be.true;\r
+
+      });\r"
+    language: text/javascript
+order: 2000

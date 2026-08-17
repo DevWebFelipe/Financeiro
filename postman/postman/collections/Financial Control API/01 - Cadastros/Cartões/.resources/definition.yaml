@@ -1,0 +1,3 @@
+$kind: collection
+description: Cadastro de cartões de crédito. Créditos manuais e limite derivado pertencem ao cartão. Faturas ficam em Processos.
+order: 1000

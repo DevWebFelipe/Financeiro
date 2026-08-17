@@ -1,0 +1,35 @@
+$kind: http-request
+description: Retorna array de créditos com remainingAmount por crédito. O total disponível é a soma derivada.
+url: "{{baseUrl}}/api/v1/credit-cards/{{creditCardId}}/credits"
+method: GET
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Resposta deve ser uma lista\", function () {\r
+
+      \    pm.expect(json).to.be.an(\"array\");\r
+
+      });\r
+
+      pm.test(\"Cada crédito deve possuir remainingAmount\", function () {\r
+
+      \    json.forEach(function (credit) {\r
+
+      \        pm.expect(credit.remainingAmount).to.exist;\r
+
+      \    });\r
+
+      });\r"
+    language: text/javascript
+order: 6000

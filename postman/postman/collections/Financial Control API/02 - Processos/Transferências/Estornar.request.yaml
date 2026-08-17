@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/transfers/{{transferId}}/reverse"
+method: POST
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Status deve ser REVERSED\", function () {\r
+
+      \    pm.expect(json.status).to.eql(\"REVERSED\");\r
+
+      });\r"
+    language: text/javascript
+order: 4000

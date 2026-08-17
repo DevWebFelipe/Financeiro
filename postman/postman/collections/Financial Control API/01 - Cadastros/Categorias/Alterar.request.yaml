@@ -1,0 +1,39 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/categories/{{categoryId}}"
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \  \"name\": \"Moradia e condomínio\",\r
+
+    \  \"type\": \"EXPENSE\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"ID da categoria deve corresponder ao solicitado\", function () {\r
+
+      \    pm.expect(json.id).to.eql(pm.environment.get(\"categoryId\"));\r
+
+      });\r
+
+      pm.test(\"Categoria deve possuir nome\", function () {\r
+
+      \    pm.expect(json.name).to.exist;\r
+
+      });\r"
+    language: text/javascript
+order: 3000

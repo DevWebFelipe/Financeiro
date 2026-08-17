@@ -1,0 +1,72 @@
+$kind: http-request
+description: Fatura deve estar CLOSED com remaining > 0. contractedTotal deve ser >= financedAmount.
+url: "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/agreements"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"entryAmount\": 400.00,\r
+
+    \  \"accountId\": \"{{accountId}}\",\r
+
+    \  \"entryPaymentDate\": \"{{today}}\",\r
+
+    \  \"installmentCount\": 10,\r
+
+    \  \"installmentAmount\": 120.00\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 201 Created\", function () {\r
+
+      \    pm.response.to.have.status(201);\r
+
+      });\r
+
+      \r
+
+      if (json.id) {\r
+
+      \    pm.environment.set(\"agreementId\", json.id);\r
+
+      }\r
+
+      if (json.installments && json.installments.length > 0) {\r
+
+      \    pm.environment.set(\"agreementInstallmentId\", json.installments[0].id);\r
+
+      }\r
+
+      \r
+
+      pm.test(\"Negociação deve possuir ID\", function () {\r
+
+      \    pm.expect(json.id).to.exist;\r
+
+      });\r
+
+      pm.test(\"Negociação deve possuir financedAmount\", function () {\r
+
+      \    pm.expect(json.financedAmount).to.exist;\r
+
+      });\r
+
+      pm.test(\"Negociação deve possuir contractedTotal\", function () {\r
+
+      \    pm.expect(json.contractedTotal).to.exist;\r
+
+      });\r
+
+      pm.test(\"Negociação deve possuir status\", function () {\r
+
+      \    pm.expect(json.status).to.exist;\r
+
+      });\r"
+    language: text/javascript
+order: 1000

@@ -1,0 +1,36 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/agreements/{{agreementId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"ID da negociação deve corresponder ao solicitado\", function () {\r
+
+      \    pm.expect(json.id).to.eql(pm.environment.get(\"agreementId\"));\r
+
+      });\r
+
+      pm.test(\"Negociação deve possuir status\", function () {\r
+
+      \    pm.expect(json.status).to.exist;\r
+
+      });\r
+
+      pm.test(\"Deve possuir parcelas\", function () {\r
+
+      \    pm.expect(json.installments).to.be.an(\"array\");\r
+
+      });\r"
+    language: text/javascript
+order: 4000

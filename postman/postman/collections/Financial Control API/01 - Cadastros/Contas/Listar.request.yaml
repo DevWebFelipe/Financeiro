@@ -1,0 +1,44 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/accounts"
+method: GET
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Resposta deve ser uma lista\", function () {\r
+
+      \    pm.expect(json).to.be.an(\"array\");\r
+
+      });\r
+
+      \r
+
+      if (Array.isArray(json) && json.length >= 2) {\r
+
+      \    const current = pm.environment.get(\"accountId\");\r
+
+      \    const other = json.find(function (account) {\r
+
+      \        return account.id !== current;\r
+
+      \    });\r
+
+      \    if (other) {\r
+
+      \        pm.environment.set(\"destinationAccountId\", other.id);\r
+
+      \    }\r
+
+      }\r"
+    language: text/javascript
+order: 1000

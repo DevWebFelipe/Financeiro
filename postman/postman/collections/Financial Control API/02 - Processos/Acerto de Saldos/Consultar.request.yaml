@@ -1,0 +1,54 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/accounts/{{accountId}}/balance-adjustments/{{balanceAdjustmentId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"ID do acerto deve corresponder ao solicitado\", function () {\r
+
+      \    pm.expect(json.id).to.eql(pm.environment.get(\"balanceAdjustmentId\"));\r
+
+      });\r
+
+      pm.test(\"accountId deve corresponder à conta atual\", function () {\r
+
+      \    pm.expect(json.accountId).to.eql(pm.environment.get(\"accountId\"));\r
+
+      });\r
+
+      pm.test(\"Acerto deve possuir reportedBalance\", function () {\r
+
+      \    pm.expect(json.reportedBalance).to.exist;\r
+
+      });\r
+
+      pm.test(\"Acerto deve possuir calculatedBalance\", function () {\r
+
+      \    pm.expect(json.calculatedBalance).to.exist;\r
+
+      });\r
+
+      pm.test(\"Acerto deve possuir adjustmentAmount\", function () {\r
+
+      \    pm.expect(json.adjustmentAmount).to.exist;\r
+
+      });\r
+
+      pm.test(\"Acerto deve possuir status\", function () {\r
+
+      \    pm.expect(json.status).to.exist;\r
+
+      });\r"
+    language: text/javascript
+order: 2000

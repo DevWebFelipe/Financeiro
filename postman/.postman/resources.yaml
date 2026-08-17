@@ -1,0 +1,15 @@
+# Use this workspace to collaborate
+workspace:
+  id: ""
+
+localResources:
+  collections:
+    - ../Financial Control API.postman_collection.json
+  environments:
+    - ../Financial Control — Local.postman_environment.json
+
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
+cloudResources:
+  collections:
+    ../postman/collections/Financial Control API: 83b87b8e-e705-433a-a607-1d1f49ac3350

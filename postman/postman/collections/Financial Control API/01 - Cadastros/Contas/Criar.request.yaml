@@ -1,0 +1,90 @@
+$kind: http-request
+description: Execute uma segunda vez com outro nome para obter destinationAccountId via Listar (necessário em Transferências).
+url: "{{baseUrl}}/api/v1/accounts"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"name\": \"Nubank\",\r
+
+    \  \"type\": \"BANK_ACCOUNT\",\r
+
+    \  \"initialBalance\": 1500.00\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "// ============================================================\r
+
+      // VARIÁVEIS\r
+
+      // ============================================================\r
+
+      \r
+
+      const json = pm.response.json();\r
+
+      \r
+
+      pm.environment.set(\"accountId\", json.id);\r
+
+      \r
+
+      \r
+
+      // ============================================================\r
+
+      // TESTES\r
+
+      // ============================================================\r
+
+      \r
+
+      pm.test(\"Status deve ser 201 Created\", function () {\r
+
+      \    pm.response.to.have.status(201);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Conta deve possuir ID\", function () {\r
+
+      \    pm.expect(json.id).to.exist;\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Conta deve possuir nome\", function () {\r
+
+      \    pm.expect(json.name).to.exist;\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Conta deve possuir tipo\", function () {\r
+
+      \    pm.expect(json.type).to.exist;\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Conta deve possuir saldo inicial\", function () {\r
+
+      \    pm.expect(json.initialBalance).to.exist;\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Conta deve estar ativa\", function () {\r
+
+      \    pm.expect(json.active).to.be.true;\r
+
+      });\r"
+    language: text/javascript
+order: 3000

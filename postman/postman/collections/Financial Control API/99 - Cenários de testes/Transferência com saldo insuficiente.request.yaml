@@ -1,0 +1,63 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/transfers"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"sourceAccountId\": \"{{accountId}}\",\r
+
+    \  \"destinationAccountId\": \"{{destinationAccountId}}\",\r
+
+    \  \"amount\": 99999999.00,\r
+
+    \  \"transferDate\": \"{{today}}\",\r
+
+    \  \"description\": \"Saldo insuficiente\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 400 Bad Request\", function () {\r
+
+      \    pm.response.to.have.status(400);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Erro deve possuir o formato oficial\", function () {\r
+
+      \    pm.expect(json.timestamp).to.exist;\r
+
+      \    pm.expect(json.status).to.exist;\r
+
+      \    pm.expect(json.code).to.exist;\r
+
+      \    pm.expect(json.message).to.exist;\r
+
+      \    pm.expect(json.path).to.exist;\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Código de erro deve ser BUSINESS_RULE_VIOLATION\", function () {\r
+
+      \    pm.expect(json.code).to.eql(\"BUSINESS_RULE_VIOLATION\");\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Mensagem deve indicar saldo insuficiente\", function () {\r
+
+      \    pm.expect(json.message).to.eql(\"Saldo insuficiente para realizar a operação.\");\r
+
+      });\r"
+    language: text/javascript
+order: 4000

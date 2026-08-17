@@ -1,0 +1,73 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/auth/register"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"name\": \"{{userName}}\",\r
+
+    \  \"email\": \"{{userEmail}}\",\r
+
+    \  \"password\": \"{{userPassword}}\"\r
+
+    }"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 201 Created\", function () {\r
+
+      \    pm.response.to.have.status(201);\r
+
+      });\r
+
+      \r
+
+      if (json.id) {\r
+
+      \    pm.environment.set(\"userId\", json.id);\r
+
+      }\r
+
+      \r
+
+      pm.test(\"Usuário deve possuir ID\", function () {\r
+
+      \    pm.expect(json.id).to.exist;\r
+
+      });\r
+
+      pm.test(\"Usuário deve possuir nome\", function () {\r
+
+      \    pm.expect(json.name).to.exist;\r
+
+      });\r
+
+      pm.test(\"Usuário deve possuir e-mail\", function () {\r
+
+      \    pm.expect(json.email).to.exist;\r
+
+      });\r
+
+      pm.test(\"Usuário deve estar ativo\", function () {\r
+
+      \    pm.expect(json.active).to.be.true;\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Senha não deve ser retornada\", function () {\r
+
+      \    pm.expect(json.password).to.be.undefined;\r
+
+      \    pm.expect(json.passwordHash).to.be.undefined;\r
+
+      });\r"
+    language: text/javascript
+order: 1000

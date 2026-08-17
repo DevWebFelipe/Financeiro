@@ -1,0 +1,58 @@
+$kind: http-request
+description: Não cria linha em payments (tabela de despesa ACCOUNT/NONE). O valor não pode exceder o remaining nem o saldo da conta.
+url: "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/payments"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"accountId\": \"{{accountId}}\",\r
+
+    \  \"amount\": 10.00,\r
+
+    \  \"paymentDate\": \"{{today}}\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      if (json.id) {\r
+
+      \    pm.environment.set(\"invoicePaymentId\", json.id);\r
+
+      }\r
+
+      \r
+
+      pm.test(\"Pagamento da fatura deve possuir ID\", function () {\r
+
+      \    pm.expect(json.id).to.exist;\r
+
+      });\r
+
+      pm.test(\"invoiceId deve corresponder à fatura\", function () {\r
+
+      \    pm.expect(json.invoiceId).to.eql(pm.environment.get(\"invoiceId\"));\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Status inicial deve ser ACTIVE\", function () {\r
+
+      \    pm.expect(json.status).to.eql(\"ACTIVE\");\r
+
+      });\r"
+    language: text/javascript
+order: 5000

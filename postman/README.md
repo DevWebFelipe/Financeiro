@@ -4,42 +4,65 @@ Coleção oficial para testes manuais e validação da API REST do Financial Con
 
 A coleção é mantida junto ao código-fonte e deve acompanhar a evolução do projeto por fases.
 
+A fonte final para existência de uma rota é o backend implementado. Esta collection não contém endpoints fictícios nem contratos futuros do roadmap.
+
 ---
 
 ## Estrutura
 
 A coleção segue a seguinte organização:
 
-Financial Control API  
-├── 00 - Sistema  
-│   └── Health  
-│  
-├── 01 - Cadastros  
-│   ├── Cartões          (pasta reservada; vazia — fases posteriores)  
-│   ├── Categorias       (pasta reservada; vazia nesta collection)  
-│   ├── Contas           (Fase 4 — implementado)  
-│   └── Usuários         (cadastro)  
-│  
-├── 02 - Processos  
-│   ├── Autenticação     (Fase 3 — implementado)  
-│   └── Transferências   (pasta reservada; vazia — fases posteriores)  
-│  
+```text
+Financial Control API
+├── 00 - Sistema
+│   └── Health
+│
+├── 01 - Cadastros
+│   ├── Cartões
+│   ├── Categorias
+│   ├── Contas
+│   └── Usuários
+│
+├── 02 - Processos
+│   ├── Acerto de Saldos
+│   ├── Autenticação
+│   ├── Despesas
+│   ├── Faturas
+│   ├── Negociações
+│   ├── Pagamentos
+│   ├── Receitas
+│   └── Transferências
+│
 └── 99 - Cenários de testes
+```
 
-Estado da collection em relação às fases:
+Cadastros e processos permanecem em ordem alfabética.
 
-- Fases 3 e 4: presentes (health, auth, usuários, contas).
-- Fase 5 (categorias): API implementada; a pasta `Categorias` na collection ainda está vazia — preencher na manutenção da collection, sem inventar contrato.
-- Fase 6 (receitas): API implementada; **ainda não há pasta de Receitas** nesta collection. Adicionar na manutenção da collection, alinhada a `docs/25`.
-- Fase 7 (despesas simples): API implementada (`/api/v1/expenses`, `GET /api/v1/payments/{id}`). **Ainda não há pasta de Despesas** nesta collection. Adicionar na manutenção da collection, alinhada a `docs/25`.
+Estado da collection em relação às fases implementadas:
 
-Não adicionar requests de endpoints que ainda não existem no backend.
+- Fases 3 e 4: health, autenticação, usuários, contas (incluindo saldo inicial da Fase 14).
+- Fase 5: categorias.
+- Fase 6: receitas.
+- Fases 7 e 8: despesas, parcelas, pagamentos e ajustes de parcela.
+- Fase 9: cartões, créditos, faturas e pagamentos/ajustes de fatura.
+- Fase 13: negociações, renegociação e antecipação de parcela.
+- Fase 14: transferências, acerto de saldos e `PUT /accounts/{id}/initial-balance`.
+
+Não adicionar requests de endpoints que ainda não existem no backend. Não existem, por exemplo:
+
+- `POST /api/v1/auth/refresh`
+- `GET /api/v1/categories/{id}`
+- `POST /api/v1/categories/{id}/activate`
+- `DELETE` de recursos financeiros
+- `GET /api/v1/accounts/{id}/statement`
+- `POST /api/v1/invoices/{id}/close`
+- `GET /api/v1/invoices` (listagem geral; a listagem é por cartão)
 
 ### Regras de organização
 
 - **Cadastros** representam entidades e sua manutenção.
 - **Processos** representam operações ou fluxos de negócio.
-- **Cenários de Teste** representam fluxos completos envolvendo múltiplas operações.
+- **Cenários de Teste** representam fluxos pontuais, inclusive casos negativos críticos.
 - Cadastros e processos devem permanecer organizados alfabeticamente.
 - Os nomes das requests descrevem a ação e não repetem o método HTTP.
 - O método HTTP já é exibido pelo Postman.
@@ -52,6 +75,11 @@ Exemplos de nomes de requests:
 - `Alterar`
 - `Ativar`
 - `Desativar`
+- `Receber`
+- `Pagar`
+- `Cancelar`
+- `Estornar`
+- `Refundar`
 - `Login`
 
 ---
@@ -78,8 +106,6 @@ A Collection contém:
 - testes/assertions;
 - organização das pastas.
 
----
-
 ## 2. Importar o Environment
 
 Importe o arquivo:
@@ -94,6 +120,8 @@ O Environment versionado contém somente a estrutura das variáveis.
 
 Valores locais ou sensíveis não devem ser versionados.
 
+A Collection define `baseUrl` padrão `http://localhost:8080`. O Environment pode sobrescrever esse valor.
+
 ---
 
 # Variáveis
@@ -105,10 +133,33 @@ O ambiente utiliza as seguintes variáveis:
 | `baseUrl` | URL base da API |
 | `accessToken` | JWT utilizado na autenticação |
 | `userId` | ID do usuário utilizado nos testes |
-| `accountId` | ID da conta utilizada nos testes |
 | `userName` | Nome do usuário de teste |
 | `userEmail` | E-mail do usuário de teste |
 | `userPassword` | Senha do usuário de teste |
+| `accountId` | ID da conta principal |
+| `destinationAccountId` | ID da segunda conta (`BANK_ACCOUNT`) para transferências |
+| `categoryId` | ID da última categoria criada |
+| `expenseCategoryId` | Categoria `EXPENSE` |
+| `incomeCategoryId` | Categoria `INCOME` |
+| `creditCardId` | ID do cartão |
+| `incomeId` | ID da receita |
+| `expenseId` | ID da despesa |
+| `installmentId` | ID da parcela da despesa |
+| `adjustmentId` | ID do ajuste da parcela |
+| `paymentId` | ID do pagamento da despesa (`/payments`) |
+| `invoiceId` | ID da fatura |
+| `invoicePaymentId` | ID do pagamento da fatura |
+| `invoiceAdjustmentId` | ID do ajuste da fatura |
+| `agreementId` | ID da negociação |
+| `agreementInstallmentId` | ID da parcela da negociação |
+| `transferId` | ID da transferência |
+| `balanceAdjustmentId` | ID do acerto de saldo |
+
+A Collection também possui:
+
+| Variável | Finalidade |
+|---|---|
+| `today` | Data corrente em `America/Sao_Paulo` (`YYYY-MM-DD`), preenchida pelo script de pré-request |
 
 A variável `baseUrl` deve apontar para a instância local da API:
 
@@ -135,6 +186,12 @@ O arquivo versionado funciona como um **modelo de ambiente**.
 
 Cada desenvolvedor deve preencher seus valores locais quando necessário.
 
+Antes da primeira execução, preencha no Environment local:
+
+- `userName`
+- `userEmail`
+- `userPassword`
+
 ---
 
 # Pré-requisitos
@@ -158,7 +215,7 @@ Consulte o `README.md` e `ManualExecucao.md` na raiz do projeto para obter as in
 
 Para iniciar uma sessão de testes do zero, utilize esta sequência:
 
-**Health → Usuários → Criar → Autenticação → Login → Contas → Criar → Demais operações**
+**Health → Usuários → Criar → Autenticação → Login → Contas → Criar → Categorias → Criar → Demais operações**
 
 ## 1. Health
 
@@ -219,6 +276,7 @@ As requests disponíveis são:
 - `Criar`
 - `Alterar`
 - `Consultar Saldo`
+- `Alterar saldo inicial`
 - `Ativar`
 - `Desativar`
 
@@ -226,7 +284,39 @@ Ao criar uma conta, o ID retornado é armazenado automaticamente em:
 
 `{{accountId}}`
 
-As requests seguintes utilizam essa variável para consultar e manipular a conta criada.
+`Alterar saldo inicial` chama `PUT /api/v1/accounts/{id}/initial-balance`. Não existe outro endpoint de criação de saldo inicial.
+
+Para transferências, crie uma segunda conta `BANK_ACCOUNT` (execute `Criar` de novo com outro nome) e em seguida `Listar`. O script de `Listar` preenche `{{destinationAccountId}}` quando houver pelo menos duas contas.
+
+---
+
+# Categorias, receitas e despesas
+
+`01 - Cadastros → Categorias → Criar` nasce como `EXPENSE` e preenche `{{expenseCategoryId}}`.
+
+Receitas exigem categoria `INCOME`. Altere o body para `"type": "INCOME"`, execute `Criar` novamente e o script preencherá `{{incomeCategoryId}}`.
+
+Não existe `GET /api/v1/categories/{id}` nem reativação de categoria.
+
+---
+
+# Cartões, faturas e negociações
+
+`01 - Cadastros → Cartões` cobre cadastro, limite derivado, créditos, ativar e desativar.
+
+Faturas ficam em `02 - Processos → Faturas`. A listagem é por cartão (`GET /credit-cards/{id}/invoices`). `Consultar atual` retorna a fatura `OPEN` ou **404** se ela não existir.
+
+Negociações ficam em `02 - Processos → Negociações`. A fatura precisa estar `CLOSED` com remaining > 0. Renegociação exige `anticipatedFuturesNetAmount` (envie `0` quando não houver futuros).
+
+---
+
+# Transferências e acerto de saldos
+
+`02 - Processos → Transferências`: listar, consultar, criar e estornar. Não há PUT.
+
+`02 - Processos → Acerto de Saldos`: listar, consultar, criar e estornar em `/api/v1/accounts/{accountId}/balance-adjustments`.
+
+Não confundir acerto de saldos com ajustes de parcela ou de fatura.
 
 ---
 
@@ -246,6 +336,8 @@ Uma resposta HTTP `200` ou `201`, por si só, não significa que o teste passou.
 
 O Postman também executa as assertions configuradas na request.
 
+Alguns testes de estado (por exemplo `Cancelar` ou `Refundar`) pressupõem a transição válida. Execute-os no contexto correto da despesa/receita; não é um runner linear de toda a pasta.
+
 ---
 
 # Autenticação
@@ -256,9 +348,9 @@ As rotas protegidas utilizam:
 
 A autenticação é configurada na Collection para que as requests protegidas herdem automaticamente o token.
 
-Endpoints públicos, como cadastro, login e health check, utilizam `No Auth` quando necessário.
+Endpoints públicos, como cadastro, login e health check, utilizam `No Auth`.
 
-O Access Token utilizado pelo projeto é um JWT com validade definida pelo backend.
+O Access Token utilizado pelo projeto é um JWT com validade definida pelo backend (30 minutos). Refresh Token não está implementado.
 
 ---
 
@@ -266,19 +358,40 @@ O Access Token utilizado pelo projeto é um JWT com validade definida pelo backe
 
 A Collection utiliza variáveis para evitar cópia manual de identificadores.
 
-**Criar usuário**  
-↓  
-`{{userId}}`  
-↓  
-**Login**  
-↓  
-`{{accessToken}}`  
-↓  
-**Criar conta**  
-↓  
-`{{accountId}}`  
-↓  
-**Consultar / Alterar / Consultar Saldo / Desativar / Ativar**
+```text
+Criar usuário
+ ↓
+{{userId}}
+ ↓
+Login
+ ↓
+{{accessToken}}
+ ↓
+Criar conta
+ ↓
+{{accountId}}
+ ↓
+Criar categoria
+ ↓
+{{expenseCategoryId}} / {{incomeCategoryId}}
+ ↓
+Criar cartão / receita / despesa / transferência
+ ↓
+IDs correspondentes preenchidos pelos scripts
+```
+
+A data `{{today}}` é definida automaticamente antes de cada request, no fuso `America/Sao_Paulo`.
+
+---
+
+# Cenários negativos
+
+`99 - Cenários de testes` contém exemplos pontuais, sem esgotar as regras:
+
+- login com credenciais inválidas (**401**);
+- consulta autenticada sem token (**401**);
+- conta inexistente (**404**);
+- transferência com saldo insuficiente (**400** `BUSINESS_RULE_VIOLATION`).
 
 ---
 
@@ -294,7 +407,7 @@ Ao adicionar ou alterar um endpoint:
 4. Atualize este README se o fluxo de utilização mudar.
 5. Faça o commit junto com a alteração correspondente da fase.
 
-A Collection não deve conter endpoints que não existam no contrato oficial da API.
+A Collection não deve conter endpoints que não existam no backend.
 
 ---
 
@@ -310,5 +423,7 @@ Os contratos oficiais permanecem na documentação do projeto, especialmente:
 - `docs/28-roadmap.md`
 
 Em caso de divergência entre o Postman e a documentação oficial, a documentação deve ser corrigida/alinhada antes de continuar.
+
+Se a documentação e o backend divergirem, esta collection segue o endpoint efetivamente implementado.
 
 O Postman existe para facilitar a execução e validação prática desses contratos.

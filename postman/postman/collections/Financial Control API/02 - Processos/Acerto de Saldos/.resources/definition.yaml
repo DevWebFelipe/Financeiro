@@ -1,0 +1,3 @@
+$kind: collection
+description: Fato próprio de conciliação (BALANCE_ADJUSTMENT). Não confundir com ajustes de parcela ou fatura.
+order: 1000

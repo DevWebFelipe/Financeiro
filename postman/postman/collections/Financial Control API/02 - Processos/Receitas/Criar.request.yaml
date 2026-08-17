@@ -1,0 +1,58 @@
+$kind: http-request
+description: Requer categoria type INCOME em {{incomeCategoryId}}.
+url: "{{baseUrl}}/api/v1/incomes"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"categoryId\": \"{{incomeCategoryId}}\",\r
+
+    \  \"description\": \"Salário\",\r
+
+    \  \"amount\": 100.00,\r
+
+    \  \"expectedDate\": \"{{today}}\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 201 Created\", function () {\r
+
+      \    pm.response.to.have.status(201);\r
+
+      });\r
+
+      \r
+
+      if (json.id) {\r
+
+      \    pm.environment.set(\"incomeId\", json.id);\r
+
+      }\r
+
+      \r
+
+      pm.test(\"Receita deve possuir ID\", function () {\r
+
+      \    pm.expect(json.id).to.exist;\r
+
+      });\r
+
+      pm.test(\"Status inicial deve ser EXPECTED\", function () {\r
+
+      \    pm.expect(json.status).to.eql(\"EXPECTED\");\r
+
+      });\r
+
+      pm.test(\"Receita deve possuir amount\", function () {\r
+
+      \    pm.expect(json.amount).to.exist;\r
+
+      });\r"
+    language: text/javascript
+order: 3000

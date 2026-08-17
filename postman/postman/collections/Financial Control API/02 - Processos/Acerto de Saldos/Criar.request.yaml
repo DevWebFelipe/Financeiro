@@ -1,0 +1,66 @@
+$kind: http-request
+description: O cliente envia reportedBalance. calculatedBalance e adjustmentAmount são calculados pelo backend.
+url: "{{baseUrl}}/api/v1/accounts/{{accountId}}/balance-adjustments"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"reportedBalance\": 1400.00,\r
+
+    \  \"adjustmentDate\": \"{{today}}\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 201 Created\", function () {\r
+
+      \    pm.response.to.have.status(201);\r
+
+      });\r
+
+      \r
+
+      if (json.id) {\r
+
+      \    pm.environment.set(\"balanceAdjustmentId\", json.id);\r
+
+      }\r
+
+      \r
+
+      pm.test(\"Acerto deve possuir ID\", function () {\r
+
+      \    pm.expect(json.id).to.exist;\r
+
+      });\r
+
+      pm.test(\"Status inicial deve ser ACTIVE\", function () {\r
+
+      \    pm.expect(json.status).to.eql(\"ACTIVE\");\r
+
+      });\r
+
+      pm.test(\"Acerto deve possuir reportedBalance\", function () {\r
+
+      \    pm.expect(json.reportedBalance).to.exist;\r
+
+      });\r
+
+      pm.test(\"Acerto deve possuir calculatedBalance\", function () {\r
+
+      \    pm.expect(json.calculatedBalance).to.exist;\r
+
+      });\r
+
+      pm.test(\"Acerto deve possuir adjustmentAmount\", function () {\r
+
+      \    pm.expect(json.adjustmentAmount).to.exist;\r
+
+      });\r"
+    language: text/javascript
+order: 3000

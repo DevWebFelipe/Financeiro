@@ -2,6 +2,7 @@
   "info": {
     "_postman_id": "633f2fd1-ecff-4d42-8556-80b23981b07f",
     "name": "Financial Control API",
+    "description": "Coleção oficial da API REST do Financial Control. Reflete exclusivamente os endpoints implementados no backend.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "13128220"
   },
@@ -27,9 +28,33 @@
                     "v1",
                     "health"
                   ]
+                },
+                "auth": {
+                  "type": "noauth"
                 }
               },
-              "response": []
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"API deve estar UP\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"UP\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
             }
           ]
         }
@@ -40,17 +65,32 @@
       "item": [
         {
           "name": "Cartões",
-          "item": []
-        },
-        {
-          "name": "Categorias",
-          "item": []
-        },
-        {
-          "name": "Contas",
           "item": [
             {
               "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/credit-cards",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "credit-cards"
+                  ],
+                  "query": [
+                    {
+                      "key": "holderName",
+                      "value": "",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "response": [],
               "event": [
                 {
                   "listen": "test",
@@ -64,14 +104,650 @@
                       "\r",
                       "pm.test(\"Resposta deve ser uma lista\", function () {\r",
                       "    pm.expect(json).to.be.an(\"array\");\r",
-                      "});"
+                      "});\r"
                     ],
                     "type": "text/javascript",
                     "packages": {},
                     "requests": {}
                   }
                 }
-              ],
+              ]
+            },
+            {
+              "name": "Consultar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/credit-cards/{{creditCardId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "credit-cards",
+                    "{{creditCardId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID do cartão deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"creditCardId\"));\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Cartão deve possuir nome\", function () {\r",
+                      "    pm.expect(json.name).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Cartão deve possuir titular\", function () {\r",
+                      "    pm.expect(json.holderName).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Cartão deve possuir limite\", function () {\r",
+                      "    pm.expect(json.creditLimit).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Criar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/credit-cards",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "credit-cards"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"name\": \"Nubank\",\r\n  \"holderName\": \"Felipe\",\r\n  \"lastFourDigits\": \"1234\",\r\n  \"creditLimit\": 5000.00,\r\n  \"closingDay\": 10,\r\n  \"dueDay\": 17\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "if (json.id) {\r",
+                      "    pm.environment.set(\"creditCardId\", json.id);\r",
+                      "}\r",
+                      "\r",
+                      "pm.test(\"Cartão deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Cartão deve possuir nome\", function () {\r",
+                      "    pm.expect(json.name).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Cartão deve possuir limite\", function () {\r",
+                      "    pm.expect(json.creditLimit).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Cartão deve estar ativo\", function () {\r",
+                      "    pm.expect(json.active).to.be.true;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Alterar",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/credit-cards/{{creditCardId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "credit-cards",
+                    "{{creditCardId}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"name\": \"Nubank Principal\",\r\n  \"holderName\": \"Felipe\",\r\n  \"lastFourDigits\": \"1234\",\r\n  \"creditLimit\": 6000.00,\r\n  \"closingDay\": 10,\r\n  \"dueDay\": 17\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID do cartão deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"creditCardId\"));\r",
+                      "});\r",
+                      "pm.test(\"Nome deve ser atualizado\", function () {\r",
+                      "    pm.expect(json.name).to.eql(\"Nubank Principal\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar Limite",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/credit-cards/{{creditCardId}}/limit",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "credit-cards",
+                    "{{creditCardId}}",
+                    "limit"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Deve possuir creditLimit\", function () {\r",
+                      "    pm.expect(json.creditLimit).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Deve possuir usedLimit\", function () {\r",
+                      "    pm.expect(json.usedLimit).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Deve possuir availableLimit\", function () {\r",
+                      "    pm.expect(json.availableLimit).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar Créditos",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/credit-cards/{{creditCardId}}/credits",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "credit-cards",
+                    "{{creditCardId}}",
+                    "credits"
+                  ]
+                },
+                "description": "Retorna array de créditos com remainingAmount por crédito. O total disponível é a soma derivada."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve ser uma lista\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
+                      "});\r",
+                      "pm.test(\"Cada crédito deve possuir remainingAmount\", function () {\r",
+                      "    json.forEach(function (credit) {\r",
+                      "        pm.expect(credit.remainingAmount).to.exist;\r",
+                      "    });\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Lançar Crédito",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/credit-cards/{{creditCardId}}/credits",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "credit-cards",
+                    "{{creditCardId}}",
+                    "credits"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"amount\": 50.00,\r\n  \"reason\": \"Crédito manual de teste\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Crédito deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Crédito deve possuir amount\", function () {\r",
+                      "    pm.expect(json.amount).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Crédito deve possuir remainingAmount\", function () {\r",
+                      "    pm.expect(json.remainingAmount).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Crédito deve possuir reason\", function () {\r",
+                      "    pm.expect(json.reason).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Ativar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/credit-cards/{{creditCardId}}/activate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "credit-cards",
+                    "{{creditCardId}}",
+                    "activate"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Cartão deve estar ativo\", function () {\r",
+                      "    pm.expect(json.active).to.be.true;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Desativar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/credit-cards/{{creditCardId}}/deactivate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "credit-cards",
+                    "{{creditCardId}}",
+                    "deactivate"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Cartão deve estar desativado\", function () {\r",
+                      "    pm.expect(json.active).to.be.false;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Cadastro de cartões de crédito. Créditos manuais e limite derivado pertencem ao cartão. Faturas ficam em Processos."
+        },
+        {
+          "name": "Categorias",
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories"
+                  ],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "EXPENSE",
+                      "disabled": true
+                    },
+                    {
+                      "key": "active",
+                      "value": "true",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve ser uma lista\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Criar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"name\": \"Moradia\",\r\n  \"type\": \"EXPENSE\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Não existe GET /categories/{id} nem activate. Execute de novo com type INCOME para preencher incomeCategoryId (usado em Receitas)."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "if (json.id) {\r",
+                      "    pm.environment.set(\"categoryId\", json.id);\r",
+                      "}\r",
+                      "if (json.type === \"INCOME\") {\r",
+                      "    pm.environment.set(\"incomeCategoryId\", json.id);\r",
+                      "} else {\r",
+                      "    pm.environment.set(\"expenseCategoryId\", json.id);\r",
+                      "}\r",
+                      "\r",
+                      "pm.test(\"Categoria deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Categoria deve possuir nome\", function () {\r",
+                      "    pm.expect(json.name).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Categoria deve possuir tipo\", function () {\r",
+                      "    pm.expect(json.type).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Categoria deve estar ativa\", function () {\r",
+                      "    pm.expect(json.active).to.be.true;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Alterar",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories",
+                    "{{categoryId}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"name\": \"Moradia e condomínio\",\r\n  \"type\": \"EXPENSE\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da categoria deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"categoryId\"));\r",
+                      "});\r",
+                      "pm.test(\"Categoria deve possuir nome\", function () {\r",
+                      "    pm.expect(json.name).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Desativar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}/deactivate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories",
+                    "{{categoryId}}",
+                    "deactivate"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Categoria deve estar desativada\", function () {\r",
+                      "    pm.expect(json.active).to.be.false;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Não existe consulta por ID nem reativação nesta API."
+        },
+        {
+          "name": "Contas",
+          "item": [
+            {
+              "name": "Listar",
               "request": {
                 "method": "GET",
                 "header": [],
@@ -87,10 +763,7 @@
                   ]
                 }
               },
-              "response": []
-            },
-            {
-              "name": "Consultar",
+              "response": [],
               "event": [
                 {
                   "listen": "test",
@@ -102,24 +775,29 @@
                       "    pm.response.to.have.status(200);\r",
                       "});\r",
                       "\r",
-                      "pm.test(\"ID da conta deve corresponder ao solicitado\", function () {\r",
-                      "    pm.expect(json.id).to.eql(pm.environment.get(\"accountId\"));\r",
+                      "pm.test(\"Resposta deve ser uma lista\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
                       "});\r",
                       "\r",
-                      "pm.test(\"Conta deve possuir nome\", function () {\r",
-                      "    pm.expect(json.name).to.exist;\r",
-                      "});\r",
-                      "\r",
-                      "pm.test(\"Conta deve possuir tipo\", function () {\r",
-                      "    pm.expect(json.type).to.exist;\r",
-                      "});"
+                      "if (Array.isArray(json) && json.length >= 2) {\r",
+                      "    const current = pm.environment.get(\"accountId\");\r",
+                      "    const other = json.find(function (account) {\r",
+                      "        return account.id !== current;\r",
+                      "    });\r",
+                      "    if (other) {\r",
+                      "        pm.environment.set(\"destinationAccountId\", other.id);\r",
+                      "    }\r",
+                      "}\r"
                     ],
                     "type": "text/javascript",
                     "packages": {},
                     "requests": {}
                   }
                 }
-              ],
+              ]
+            },
+            {
+              "name": "Consultar",
               "request": {
                 "method": "GET",
                 "header": [],
@@ -136,10 +814,63 @@
                   ]
                 }
               },
-              "response": []
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da conta deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"accountId\"));\r",
+                      "});\r",
+                      "pm.test(\"Conta deve possuir nome\", function () {\r",
+                      "    pm.expect(json.name).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Conta deve possuir tipo\", function () {\r",
+                      "    pm.expect(json.type).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
             },
             {
               "name": "Criar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/accounts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "accounts"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"name\": \"Nubank\",\r\n  \"type\": \"BANK_ACCOUNT\",\r\n  \"initialBalance\": 1500.00\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Execute uma segunda vez com outro nome para obter destinationAccountId via Listar (necessário em Transferências)."
+              },
+              "response": [],
               "event": [
                 {
                   "listen": "test",
@@ -180,54 +911,20 @@
                       "\r",
                       "pm.test(\"Conta deve estar ativa\", function () {\r",
                       "    pm.expect(json.active).to.be.true;\r",
-                      "});"
+                      "});\r"
                     ],
                     "type": "text/javascript",
                     "packages": {},
                     "requests": {}
                   }
                 }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\r\n  \"name\": \"Nubank\",\r\n  \"type\": \"BANK_ACCOUNT\",\r\n  \"initialBalance\": 1500.00\r\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/accounts",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "accounts"
-                  ]
-                }
-              },
-              "response": []
+              ]
             },
             {
               "name": "Alterar",
               "request": {
                 "method": "PUT",
                 "header": [],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\r\n  \"name\": \"Nubank Principal\",\r\n  \"type\": \"BANK_ACCOUNT\"\r\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}",
                   "host": [
@@ -239,12 +936,68 @@
                     "accounts",
                     "{{accountId}}"
                   ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"name\": \"Nubank Principal\",\r\n  \"type\": \"BANK_ACCOUNT\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
                 }
               },
-              "response": []
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da conta deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"accountId\"));\r",
+                      "});\r",
+                      "pm.test(\"Nome deve ser atualizado\", function () {\r",
+                      "    pm.expect(json.name).to.eql(\"Nubank Principal\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Conta deve possuir tipo\", function () {\r",
+                      "    pm.expect(json.type).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
             },
             {
               "name": "Consultar Saldo",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/balance",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "accounts",
+                    "{{accountId}}",
+                    "balance"
+                  ]
+                },
+                "description": "Saldo derivado. O valor absoluto depende das movimentações já executadas nesta sessão."
+              },
+              "response": [],
               "event": [
                 {
                   "listen": "test",
@@ -262,21 +1015,24 @@
                       "    );\r",
                       "});\r",
                       "\r",
-                      "pm.test(\"Saldo deve ser 1500.00\", function () {\r",
-                      "    pm.expect(Number(json.balance)).to.eql(1500);\r",
-                      "});"
+                      "pm.test(\"Saldo deve existir\", function () {\r",
+                      "    pm.expect(json.balance).to.exist;\r",
+                      "});\r"
                     ],
                     "type": "text/javascript",
                     "packages": {},
                     "requests": {}
                   }
                 }
-              ],
+              ]
+            },
+            {
+              "name": "Alterar saldo inicial",
               "request": {
-                "method": "GET",
+                "method": "PUT",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/balance",
+                  "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/initial-balance",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -285,14 +1041,21 @@
                     "v1",
                     "accounts",
                     "{{accountId}}",
-                    "balance"
+                    "initial-balance"
                   ]
-                }
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"initialBalance\": 2500.00\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Único endpoint para definir/alterar saldo inicial após a criação. Somente enquanto a conta nunca teve movimentação (RN010 / RN010A)."
               },
-              "response": []
-            },
-            {
-              "name": "Ativar",
+              "response": [],
               "event": [
                 {
                   "listen": "test",
@@ -304,16 +1067,22 @@
                       "    pm.response.to.have.status(200);\r",
                       "});\r",
                       "\r",
-                      "pm.test(\"Conta deve estar ativa\", function () {\r",
-                      "    pm.expect(json.active).to.be.true;\r",
-                      "});"
+                      "pm.test(\"ID da conta deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"accountId\"));\r",
+                      "});\r",
+                      "pm.test(\"Saldo inicial deve ser atualizado\", function () {\r",
+                      "    pm.expect(Number(json.initialBalance)).to.eql(2500);\r",
+                      "});\r"
                     ],
                     "type": "text/javascript",
                     "packages": {},
                     "requests": {}
                   }
                 }
-              ],
+              ]
+            },
+            {
+              "name": "Ativar",
               "request": {
                 "method": "POST",
                 "header": [],
@@ -331,31 +1100,31 @@
                   ]
                 }
               },
-              "response": []
-            },
-            {
-              "name": "Desativar",
+              "response": [],
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
                       "pm.test(\"Status deve ser 200 OK\", function () {\r",
                       "    pm.response.to.have.status(200);\r",
                       "});\r",
                       "\r",
-                      "const json = pm.response.json();\r",
-                      "\r",
-                      "pm.test(\"Conta deve estar desativada\", function () {\r",
-                      "    pm.expect(json.active).to.be.false;\r",
-                      "});"
+                      "pm.test(\"Conta deve estar ativa\", function () {\r",
+                      "    pm.expect(json.active).to.be.true;\r",
+                      "});\r"
                     ],
                     "type": "text/javascript",
                     "packages": {},
                     "requests": {}
                   }
                 }
-              ],
+              ]
+            },
+            {
+              "name": "Desativar",
               "request": {
                 "method": "POST",
                 "header": [],
@@ -371,9 +1140,31 @@
                     "{{accountId}}",
                     "deactivate"
                   ]
-                }
+                },
+                "description": "Rejeitado com 400 se o saldo derivado for diferente de 0,00 (RN007A)."
               },
-              "response": []
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Conta deve estar desativada\", function () {\r",
+                      "    pm.expect(json.active).to.be.false;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
             }
           ]
         },
@@ -382,36 +1173,9 @@
           "item": [
             {
               "name": "Criar",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "const json = pm.response.json();\r",
-                      "\r",
-                      "pm.environment.set(\"userId\", json.id);"
-                    ],
-                    "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
-                  }
-                }
-              ],
               "request": {
-                "auth": {
-                  "type": "noauth"
-                },
                 "method": "POST",
                 "header": [],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\r\n  \"name\": \"{{userName}}\",\r\n  \"email\": \"{{userEmail}}\",\r\n  \"password\": \"{{userPassword}}\"\r\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/register",
                   "host": [
@@ -423,9 +1187,218 @@
                     "auth",
                     "register"
                   ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"name\": \"{{userName}}\",\r\n  \"email\": \"{{userEmail}}\",\r\n  \"password\": \"{{userPassword}}\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
                 }
               },
-              "response": []
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "if (json.id) {\r",
+                      "    pm.environment.set(\"userId\", json.id);\r",
+                      "}\r",
+                      "\r",
+                      "pm.test(\"Usuário deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Usuário deve possuir nome\", function () {\r",
+                      "    pm.expect(json.name).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Usuário deve possuir e-mail\", function () {\r",
+                      "    pm.expect(json.email).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Usuário deve estar ativo\", function () {\r",
+                      "    pm.expect(json.active).to.be.true;\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Senha não deve ser retornada\", function () {\r",
+                      "    pm.expect(json.password).to.be.undefined;\r",
+                      "    pm.expect(json.passwordHash).to.be.undefined;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar perfil",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "me"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID deve corresponder ao usuário autenticado\", function () {\r",
+                      "    const userId = pm.environment.get(\"userId\");\r",
+                      "    if (userId) {\r",
+                      "        pm.expect(json.id).to.eql(userId);\r",
+                      "    } else {\r",
+                      "        pm.expect(json.id).to.exist;\r",
+                      "    }\r",
+                      "});\r",
+                      "pm.test(\"Perfil deve possuir nome\", function () {\r",
+                      "    pm.expect(json.name).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Perfil deve possuir e-mail\", function () {\r",
+                      "    pm.expect(json.email).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Alterar perfil",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "me"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"name\": \"{{userName}}\",\r\n  \"email\": \"{{userEmail}}\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Perfil deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Perfil deve possuir nome\", function () {\r",
+                      "    pm.expect(json.name).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Perfil deve possuir e-mail\", function () {\r",
+                      "    pm.expect(json.email).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Alterar senha",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/me/password",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "me",
+                    "password"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"currentPassword\": \"{{userPassword}}\",\r\n  \"newPassword\": \"{{userPassword}}\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "O exemplo reenvia a mesma senha para não invalidar a sessão de testes. Em uso real, informe uma nova senha e faça login novamente."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status deve ser 204 No Content\", function () {\r",
+                      "    pm.response.to.have.status(204);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta não deve ter corpo\", function () {\r",
+                      "    pm.expect(pm.response.text()).to.be.oneOf([\"\", undefined]);\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
             }
           ]
         }
@@ -435,10 +1408,28 @@
       "name": "02 - Processos",
       "item": [
         {
-          "name": "Autenticação",
+          "name": "Acerto de Saldos",
           "item": [
             {
-              "name": "Login",
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/balance-adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "accounts",
+                    "{{accountId}}",
+                    "balance-adjustments"
+                  ]
+                }
+              },
+              "response": [],
               "event": [
                 {
                   "listen": "test",
@@ -446,29 +1437,202 @@
                     "exec": [
                       "const json = pm.response.json();\r",
                       "\r",
-                      "pm.environment.set(\"accessToken\", json.accessToken);"
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve ser uma lista\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
+                      "});\r"
                     ],
                     "type": "text/javascript",
                     "packages": {},
                     "requests": {}
                   }
                 }
-              ],
+              ]
+            },
+            {
+              "name": "Consultar",
               "request": {
-                "auth": {
-                  "type": "noauth"
-                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/balance-adjustments/{{balanceAdjustmentId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "accounts",
+                    "{{accountId}}",
+                    "balance-adjustments",
+                    "{{balanceAdjustmentId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID do acerto deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"balanceAdjustmentId\"));\r",
+                      "});\r",
+                      "pm.test(\"accountId deve corresponder à conta atual\", function () {\r",
+                      "    pm.expect(json.accountId).to.eql(pm.environment.get(\"accountId\"));\r",
+                      "});\r",
+                      "pm.test(\"Acerto deve possuir reportedBalance\", function () {\r",
+                      "    pm.expect(json.reportedBalance).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Acerto deve possuir calculatedBalance\", function () {\r",
+                      "    pm.expect(json.calculatedBalance).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Acerto deve possuir adjustmentAmount\", function () {\r",
+                      "    pm.expect(json.adjustmentAmount).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Acerto deve possuir status\", function () {\r",
+                      "    pm.expect(json.status).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Criar",
+              "request": {
                 "method": "POST",
                 "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/balance-adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "accounts",
+                    "{{accountId}}",
+                    "balance-adjustments"
+                  ]
+                },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"email\": \"{{userEmail}}\",\r\n  \"password\": \"{{userPassword}}\"\r\n}",
+                  "raw": "{\r\n  \"reportedBalance\": 1400.00,\r\n  \"adjustmentDate\": \"{{today}}\"\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
                 },
+                "description": "O cliente envia reportedBalance. calculatedBalance e adjustmentAmount são calculados pelo backend."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "if (json.id) {\r",
+                      "    pm.environment.set(\"balanceAdjustmentId\", json.id);\r",
+                      "}\r",
+                      "\r",
+                      "pm.test(\"Acerto deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Status inicial deve ser ACTIVE\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"ACTIVE\");\r",
+                      "});\r",
+                      "pm.test(\"Acerto deve possuir reportedBalance\", function () {\r",
+                      "    pm.expect(json.reportedBalance).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Acerto deve possuir calculatedBalance\", function () {\r",
+                      "    pm.expect(json.calculatedBalance).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Acerto deve possuir adjustmentAmount\", function () {\r",
+                      "    pm.expect(json.adjustmentAmount).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Estornar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/balance-adjustments/{{balanceAdjustmentId}}/reverse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "accounts",
+                    "{{accountId}}",
+                    "balance-adjustments",
+                    "{{balanceAdjustmentId}}",
+                    "reverse"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status deve ser REVERSED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"REVERSED\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Fato próprio de conciliação (BALANCE_ADJUSTMENT). Não confundir com ajustes de parcela ou fatura."
+        },
+        {
+          "name": "Autenticação",
+          "item": [
+            {
+              "name": "Login",
+              "request": {
+                "method": "POST",
+                "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/login",
                   "host": [
@@ -480,126 +1644,2651 @@
                     "auth",
                     "login"
                   ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"email\": \"{{userEmail}}\",\r\n  \"password\": \"{{userPassword}}\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
                 }
               },
-              "response": []
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "if (json.accessToken) {\r",
+                      "    pm.environment.set(\"accessToken\", json.accessToken);\r",
+                      "}\r",
+                      "\r",
+                      "pm.test(\"Deve retornar accessToken\", function () {\r",
+                      "    pm.expect(json.accessToken).to.exist;\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"tokenType deve ser Bearer\", function () {\r",
+                      "    pm.expect(json.tokenType).to.eql(\"Bearer\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"expiresIn deve ser 1800\", function () {\r",
+                      "    pm.expect(json.expiresIn).to.eql(1800);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Não deve retornar refreshToken\", function () {\r",
+                      "    pm.expect(json.refreshToken).to.be.undefined;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
             }
           ]
         },
         {
-          "name": "Agreements (Fase 13)",
+          "name": "Despesas",
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses"
+                  ],
+                  "query": [
+                    {
+                      "key": "startDate",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "categoryId",
+                      "value": "{{expenseCategoryId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "accountId",
+                      "value": "{{accountId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "creditCardId",
+                      "value": "{{creditCardId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "responsibleType",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "paymentMethod",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir items\", function () {\r",
+                      "    pm.expect(json.items).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir paginação\", function () {\r",
+                      "    pm.expect(json.page).to.exist;\r",
+                      "    pm.expect(json.size).to.exist;\r",
+                      "    pm.expect(json.totalItems).to.exist;\r",
+                      "    pm.expect(json.totalPages).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses",
+                    "{{expenseId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da despesa deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"expenseId\"));\r",
+                      "});\r",
+                      "pm.test(\"Despesa deve possuir status\", function () {\r",
+                      "    pm.expect(json.status).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Despesa deve possuir totalAmount\", function () {\r",
+                      "    pm.expect(json.totalAmount).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Despesa deve possuir paymentMethod\", function () {\r",
+                      "    pm.expect(json.paymentMethod).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Criar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"categoryId\": \"{{expenseCategoryId}}\",\r\n  \"description\": \"Conta de luz\",\r\n  \"totalAmount\": 80.00,\r\n  \"expenseDate\": \"{{today}}\",\r\n  \"dueDate\": \"{{today}}\",\r\n  \"paymentMethod\": \"ACCOUNT\",\r\n  \"accountId\": \"{{accountId}}\",\r\n  \"responsibleType\": \"MINE\",\r\n  \"installmentCount\": 1\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Exemplo ACCOUNT 1/1. Para cartão: paymentMethod CREDIT_CARD e creditCardId. installmentCount omitido = 1. Despesa CREDIT_CARD não usa Pagar."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "if (json.id) {\r",
+                      "    pm.environment.set(\"expenseId\", json.id);\r",
+                      "}\r",
+                      "if (json.installmentId) {\r",
+                      "    pm.environment.set(\"installmentId\", json.installmentId);\r",
+                      "}\r",
+                      "\r",
+                      "pm.test(\"Despesa deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Status inicial deve ser OPEN\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"OPEN\");\r",
+                      "});\r",
+                      "pm.test(\"Despesa deve possuir totalAmount\", function () {\r",
+                      "    pm.expect(json.totalAmount).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Alterar",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses",
+                    "{{expenseId}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"categoryId\": \"{{expenseCategoryId}}\",\r\n  \"description\": \"Conta de luz revisada\",\r\n  \"totalAmount\": 80.00,\r\n  \"expenseDate\": \"{{today}}\",\r\n  \"dueDate\": \"{{today}}\",\r\n  \"paymentMethod\": \"ACCOUNT\",\r\n  \"accountId\": \"{{accountId}}\",\r\n  \"responsibleType\": \"MINE\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da despesa deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"expenseId\"));\r",
+                      "});\r",
+                      "pm.test(\"Despesa deve possuir descrição\", function () {\r",
+                      "    pm.expect(json.description).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar parcelas",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}/installments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses",
+                    "{{expenseId}}",
+                    "installments"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve ser uma lista\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "if (Array.isArray(json) && json.length > 0) {\r",
+                      "    pm.environment.set(\"installmentId\", json[0].id);\r",
+                      "}\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar parcela",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}/installments/{{installmentId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses",
+                    "{{expenseId}}",
+                    "installments",
+                    "{{installmentId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da parcela deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"installmentId\"));\r",
+                      "});\r",
+                      "pm.test(\"expenseId deve corresponder à despesa\", function () {\r",
+                      "    pm.expect(json.expenseId).to.eql(pm.environment.get(\"expenseId\"));\r",
+                      "});\r",
+                      "pm.test(\"Parcela deve possuir amount\", function () {\r",
+                      "    pm.expect(json.amount).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Parcela deve possuir remainingAmount\", function () {\r",
+                      "    pm.expect(json.remainingAmount).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Parcela deve possuir status\", function () {\r",
+                      "    pm.expect(json.status).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Alterar parcela",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}/installments/{{installmentId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses",
+                    "{{expenseId}}",
+                    "installments",
+                    "{{installmentId}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"amount\": 80.00,\r\n  \"dueDate\": \"{{today}}\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Edição cadastral de parcela OPEN sem fatura. A soma das parcelas deve continuar igual a expenses.total_amount."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da parcela deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"installmentId\"));\r",
+                      "});\r",
+                      "pm.test(\"Parcela deve possuir amount\", function () {\r",
+                      "    pm.expect(json.amount).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Pagar parcela",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}/installments/{{installmentId}}/payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses",
+                    "{{expenseId}}",
+                    "installments",
+                    "{{installmentId}}",
+                    "payments"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"accountId\": \"{{accountId}}\",\r\n  \"amount\": 80.00,\r\n  \"paymentDate\": \"{{today}}\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Pagamento de parcela identificada (N>1 ACCOUNT/NONE). CREDIT_CARD não usa este endpoint."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da despesa deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"expenseId\"));\r",
+                      "});\r",
+                      "pm.test(\"Despesa deve possuir status\", function () {\r",
+                      "    pm.expect(json.status).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Criar ajuste",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}/installments/{{installmentId}}/adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses",
+                    "{{expenseId}}",
+                    "installments",
+                    "{{installmentId}}",
+                    "adjustments"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"type\": \"DISCOUNT\",\r\n  \"amount\": 5.00,\r\n  \"reason\": \"Desconto de teste\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "if (json.id) {\r",
+                      "    pm.environment.set(\"adjustmentId\", json.id);\r",
+                      "}\r",
+                      "\r",
+                      "pm.test(\"Ajuste deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Status inicial deve ser ACTIVE\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"ACTIVE\");\r",
+                      "});\r",
+                      "pm.test(\"Ajuste deve possuir type\", function () {\r",
+                      "    pm.expect(json.type).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Ajuste deve possuir reason\", function () {\r",
+                      "    pm.expect(json.reason).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar ajustes",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}/installments/{{installmentId}}/adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses",
+                    "{{expenseId}}",
+                    "installments",
+                    "{{installmentId}}",
+                    "adjustments"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve ser uma lista\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "if (Array.isArray(json) && json.length > 0) {\r",
+                      "    pm.environment.set(\"adjustmentId\", json[0].id);\r",
+                      "}\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Estornar ajuste",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}/installments/{{installmentId}}/adjustments/{{adjustmentId}}/reverse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses",
+                    "{{expenseId}}",
+                    "installments",
+                    "{{installmentId}}",
+                    "adjustments",
+                    "{{adjustmentId}}",
+                    "reverse"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status deve ser REVERSED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"REVERSED\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Pagar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}/pay",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses",
+                    "{{expenseId}}",
+                    "pay"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"accountId\": \"{{accountId}}\",\r\n  \"amount\": 80.00,\r\n  \"paymentDate\": \"{{today}}\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Pagamento da despesa 1/1 ACCOUNT/NONE. CREDIT_CARD não usa este endpoint."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da despesa deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"expenseId\"));\r",
+                      "});\r",
+                      "pm.test(\"Despesa deve possuir status\", function () {\r",
+                      "    pm.expect(json.status).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Cancelar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses",
+                    "{{expenseId}}",
+                    "cancel"
+                  ]
+                },
+                "description": "Somente despesa OPEN. PARTIALLY_PAID e PAID usam Refundar."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status deve ser CANCELLED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"CANCELLED\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Refundar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}/refund",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses",
+                    "{{expenseId}}",
+                    "refund"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "ACCOUNT/NONE: não envie settlement (400 SETTLEMENT_NOT_ALLOWED). CREDIT_CARD exige settlement CARD_CREDIT ou ACCOUNT."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status deve ser REFUNDED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"REFUNDED\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar pagamentos",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}/payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "expenses",
+                    "{{expenseId}}",
+                    "payments"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve ser uma lista\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "if (Array.isArray(json) && json.length > 0) {\r",
+                      "    pm.environment.set(\"paymentId\", json[0].id);\r",
+                      "}\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Faturas",
+          "item": [
+            {
+              "name": "Listar por cartão",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/credit-cards/{{creditCardId}}/invoices",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "credit-cards",
+                    "{{creditCardId}}",
+                    "invoices"
+                  ],
+                  "query": [
+                    {
+                      "key": "year",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "month",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve ser uma lista\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "if (Array.isArray(json) && json.length > 0) {\r",
+                      "    pm.environment.set(\"invoiceId\", json[0].id);\r",
+                      "}\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar atual",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/credit-cards/{{creditCardId}}/invoices/current",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "credit-cards",
+                    "{{creditCardId}}",
+                    "invoices",
+                    "current"
+                  ]
+                },
+                "description": "Consulta a fatura OPEN do cartão. 404 quando não houver fatura OPEN."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status deve ser 200 ou 404\", function () {\r",
+                      "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);\r",
+                      "});\r",
+                      "\r",
+                      "if (pm.response.code === 200) {\r",
+                      "    const json = pm.response.json();\r",
+                      "    pm.environment.set(\"invoiceId\", json.id);\r",
+                      "    pm.test(\"Fatura atual deve possuir ID\", function () {\r",
+                      "        pm.expect(json.id).to.exist;\r",
+                      "    });\r",
+                      "    pm.test(\"Status da fatura atual deve ser OPEN\", function () {\r",
+                      "        pm.expect(json.status).to.eql(\"OPEN\");\r",
+                      "    });\r",
+                      "}\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoices",
+                    "{{invoiceId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da fatura deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"invoiceId\"));\r",
+                      "});\r",
+                      "pm.test(\"Fatura deve possuir status\", function () {\r",
+                      "    pm.expect(json.status).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Fatura deve possuir totalAmount derivado\", function () {\r",
+                      "    pm.expect(json.totalAmount).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Fatura deve possuir paidAmount derivado\", function () {\r",
+                      "    pm.expect(json.paidAmount).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Fatura deve possuir remainingAmount derivado\", function () {\r",
+                      "    pm.expect(json.remainingAmount).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar itens",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/items",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoices",
+                    "{{invoiceId}}",
+                    "items"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve ser uma lista\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Pagar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoices",
+                    "{{invoiceId}}",
+                    "payments"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"accountId\": \"{{accountId}}\",\r\n  \"amount\": 10.00,\r\n  \"paymentDate\": \"{{today}}\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Não cria linha em payments (tabela de despesa ACCOUNT/NONE). O valor não pode exceder o remaining nem o saldo da conta."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "if (json.id) {\r",
+                      "    pm.environment.set(\"invoicePaymentId\", json.id);\r",
+                      "}\r",
+                      "\r",
+                      "pm.test(\"Pagamento da fatura deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"invoiceId deve corresponder à fatura\", function () {\r",
+                      "    pm.expect(json.invoiceId).to.eql(pm.environment.get(\"invoiceId\"));\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status inicial deve ser ACTIVE\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"ACTIVE\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar pagamentos",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoices",
+                    "{{invoiceId}}",
+                    "payments"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve ser uma lista\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "if (Array.isArray(json) && json.length > 0) {\r",
+                      "    pm.environment.set(\"invoicePaymentId\", json[0].id);\r",
+                      "}\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Estornar pagamento",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/payments/{{invoicePaymentId}}/reverse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoices",
+                    "{{invoiceId}}",
+                    "payments",
+                    "{{invoicePaymentId}}",
+                    "reverse"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status deve ser REVERSED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"REVERSED\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Criar ajuste",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoices",
+                    "{{invoiceId}}",
+                    "adjustments"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"type\": \"DISCOUNT\",\r\n  \"amount\": 5.00,\r\n  \"reason\": \"Ajuste de fatura de teste\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "SURCHARGE exige remaining > 0 (RN247A). reason é obrigatório."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "if (json.id) {\r",
+                      "    pm.environment.set(\"invoiceAdjustmentId\", json.id);\r",
+                      "}\r",
+                      "\r",
+                      "pm.test(\"Ajuste da fatura deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Status inicial deve ser ACTIVE\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"ACTIVE\");\r",
+                      "});\r",
+                      "pm.test(\"Ajuste deve possuir reason\", function () {\r",
+                      "    pm.expect(json.reason).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar ajustes",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoices",
+                    "{{invoiceId}}",
+                    "adjustments"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve ser uma lista\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "if (Array.isArray(json) && json.length > 0) {\r",
+                      "    pm.environment.set(\"invoiceAdjustmentId\", json[0].id);\r",
+                      "}\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Estornar ajuste",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/adjustments/{{invoiceAdjustmentId}}/reverse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoices",
+                    "{{invoiceId}}",
+                    "adjustments",
+                    "{{invoiceAdjustmentId}}",
+                    "reverse"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status deve ser REVERSED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"REVERSED\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Não existe POST /invoices/{id}/close. Não existe GET /invoices (listagem geral). Listagem é por cartão."
+        },
+        {
+          "name": "Negociações",
           "item": [
             {
               "name": "Nova negociação",
               "request": {
                 "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"entryAmount\": 400.00,\n  \"accountId\": \"{{accountId}}\",\n  \"entryPaymentDate\": \"2026-08-16\",\n  \"installmentCount\": 10,\n  \"installmentAmount\": 120.00\n}"
-                },
+                "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/agreements",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "invoices", "{{invoiceId}}", "agreements"]
-                }
-              },
-              "response": []
-            },
-            {
-              "name": "Renegociação",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoices",
+                    "{{invoiceId}}",
+                    "agreements"
+                  ]
+                },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"entryAmount\": 500.00,\n  \"accountId\": \"{{accountId}}\",\n  \"entryPaymentDate\": \"2026-08-16\",\n  \"installmentCount\": 10,\n  \"installmentAmount\": 320.00\n}"
+                  "raw": "{\r\n  \"entryAmount\": 400.00,\r\n  \"accountId\": \"{{accountId}}\",\r\n  \"entryPaymentDate\": \"{{today}}\",\r\n  \"installmentCount\": 10,\r\n  \"installmentAmount\": 120.00\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
                 },
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/renegotiations",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "invoices", "{{invoiceId}}", "renegotiations"]
-                }
+                "description": "Fatura deve estar CLOSED com remaining > 0. contractedTotal deve ser >= financedAmount."
               },
-              "response": []
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "if (json.id) {\r",
+                      "    pm.environment.set(\"agreementId\", json.id);\r",
+                      "}\r",
+                      "if (json.installments && json.installments.length > 0) {\r",
+                      "    pm.environment.set(\"agreementInstallmentId\", json.installments[0].id);\r",
+                      "}\r",
+                      "\r",
+                      "pm.test(\"Negociação deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Negociação deve possuir financedAmount\", function () {\r",
+                      "    pm.expect(json.financedAmount).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Negociação deve possuir contractedTotal\", function () {\r",
+                      "    pm.expect(json.contractedTotal).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Negociação deve possuir status\", function () {\r",
+                      "    pm.expect(json.status).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
             },
             {
-              "name": "Listar Agreements da fatura",
+              "name": "Renegociar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/renegotiations",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoices",
+                    "{{invoiceId}}",
+                    "renegotiations"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"entryAmount\": 500.00,\r\n  \"accountId\": \"{{accountId}}\",\r\n  \"entryPaymentDate\": \"{{today}}\",\r\n  \"installmentCount\": 10,\r\n  \"installmentAmount\": 320.00,\r\n  \"anticipatedFuturesNetAmount\": 0.00\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "anticipatedFuturesNetAmount é obrigatório. Se não houver futuros, envie 0."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "if (json.id) {\r",
+                      "    pm.environment.set(\"agreementId\", json.id);\r",
+                      "}\r",
+                      "if (json.installments && json.installments.length > 0) {\r",
+                      "    pm.environment.set(\"agreementInstallmentId\", json.installments[0].id);\r",
+                      "}\r",
+                      "\r",
+                      "pm.test(\"Renegociação deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Renegociação deve possuir financedAmount\", function () {\r",
+                      "    pm.expect(json.financedAmount).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar",
               "request": {
                 "method": "GET",
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/invoices/{{invoiceId}}/agreements",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "invoices", "{{invoiceId}}", "agreements"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoices",
+                    "{{invoiceId}}",
+                    "agreements"
+                  ]
                 }
               },
-              "response": []
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve ser uma lista\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "if (Array.isArray(json) && json.length > 0) {\r",
+                      "    pm.environment.set(\"agreementId\", json[0].id);\r",
+                      "    if (json[0].installments && json[0].installments.length > 0) {\r",
+                      "        pm.environment.set(\"agreementInstallmentId\", json[0].installments[0].id);\r",
+                      "    }\r",
+                      "}\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
             },
             {
-              "name": "Consultar Agreement",
+              "name": "Consultar",
               "request": {
                 "method": "GET",
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/agreements/{{agreementId}}",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "agreements", "{{agreementId}}"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "agreements",
+                    "{{agreementId}}"
+                  ]
                 }
               },
-              "response": []
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da negociação deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"agreementId\"));\r",
+                      "});\r",
+                      "pm.test(\"Negociação deve possuir status\", function () {\r",
+                      "    pm.expect(json.status).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Deve possuir parcelas\", function () {\r",
+                      "    pm.expect(json.installments).to.be.an(\"array\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
             },
             {
               "name": "Antecipar parcela",
               "request": {
                 "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"accountId\": \"{{accountId}}\",\n  \"amount\": 150.00,\n  \"paymentDate\": \"2026-08-16\",\n  \"settled\": true\n}"
-                },
+                "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/agreements/{{agreementId}}/installments/{{installmentId}}/anticipate",
-                  "host": ["{{baseUrl}}"],
+                  "raw": "{{baseUrl}}/api/v1/agreements/{{agreementId}}/installments/{{agreementInstallmentId}}/anticipate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
                   "path": [
                     "api",
                     "v1",
                     "agreements",
                     "{{agreementId}}",
                     "installments",
-                    "{{installmentId}}",
+                    "{{agreementInstallmentId}}",
                     "anticipate"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"accountId\": \"{{accountId}}\",\r\n  \"amount\": 150.00,\r\n  \"paymentDate\": \"{{today}}\",\r\n  \"settled\": true\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "settled só existe neste fluxo (não no pagamento de fatura nem no pay ACCOUNT/NONE)."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da negociação deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"agreementId\"));\r",
+                      "});\r",
+                      "pm.test(\"Negociação deve possuir status\", function () {\r",
+                      "    pm.expect(json.status).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Pagamentos",
+          "item": [
+            {
+              "name": "Consultar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "payments",
+                    "{{paymentId}}"
+                  ]
+                },
+                "description": "Pagamento de despesa ACCOUNT/NONE. Pagamento de fatura não usa este recurso."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID do pagamento deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"paymentId\"));\r",
+                      "});\r",
+                      "pm.test(\"Pagamento deve possuir expenseId\", function () {\r",
+                      "    pm.expect(json.expenseId).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Pagamento deve possuir status\", function () {\r",
+                      "    pm.expect(json.status).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Pagamento deve possuir amount\", function () {\r",
+                      "    pm.expect(json.amount).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Estornar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}/reverse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "payments",
+                    "{{paymentId}}",
+                    "reverse"
                   ]
                 }
               },
-              "response": []
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status deve ser REVERSED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"REVERSED\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Receitas",
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/incomes?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "incomes"
+                  ],
+                  "query": [
+                    {
+                      "key": "startDate",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "categoryId",
+                      "value": "{{incomeCategoryId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "accountId",
+                      "value": "{{accountId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir items\", function () {\r",
+                      "    pm.expect(json.items).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir paginação\", function () {\r",
+                      "    pm.expect(json.page).to.exist;\r",
+                      "    pm.expect(json.size).to.exist;\r",
+                      "    pm.expect(json.totalItems).to.exist;\r",
+                      "    pm.expect(json.totalPages).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/incomes/{{incomeId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "incomes",
+                    "{{incomeId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da receita deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"incomeId\"));\r",
+                      "});\r",
+                      "pm.test(\"Receita deve possuir status\", function () {\r",
+                      "    pm.expect(json.status).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Receita deve possuir amount\", function () {\r",
+                      "    pm.expect(json.amount).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Criar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/incomes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "incomes"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"categoryId\": \"{{incomeCategoryId}}\",\r\n  \"description\": \"Salário\",\r\n  \"amount\": 100.00,\r\n  \"expectedDate\": \"{{today}}\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Requer categoria type INCOME em {{incomeCategoryId}}."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "if (json.id) {\r",
+                      "    pm.environment.set(\"incomeId\", json.id);\r",
+                      "}\r",
+                      "\r",
+                      "pm.test(\"Receita deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Status inicial deve ser EXPECTED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"EXPECTED\");\r",
+                      "});\r",
+                      "pm.test(\"Receita deve possuir amount\", function () {\r",
+                      "    pm.expect(json.amount).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Alterar",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/incomes/{{incomeId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "incomes",
+                    "{{incomeId}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"categoryId\": \"{{incomeCategoryId}}\",\r\n  \"description\": \"Salário revisado\",\r\n  \"amount\": 100.00,\r\n  \"expectedDate\": \"{{today}}\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da receita deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"incomeId\"));\r",
+                      "});\r",
+                      "pm.test(\"Receita deve possuir descrição\", function () {\r",
+                      "    pm.expect(json.description).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Receber",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/incomes/{{incomeId}}/receive",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "incomes",
+                    "{{incomeId}}",
+                    "receive"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"accountId\": \"{{accountId}}\",\r\n  \"receivedDate\": \"{{today}}\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status deve ser RECEIVED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"RECEIVED\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"accountId deve ser preenchido\", function () {\r",
+                      "    pm.expect(json.accountId).to.exist;\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"receivedDate deve ser preenchida\", function () {\r",
+                      "    pm.expect(json.receivedDate).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Estornar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/incomes/{{incomeId}}/reverse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "incomes",
+                    "{{incomeId}}",
+                    "reverse"
+                  ]
+                },
+                "description": "Desfaz o recebimento. Não cancela a duplicata."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status deve voltar para EXPECTED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"EXPECTED\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Cancelar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/incomes/{{incomeId}}/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "incomes",
+                    "{{incomeId}}",
+                    "cancel"
+                  ]
+                },
+                "description": "Somente receita EXPECTED. RECEIVED precisa ser estornada antes."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status deve ser CANCELLED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"CANCELLED\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
             }
           ]
         },
         {
           "name": "Transferências",
-          "item": []
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/transfers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "transfers"
+                  ],
+                  "query": [
+                    {
+                      "key": "startDate",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "accountId",
+                      "value": "{{accountId}}",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Sem filtro de status no MVP. Pode retornar ACTIVE e REVERSED."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve ser uma lista\", function () {\r",
+                      "    pm.expect(json).to.be.an(\"array\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/transfers/{{transferId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "transfers",
+                    "{{transferId}}"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"ID da transferência deve corresponder ao solicitado\", function () {\r",
+                      "    pm.expect(json.id).to.eql(pm.environment.get(\"transferId\"));\r",
+                      "});\r",
+                      "pm.test(\"Transferência deve possuir origem\", function () {\r",
+                      "    pm.expect(json.sourceAccountId).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Transferência deve possuir destino\", function () {\r",
+                      "    pm.expect(json.destinationAccountId).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Transferência deve possuir amount\", function () {\r",
+                      "    pm.expect(json.amount).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Transferência deve possuir status\", function () {\r",
+                      "    pm.expect(json.status).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Criar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/transfers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "transfers"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"sourceAccountId\": \"{{accountId}}\",\r\n  \"destinationAccountId\": \"{{destinationAccountId}}\",\r\n  \"amount\": 100.00,\r\n  \"transferDate\": \"{{today}}\",\r\n  \"description\": \"Transferência de teste\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Origem e destino: BANK_ACCOUNT ativas, distintas. Requer {{destinationAccountId}} (crie duas contas e execute Listar em Contas)."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "if (json.id) {\r",
+                      "    pm.environment.set(\"transferId\", json.id);\r",
+                      "}\r",
+                      "\r",
+                      "pm.test(\"Transferência deve possuir ID\", function () {\r",
+                      "    pm.expect(json.id).to.exist;\r",
+                      "});\r",
+                      "pm.test(\"Status inicial deve ser ACTIVE\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"ACTIVE\");\r",
+                      "});\r",
+                      "pm.test(\"Transferência deve possuir amount\", function () {\r",
+                      "    pm.expect(json.amount).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Estornar",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/transfers/{{transferId}}/reverse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "transfers",
+                    "{{transferId}}",
+                    "reverse"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Status deve ser REVERSED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"REVERSED\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Não existe PUT nem DELETE. Correção = estornar + criar nova."
         }
       ]
     },
     {
       "name": "99 - Cenários de testes",
-      "item": []
+      "item": [
+        {
+          "name": "Login com credenciais inválidas",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"email\": \"{{userEmail}}\",\r\n  \"password\": \"senha-invalida-xyz\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 401 Unauthorized\", function () {\r",
+                  "    pm.response.to.have.status(401);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Erro deve possuir o formato oficial\", function () {\r",
+                  "    pm.expect(json.timestamp).to.exist;\r",
+                  "    pm.expect(json.status).to.exist;\r",
+                  "    pm.expect(json.code).to.exist;\r",
+                  "    pm.expect(json.message).to.exist;\r",
+                  "    pm.expect(json.path).to.exist;\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser UNAUTHORIZED\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"UNAUTHORIZED\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Mensagem deve ser genérica\", function () {\r",
+                  "    pm.expect(json.message).to.eql(\"Credenciais inválidas.\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar conta sem token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 401 Unauthorized\", function () {\r",
+                  "    pm.response.to.have.status(401);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Erro deve possuir o formato oficial\", function () {\r",
+                  "    pm.expect(json.timestamp).to.exist;\r",
+                  "    pm.expect(json.status).to.exist;\r",
+                  "    pm.expect(json.code).to.exist;\r",
+                  "    pm.expect(json.message).to.exist;\r",
+                  "    pm.expect(json.path).to.exist;\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser UNAUTHORIZED\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"UNAUTHORIZED\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar conta inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/00000000-0000-7000-0000-000000000001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "00000000-0000-7000-0000-000000000001"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 404 Not Found\", function () {\r",
+                  "    pm.response.to.have.status(404);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Erro deve possuir o formato oficial\", function () {\r",
+                  "    pm.expect(json.timestamp).to.exist;\r",
+                  "    pm.expect(json.status).to.exist;\r",
+                  "    pm.expect(json.code).to.exist;\r",
+                  "    pm.expect(json.message).to.exist;\r",
+                  "    pm.expect(json.path).to.exist;\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser NOT_FOUND\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"NOT_FOUND\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Mensagem não deve vazar existência\", function () {\r",
+                  "    pm.expect(json.message).to.eql(\"Conta não encontrada.\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transferência com saldo insuficiente",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"sourceAccountId\": \"{{accountId}}\",\r\n  \"destinationAccountId\": \"{{destinationAccountId}}\",\r\n  \"amount\": 99999999.00,\r\n  \"transferDate\": \"{{today}}\",\r\n  \"description\": \"Saldo insuficiente\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 400 Bad Request\", function () {\r",
+                  "    pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Erro deve possuir o formato oficial\", function () {\r",
+                  "    pm.expect(json.timestamp).to.exist;\r",
+                  "    pm.expect(json.status).to.exist;\r",
+                  "    pm.expect(json.code).to.exist;\r",
+                  "    pm.expect(json.message).to.exist;\r",
+                  "    pm.expect(json.path).to.exist;\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser BUSINESS_RULE_VIOLATION\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"BUSINESS_RULE_VIOLATION\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Mensagem deve indicar saldo insuficiente\", function () {\r",
+                  "    pm.expect(json.message).to.eql(\"Saldo insuficiente para realizar a operação.\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Cenários negativos pontuais. Não cobrem todas as regras; priorizam autenticação, ownership e saldo insuficiente."
     }
   ],
   "auth": {
@@ -620,7 +4309,10 @@
         "packages": {},
         "requests": {},
         "exec": [
-          ""
+          "const today = new Date().toLocaleDateString(\"en-CA\", {\r",
+          "    timeZone: \"America/Sao_Paulo\"\r",
+          "});\r",
+          "pm.collectionVariables.set(\"today\", today);\r"
         ]
       }
     },
@@ -639,6 +4331,10 @@
   "variable": [
     {
       "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "today",
       "value": ""
     }
   ]

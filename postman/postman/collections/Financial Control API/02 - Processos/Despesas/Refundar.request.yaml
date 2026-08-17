@@ -1,0 +1,28 @@
+$kind: http-request
+description: "ACCOUNT/NONE: não envie settlement (400 SETTLEMENT_NOT_ALLOWED). CREDIT_CARD exige settlement CARD_CREDIT ou ACCOUNT."
+url: "{{baseUrl}}/api/v1/expenses/{{expenseId}}/refund"
+method: POST
+body:
+  type: json
+  content: "{}"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Status deve ser REFUNDED\", function () {\r
+
+      \    pm.expect(json.status).to.eql(\"REFUNDED\");\r
+
+      });\r"
+    language: text/javascript
+order: 14000

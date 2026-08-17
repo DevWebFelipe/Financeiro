@@ -1,0 +1,35 @@
+$kind: http-request
+description: Sem filtro de status no MVP. Pode retornar ACTIVE e REVERSED.
+url: "{{baseUrl}}/api/v1/transfers"
+method: GET
+queryParams:
+  - key: startDate
+    value: ""
+    disabled: true
+  - key: endDate
+    value: ""
+    disabled: true
+  - key: accountId
+    value: "{{accountId}}"
+    disabled: true
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status deve ser 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Resposta deve ser uma lista\", function () {\r
+
+      \    pm.expect(json).to.be.an(\"array\");\r
+
+      });\r"
+    language: text/javascript
+order: 1000

@@ -1,0 +1,3 @@
+$kind: collection
+description: Cenários negativos pontuais. Não cobrem todas as regras; priorizam autenticação, ownership e saldo insuficiente.
+order: 4000
