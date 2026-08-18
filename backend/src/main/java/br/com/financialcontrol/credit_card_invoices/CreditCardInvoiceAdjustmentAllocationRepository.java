@@ -16,6 +16,18 @@ public interface CreditCardInvoiceAdjustmentAllocationRepository
 
   @Query(
       """
+      SELECT DISTINCT a FROM CreditCardInvoiceAdjustmentAllocation a
+      JOIN FETCH a.invoiceAdjustment adj
+      JOIN FETCH a.installment
+      WHERE adj.invoice.id = :invoiceId
+        AND a.userId = :userId
+      ORDER BY a.createdAt ASC, a.id ASC
+      """)
+  List<CreditCardInvoiceAdjustmentAllocation> findAllByInvoice_IdAndUserId(
+      @Param("invoiceId") UUID invoiceId, @Param("userId") UUID userId);
+
+  @Query(
+      """
       SELECT COALESCE(SUM(a.amount), 0)
       FROM CreditCardInvoiceAdjustmentAllocation a
       WHERE a.installment.id = :installmentId

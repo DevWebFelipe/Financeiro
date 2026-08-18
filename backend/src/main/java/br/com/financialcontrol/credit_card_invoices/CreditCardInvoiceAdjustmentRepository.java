@@ -2,6 +2,7 @@ package br.com.financialcontrol.credit_card_invoices;
 
 import br.com.financialcontrol.expenses.AdjustmentStatus;
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,4 +31,21 @@ public interface CreditCardInvoiceAdjustmentRepository
 
   List<CreditCardInvoiceAdjustment> findAllByInvoice_IdAndUserIdAndStatus(
       UUID invoiceId, UUID userId, AdjustmentStatus status);
+
+  @Query(
+      """
+      SELECT DISTINCT a FROM CreditCardInvoiceAdjustment a
+      JOIN FETCH a.invoice i
+      JOIN FETCH i.creditCard
+      WHERE a.userId = :userId
+        AND a.createdAt >= :startInstant
+        AND a.createdAt < :endInstant
+        AND (:creditCardId IS NULL OR i.creditCard.id = :creditCardId)
+      ORDER BY a.createdAt ASC, a.id ASC
+      """)
+  List<CreditCardInvoiceAdjustment> findAllByUserIdAndCreatedAtBetween(
+      @Param("userId") UUID userId,
+      @Param("startInstant") Instant startInstant,
+      @Param("endInstant") Instant endInstant,
+      @Param("creditCardId") UUID creditCardId);
 }

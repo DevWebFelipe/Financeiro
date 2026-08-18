@@ -97,4 +97,20 @@ public interface CreditCardInvoiceRepository extends JpaRepository<CreditCardInv
       @Param("userId") UUID userId,
       @Param("statuses") Collection<CreditCardInvoiceStatus> statuses,
       @Param("rangeEnd") LocalDate rangeEnd);
+
+  @Query(
+      """
+      SELECT DISTINCT i FROM CreditCardInvoice i
+      JOIN FETCH i.creditCard
+      WHERE i.userId = :userId
+        AND i.closingDate >= :startDate
+        AND i.closingDate <= :endDate
+        AND (:creditCardId IS NULL OR i.creditCard.id = :creditCardId)
+      ORDER BY i.closingDate ASC, i.id ASC
+      """)
+  List<CreditCardInvoice> findAllByUserIdAndClosingDateBetween(
+      @Param("userId") UUID userId,
+      @Param("startDate") LocalDate startDate,
+      @Param("endDate") LocalDate endDate,
+      @Param("creditCardId") UUID creditCardId);
 }

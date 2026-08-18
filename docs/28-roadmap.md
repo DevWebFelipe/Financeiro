@@ -1164,34 +1164,28 @@ Gráficos por categoria/cartão/responsável e `GET /api/v1/reports/*` **fora** 
 
 # 101. Fase 20 — Relatórios
 
-Objetivo:
+**Status:** **CONCLUÍDA E APROVADA**. D-F20-01 a D-F20-16 **fechadas** e **implementadas**. 7 endpoints JSON + 7 PDF. OpenPDF 3.0.5. Collection Postman atualizada (14 requests em `02 - Processos/Reports`). Sem tabela `reports`. Flyway permanece em V30. Testes: `ReportsApiTest` (59 métodos). Suíte: **578** testes; `mvn verify` BUILD SUCCESS. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento; não bloqueante; não reabre a fase). Sem correções funcionais obrigatórias.
 
-Criar relatórios financeiros.
+Contrato: `docs/24` §19.12 / `docs/25` §76 / `docs/27` §40J.
+
+Objetivo (atendido): relatórios derivados (despesas, receitas, categorias, responsáveis, cartões, fluxo de caixa, fatura) e exportação PDF (OpenPDF). Sem tabela `reports`. Sem reabrir Dashboard nem `GET /projections`.
 
 
 # 102. Relatórios
 
-Implementar:
+Endpoints oficiais: `GET /api/v1/reports/expenses|incomes|categories|responsibles|cards|cash-flow` e `GET /api/v1/reports/invoices/{invoiceId}`, com variantes `/pdf`.
 
-- fatura;
-- despesas;
-- receitas;
-- fluxo de caixa;
-- categorias;
-- responsáveis;
-- cartões.
+**SUPERADOS:** `expenses-by-category`, `income-by-category`, `expenses-by-responsible`, `expenses-by-card`.
 
 
 # 103. Fase 20
 
-Exportação inicial:
-
-PDF
+Exportação inicial: PDF (OpenPDF). CSV/Excel fora. Frontend/gráficos fora.
 
 
 # 104. Fase 20
 
-Relatório de fatura deve ser adequado para enviar ao proprietário do cartão.
+Relatório de fatura adequado para enviar ao titular/responsável do cartão (filtro por responsável; PDF sem UUID/`creditLimit`/notas internas).
 
 
 # 105. Fase 21 — Frontend completo
@@ -1680,9 +1674,9 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9**. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 15: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**. Fase 17: **CONCLUÍDA E APROVADA**. Fase 18: **CONCLUÍDA E APROVADA**. Fase 19: **CONCLUÍDA E APROVADA**.
+Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9**. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 15: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**. Fase 17: **CONCLUÍDA E APROVADA**. Fase 18: **CONCLUÍDA E APROVADA**. Fase 19: **CONCLUÍDA E APROVADA**. Fase 20: **CONCLUÍDA E APROVADA**.
 
-Próxima etapa: **Fase 20 — Relatórios** (`docs/28` §101). **NÃO INICIADA.** Frontend da Fase 19 permanece fora até a Fase 21.
+**Fase 20 — Relatórios:** **CONCLUÍDA E APROVADA** (`docs/28` §101 / `docs/24` §19.12 / `docs/25` §76; D-F20-01 a D-F20-16 **implementadas**). 7 JSON + 7 PDF. OpenPDF 3.0.5. Collection atualizada (14 requests). Flyway V30; sem tabela `reports`. Testes: `ReportsApiTest`. Suíte: **578** testes. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento; não bloqueante). Próxima fase do roadmap: **Fase 21 — Frontend completo** (não iniciada nesta etapa).
 
 **Fase 19 — CONCLUÍDA E APROVADA.** Endpoint: `GET /api/v1/dashboard`. Sem tabela `dashboard`. D282–D289 **implementadas**. Testes: `DashboardApiTest`. Suíte: **519** testes. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
 
@@ -1698,4 +1692,4 @@ Status da Fase 14: `CONCLUÍDA E APROVADA` (`docs/24` §19.5).
 
 Status da Fase 13: `CONCLUÍDA E APROVADA` (`docs/24` §19.4 / RN254; `docs/23` §269.5 D1–D11 FECHADO).
 
-A IA não deve implementar Refresh Token, logout backend, relatórios/PDF, frontend financeiro, `payments.type`, extrato `/statement` nem auditoria genérica sem autorização. Itens ainda deferidos: §269.1, §269.2.7. Fechados: §269.3, §269.4, **§269.5**.
+A IA não deve implementar Refresh Token, logout backend, frontend financeiro, `payments.type`, extrato `/statement` nem auditoria genérica sem autorização. Itens ainda deferidos: §269.1, §269.2.7. Fechados: §269.3, §269.4, **§269.5**. A Fase 20 (relatórios/PDF) está **CONCLUÍDA E APROVADA**.

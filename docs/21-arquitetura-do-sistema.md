@@ -353,12 +353,14 @@ br.com.financialcontrol
 ├── receivables
 ├── projections
 ├── dashboard
-└── ...
+└── reports
 ```
 
 Pacote da Fase 18 (`projections`): visão derivada; **sem** entidade JPA; **sem** tabela (`docs/24` §19.10).
 
 Pacote da Fase 19 (`dashboard`): visão derivada; **sem** entidade JPA; **sem** tabela (`docs/24` §19.11).
+
+Pacote da Fase 20 (`reports`): visão derivada; **sem** entidade JPA; **sem** tabela (`docs/24` §19.12). **CONCLUÍDA E APROVADA**. OpenPDF 3.0.5.
 
 Pacotes da Fase 3:
 
@@ -407,6 +409,15 @@ Pacotes da Fase 19 (`docs/24` §19.11 — **CONCLUÍDA E APROVADA**):
 - Pacote `dashboard` — visão derivada consolidada (`DashboardController` → `DashboardService` → `ProjectionService` / `AccountService` / `PayablesService` / `ReceivablesService` / `CreditCardService`).
 - **Sem** entidade JPA `Dashboard`, **sem** tabela `dashboard`, **sem** migration.
 - Consome remaining e saldo oficiais; não cria fonte de verdade paralela.
+
+Pacotes da Fase 20 (`docs/24` §19.12 — **CONCLUÍDA E APROVADA**):
+
+- Pacote `reports` — visões derivadas de relatórios (`ReportsController` → `ReportsService` → `ExpenseService` / `IncomeService` / `PayablesService` / `ProjectionService` / `AccountService` / serviços de cartão e fatura).
+- **Sem** entidade JPA `Report`, **sem** tabela `reports`, **sem** migration.
+- **Não** reimplementar RN231, RN240, remaining de receita, `docs/23` §197 nem o `ProjectionService`.
+- PDF: OpenPDF 3.0.5.
+- Paths `GET /api/v1/reports/expenses-by-category` (e equivalentes by-card / by-responsible / income-by-category) estão **SUPERADOS** (`docs/25` §76).
+- Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento).
 
 Pacotes da Fase 5:
 

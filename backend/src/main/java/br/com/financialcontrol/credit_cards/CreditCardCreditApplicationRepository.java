@@ -1,6 +1,7 @@
 package br.com.financialcontrol.credit_cards;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,9 @@ public interface CreditCardCreditApplicationRepository
     extends JpaRepository<CreditCardCreditApplication, UUID> {
 
   List<CreditCardCreditApplication> findAllByCredit_IdAndUserId(UUID creditId, UUID userId);
+
+  List<CreditCardCreditApplication> findAllByInvoice_IdAndUserIdOrderByCreatedAtAscIdAsc(
+      UUID invoiceId, UUID userId);
 
   @Query(
       """
@@ -38,4 +42,23 @@ public interface CreditCardCreditApplicationRepository
       """)
   BigDecimal sumAmountByExpenseIdAndUserId(
       @Param("expenseId") UUID expenseId, @Param("userId") UUID userId);
+
+  @Query(
+      """
+      SELECT DISTINCT a FROM CreditCardCreditApplication a
+      JOIN FETCH a.credit c
+      JOIN FETCH c.creditCard
+      JOIN FETCH a.invoice
+      JOIN FETCH a.installment
+      WHERE a.userId = :userId
+        AND a.createdAt >= :startInstant
+        AND a.createdAt < :endInstant
+        AND (:creditCardId IS NULL OR c.creditCard.id = :creditCardId)
+      ORDER BY a.createdAt ASC, a.id ASC
+      """)
+  List<CreditCardCreditApplication> findAllByUserIdAndCreatedAtBetween(
+      @Param("userId") UUID userId,
+      @Param("startInstant") Instant startInstant,
+      @Param("endInstant") Instant endInstant,
+      @Param("creditCardId") UUID creditCardId);
 }

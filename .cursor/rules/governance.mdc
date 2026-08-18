@@ -42,6 +42,8 @@ Do not create provisional code, preparatory migrations, presumed enums/CHECKs, o
 
 **Phase 19 — `CONCLUÍDA E APROVADA`:** `docs/24` §19.11 — dashboard (`GET /api/v1/dashboard`; D282–D289 implemented). No `dashboard` table. No `GET /dashboard/monthly`. No `accountId`. Frontend out of this phase. Final audit: **APROVADA COM RESSALVAS** (non-blocking).
 
+**Phase 20 — `CONCLUÍDA E APROVADA`:** `docs/24` §19.12 / `docs/25` §76 — reports (`GET /api/v1/reports/*` JSON + PDF; D-F20-01 to D-F20-16 implemented). No `reports` table. Flyway remains V30. OpenPDF 3.0.5. Collection updated (14 requests). Final audit: **APROVADA COM RESSALVAS** (documentation/status only; closed in the documentation wrap-up; non-blocking).
+
 Mandatory remaining questions: `docs/23-modelo-de-dados.md` seção 269 (`payments.type`; §269.2.7).
 
 Everything else already consolidated in `docs/23` remains the source of truth.

@@ -32,7 +32,7 @@ Priorizar: tecnologias modernas e estáveis, boa documentação, aprendizado, in
 | Validação | Jakarta Bean Validation |
 | Migrations | Flyway |
 | OpenAPI | springdoc-openapi **3.0.2** (linha 3.x / Spring Boot 4) |
-| PDF | **OpenPDF** |
+| PDF | **OpenPDF** 3.0.5 (`com.github.librepdf:openpdf`) |
 | Testes | JUnit 5, Mockito, AssertJ, Spring Boot Test, Testcontainers |
 
 
@@ -110,6 +110,8 @@ Não utilizar `com.example` nem `com.financialcontrol`.
 Biblioteca oficial: **OpenPDF**.
 
 Geração no backend, sob demanda, com isolamento por usuário.
+
+Contrato da Fase 20: `docs/24` §19.12 / `docs/25` §76 — **CONCLUÍDA E APROVADA**. Dependência Maven: OpenPDF 3.0.5 (`com.github.librepdf:openpdf`). Não armazenar PDF no banco.
 
 
 # 12. Lombok e MapStruct

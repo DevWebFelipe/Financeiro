@@ -44,4 +44,22 @@ public interface CreditCardInvoicePaymentRepository
       @Param("asOfDate") LocalDate asOfDate);
 
   boolean existsByAccount_IdAndUserId(UUID accountId, UUID userId);
+
+  @Query(
+      """
+      SELECT DISTINCT p FROM CreditCardInvoicePayment p
+      JOIN FETCH p.invoice i
+      JOIN FETCH i.creditCard
+      JOIN FETCH p.account
+      WHERE p.userId = :userId
+        AND p.paymentDate >= :startDate
+        AND p.paymentDate <= :endDate
+        AND (:creditCardId IS NULL OR i.creditCard.id = :creditCardId)
+      ORDER BY p.paymentDate ASC, p.id ASC
+      """)
+  List<CreditCardInvoicePayment> findAllByUserIdAndPaymentDateBetween(
+      @Param("userId") UUID userId,
+      @Param("startDate") LocalDate startDate,
+      @Param("endDate") LocalDate endDate,
+      @Param("creditCardId") UUID creditCardId);
 }

@@ -1074,6 +1074,53 @@ Timezone / relógio: o mesmo da Fase 18 (`America/Sao_Paulo`; Clock injetável; 
 Suíte: **519** testes; 0 falhas; `mvn test` e `mvn verify` BUILD SUCCESS.
 
 
+# 40J. Relatórios (Fase 20 — concluída e aprovada)
+
+Contrato: `docs/24` §19.12 / `docs/25` §76.
+
+**Status:** **CONCLUÍDA E APROVADA**. D-F20-01 a D-F20-16 **fechadas** e **implementadas**. Classe: `ReportsApiTest` (**59** métodos; JSON + PDF; isolamento incluso). Sem tabela. Sem frontend. OpenPDF 3.0.5. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento; não bloqueante). Suíte: **578** testes; `mvn test` e `mvn verify` BUILD SUCCESS (Spotless limpo).
+
+Timezone: `America/Sao_Paulo` (Clock injetável, mesmo padrão das Fases 18–19).
+
+A cobertura inclui autenticação, ownership, parâmetros, períodos, paginação, ordenação, Agreement, cartões, fatura, fluxo de caixa e D-F20-01 a D-F20-16. A auditoria considerou a cobertura essencialmente completa. Ressalva de baixa prioridade (não bloqueante): não há teste explícito de 404 para os paths SUPERADOS (`expenses-by-category` etc.); esses paths **não** existem no `ReportsController`.
+
+## Cenários mínimos (implementados)
+
+1. 401 sem Bearer em todos os GETs JSON e PDF;
+2. query desconhecida → 400 `VALIDATION_ERROR`;
+3. só `startDate` ou só `endDate` → 400 `VALIDATION_ERROR`;
+4. `startDate` > `endDate` → 400 `VALIDATION_ERROR`;
+5. horizonte > 12 meses calendário → 400 `VALIDATION_ERROR`;
+6. default = mês calendário corrente;
+7. `page < 0` / `size < 1` / `size > 100` → 400 `BUSINESS_RULE_VIOLATION` no JSON; PDF ignora `page`/`size` mesmo inválidos;
+8. `summary` independente da página;
+9. recorte de despesa por `due_date` da parcela; N>1 não duplica a despesa no `items[]`; `summary` não usa `expenses.total_amount` integral;
+10. CREDIT_CARD: `periodRemaining` da **parcela**, não da fatura; compra não entra no caixa;
+11. `CANCELLED`/`REFUNDED` em `items[]` e fora do `summary` efetivo;
+12. ACCOUNT/NONE `REFUNDED` não cria entrada de caixa; `bankLiquidated` só quando o fato existir;
+13. Agreement (D-F20-02): do `summary` saem **somente** parcelas com `invoice_id` da fatura `SETTLED_BY_AGREEMENT` (não a despesa inteira); despesa do Agreement não é item da fatura liquidada; parcelas futuras da original permanecem;
+14. `dateType` obrigatório em incomes/categories e em responsibles quando `INCOME`/`BOTH`; ausência → 400; `nature=EXPENSE` + `dateType` → 400 (D-F20-15); `dateType` ≠ `status`;
+15. `RECEIVED`: `periodReceivedAmount` = RECEIPT ACTIVE no período; `receivedAmount` permanece o oficial §19.9; não copiar D94;
+16. fluxo: fatos de hoje no histórico; remaining aberto na projeção; o mesmo fato não nos dois lados;
+17. `flowType=PROJECTED` + período inteiro no passado → 400 `VALIDATION_ERROR` (D202);
+18. `BOTH` + período inteiro no passado → 200, `"projected": { "empty": true }`; **não** chamar `ProjectionService`;
+19. período inteiro no futuro → `historical` sem `openingBalance`/`closingBalance` artificiais;
+20. `openingBalance` as-of `startDate − 1`; `closingBalance` as-of `min(endDate, hoje)`; invariante `opening + líquido = closing`; **não** usar `availableBalance` como saldo principal;
+21. datas oficiais do caixa (`movement_date`, `payment_date`, `created_at` RN263, `transfer_date`, `adjustment_date`);
+22. transferências: líquido consolidado 0; não são receita/despesa;
+23. metas e ACCRUAL fora do caixa;
+24. `invoiceId` de outro usuário / inexistente → 404; filtro `accountId`/`categoryId` alheio → 200 vazio; fatura existente + filtro de responsável sem compras → 200 com cabeçalho oficial e listas vazias (D-F20-03);
+25. filtro de responsável da fatura é **opcional**; restringe compras do JSON/PDF; **não** recalcula totais do cabeçalho;
+26. PDF: `Content-Type: application/pdf`; universo igual ao JSON; sem UUID/`creditLimit`/notas no PDF da fatura;
+27. isolamento: usuário A não lê relatório nem PDF do usuário B;
+28. paths SUPERADOS (`expenses-by-category` etc.) **não** existem;
+29. item de despesa só `period*` (D-F20-07); CREDIT_CARD `periodPaid = periodObligation − periodRemaining` (D-F20-05);
+30. `accountId` em receitas = D78-A qualquer `dateType` (D-F20-08);
+31. cartões: fatura por `closingDate`; `purchases[]` = uma compra; crédito por `created_at` da aplicação; blocos de ajuste separados (D-F20-04, D-F20-10, D-F20-11, D-F20-13).
+
+Não alterar o comportamento de `ProjectionApiTest` / `DashboardApiTest` para “facilitar” relatórios.
+
+
 # 41. Atomicidade
 
 Se uma etapa da transferência falhar:
@@ -2154,33 +2201,19 @@ Os valores exibidos devem corresponder aos dados persistidos.
 
 # 112. Relatórios
 
-Testar:
-
-por categoria;
-
-por cartão;
-
-por responsável;
-
-por conta;
-
-fluxo de caixa.
+Contrato: `docs/27` §40J / `docs/24` §19.12. Implementado na Fase 20 (`ReportsApiTest`).
 
 
 # 113. PDF
 
-Testar:
+Contrato: `docs/27` §40J. Biblioteca: OpenPDF 3.0.5. Isolamento por usuário. Universo igual ao JSON. `page`/`size` ignorados.
 
-geração;
-
-conteúdo;
-
-isolamento por usuário.
+Usuário A não pode gerar PDF da fatura do usuário B.
 
 
 # 114. Teste
 
-Usuário A não pode gerar PDF da fatura do usuário B.
+(Reservado — isolamento de PDF coberto em §40J item 27.)
 
 
 # 115. Testes de regressão

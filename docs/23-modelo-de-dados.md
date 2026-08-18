@@ -2251,12 +2251,16 @@ Não armazenar PDF da fatura na V1.
 
 # 177. Relatório
 
-O relatório deve ser gerado a partir dos dados do banco.
+O relatório deve ser gerado a partir dos dados do banco (visão derivada).
+
+Fase 20 (`docs/24` §19.12 — **CONCLUÍDA E APROVADA**): **não** criar tabela `reports` nem persistir PDF. **Não** duplicar fatos da fatura só para gerar relatório.
 
 
 # 178. Relatório
 
 Não criar uma tabela duplicando todas as informações da fatura apenas para gerar relatório.
+
+Esta regra permanece vigente e é confirmada pelo contrato da Fase 20.
 
 
 # 179. Histórico

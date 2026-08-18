@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -45,4 +46,18 @@ public interface AccountBalanceAdjustmentRepository
       @Param("asOfDate") LocalDate asOfDate);
 
   boolean existsByAccount_IdAndUserId(UUID accountId, UUID userId);
+
+  @EntityGraph(attributePaths = {"account"})
+  @Query(
+      """
+      SELECT a FROM AccountBalanceAdjustment a
+      WHERE a.userId = :userId
+        AND a.status = br.com.financialcontrol.balance_adjustments.BalanceAdjustmentStatus.ACTIVE
+        AND a.adjustmentDate >= :startDate
+        AND a.adjustmentDate <= :endDate
+      """)
+  List<AccountBalanceAdjustment> findActiveByUserIdAndAdjustmentDateBetween(
+      @Param("userId") UUID userId,
+      @Param("startDate") LocalDate startDate,
+      @Param("endDate") LocalDate endDate);
 }

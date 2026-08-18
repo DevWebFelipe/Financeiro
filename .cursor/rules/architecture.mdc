@@ -55,6 +55,7 @@ Use the official V1 concepts:
 - `receivables` (Fase 17 — `CONCLUÍDA E APROVADA` — visão de leitura `GET /api/v1/receivables`; **sem** tabela/entidade JPA; contrato `docs/24` §19.8 / §19.9. D73–D94 **fechadas** e **implementadas**. Movimentações em `income_movements` no domínio `incomes`; **sem** `IncomeMovementService`.)
 - `projections` (Fase 18 — **CONCLUÍDA E APROVADA** — visão derivada `GET /api/v1/projections`; **sem** tabela/entidade JPA; contrato `docs/24` §19.10; D95–D204 **fechadas** e **implementadas**. Auditoria final: **APROVADA COM RESSALVAS**.)
 - `dashboard` (Fase 19 — **CONCLUÍDA E APROVADA** — visão derivada `GET /api/v1/dashboard`; **sem** tabela/entidade JPA; contrato `docs/24` §19.11; D282–D289 **fechadas** e **implementadas**. Auditoria final: **APROVADA COM RESSALVAS**.)
+- `reports` (Fase 20 — **CONCLUÍDA E APROVADA** — visão derivada `GET /api/v1/reports/*` + PDF; **sem** tabela/entidade JPA; contrato `docs/24` §19.12 / `docs/25` §76; D-F20-01 a D-F20-16 **fechadas** e **implementadas**. OpenPDF 3.0.5. Auditoria final: **APROVADA COM RESSALVAS**. Paths `expenses-by-category` etc. **SUPERADOS**.)
 
 Do not create a generic `transactions`, `cards`, or `goals` module.
 

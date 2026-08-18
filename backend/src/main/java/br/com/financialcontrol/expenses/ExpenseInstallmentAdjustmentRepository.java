@@ -2,6 +2,8 @@ package br.com.financialcontrol.expenses;
 
 import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,6 +44,9 @@ public interface ExpenseInstallmentAdjustmentRepository
   List<ExpenseInstallmentAdjustment> findAllByInstallment_IdAndUserIdOrderByCreatedAtAscIdAsc(
       UUID installmentId, UUID userId);
 
+  List<ExpenseInstallmentAdjustment> findAllByInstallment_IdInAndUserIdOrderByCreatedAtAscIdAsc(
+      Collection<UUID> installmentIds, UUID userId);
+
   List<ExpenseInstallmentAdjustment>
       findAllByInstallment_IdAndUserIdAndStatusOrderByCreatedAtAscIdAsc(
           UUID installmentId, UUID userId, AdjustmentStatus status);
@@ -72,4 +77,23 @@ public interface ExpenseInstallmentAdjustmentRepository
       """)
   BigDecimal sumActiveSurchargeAmountByInstallmentIdAndUserId(
       @Param("installmentId") UUID installmentId, @Param("userId") UUID userId);
+
+  @Query(
+      """
+      SELECT DISTINCT a FROM ExpenseInstallmentAdjustment a
+      JOIN FETCH a.installment i
+      JOIN FETCH i.expense e
+      JOIN FETCH e.creditCard
+      WHERE a.userId = :userId
+        AND e.paymentMethod = br.com.financialcontrol.expenses.PaymentMethod.CREDIT_CARD
+        AND a.createdAt >= :startInstant
+        AND a.createdAt < :endInstant
+        AND (:creditCardId IS NULL OR e.creditCard.id = :creditCardId)
+      ORDER BY a.createdAt ASC, a.id ASC
+      """)
+  List<ExpenseInstallmentAdjustment> findCreditCardAdjustmentsByUserIdAndCreatedAtBetween(
+      @Param("userId") UUID userId,
+      @Param("startInstant") Instant startInstant,
+      @Param("endInstant") Instant endInstant,
+      @Param("creditCardId") UUID creditCardId);
 }

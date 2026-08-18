@@ -51,6 +51,7 @@ Do not repeat the same assertion at unit + API + E2E without a reason.
 - Pagination contract: `items`, `totalItems`, `totalPages`
 - Phase 18 projections (`docs/27` §40H): **CONCLUÍDA E APROVADA** (D95–D204). Auditoria final: **APROVADA COM RESSALVAS**. Tests: `ProjectionApiTest`, `ProjectionCalculatorTest` — include non-duplication cases and D201–D204.
 - Phase 19 dashboard (`docs/27` §40I): **CONCLUÍDA E APROVADA** (D282–D289). Tests: `DashboardApiTest`. Auditoria final: **APROVADA COM RESSALVAS**. Do not change Phase 18 projection behavior.
+- Phase 20 reports (`docs/27` §40J): **CONCLUÍDA E APROVADA** (D-F20-01 a D-F20-16). Tests: `ReportsApiTest` (JSON + PDF). Auditoria final: **APROVADA COM RESSALVAS**. Do not change Phase 18/19 projection or dashboard behavior.
 
 ---
 

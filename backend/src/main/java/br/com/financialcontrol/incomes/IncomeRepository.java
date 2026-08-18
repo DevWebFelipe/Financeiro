@@ -29,6 +29,19 @@ public interface IncomeRepository extends JpaRepository<Income, UUID> {
   List<Income> findAllExpectedByUserIdAndExpectedDateLessThanEqual(
       @Param("userId") UUID userId, @Param("rangeEnd") LocalDate rangeEnd);
 
+  @EntityGraph(attributePaths = {"category"})
+  @Query(
+      """
+      SELECT i FROM Income i
+      WHERE i.userId = :userId
+        AND i.expectedDate >= :startDate
+        AND i.expectedDate <= :endDate
+      """)
+  List<Income> findAllByUserIdAndExpectedDateBetween(
+      @Param("userId") UUID userId,
+      @Param("startDate") LocalDate startDate,
+      @Param("endDate") LocalDate endDate);
+
   /**
    * Lock pessimista (SELECT FOR UPDATE) para accrual, receipt, reverse de movimentação, cancel e
    * PUT. Impede duas transições concorrentes sobre a mesma duplicata sem coluna de versão (RN167).

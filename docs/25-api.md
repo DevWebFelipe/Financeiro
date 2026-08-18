@@ -7,7 +7,7 @@
 - Prefixo: `/api/v1`
 - REST + JSON + DTOs
 - OpenAPI / springdoc-openapi
-- PDF: OpenPDF
+- PDF: OpenPDF 3.0.5
 
 
 ## 1. Objetivo
@@ -2400,105 +2400,652 @@ Saldo = `AccountService`. Remaining de parcela/fatura = serviços oficiais via `
 
 # 75. Gráficos
 
-A API deve fornecer dados agregados necessários para gráficos.
+Gráficos (Apache ECharts) e telas permanecem **fora da Fase 20** (frontend / Fase 21). A Fase 20 entrega JSON/PDF de relatórios; não reabre o Dashboard e não cria endpoints só para gráfico.
 
 
-# 76. Gastos por categoria
+# 76. Relatórios (Fase 20)
 
-Endpoint:
+**Status:** `docs/24` §19.12 — **CONCLUÍDA E APROVADA**. D-F20-01 a D-F20-16 **fechadas** e **implementadas**. Endpoints JSON e PDF **implementados**. Sem tabela `reports`. Sem migration. OpenPDF 3.0.5. Regras financeiras: `docs/24` §19.12. Testes: `docs/27` §40J (`ReportsApiTest`). Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento; não bloqueante).
 
-GET /api/v1/reports/expenses-by-category
+Auth em todos os GETs: Bearer. Sem token / inválido / expirado / usuário desativado → **401** `UNAUTHORIZED`. Dono = JWT. Não existe `userId` na query.
 
+Paths oficiais:
 
-Query:
-
-startDate
-
-endDate
-
-
-# 77. Gastos por cartão
-
-Endpoint:
-
-GET /api/v1/reports/expenses-by-card
-
-
-Query:
-
-startDate
-
-endDate
-
-
-# 78. Gastos por responsável
-
-Endpoint:
-
-GET /api/v1/reports/expenses-by-responsible
-
-
-Query:
-
-startDate
-
-endDate
-
-
-# 79. Receitas por categoria
-
-Endpoint:
-
-GET /api/v1/reports/income-by-category
-
-
-Query:
-
-startDate
-
-endDate
-
-
-# 80. Fluxo de caixa
-
-Endpoint:
-
+```text
+GET /api/v1/reports/expenses
+GET /api/v1/reports/incomes
+GET /api/v1/reports/categories
+GET /api/v1/reports/responsibles
+GET /api/v1/reports/cards
 GET /api/v1/reports/cash-flow
-
-
-Query:
-
-startDate
-
-endDate
-
-
-# 81. Relatório de fatura
-
-Endpoint:
-
 GET /api/v1/reports/invoices/{invoiceId}
+```
 
+PDF (mesmos filtros do JSON correspondente; `page` e `size` **ignorados**, sem validar teto):
 
-# 82. Exportação de fatura
-
-Endpoint:
-
+```text
+GET /api/v1/reports/expenses/pdf
+GET /api/v1/reports/incomes/pdf
+GET /api/v1/reports/categories/pdf
+GET /api/v1/reports/responsibles/pdf
+GET /api/v1/reports/cards/pdf
+GET /api/v1/reports/cash-flow/pdf
 GET /api/v1/reports/invoices/{invoiceId}/pdf
+```
+
+**SUPERADO** (não implementar; não coexistir):
+
+```text
+GET /api/v1/reports/expenses-by-category
+GET /api/v1/reports/income-by-category
+GET /api/v1/reports/expenses-by-responsible
+GET /api/v1/reports/expenses-by-card
+```
+
+Substitutos oficiais dos quatro paths SUPERADOS: `/reports/categories`, `/reports/responsibles`, `/reports/cards`. Os paths `/reports/cash-flow` e `/reports/invoices/{invoiceId}` (e `/pdf`) são oficiais desta seção; **não** são os paths SUPERADOS.
+
+## 76.1 Convenções comuns
+
+Query desconhecida → **400** `VALIDATION_ERROR`.
+
+Período (exceto fatura): `startDate` e `endDate` juntos, ou omitidos (default = mês calendário corrente, `America/Sao_Paulo`). Só um lado, `startDate` > `endDate`, formato inválido ou horizonte > 12 meses calendário (`ChronoUnit.MONTHS.between(YearMonth(start), YearMonth(end)) + 1 > 12`) → **400** `VALIDATION_ERROR`.
+
+Paginação (listas; **não** se aplica a `GET /reports/invoices/{invoiceId}`):
+
+| Param | Default | Limite | Erro |
+|---|---|---|---|
+| `page` | `0` | ≥ 0 | `page < 0` → **400** `BUSINESS_RULE_VIOLATION` |
+| `size` | `20` | 1–100 | `size < 1` ou `size > 100` → **400** `BUSINESS_RULE_VIOLATION` |
+
+`sort` / `direction` inválidos → **400** `VALIDATION_ERROR`. `direction`: `asc` \| `desc`; default `asc`. Desempate **sempre** `id` ASC.
+
+Envelope paginado: `items`, `page`, `size`, `totalItems`, `totalPages`, `summary`, `period` (`startDate`, `endDate`). Não expor `Page` do Spring Data.
+
+`summary` = universo filtrado (totais **efetivos** conforme `docs/24` §19.12), não a página.
+
+JSON monetário: número escala 2 (ex.: `1234.56`). PDF: `R$ 1.234,56`. Data/hora de geração do PDF: `America/Sao_Paulo`.
+
+PDF: `Content-Type: application/pdf`. `Content-Disposition: attachment; filename="<nome>"`.
+
+| Recurso | Nome do arquivo |
+|---|---|
+| expenses | `relatorio-despesas-{startDate}_{endDate}.pdf` |
+| incomes | `relatorio-receitas-{startDate}_{endDate}.pdf` |
+| categories | `relatorio-categorias-{startDate}_{endDate}.pdf` |
+| responsibles | `relatorio-responsaveis-{startDate}_{endDate}.pdf` |
+| cards | `relatorio-cartoes-{startDate}_{endDate}.pdf` |
+| cash-flow | `relatorio-fluxo-caixa-{startDate}_{endDate}.pdf` |
+| invoice | `relatorio-fatura-{referenceYear}-{referenceMonth}.pdf` |
+
+Datas no nome: ISO `yyyy-MM-dd`. **Sem UUID** no nome. O PDF omite UUIDs técnicos; o JSON pode incluí-los para a Fase 21. PDF da fatura também omite `creditLimit`, notas internas e e-mail do usuário.
+
+Layout mínimo do PDF: nome do sistema (Financial Control), título, período ou identificação da fatura, data/hora de geração, resumo, detalhe, página N/M.
+
+JSON e PDF do mesmo GET logicamente equivalente (filtros, usuário, período, inclusão/exclusão, totais). Identificadores técnicos no JSON não alteram o universo financeiro.
+
+Não há `search` na Fase 20 (`GET /expenses` e `GET /incomes` não têm busca textual oficial).
 
 
-Response:
+# 76A. Relatório de despesas
 
-application/pdf
+```text
+GET /api/v1/reports/expenses
+GET /api/v1/reports/expenses/pdf
+```
+
+| Param | Obrigatório | Default | Semântica |
+|---|---|---|---|
+| `startDate` / `endDate` | juntos ou omitidos | mês corrente | recorte por `due_date` da parcela |
+| `status` | não | omitido = todos | `OPEN` \| `PARTIALLY_PAID` \| `PAID` \| `CANCELLED` \| `REFUNDED` |
+| `categoryId` | não | — | UUID |
+| `accountId` | não | — | `expenses.account_id` |
+| `creditCardId` | não | — | |
+| `responsibleType` | não | — | RN035 |
+| `responsibleName` | não | — | igualdade persistida |
+| `paymentMethod` | não | — | `ACCOUNT` \| `NONE` \| `CREDIT_CARD` |
+| `sort` | não | `dueDate` | `dueDate`, `expenseDate`, `description`, `status`, `createdAt`, `periodObligation`, `periodRemaining` |
+| `direction` | não | `asc` | |
+| `page` / `size` | não | 0 / 20 | JSON; ignorados no PDF |
+
+`dueDate` na ordenação = menor `due_date` das parcelas do recorte.
+
+`items[]`: uma despesa. `installments[]`: só parcelas com `due_date` no período.
+
+Exemplo 200:
+
+```json
+{
+  "period": { "startDate": "2026-08-01", "endDate": "2026-08-31" },
+  "items": [
+    {
+      "id": "...",
+      "description": "Aluguel",
+      "expenseDate": "2026-08-01",
+      "paymentMethod": "ACCOUNT",
+      "status": "PARTIALLY_PAID",
+      "categoryId": "...",
+      "accountId": "...",
+      "creditCardId": null,
+      "responsibleType": "MINE",
+      "responsibleName": null,
+      "origin": "PURCHASE",
+      "periodOriginal": 1500.00,
+      "periodDiscount": 0.00,
+      "periodSurcharge": 0.00,
+      "periodObligation": 1500.00,
+      "periodPaid": 500.00,
+      "periodRemaining": 1000.00,
+      "installments": [
+        {
+          "id": "...",
+          "installmentNumber": 1,
+          "totalInstallments": 1,
+          "dueDate": "2026-08-10",
+          "original": 1500.00,
+          "discount": 0.00,
+          "surcharge": 0.00,
+          "obligation": 1500.00,
+          "paid": 500.00,
+          "remaining": 1000.00,
+          "status": "PARTIALLY_PAID"
+        }
+      ]
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalItems": 1,
+  "totalPages": 1,
+  "summary": {
+    "periodOriginal": 1500.00,
+    "periodDiscount": 0.00,
+    "periodSurcharge": 0.00,
+    "periodObligation": 1500.00,
+    "periodPaid": 500.00,
+    "periodRemaining": 1000.00
+  }
+}
+```
+
+`origin`: `PURCHASE` \| `AGREEMENT`. Item da despesa: **somente** `period*` (D-F20-07); **não** `expenses.total_amount`. `installments[]`: campos oficiais da parcela. `summary` **exclui** parcelas `CANCELLED`/`REFUNDED` e **somente** parcelas com `invoice_id` de fatura `SETTLED_BY_AGREEMENT` (D-F20-02) — **não** a despesa original inteira. CREDIT_CARD: `periodRemaining` da **parcela** (§197); `periodPaid = periodObligation − periodRemaining` (D-F20-05); nunca remaining da fatura nem `paidAmount` §196.
 
 
-# 83. Relatório
+# 76B. Relatório de receitas
 
-O PDF deve permitir conferência das despesas da fatura.
+```text
+GET /api/v1/reports/incomes
+GET /api/v1/reports/incomes/pdf
+```
 
-Biblioteca oficial: **OpenPDF**.
+| Param | Obrigatório | Default | Semântica |
+|---|---|---|---|
+| `dateType` | **sim** | — | `EXPECTED` \| `RECEIVED`; omitido → **400** `VALIDATION_ERROR` |
+| `startDate` / `endDate` | juntos ou omitidos | mês corrente | `EXPECTED` → `expectedDate`; `RECEIVED` → `movement_date` de RECEIPT ACTIVE |
+| `status` | não | omitido = todos | `EXPECTED` \| `RECEIVED` \| `CANCELLED` |
+| `categoryId` | não | — | |
+| `accountId` | não | — | D78-A / D-F20-08: existe RECEIPT ACTIVE na conta (qualquer `dateType`; não o cabeçalho legado). Sem match → **200** vazio; **não** 400 |
+| `responsibleType` / `responsibleName` | não | — | igualdade persistida |
+| `sort` | não | `expectedDate` se `EXPECTED`; `createdAt` se `RECEIVED` | `expectedDate`, `description`, `amount`, `status`, `createdAt`, `receivedAmount` |
+| `direction` | não | `asc` | |
+| `page` / `size` | não | 0 / 20 | |
 
-Deve permitir filtrar por responsável quando aplicável (ex.: cartão de terceiro).
+`dateType` **não** filtra status. `CANCELLED` fora do `summary` efetivo.
+
+Campos §19.9 no item (`amount`, `accruedAmount`, `receivedAmount`, `remainingAmount`) = estado atual da duplicata. **Não** são fatia temporal.
+
+Em `dateType=RECEIVED` (D-F20-14): a receita entra se houver RECEIPT ACTIVE com `movement_date` no período. O recorte e o `summary` usam **`periodReceivedAmount`** = soma desses RECEIPTs ACTIVE (não o vitalício; não D94 / REVERSED). **Não** chamar esse valor de `receivedAmount`.
+
+Em `dateType=EXPECTED`: `summary` = quarteto oficial efetivo (sem `CANCELLED`).
+
+Exemplo 200 (`dateType=RECEIVED`):
+
+```json
+{
+  "period": { "startDate": "2026-08-01", "endDate": "2026-08-31" },
+  "dateType": "RECEIVED",
+  "items": [
+    {
+      "id": "...",
+      "description": "Salário",
+      "status": "RECEIVED",
+      "categoryId": "...",
+      "responsibleType": "MINE",
+      "responsibleName": null,
+      "expectedDate": "2026-08-05",
+      "amount": 5400.00,
+      "accruedAmount": 0.00,
+      "receivedAmount": 5400.00,
+      "remainingAmount": 0.00,
+      "periodReceivedAmount": 5400.00
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalItems": 1,
+  "totalPages": 1,
+  "summary": { "periodReceivedAmount": 5400.00 }
+}
+```
+
+Exemplo `summary` em `EXPECTED` (efetivo, sem `CANCELLED`):
+
+```json
+"summary": {
+  "amount": 5400.00,
+  "accruedAmount": 0.00,
+  "receivedAmount": 0.00,
+  "remainingAmount": 5400.00
+}
+```
+
+
+# 76C. Relatório por categorias
+
+```text
+GET /api/v1/reports/categories
+GET /api/v1/reports/categories/pdf
+```
+
+`dateType` **obrigatório** (receitas do relatório). Recorte de despesa = `due_date` das parcelas.
+
+| Param | Obrigatório | Default |
+|---|---|---|
+| `dateType` | **sim** | — |
+| `startDate` / `endDate` | juntos ou omitidos | mês corrente |
+| `sort` | não | `name` |
+| `direction` | não | `asc` |
+| `page` / `size` | não | 0 / 20 |
+
+`sort`: `name`, `type`. `type` = `EXPENSE` \| `INCOME` (categoria oficial). Itens sem fato no recorte **não** entram.
+
+Cada item é uma categoria; despesas e receitas **não** misturam. Campos de valor: os `period*` de despesa **ou** os campos de receita do recorte (`docs/24` §19.12.7). Totais efetivos excluem `CANCELLED`/`REFUNDED` nas despesas e `CANCELLED` nas receitas.
+
+Exemplo 200:
+
+```json
+{
+  "period": { "startDate": "2026-08-01", "endDate": "2026-08-31" },
+  "dateType": "EXPECTED",
+  "items": [
+    {
+      "categoryId": "...",
+      "name": "Moradia",
+      "type": "EXPENSE",
+      "active": true,
+      "periodOriginal": 1500.00,
+      "periodDiscount": 0.00,
+      "periodSurcharge": 0.00,
+      "periodObligation": 1500.00,
+      "periodPaid": 500.00,
+      "periodRemaining": 1000.00
+    },
+    {
+      "categoryId": "...",
+      "name": "Salário",
+      "type": "INCOME",
+      "active": true,
+      "amount": 5400.00,
+      "accruedAmount": 0.00,
+      "receivedAmount": 0.00,
+      "remainingAmount": 5400.00
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalItems": 2,
+  "totalPages": 1,
+  "summary": {
+    "expense": {
+      "periodOriginal": 1500.00,
+      "periodDiscount": 0.00,
+      "periodSurcharge": 0.00,
+      "periodObligation": 1500.00,
+      "periodPaid": 500.00,
+      "periodRemaining": 1000.00
+    },
+    "income": {
+      "amount": 5400.00,
+      "accruedAmount": 0.00,
+      "receivedAmount": 0.00,
+      "remainingAmount": 5400.00
+    }
+  }
+}
+```
+
+Com `dateType=RECEIVED`, `summary.income` = `{ "periodReceivedAmount": ... }` (D-F20-14; mesmo recorte de 76B). Itens INCOME incluem `periodReceivedAmount` além do quarteto oficial.
+
+
+# 76D. Relatório por responsáveis
+
+```text
+GET /api/v1/reports/responsibles
+GET /api/v1/reports/responsibles/pdf
+```
+
+| Param | Obrigatório | Default | Semântica |
+|---|---|---|---|
+| `nature` | não | `BOTH` | `EXPENSE` \| `INCOME` \| `BOTH` |
+| `dateType` | se `INCOME` ou `BOTH` | — | omitido quando obrigatório → **400** `VALIDATION_ERROR`. Com `nature=EXPENSE`: se enviado → **400** `VALIDATION_ERROR` (D-F20-15; incompatível) |
+| `startDate` / `endDate` | juntos ou omitidos | mês corrente | |
+| `sort` | não | `responsibleType` | `responsibleType`, `responsibleName` (NULLS LAST em ASC; depois `id` ASC — D-F20-16) |
+| `page` / `size` | não | 0 / 20 | |
+
+Chave do grupo: `UNASSIGNED` se responsável nulo ou `OTHER` sem nome válido; senão `responsibleType` + `responsibleName` persistidos (`OTHER/João` ≠ `OTHER/Maria`).
+
+Cada item separa `expense` e `income` quando `nature=BOTH` (não misturar num único total). Fórmulas iguais às de despesas/receitas. Totais efetivos: mesmas exclusões.
+
+Exemplo (`nature=BOTH`, `dateType=EXPECTED`):
+
+```json
+{
+  "period": { "startDate": "2026-08-01", "endDate": "2026-08-31" },
+  "nature": "BOTH",
+  "dateType": "EXPECTED",
+  "items": [
+    {
+      "key": "MINE",
+      "responsibleType": "MINE",
+      "responsibleName": null,
+      "expense": {
+        "periodOriginal": 800.00,
+        "periodDiscount": 0.00,
+        "periodSurcharge": 0.00,
+        "periodObligation": 800.00,
+        "periodPaid": 800.00,
+        "periodRemaining": 0.00
+      },
+      "income": {
+        "amount": 5400.00,
+        "accruedAmount": 0.00,
+        "receivedAmount": 0.00,
+        "remainingAmount": 5400.00
+      }
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalItems": 1,
+  "totalPages": 1,
+  "summary": {
+    "expense": { "periodObligation": 800.00, "periodPaid": 800.00, "periodRemaining": 0.00, "periodOriginal": 800.00, "periodDiscount": 0.00, "periodSurcharge": 0.00 },
+    "income": { "amount": 5400.00, "accruedAmount": 0.00, "receivedAmount": 0.00, "remainingAmount": 5400.00 }
+  }
+}
+```
+
+
+# 76E. Relatório de cartões
+
+```text
+GET /api/v1/reports/cards
+GET /api/v1/reports/cards/pdf
+```
+
+**Não** existem `usedLimit` nem `availableLimit`.
+
+| Param | Obrigatório | Default |
+|---|---|---|
+| `startDate` / `endDate` | juntos ou omitidos | mês corrente |
+| `creditCardId` | não | — |
+| `sort` | não | `name` |
+| `page` / `size` | não | 0 / 20 |
+
+`sort`: `name`, `holderName`. Cartão entra se houver fato no período (compra por `expenseDate` **ou** fatura/`payments`/`credits`/ajustes na respectiva data). Nested arrays **não** são paginados. PDF traz o cartão completo do universo filtrado.
+
+Blocos (D-F20-13): `purchases[]`, `invoices[]`, `payments[]`, `credits[]`, `installmentAdjustments[]`, `invoiceAdjustments[]`. **Não** existe `adjustments[]` genérico. Reutilizar campos dos GETs oficiais (`GET /invoices/{id}` §58; `GET .../payments`; `GET .../credits`; `GET .../adjustments` de parcela e de fatura). Sem campos financeiros novos.
+
+Exemplo 200:
+
+```json
+{
+  "period": { "startDate": "2026-08-01", "endDate": "2026-08-31" },
+  "items": [
+    {
+      "creditCardId": "...",
+      "name": "Nubank",
+      "holderName": "Ederson",
+      "lastFourDigits": "1234",
+      "active": true,
+      "summary": {
+        "purchaseAmount": 12000.00,
+        "invoiceAmount": 2000.00,
+        "paidAmount": 500.00,
+        "creditAmount": 0.00
+      },
+      "purchases": [
+        {
+          "expenseId": "...",
+          "description": "Notebook",
+          "expenseDate": "2026-08-02",
+          "original": 12000.00,
+          "responsibleType": "MINE",
+          "responsibleName": null,
+          "status": "OPEN",
+          "totalInstallments": 12,
+          "installments": [
+            { "installmentNumber": 1, "dueDate": "2026-08-20", "amount": 1000.00 }
+          ]
+        }
+      ],
+      "invoices": [],
+      "payments": [],
+      "credits": [],
+      "installmentAdjustments": [],
+      "invoiceAdjustments": []
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalItems": 1,
+  "totalPages": 1,
+  "summary": {
+    "purchaseAmount": 12000.00,
+    "invoiceAmount": 2000.00,
+    "paidAmount": 500.00,
+    "creditAmount": 0.00
+  }
+}
+```
+
+`summary` **não** soma compra + pagamento + crédito num único campo. **Não** somar de novo compra/parcela/pagamento/crédito/ajuste.
+
+- `purchaseAmount`: soma de `purchases[].original` (`expenseDate` no período). Uma linha de `purchases[]` = **uma compra**; `original` = `expenses.total_amount` **uma vez** (D-F20-10). Parcelas aninhadas são detalhe (as 12× podem listar 12 itens com `amount` da parcela); **não** listar 12 linhas de compra nem repetir R$ 12.000 em cada uma. O exemplo JSON acima é abreviado (1 parcela aninhada).
+- `invoiceAmount`: soma de `totalAmount` oficiais (`GET /invoices/{id}`) das faturas com **`closingDate` no período** (D-F20-04). `dueDate` não inclui a fatura de novo. Ex.: fechamento 31/07, vencimento 10/08 → só julho.
+- `paidAmount`: soma de pagamentos de fatura `ACTIVE` com `payment_date` no período.
+- `creditAmount`: soma dos `amount` das **aplicações** crédito→fatura cujo `created_at` (calendário `America/Sao_Paulo`) está no período (D-F20-11). **Não** criar `creditDate`. **Não** é caixa. **Não** inventar `status` nesse fato (a tabela de aplicação não possui coluna de status).
+
+`payments[]`: campos do GET de pagamentos da fatura (`id`, `invoiceId`, `accountId`, `amount`, `paymentDate`, `status`, …). `invoices[]`: campos do GET da fatura (`id`, `referenceYear`, `referenceMonth`, `closingDate`, `dueDate`, `status`, `totalAmount`, `paidAmount`, `remainingAmount`, …). `credits[]`: fato de aplicação (`id`, `creditId`, `invoiceId`, `installmentId`, `amount`, `createdAt`) — colunas já persistidas; não inventar modelo. Ajustes: shapes dos GETs oficiais de parcela e de fatura (`createdAt` para o recorte; **não** criar `adjustmentDate`).
+
+
+# 76F. Relatório de fluxo de caixa
+
+```text
+GET /api/v1/reports/cash-flow
+GET /api/v1/reports/cash-flow/pdf
+```
+
+| Param | Obrigatório | Default | Semântica |
+|---|---|---|---|
+| `flowType` | não | `BOTH` | `HISTORICAL` \| `PROJECTED` \| `BOTH` |
+| `startDate` / `endDate` | juntos ou omitidos | mês corrente | |
+| `accountId` | não | consolidado | outro usuário / inexistente → **200** vazio |
+| `sort` | não | `date` | só a seção histórica: `date`, `amount`, `type` |
+| `page` / `size` | não | 0 / 20 | paginam **somente** `historical.items` |
+
+Envelope: seções `historical` e/ou `projected` conforme `flowType`. **Não** existe `items[]` raiz misturando os dois.
+
+`PROJECTED` + período inteiramente anterior a hoje → **400** `VALIDATION_ERROR` (D202). `BOTH` + período inteiramente passado → **200**, histórico normal, **sem** chamar `ProjectionService`; `"projected": { "empty": true }` (D-F20-06). **Não** usar `{ "summary": {}, "months": [], "quarters": [] }` nem `projected: null`. **Não** inventar saldo 0.
+
+Histórico: um fato por linha. Tipos (classificação do fato oficial; **não** é `payments.type`):
+
+`INCOME_RECEIPT` | `EXPENSE_PAYMENT` | `INVOICE_PAYMENT` | `CARD_PURCHASE_REFUND` | `TRANSFER_IN` | `TRANSFER_OUT` | `BALANCE_ADJUSTMENT`
+
+Sinal no campo `amount` (apresentação da fórmula RN240): entrada de caixa positiva; saída negativa; acerto = `adjustment_amount` (sinal oficial). Transferência: `TRANSFER_OUT` negativo na origem, `TRANSFER_IN` positivo no destino. **Consolidado:** as duas pernas aparecem; soma líquida 0. Com `accountId`: só a(s) perna(s) da conta.
+
+Datas: `docs/24` §19.12.9.
+
+Se o intervalo histórico for vazio (`startDate > hoje`): `historical.items` vazio, `totalItems` 0, **sem** `openingBalance` / `closingBalance`.
+
+Se o intervalo histórico existir (mesmo sem linhas):
+
+```text
+openingBalance = totalBalance RN240 as-of (startDate − 1)
+closingBalance = totalBalance RN240 as-of min(endDate, hoje)
+openingBalance + soma de amount das linhas elegíveis = closingBalance
+```
+
+Janela histórica = `[startDate, min(endDate, hoje)]` (D-F20-09).
+
+Paginação histórica: `summary` / saldos do universo, não da página.
+
+`projected` (quando a seção **não** está vazia): reutiliza o envelope mensal do `ProjectionService` (`summary`, `months`, `quarters` quando o recorte contém trimestre completo — contrato Fase 18). **Sem** `events` / `undatedEvents` neste relatório (permanecem em `GET /projections`). Sem fórmula paralela.
+
+Exemplo `BOTH` (mês corrente, hoje = 2026-08-18). Histórico = [2026-08-01, 2026-08-18]. `net` = `closingBalance − openingBalance`:
+
+```json
+{
+  "period": { "startDate": "2026-08-01", "endDate": "2026-08-31" },
+  "flowType": "BOTH",
+  "accountId": null,
+  "historical": {
+    "openingBalance": 1000.00,
+    "closingBalance": 4900.00,
+    "items": [
+      {
+        "id": "...",
+        "type": "INCOME_RECEIPT",
+        "date": "2026-08-05",
+        "amount": 5400.00,
+        "accountId": "...",
+        "description": "Salário"
+      },
+      {
+        "id": "...",
+        "type": "EXPENSE_PAYMENT",
+        "date": "2026-08-10",
+        "amount": -1500.00,
+        "accountId": "...",
+        "description": "Aluguel"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalItems": 2,
+    "totalPages": 1,
+    "summary": {
+      "totalIn": 5400.00,
+      "totalOut": 1500.00,
+      "net": 3900.00
+    }
+  },
+  "projected": {
+    "summary": {
+      "currentBalance": 4900.00,
+      "projectedIncome": 1000.00,
+      "projectedExpense": 5000.00,
+      "projectedNetCashFlow": -4000.00,
+      "projectedFinalBalance": 900.00,
+      "minimumProjectedBalance": 900.00,
+      "minimumProjectedBalanceDate": "2026-08-25"
+    },
+    "months": [
+      {
+        "period": "2026-08",
+        "openingBalance": 4900.00,
+        "totalIncome": 1000.00,
+        "totalExpense": 5000.00,
+        "netCashFlow": -4000.00,
+        "closingBalance": 900.00,
+        "minimumProjectedBalance": 900.00,
+        "minimumProjectedBalanceDate": "2026-08-25",
+        "negative": false
+      }
+    ],
+    "quarters": []
+  }
+}
+```
+
+O bloco `projected` do exemplo ilustra o **schema** §68 (não um caso `empty`). `months` preenchidos seguem `GET /projections`. Caso `BOTH` + período **inteiramente passado**:
+
+```json
+"projected": { "empty": true }
+```
+
+`summary.totalIn` / `totalOut`: somas absolutas das linhas positivas/negativas do universo histórico (transferências no consolidado entram nas duas e se anulam em `net`). `net` = soma algébrica = `closingBalance − openingBalance`. `availableBalance` **não** entra neste envelope na V1 (complemento não definido = fora).
+
+`projected.summary` / `months` (quando não `empty`): mesmos campos oficiais de `GET /api/v1/projections` (`docs/25` §68). Não reescrever nomes.
+
+
+# 76G. Relatório de fatura
+
+```text
+GET /api/v1/reports/invoices/{invoiceId}
+GET /api/v1/reports/invoices/{invoiceId}/pdf
+```
+
+**Não** aceita `startDate`/`endDate` (desconhecido → **400**). **Não** paginado (`page`/`size` no JSON → **400** `VALIDATION_ERROR`). No PDF, `page`/`size` são ignorados se enviados.
+
+| Param | Obrigatório | Semântica |
+|---|---|---|
+| `responsibleType` | não | restringe compras/agrupamentos ao responsável |
+| `responsibleName` | não | igualdade persistida; com `OTHER` |
+
+`invoiceId` inexistente ou de outro usuário → **404** `NOT_FOUND`. Filtro de responsável **opcional** (D-F20-12). Sem filtro: fatura completa. Com filtro e nenhuma compra correspondente, fatura do usuário (D-F20-03): **200** com cabeçalho oficial (`invoiceId`, `totalAmount`, `paidAmount`, `remainingAmount`, metadados) e listas vazias. “Vazio” = coleções vazias, não ausência do recurso. Cabeçalho **não** recalculado por responsável.
+
+Exemplo 200:
+
+```json
+{
+  "invoiceId": "...",
+  "card": {
+    "name": "Cartão Ederson",
+    "holderName": "Ederson",
+    "lastFourDigits": "1234"
+  },
+  "invoice": {
+    "referenceYear": 2026,
+    "referenceMonth": 8,
+    "closingDate": "2026-08-10",
+    "dueDate": "2026-08-20",
+    "status": "CLOSED",
+    "totalAmount": 2000.00,
+    "paidAmount": 1200.00,
+    "remainingAmount": 800.00
+  },
+  "purchases": [
+    {
+      "description": "Mercado",
+      "expenseDate": "2026-08-02",
+      "original": 200.00,
+      "categoryName": "Alimentação",
+      "responsibleType": "MINE",
+      "responsibleName": null,
+      "installmentNumber": 1,
+      "totalInstallments": 1,
+      "discount": 0.00,
+      "surcharge": 0.00
+    }
+  ],
+  "byCategory": [{ "name": "Alimentação", "original": 200.00 }],
+  "byResponsible": [{ "responsibleType": "MINE", "responsibleName": null, "original": 200.00 }],
+  "installmentAdjustments": [],
+  "invoiceAdjustments": [],
+  "credits": [],
+  "payments": [],
+  "allocations": []
+}
+```
+
+JSON **não** inclui `creditLimit`. PDF **não** inclui UUIDs, `creditLimit`, notas internas nem e-mail. `status` inclui `SETTLED_BY_AGREEMENT`. `paidAmount` / `remainingAmount`: `docs/23` §§196–197. Compras do Agreement **não** aparecem em `purchases`. `credits` / `allocations`: só fatos desta fatura. `allocations` detalha rateio (pagamento/ajuste/crédito/settlement → parcela) **sem** somar de novo o valor da compra.
+
+Filtro de responsável restringe `purchases`, `byCategory`, `byResponsible` e ajustes de parcela das compras filtradas. `invoice.totalAmount` / `paidAmount` / `remainingAmount` continuam sendo os derivados oficiais da fatura (`docs/23` §§196–197); o filtro **não** cria remaining paralelo. Sem filtro, o detalhe é a fatura completa. A capacidade de filtrar é obrigatória no contrato; os query params **não** o são.
+
+
+# 77–83. Paths SUPERADOS
+
+As seções anteriores que definiam `expenses-by-category`, `expenses-by-card`, `expenses-by-responsible` e `income-by-category` como contrato ativo estão **SUPERADAS** por §76–§76G. Não implementar esses paths.
 
 
 # 84. Filtros

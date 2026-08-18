@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -98,4 +99,21 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
       @Param("asOfDate") LocalDate asOfDate);
 
   boolean existsByAccount_IdAndUserId(UUID accountId, UUID userId);
+
+  @EntityGraph(attributePaths = {"expense", "account"})
+  @Query(
+      """
+      SELECT p FROM Payment p
+      WHERE p.userId = :userId
+        AND p.status = br.com.financialcontrol.payments.PaymentStatus.ACTIVE
+        AND p.paymentDate >= :startDate
+        AND p.paymentDate <= :endDate
+        AND p.expense.status NOT IN (
+            br.com.financialcontrol.expenses.ExpenseStatus.CANCELLED,
+            br.com.financialcontrol.expenses.ExpenseStatus.REFUNDED)
+      """)
+  List<Payment> findActiveValidByUserIdAndPaymentDateBetween(
+      @Param("userId") UUID userId,
+      @Param("startDate") LocalDate startDate,
+      @Param("endDate") LocalDate endDate);
 }

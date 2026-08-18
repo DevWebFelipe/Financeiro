@@ -2,6 +2,7 @@ package br.com.financialcontrol.expenses;
 
 import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -51,4 +52,21 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
       @Param("startDate") LocalDate startDate,
       @Param("endDate") LocalDate endDate,
       Pageable pageable);
+
+  @Query(
+      """
+      SELECT DISTINCT e FROM Expense e
+      JOIN FETCH e.creditCard
+      WHERE e.userId = :userId
+        AND e.paymentMethod = br.com.financialcontrol.expenses.PaymentMethod.CREDIT_CARD
+        AND e.expenseDate >= :startDate
+        AND e.expenseDate <= :endDate
+        AND (:creditCardId IS NULL OR e.creditCard.id = :creditCardId)
+      ORDER BY e.expenseDate ASC, e.id ASC
+      """)
+  List<Expense> findCreditCardPurchasesByUserIdAndExpenseDateBetween(
+      @Param("userId") UUID userId,
+      @Param("startDate") LocalDate startDate,
+      @Param("endDate") LocalDate endDate,
+      @Param("creditCardId") UUID creditCardId);
 }

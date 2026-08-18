@@ -84,4 +84,34 @@ public interface IncomeMovementRepository extends JpaRepository<IncomeMovement, 
       UUID incomeId, UUID userId, IncomeMovementType type, IncomeMovementStatus status);
 
   boolean existsByAccount_IdAndUserIdAndType(UUID accountId, UUID userId, IncomeMovementType type);
+
+  @EntityGraph(attributePaths = {"income", "income.category", "account"})
+  @Query(
+      """
+      SELECT m FROM IncomeMovement m
+      WHERE m.userId = :userId
+        AND m.type = br.com.financialcontrol.incomes.IncomeMovementType.RECEIPT
+        AND m.status = br.com.financialcontrol.incomes.IncomeMovementStatus.ACTIVE
+        AND m.movementDate >= :startDate
+        AND m.movementDate <= :endDate
+      """)
+  List<IncomeMovement> findActiveReceiptsByUserIdAndMovementDateBetween(
+      @Param("userId") UUID userId,
+      @Param("startDate") LocalDate startDate,
+      @Param("endDate") LocalDate endDate);
+
+  @Query(
+      """
+      SELECT DISTINCT m.income.id
+      FROM IncomeMovement m
+      WHERE m.userId = :userId
+        AND m.account.id = :accountId
+        AND m.type = br.com.financialcontrol.incomes.IncomeMovementType.RECEIPT
+        AND m.status = br.com.financialcontrol.incomes.IncomeMovementStatus.ACTIVE
+        AND m.income.id IN :incomeIds
+      """)
+  List<UUID> findIncomeIdsWithActiveReceiptOnAccount(
+      @Param("userId") UUID userId,
+      @Param("accountId") UUID accountId,
+      @Param("incomeIds") Collection<UUID> incomeIds);
 }

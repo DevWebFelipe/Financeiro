@@ -162,6 +162,8 @@ br.com.financialcontrol
 └── reports
 ```
 
+O pacote `reports` (Fase 20) é visão derivada **sem** entidade JPA. **CONCLUÍDA E APROVADA** (`docs/24` §19.12). PDF: OpenPDF 3.0.5. **Não** criar tabela `reports`.
+
 Do **not** create a generic `transactions` module to group incomes, expenses, transfers, payments, and balance adjustments.
 
 Do **not** create a generic `common/`, `utils/`, `helpers/`, or `managers/` package without a genuine shared responsibility.

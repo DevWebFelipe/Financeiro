@@ -41,4 +41,14 @@ public interface CreditCardInvoiceAgreementRepository
 
   boolean existsBySourceInvoice_IdAndUserIdAndStatusIn(
       UUID sourceInvoiceId, UUID userId, Collection<CreditCardInvoiceAgreementStatus> statuses);
+
+  @Query(
+      """
+      SELECT a.expense.id
+      FROM CreditCardInvoiceAgreement a
+      WHERE a.userId = :userId
+        AND a.expense.id IN :expenseIds
+      """)
+  List<UUID> findExpenseIdsByUserIdAndExpenseIdIn(
+      @Param("userId") UUID userId, @Param("expenseIds") Collection<UUID> expenseIds);
 }

@@ -5338,6 +5338,1349 @@
           ]
         },
         {
+          "name": "Reports",
+          "item": [
+            {
+              "name": "Expenses",
+              "item": [
+                {
+                  "name": "Consultar",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/reports/expenses?page=0&size=20",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "reports",
+                        "expenses"
+                      ],
+                      "query": [
+                        {
+                          "key": "startDate",
+                          "value": "2026-08-01",
+                          "disabled": true
+                        },
+                        {
+                          "key": "endDate",
+                          "value": "2026-08-31",
+                          "disabled": true
+                        },
+                        {
+                          "key": "status",
+                          "value": "OPEN",
+                          "disabled": true
+                        },
+                        {
+                          "key": "categoryId",
+                          "value": "{{expenseCategoryId}}",
+                          "disabled": true
+                        },
+                        {
+                          "key": "accountId",
+                          "value": "{{accountId}}",
+                          "disabled": true
+                        },
+                        {
+                          "key": "creditCardId",
+                          "value": "{{creditCardId}}",
+                          "disabled": true
+                        },
+                        {
+                          "key": "responsibleType",
+                          "value": "MINE",
+                          "disabled": true
+                        },
+                        {
+                          "key": "responsibleName",
+                          "value": "",
+                          "disabled": true
+                        },
+                        {
+                          "key": "paymentMethod",
+                          "value": "ACCOUNT",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "dueDate",
+                          "disabled": true
+                        },
+                        {
+                          "key": "direction",
+                          "value": "asc",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "0"
+                        },
+                        {
+                          "key": "size",
+                          "value": "20"
+                        }
+                      ]
+                    },
+                    "description": "GET /reports/expenses. Período por due_date da parcela. startDate/endDate juntos ou omitidos (default = mês corrente). Sem userId. page/size paginam items; summary é do universo filtrado."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const json = pm.response.json();\r",
+                          "\r",
+                          "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                          "    pm.response.to.have.status(200);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Resposta deve possuir items, paginação, summary e period\", function () {\r",
+                          "    pm.expect(json.items).to.be.an(\"array\");\r",
+                          "    pm.expect(json.page).to.exist;\r",
+                          "    pm.expect(json.size).to.exist;\r",
+                          "    pm.expect(json.totalItems).to.exist;\r",
+                          "    pm.expect(json.totalPages).to.exist;\r",
+                          "    pm.expect(json.summary).to.exist;\r",
+                          "    pm.expect(json.period).to.exist;\r",
+                          "});\r"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Exportar PDF",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/pdf"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/reports/expenses/pdf",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "reports",
+                        "expenses",
+                        "pdf"
+                      ],
+                      "query": [
+                        {
+                          "key": "startDate",
+                          "value": "2026-08-01",
+                          "disabled": true
+                        },
+                        {
+                          "key": "endDate",
+                          "value": "2026-08-31",
+                          "disabled": true
+                        },
+                        {
+                          "key": "status",
+                          "value": "OPEN",
+                          "disabled": true
+                        },
+                        {
+                          "key": "categoryId",
+                          "value": "{{expenseCategoryId}}",
+                          "disabled": true
+                        },
+                        {
+                          "key": "accountId",
+                          "value": "{{accountId}}",
+                          "disabled": true
+                        },
+                        {
+                          "key": "creditCardId",
+                          "value": "{{creditCardId}}",
+                          "disabled": true
+                        },
+                        {
+                          "key": "responsibleType",
+                          "value": "MINE",
+                          "disabled": true
+                        },
+                        {
+                          "key": "responsibleName",
+                          "value": "",
+                          "disabled": true
+                        },
+                        {
+                          "key": "paymentMethod",
+                          "value": "ACCOUNT",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "dueDate",
+                          "disabled": true
+                        },
+                        {
+                          "key": "direction",
+                          "value": "asc",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "0",
+                          "disabled": true
+                        },
+                        {
+                          "key": "size",
+                          "value": "20",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "GET /reports/expenses/pdf. Mesmos filtros do JSON. page/size são aceitos e ignorados (sem validar teto). Resposta application/pdf; nome em Content-Disposition."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                          "    pm.response.to.have.status(200);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Content-Type deve ser application/pdf\", function () {\r",
+                          "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\");\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Content-Disposition deve ser attachment\", function () {\r",
+                          "    const disposition = pm.response.headers.get(\"Content-Disposition\") || \"\";\r",
+                          "    pm.expect(disposition).to.include(\"attachment\");\r",
+                          "    pm.expect(disposition).to.include(\"filename=\");\r",
+                          "});\r"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Incomes",
+              "item": [
+                {
+                  "name": "Consultar",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/reports/incomes?dateType=EXPECTED&page=0&size=20",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "reports",
+                        "incomes"
+                      ],
+                      "query": [
+                        {
+                          "key": "dateType",
+                          "value": "EXPECTED"
+                        },
+                        {
+                          "key": "startDate",
+                          "value": "2026-08-01",
+                          "disabled": true
+                        },
+                        {
+                          "key": "endDate",
+                          "value": "2026-08-31",
+                          "disabled": true
+                        },
+                        {
+                          "key": "status",
+                          "value": "EXPECTED",
+                          "disabled": true
+                        },
+                        {
+                          "key": "categoryId",
+                          "value": "{{incomeCategoryId}}",
+                          "disabled": true
+                        },
+                        {
+                          "key": "accountId",
+                          "value": "{{accountId}}",
+                          "disabled": true
+                        },
+                        {
+                          "key": "responsibleType",
+                          "value": "MINE",
+                          "disabled": true
+                        },
+                        {
+                          "key": "responsibleName",
+                          "value": "",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "expectedDate",
+                          "disabled": true
+                        },
+                        {
+                          "key": "direction",
+                          "value": "asc",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "0"
+                        },
+                        {
+                          "key": "size",
+                          "value": "20"
+                        }
+                      ]
+                    },
+                    "description": "GET /reports/incomes. dateType obrigatório (EXPECTED | RECEIVED). Sem userId. periodReceivedAmount só em RECEIVED."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const json = pm.response.json();\r",
+                          "\r",
+                          "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                          "    pm.response.to.have.status(200);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Resposta deve possuir items, paginação, summary e period\", function () {\r",
+                          "    pm.expect(json.items).to.be.an(\"array\");\r",
+                          "    pm.expect(json.page).to.exist;\r",
+                          "    pm.expect(json.size).to.exist;\r",
+                          "    pm.expect(json.totalItems).to.exist;\r",
+                          "    pm.expect(json.totalPages).to.exist;\r",
+                          "    pm.expect(json.summary).to.exist;\r",
+                          "    pm.expect(json.period).to.exist;\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"dateType da resposta deve existir\", function () {\r",
+                          "    pm.expect(json.dateType).to.exist;\r",
+                          "});\r"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Exportar PDF",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/pdf"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/reports/incomes/pdf?dateType=EXPECTED",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "reports",
+                        "incomes",
+                        "pdf"
+                      ],
+                      "query": [
+                        {
+                          "key": "dateType",
+                          "value": "EXPECTED"
+                        },
+                        {
+                          "key": "startDate",
+                          "value": "2026-08-01",
+                          "disabled": true
+                        },
+                        {
+                          "key": "endDate",
+                          "value": "2026-08-31",
+                          "disabled": true
+                        },
+                        {
+                          "key": "status",
+                          "value": "EXPECTED",
+                          "disabled": true
+                        },
+                        {
+                          "key": "categoryId",
+                          "value": "{{incomeCategoryId}}",
+                          "disabled": true
+                        },
+                        {
+                          "key": "accountId",
+                          "value": "{{accountId}}",
+                          "disabled": true
+                        },
+                        {
+                          "key": "responsibleType",
+                          "value": "MINE",
+                          "disabled": true
+                        },
+                        {
+                          "key": "responsibleName",
+                          "value": "",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "expectedDate",
+                          "disabled": true
+                        },
+                        {
+                          "key": "direction",
+                          "value": "asc",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "0",
+                          "disabled": true
+                        },
+                        {
+                          "key": "size",
+                          "value": "20",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "GET /reports/incomes/pdf. dateType obrigatório. page/size aceitos e ignorados."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                          "    pm.response.to.have.status(200);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Content-Type deve ser application/pdf\", function () {\r",
+                          "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\");\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Content-Disposition deve ser attachment\", function () {\r",
+                          "    const disposition = pm.response.headers.get(\"Content-Disposition\") || \"\";\r",
+                          "    pm.expect(disposition).to.include(\"attachment\");\r",
+                          "    pm.expect(disposition).to.include(\"filename=\");\r",
+                          "});\r"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Categories",
+              "item": [
+                {
+                  "name": "Consultar",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/reports/categories?dateType=EXPECTED&page=0&size=20",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "reports",
+                        "categories"
+                      ],
+                      "query": [
+                        {
+                          "key": "dateType",
+                          "value": "EXPECTED"
+                        },
+                        {
+                          "key": "startDate",
+                          "value": "2026-08-01",
+                          "disabled": true
+                        },
+                        {
+                          "key": "endDate",
+                          "value": "2026-08-31",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "name",
+                          "disabled": true
+                        },
+                        {
+                          "key": "direction",
+                          "value": "asc",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "0"
+                        },
+                        {
+                          "key": "size",
+                          "value": "20"
+                        }
+                      ]
+                    },
+                    "description": "GET /reports/categories. dateType obrigatório (receitas do relatório). Não possui nature. Recorte de despesa = due_date das parcelas."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const json = pm.response.json();\r",
+                          "\r",
+                          "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                          "    pm.response.to.have.status(200);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Resposta deve possuir items, paginação, summary e period\", function () {\r",
+                          "    pm.expect(json.items).to.be.an(\"array\");\r",
+                          "    pm.expect(json.page).to.exist;\r",
+                          "    pm.expect(json.size).to.exist;\r",
+                          "    pm.expect(json.totalItems).to.exist;\r",
+                          "    pm.expect(json.totalPages).to.exist;\r",
+                          "    pm.expect(json.summary).to.exist;\r",
+                          "    pm.expect(json.period).to.exist;\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"dateType da resposta deve existir\", function () {\r",
+                          "    pm.expect(json.dateType).to.exist;\r",
+                          "});\r"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Exportar PDF",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/pdf"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/reports/categories/pdf?dateType=EXPECTED",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "reports",
+                        "categories",
+                        "pdf"
+                      ],
+                      "query": [
+                        {
+                          "key": "dateType",
+                          "value": "EXPECTED"
+                        },
+                        {
+                          "key": "startDate",
+                          "value": "2026-08-01",
+                          "disabled": true
+                        },
+                        {
+                          "key": "endDate",
+                          "value": "2026-08-31",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "name",
+                          "disabled": true
+                        },
+                        {
+                          "key": "direction",
+                          "value": "asc",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "0",
+                          "disabled": true
+                        },
+                        {
+                          "key": "size",
+                          "value": "20",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "GET /reports/categories/pdf. dateType obrigatório. Sem nature. page/size aceitos e ignorados."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                          "    pm.response.to.have.status(200);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Content-Type deve ser application/pdf\", function () {\r",
+                          "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\");\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Content-Disposition deve ser attachment\", function () {\r",
+                          "    const disposition = pm.response.headers.get(\"Content-Disposition\") || \"\";\r",
+                          "    pm.expect(disposition).to.include(\"attachment\");\r",
+                          "    pm.expect(disposition).to.include(\"filename=\");\r",
+                          "});\r"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Responsibles",
+              "item": [
+                {
+                  "name": "Consultar",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/reports/responsibles?dateType=EXPECTED&page=0&size=20",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "reports",
+                        "responsibles"
+                      ],
+                      "query": [
+                        {
+                          "key": "nature",
+                          "value": "BOTH",
+                          "disabled": true
+                        },
+                        {
+                          "key": "dateType",
+                          "value": "EXPECTED"
+                        },
+                        {
+                          "key": "startDate",
+                          "value": "2026-08-01",
+                          "disabled": true
+                        },
+                        {
+                          "key": "endDate",
+                          "value": "2026-08-31",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "responsibleType",
+                          "disabled": true
+                        },
+                        {
+                          "key": "direction",
+                          "value": "asc",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "0"
+                        },
+                        {
+                          "key": "size",
+                          "value": "20"
+                        }
+                      ]
+                    },
+                    "description": "GET /reports/responsibles. nature omitido = BOTH. dateType obrigatório quando nature é INCOME ou BOTH. nature=EXPENSE + dateType → 400 VALIDATION_ERROR (D-F20-15). Não enviar dateType com EXPENSE."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const json = pm.response.json();\r",
+                          "\r",
+                          "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                          "    pm.response.to.have.status(200);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Resposta deve possuir items, paginação, summary e period\", function () {\r",
+                          "    pm.expect(json.items).to.be.an(\"array\");\r",
+                          "    pm.expect(json.page).to.exist;\r",
+                          "    pm.expect(json.size).to.exist;\r",
+                          "    pm.expect(json.totalItems).to.exist;\r",
+                          "    pm.expect(json.totalPages).to.exist;\r",
+                          "    pm.expect(json.summary).to.exist;\r",
+                          "    pm.expect(json.period).to.exist;\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"nature da resposta deve existir\", function () {\r",
+                          "    pm.expect(json.nature).to.exist;\r",
+                          "});\r"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Exportar PDF",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/pdf"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/reports/responsibles/pdf?dateType=EXPECTED",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "reports",
+                        "responsibles",
+                        "pdf"
+                      ],
+                      "query": [
+                        {
+                          "key": "nature",
+                          "value": "BOTH",
+                          "disabled": true
+                        },
+                        {
+                          "key": "dateType",
+                          "value": "EXPECTED"
+                        },
+                        {
+                          "key": "startDate",
+                          "value": "2026-08-01",
+                          "disabled": true
+                        },
+                        {
+                          "key": "endDate",
+                          "value": "2026-08-31",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "responsibleType",
+                          "disabled": true
+                        },
+                        {
+                          "key": "direction",
+                          "value": "asc",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "0",
+                          "disabled": true
+                        },
+                        {
+                          "key": "size",
+                          "value": "20",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "GET /reports/responsibles/pdf. Mesmas regras de nature/dateType (D-F20-15). page/size aceitos e ignorados."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                          "    pm.response.to.have.status(200);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Content-Type deve ser application/pdf\", function () {\r",
+                          "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\");\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Content-Disposition deve ser attachment\", function () {\r",
+                          "    const disposition = pm.response.headers.get(\"Content-Disposition\") || \"\";\r",
+                          "    pm.expect(disposition).to.include(\"attachment\");\r",
+                          "    pm.expect(disposition).to.include(\"filename=\");\r",
+                          "});\r"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Cards",
+              "item": [
+                {
+                  "name": "Consultar",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/reports/cards?page=0&size=20",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "reports",
+                        "cards"
+                      ],
+                      "query": [
+                        {
+                          "key": "startDate",
+                          "value": "2026-08-01",
+                          "disabled": true
+                        },
+                        {
+                          "key": "endDate",
+                          "value": "2026-08-31",
+                          "disabled": true
+                        },
+                        {
+                          "key": "creditCardId",
+                          "value": "{{creditCardId}}",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "name",
+                          "disabled": true
+                        },
+                        {
+                          "key": "direction",
+                          "value": "asc",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "0"
+                        },
+                        {
+                          "key": "size",
+                          "value": "20"
+                        }
+                      ]
+                    },
+                    "description": "GET /reports/cards. Sem usedLimit, availableLimit ou creditDate. Uma compra = uma linha em purchases[]; original = expenses.total_amount uma vez. installmentAdjustments separado de invoiceAdjustments."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const json = pm.response.json();\r",
+                          "\r",
+                          "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                          "    pm.response.to.have.status(200);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Resposta deve possuir items, paginação, summary e period\", function () {\r",
+                          "    pm.expect(json.items).to.be.an(\"array\");\r",
+                          "    pm.expect(json.page).to.exist;\r",
+                          "    pm.expect(json.size).to.exist;\r",
+                          "    pm.expect(json.totalItems).to.exist;\r",
+                          "    pm.expect(json.totalPages).to.exist;\r",
+                          "    pm.expect(json.summary).to.exist;\r",
+                          "    pm.expect(json.period).to.exist;\r",
+                          "});\r"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Exportar PDF",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/pdf"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/reports/cards/pdf",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "reports",
+                        "cards",
+                        "pdf"
+                      ],
+                      "query": [
+                        {
+                          "key": "startDate",
+                          "value": "2026-08-01",
+                          "disabled": true
+                        },
+                        {
+                          "key": "endDate",
+                          "value": "2026-08-31",
+                          "disabled": true
+                        },
+                        {
+                          "key": "creditCardId",
+                          "value": "{{creditCardId}}",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "name",
+                          "disabled": true
+                        },
+                        {
+                          "key": "direction",
+                          "value": "asc",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "0",
+                          "disabled": true
+                        },
+                        {
+                          "key": "size",
+                          "value": "20",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "GET /reports/cards/pdf. Mesmos filtros do JSON. page/size aceitos e ignorados. PDF traz o cartão completo do universo filtrado."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                          "    pm.response.to.have.status(200);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Content-Type deve ser application/pdf\", function () {\r",
+                          "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\");\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Content-Disposition deve ser attachment\", function () {\r",
+                          "    const disposition = pm.response.headers.get(\"Content-Disposition\") || \"\";\r",
+                          "    pm.expect(disposition).to.include(\"attachment\");\r",
+                          "    pm.expect(disposition).to.include(\"filename=\");\r",
+                          "});\r"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Invoices",
+              "item": [
+                {
+                  "name": "Consultar",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/reports/invoices/{{invoiceId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "reports",
+                        "invoices",
+                        "{{invoiceId}}"
+                      ],
+                      "query": [
+                        {
+                          "key": "responsibleType",
+                          "value": "MINE",
+                          "disabled": true
+                        },
+                        {
+                          "key": "responsibleName",
+                          "value": "",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "GET /reports/invoices/{invoiceId}. Não aceita startDate/endDate nem page/size (desconhecido → 400). Filtro opcional de responsável. Não substitui GET /invoices/{invoiceId}."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const json = pm.response.json();\r",
+                          "\r",
+                          "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                          "    pm.response.to.have.status(200);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Resposta deve possuir cabeçalho oficial da fatura\", function () {\r",
+                          "    pm.expect(json.invoiceId).to.exist;\r",
+                          "    pm.expect(json.invoice).to.exist;\r",
+                          "    pm.expect(json.invoice.totalAmount).to.exist;\r",
+                          "    pm.expect(json.invoice.paidAmount).to.exist;\r",
+                          "    pm.expect(json.invoice.remainingAmount).to.exist;\r",
+                          "    pm.expect(json.purchases).to.be.an(\"array\");\r",
+                          "    pm.expect(json.installmentAdjustments).to.be.an(\"array\");\r",
+                          "    pm.expect(json.invoiceAdjustments).to.be.an(\"array\");\r",
+                          "});\r"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Exportar PDF",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/pdf"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/reports/invoices/{{invoiceId}}/pdf",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "reports",
+                        "invoices",
+                        "{{invoiceId}}",
+                        "pdf"
+                      ],
+                      "query": [
+                        {
+                          "key": "responsibleType",
+                          "value": "MINE",
+                          "disabled": true
+                        },
+                        {
+                          "key": "responsibleName",
+                          "value": "",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "0",
+                          "disabled": true
+                        },
+                        {
+                          "key": "size",
+                          "value": "20",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "GET /reports/invoices/{invoiceId}/pdf. responsibleType/responsibleName opcionais. page/size são aceitos e ignorados no PDF (no JSON seriam 400)."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                          "    pm.response.to.have.status(200);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Content-Type deve ser application/pdf\", function () {\r",
+                          "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\");\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Content-Disposition deve ser attachment\", function () {\r",
+                          "    const disposition = pm.response.headers.get(\"Content-Disposition\") || \"\";\r",
+                          "    pm.expect(disposition).to.include(\"attachment\");\r",
+                          "    pm.expect(disposition).to.include(\"filename=\");\r",
+                          "});\r"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Cash Flow",
+              "item": [
+                {
+                  "name": "Consultar",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/reports/cash-flow?page=0&size=20",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "reports",
+                        "cash-flow"
+                      ],
+                      "query": [
+                        {
+                          "key": "flowType",
+                          "value": "BOTH",
+                          "disabled": true
+                        },
+                        {
+                          "key": "startDate",
+                          "value": "2026-08-01",
+                          "disabled": true
+                        },
+                        {
+                          "key": "endDate",
+                          "value": "2026-08-31",
+                          "disabled": true
+                        },
+                        {
+                          "key": "accountId",
+                          "value": "{{accountId}}",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "date",
+                          "disabled": true
+                        },
+                        {
+                          "key": "direction",
+                          "value": "asc",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "0"
+                        },
+                        {
+                          "key": "size",
+                          "value": "20"
+                        }
+                      ]
+                    },
+                    "description": "GET /reports/cash-flow. Parâmetro flowType (HISTORICAL | PROJECTED | BOTH); default BOTH. Não possui dateType. page/size paginam somente historical.items. BOTH + período inteiramente passado → projected.empty = true."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const json = pm.response.json();\r",
+                          "\r",
+                          "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                          "    pm.response.to.have.status(200);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Resposta deve possuir period, flowType e seções historical/projected\", function () {\r",
+                          "    pm.expect(json.period).to.exist;\r",
+                          "    pm.expect(json.flowType).to.exist;\r",
+                          "    pm.expect(json.historical).to.exist;\r",
+                          "    pm.expect(json.projected).to.exist;\r",
+                          "});\r"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Exportar PDF",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/pdf"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/reports/cash-flow/pdf",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "reports",
+                        "cash-flow",
+                        "pdf"
+                      ],
+                      "query": [
+                        {
+                          "key": "flowType",
+                          "value": "BOTH",
+                          "disabled": true
+                        },
+                        {
+                          "key": "startDate",
+                          "value": "2026-08-01",
+                          "disabled": true
+                        },
+                        {
+                          "key": "endDate",
+                          "value": "2026-08-31",
+                          "disabled": true
+                        },
+                        {
+                          "key": "accountId",
+                          "value": "{{accountId}}",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "date",
+                          "disabled": true
+                        },
+                        {
+                          "key": "direction",
+                          "value": "asc",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "0",
+                          "disabled": true
+                        },
+                        {
+                          "key": "size",
+                          "value": "20",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "GET /reports/cash-flow/pdf. flowType, não dateType. page/size aceitos e ignorados. Sem /monthly."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                          "    pm.response.to.have.status(200);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Content-Type deve ser application/pdf\", function () {\r",
+                          "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\");\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Content-Disposition deve ser attachment\", function () {\r",
+                          "    const disposition = pm.response.headers.get(\"Content-Disposition\") || \"\";\r",
+                          "    pm.expect(disposition).to.include(\"attachment\");\r",
+                          "    pm.expect(disposition).to.include(\"filename=\");\r",
+                          "});\r"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "description": "Visão derivada GET /api/v1/reports/*. Sem tabela reports, sem migration, sem escritas. JSON + PDF. Auth Bearer. Sem userId."
+        },
+        {
           "name": "Transferências",
           "item": [
             {

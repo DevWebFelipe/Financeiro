@@ -509,15 +509,15 @@ Ver `docs/26-seguranca.md`.
 
 Unitários, integração, API e segurança. Testcontainers com PostgreSQL. Ver `docs/27-testes.md`.
 
-Coleção Postman para testes manuais: `postman/Financial Control API.postman_collection.json` (instruções em `postman/README.md`). A collection acompanha as fases já implementadas (até Fase 19 — dashboard).
+Coleção Postman para testes manuais: `postman/Financial Control API.postman_collection.json` (instruções em `postman/README.md`). A collection acompanha as fases já implementadas (até Fase 20 — relatórios; 14 requests em `02 - Processos/Reports`).
 
 ---
 
 ## Status
 
-**Fase atual:** Fase 19 — Dashboard — **CONCLUÍDA E APROVADA**
+**Fase atual:** Fase 21 — Frontend completo
 
-**Próxima fase:** Fase 20 — Relatórios — **NÃO INICIADA**
+**Fase anterior:** Fase 20 — Relatórios — **CONCLUÍDA E APROVADA** (auditoria final **APROVADA COM RESSALVAS**)
 
 ```text
 Fase 0 — Planejamento — CONCLUÍDA E APROVADA
@@ -538,10 +538,11 @@ Fase 16 — Contas a pagar — CONCLUÍDA E APROVADA
 Fase 17 — Contas a receber — CONCLUÍDA E APROVADA
 Fase 18 — Projeções — CONCLUÍDA E APROVADA
 Fase 19 — Dashboard — CONCLUÍDA E APROVADA
+Fase 20 — Relatórios — CONCLUÍDA E APROVADA
 ```
 
-Estado atual do backend (Fases 1–9 + 13 + 14 + 15 + 16 + 17 + 18 + 19): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas (movimentações V30), despesas, parcelamento (Fase 8), cartões/faturas (Fase 9), Agreements (Fase 13), transferências e Acerto de Saldos (Fase 14), metas financeiras (Fase 15), contas a pagar (Fase 16), contas a receber (Fase 17), projeções (Fase 18), dashboard (Fase 19).
+Estado atual do backend (Fases 1–9 + 13 + 14 + 15 + 16 + 17 + 18 + 19 + 20): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, OpenPDF **3.0.5**, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas (movimentações V30), despesas, parcelamento (Fase 8), cartões/faturas (Fase 9), Agreements (Fase 13), transferências e Acerto de Saldos (Fase 14), metas financeiras (Fase 15), contas a pagar (Fase 16), contas a receber (Fase 17), projeções (Fase 18), dashboard (Fase 19), relatórios JSON/PDF (Fase 20).
 
-Fases 0–19. **Fase 19 — Dashboard:** **CONCLUÍDA E APROVADA** (`docs/24` §19.11; D282–D289). Endpoint `GET /api/v1/dashboard`. **Não** criar tabela `dashboard`. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes). **Fase 18 — Projeções:** **CONCLUÍDA E APROVADA** (`docs/24` §19.10; D95–D204). Endpoint `GET /api/v1/projections`. **Não** criar tabela `projections`. D73–D94 implementadas; **não** recriar `GET /api/v1/receivables`; **não** criar tabela `receivables`. Não implementar Refresh Token, `payments.type`, relatórios/PDF, frontend financeiro, auditoria genérica, extrato `/statement` nem `POST /invoices/{id}/close` sem autorização.
+Fases 0–20 implementadas. **Fase 20 — Relatórios:** **CONCLUÍDA E APROVADA** (`docs/24` §19.12 / `docs/25` §76; D-F20-01 a D-F20-16). 7 endpoints JSON + 7 PDF. OpenPDF 3.0.5. Collection com 14 requests. Flyway V30; **não** criar tabela `reports`. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida nesta etapa; sem bloqueio funcional). Suíte: **578** testes. **Fase 19 — Dashboard:** **CONCLUÍDA E APROVADA** (`docs/24` §19.11; D282–D289). Endpoint `GET /api/v1/dashboard`. **Não** criar tabela `dashboard`. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes). **Fase 18 — Projeções:** **CONCLUÍDA E APROVADA** (`docs/24` §19.10; D95–D204). Endpoint `GET /api/v1/projections`. **Não** criar tabela `projections`. D73–D94 implementadas; **não** recriar `GET /api/v1/receivables`; **não** criar tabela `receivables`. Não implementar Refresh Token, `payments.type`, frontend financeiro, auditoria genérica, extrato `/statement` nem `POST /invoices/{id}/close` sem autorização.
 
-Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend financeiro, relatórios/PDF, auditoria genérica nem `payments.type` sem autorização. A edição de parcela já em fatura (§269.2.7) permanece **deferida**. Fechados: §269.3, §269.4, **§269.5** (Fase 13 — `CONCLUÍDA E APROVADA`).
+Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend financeiro, auditoria genérica nem `payments.type` sem autorização. A edição de parcela já em fatura (§269.2.7) permanece **deferida**. Fechados: §269.3, §269.4, **§269.5** (Fase 13 — `CONCLUÍDA E APROVADA`).

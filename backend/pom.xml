@@ -23,6 +23,7 @@
 		<google-java-format.version>1.28.0</google-java-format.version>
 		<nimbus-jose-jwt.version>10.3</nimbus-jose-jwt.version>
 		<bouncycastle.version>1.81</bouncycastle.version>
+		<openpdf.version>3.0.5</openpdf.version>
 	</properties>
 
 	<dependencies>
@@ -74,6 +75,11 @@
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>3.0.2</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.librepdf</groupId>
+			<artifactId>openpdf</artifactId>
+			<version>${openpdf.version}</version>
 		</dependency>
 
 		<dependency>

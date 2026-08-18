@@ -5198,6 +5198,339 @@ O Dashboard não é fato persistido. Não criar tabela `dashboard`. Consome sald
 Não somar payables + projeção + receivables como se fossem obrigações distintas. Não tratar `usedLimit` como caixa. Transferência não é entrada nem saída do Dashboard.
 
 
+# 19.12 Contrato da Fase 20 — Relatórios
+
+**Status:** **CONCLUÍDA E APROVADA**. Decisões D-F20-01 a D-F20-16 **fechadas** e **implementadas**. Endpoints `GET /api/v1/reports/*` (7 JSON + 7 PDF). OpenPDF 3.0.5. Sem tabela `reports`. Sem migration. Flyway permanece em V30. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento; não bloqueante; não reabre a fase).
+
+Autoridade: `AGENTS.md` §28 → esta seção → `docs/25` §76 → `docs/27` §40J → `docs/28` §101.
+
+Relatórios são **visões derivadas** dos fatos já persistidos. Não constituem fonte de verdade. Não criam, alteram, cancelam, revertem nem persistem fatos financeiros. Não reabrem a Fase 19, D95–D204, RN240, RN231, §197, remaining de receita nem `payments.type`.
+
+---
+
+## 19.12.1 Escopo
+
+**Inclui (implementado):**
+
+1. `GET /api/v1/reports/expenses` e `/pdf`;
+2. `GET /api/v1/reports/incomes` e `/pdf`;
+3. `GET /api/v1/reports/categories` e `/pdf`;
+4. `GET /api/v1/reports/responsibles` e `/pdf`;
+5. `GET /api/v1/reports/cards` e `/pdf`;
+6. `GET /api/v1/reports/cash-flow` e `/pdf`;
+7. `GET /api/v1/reports/invoices/{invoiceId}` e `/pdf`.
+
+**Fora do escopo desta fase:**
+
+- frontend, gráficos, CSV, Excel;
+- persistência de relatório, tabela `reports`, migration;
+- alteração do Dashboard, de `GET /api/v1/projections` ou do `ProjectionService`;
+- `payments.type`;
+- `usedLimit` / `availableLimit` no relatório de cartões;
+- nova modelagem financeira criada só para relatórios.
+
+OpenPDF **3.0.5** (`com.github.librepdf:openpdf`) foi adicionado na implementação autorizada da Fase 20. CSV/Excel permanecem fora.
+
+---
+
+## 19.12.2 Princípios
+
+### RN338 — Somente leitura
+
+Relatórios são exclusivamente de leitura. Nenhum endpoint de relatório cria, altera, cancela, reverte, altera saldo/status ou gera movimentação.
+
+### RN339 — Sem fonte própria
+
+Não criar tabela nem entidade JPA de relatório. Resultados derivados das entidades e serviços oficiais.
+
+### RN340 — Isolamento
+
+Dono = JWT. O cliente não envia `userId` como dono. Recurso de path inexistente ou de outro usuário → **404** `NOT_FOUND`. Filtro de query de recurso inexistente ou de outro usuário → **200** vazio (padrão das visões).
+
+### RN341 — Timezone e inativação
+
+Calendário `America/Sao_Paulo`. Intervalos inclusivos. "Hoje", mês corrente e data de geração do PDF usam esse fuso. Entidade `inactive` não apaga histórico; pode aparecer quando houver fato no universo consultado.
+
+---
+
+## 19.12.3 Período, paginação e erros
+
+Relatórios **baseados em período**: `startDate` e `endDate` juntos, ou nenhum (default = mês calendário corrente em `America/Sao_Paulo`). Só um dos dois → **400** `VALIDATION_ERROR`. `startDate` > `endDate` → **400** `VALIDATION_ERROR`. Formato inválido ou parâmetro desconhecido → **400** `VALIDATION_ERROR`.
+
+Teto: 12 meses calendário, mesma conta de `ProjectionPeriodResolver`:
+
+```text
+ChronoUnit.MONTHS.between(YearMonth(startDate), YearMonth(endDate)) + 1 > 12
+→ 400 VALIDATION_ERROR
+```
+
+Períodos futuros são permitidos em relatórios de obrigação/receita. **D202 não se aplica ao histórico.**
+
+O relatório de fatura **não** usa período, **não** herda o default do mês e **não** está sujeito ao teto de 12 meses.
+
+Paginação (endpoints com lista detalhada): `page` default `0`, `size` default `20`. `page < 0`, `size < 1` ou `size > 100` → **400** `BUSINESS_RULE_VIOLATION`.
+
+`summary` e agrupamentos = universo filtrado completo, não a página.
+
+PDF **ignora** `page` e `size` (não validar teto nesses parâmetros no PDF). O PDF é o universo completo dos demais filtros.
+
+---
+
+## 19.12.4 Despesas
+
+`items[]` = **despesa**. Paginação por despesa. Parcelas do período em `installments[]` (`due_date` no intervalo). A despesa entra se **pelo menos uma** parcela está no período.
+
+Valores = **estado atual** das parcelas do recorte. Não significam "pago durante o período". Caixa do período = `/reports/cash-flow`.
+
+Por parcela ACCOUNT/NONE (RN231):
+
+```text
+original    = installment.amount
+discount    = SUM(DISCOUNT ACTIVE)
+surcharge   = SUM(SURCHARGE ACTIVE)
+obligation  = original + surcharge − discount
+paid        = SUM(payments ACTIVE)
+remaining   = obligation − paid
+```
+
+CREDIT_CARD: remaining oficial da **parcela** (`docs/23` §197) — alocações ACTIVE de pagamento de fatura, crédito aplicado, efeito de ajuste de fatura e settlement. **Não** usar a tabela `payments` da despesa. **Proibido** atribuir o remaining da fatura inteira a cada despesa. **Não** copiar `paidAmount` §196 da fatura (nem a divergência RN117 do cabeçalho) para a parcela.
+
+Campos do **item da despesa** e do `summary` (D-F20-07): somente o recorte. **Não** expor `original` / `discount` / `surcharge` / `obligation` / `paid` / `remaining` no item da despesa (esses nomes no item sugeririam a despesa inteira). **Não** criar `periodAccrued` em despesa.
+
+```text
+periodOriginal, periodDiscount, periodSurcharge  = soma das parcelas do recorte
+periodObligation = periodOriginal + periodSurcharge − periodDiscount
+periodRemaining  = soma dos remainings oficiais das parcelas do recorte
+```
+
+ACCOUNT/NONE: `periodPaid` = soma de `SUM(payments ACTIVE)` das parcelas do recorte.
+
+CREDIT_CARD (D-F20-05):
+
+```text
+periodPaid = periodObligation − periodRemaining
+periodObligation − periodPaid = periodRemaining   (identidade obrigatória)
+```
+
+`periodPaid` no cartão **é** o complemento do remaining §197 (pagamento de fatura, crédito, ajuste de fatura, settlement e demais efeitos oficiais que reduzem remaining). Não é fórmula paralela. Não é rateio do `paidAmount` da fatura.
+
+**Não** usar `expenses.total_amount` em `periodOriginal`. `items[]` continua sendo a despesa. `installments[]` pode manter os campos oficiais da **parcela** (não confundir com o conjunto removido do item da despesa).
+
+`summary` soma os `period*` **por parcela do recorte**, nunca `expenses.total_amount` integral.
+
+Sem filtro `status`: todos os status cujo recorte temporal seja atendido podem aparecer em `items[]` (inclui `CANCELLED` e `REFUNDED`).
+
+**Totais efetivos** (`summary`) **excluem**:
+
+- parcelas de despesa `CANCELLED` ou `REFUNDED`;
+- **somente as parcelas** cujo `invoice_id` é a fatura `SETTLED_BY_AGREEMENT` (D-F20-02 / RN110).
+
+**Não** excluir a despesa original inteira. Parcelas futuras da mesma compra continuam nos seus `due_date`. A nova despesa do Agreement entra pelos seus próprios installments/ciclos. A despesa original pode permanecer em `items[]` se tiver parcela no recorte; a parcela do ciclo liquidado **não** entra no `summary` efetivo (pode aparecer em `installments[]` para identificação). Origem do item, quando aplicável: `PURCHASE` | `AGREEMENT`.
+
+---
+
+## 19.12.5 Refund
+
+ACCOUNT/NONE `REFUNDED`: payments permanecem; **não** existe fato de entrada de caixa; RN240 deixa de subtrair esses payments. Relatório de despesas identifica o status. Relatório de caixa **não** cria linha sintética.
+
+CREDIT_CARD `CARD_CREDIT`: sem movimento de conta; crédito de cartão.
+
+CREDIT_CARD `ACCOUNT`: fato `card_purchase_account_refunds.bankLiquidated`; data = `created_at` no fim do dia `America/Sao_Paulo` (RN263). Só esse fato é entrada de caixa. Pagamentos de fatura **não** se revertem.
+
+Payments de despesa atualmente `CANCELLED` ou `REFUNDED` **não** são saída no fluxo histórico (mesmo critério de `AccountService.calculateBalanceAsOf`).
+
+---
+
+## 19.12.6 Receitas
+
+`dateType` é **obrigatório** (há sempre período, inclusive o default do mês). Ausência → **400** `VALIDATION_ERROR`. Valores: `EXPECTED` (`expectedDate`) | `RECEIVED` (`movement_date` de RECEIPT **ACTIVE**).
+
+`dateType` escolhe **somente a data**. **Não** escolhe `status`. Sem filtro `status`: entram todos os registros cuja data correspondente está no período (`EXPECTED`, `RECEIVED`, `CANCELLED`). `CANCELLED` fora dos totais efetivos.
+
+`RECEIVED` do relatório **não** copia D94: D94 pode considerar RECEIPT ACTIVE ou REVERSED para a visão receivables; no relatório só RECEIPT ACTIVE compõe o recebido efetivo.
+
+`items[]` = receita. Campos oficiais §19.9 (`amount`, `accruedAmount`, `receivedAmount`, `remainingAmount`) = **estado atual** da duplicata. **Não** transformá-los em fatia temporal. **Não** criar `periodRemainingAmount` nem remaining de período.
+
+Em `dateType=RECEIVED` (D-F20-14): a receita entra se houver RECEIPT ACTIVE com `movement_date` no período. O recorte usa **`periodReceivedAmount`** = SUM desses RECEIPTs ACTIVE (não o vitalício). **Não** chamar esse valor de `receivedAmount`.
+
+Em `dateType=EXPECTED`: o `summary` efetivo usa os campos oficiais da duplicata (sem `CANCELLED`).
+
+Filtro `accountId` (D-F20-08 / D78-A): existe pelo menos um RECEIPT **ACTIVE** na conta — **qualquer** `dateType`. Não usar o cabeçalho legado. `EXPECTED` + `accountId` sem RECEIPT ACTIVE nessa conta → **200** vazio possível. **Não** é 400.
+
+Fórmulas oficiais (§19.9):
+
+```text
+amount + accruedAmount − receivedAmount = remainingAmount
+accruedAmount = SUM(ACCRUAL ACTIVE)
+receivedAmount (oficial / global) = SUM(RECEIPT ACTIVE)
+periodReceivedAmount (só recorte RECEIVED) = SUM(RECEIPT ACTIVE com movement_date no período)
+```
+
+---
+
+## 19.12.7 Categorias e responsáveis
+
+Categorias: INCOME e EXPENSE são universos distintos (mesmo nome não mistura). Recorte de despesa = `due_date` das parcelas; recorte de receita = `dateType` (obrigatório neste endpoint). Categoria sem fato no recorte não aparece. CREDIT_CARD entra como obrigação de despesa, nunca como saída de conta. Valores = mesmas fórmulas dos relatórios de despesas/receitas. Sem fórmula paralela.
+
+Responsáveis: `nature=EXPENSE|INCOME|BOTH` (default `BOTH`).
+
+- `EXPENSE`: recorte por `due_date`; `dateType` **não** é obrigatório. Se `dateType` for enviado com `nature=EXPENSE` → **400** `VALIDATION_ERROR` (D-F20-15; combinação incompatível).
+- `INCOME` ou `BOTH`: `dateType` **obrigatório** (ausência → **400** `VALIDATION_ERROR`).
+
+Responsável nulo → `UNASSIGNED`. `OTHER` agrupa por `(responsibleType, responsibleName)` preservando o nome individual; `OTHER/João` ≠ `OTHER/Maria`. `OTHER` sem nome válido (nulo ou em branco) → `UNASSIGNED`. Agrupar **não** substitui filtrar. O filtro `responsibleName` usa igualdade com o valor persistido (mesmo padrão de receivables).
+
+Ordenação default (D-F20-16): `responsibleType` ASC, `responsibleName` ASC, `id` ASC; `responsibleType` nulo (`UNASSIGNED`) com **NULLS LAST** em ASC. Sem regra de negócio especial para `UNASSIGNED`.
+
+---
+
+## 19.12.8 Cartões
+
+`items[]` = um cartão. Blocos independentes, **sem** `adjustments[]` genérico (D-F20-13): identificação, summary, `purchases[]`, `invoices[]`, `payments[]`, `credits[]`, `installmentAdjustments[]`, `invoiceAdjustments[]`. **Não** somar compra + parcela + fatura + pagamento + crédito + ajuste como um único total. Listas aninhadas **não** são paginadas.
+
+Presença: o cartão entra se houver **pelo menos um** fato no período, cada um na sua data. Não excluir o cartão só porque não houve compra por `expenseDate`.
+
+Datas de inclusão (não misturar):
+
+| Fato | Data |
+|---|---|
+| compra (`purchases[]` / `purchaseAmount`) | `expenseDate` |
+| fatura (`invoices[]` / `invoiceAmount`) | **somente** `closingDate` (D-F20-04) |
+| pagamento de fatura | `payment_date` |
+| crédito aplicado | `created_at` da **aplicação** crédito→fatura, `America/Sao_Paulo` (D-F20-11); **não** criar `creditDate`; **não** é caixa |
+| ajuste de parcela / fatura | `createdAt` do GET oficial correspondente (`America/Sao_Paulo`); **não** criar `adjustmentDate` nesses fatos |
+
+Exemplo D-F20-04: `closingDate` 31/07, `dueDate` 10/08 → a fatura entra no relatório de **julho**; **não** entra de novo em agosto pelo vencimento. `dueDate` permanece campo da fatura.
+
+`purchases[]` (D-F20-10): **uma linha = uma compra/despesa**. `original` = `expenses.total_amount` **uma vez**. Parcelas só como detalhe aninhado; **não** transformar a lista em installments nem repetir o total em cada parcela. Compra 12× R$ 1.000 → uma linha de R$ 12.000. `purchaseAmount` soma esse grão.
+
+`usedLimit` e `availableLimit` **fora da V1** deste relatório.
+
+Compra = obrigação/consumo, não caixa. Pagamento de fatura = caixa, não compra. Schema dos blocos: reutilizar campos dos GETs oficiais (`GET /invoices/{id}`, pagamentos, créditos, ajustes de parcela e de fatura). Sem modelagem paralela.
+
+---
+
+## 19.12.9 Fluxo de caixa
+
+`flowType=HISTORICAL|PROJECTED|BOTH` (default `BOTH`). Seções distintas; **proibido** um total único misturando efetivo e projetado. Histórico = um fato por linha. Projetado = série mensal do `ProjectionService` (sem segunda fórmula; sem transformar projeção em fatos artificiais). `BOTH` **não** usa um `items[]` único.
+
+Histórico inclui fatos efetivos em `[startDate, min(endDate, hoje)]` **inclusive hoje**.
+
+O mesmo dia civil pode ter fato efetivo (histórico) e remaining ainda aberto (projeção). O **mesmo fato** nunca nos dois lados.
+
+`HISTORICAL`: período passado, presente ou parcialmente futuro; só fatos ocorridos; dias futuros do intervalo sem fato histórico.
+
+`PROJECTED` + período **inteiramente no passado** → **400** `VALIDATION_ERROR` (D202). Não devolver 200 vazio.
+
+`BOTH` + período inteiramente no passado → **200**, histórico normal, **não** chamar `ProjectionService`. Representação oficial (D-F20-06): `{ "projected": { "empty": true } }`. **Não** usar `summary`/`months`/`quarters` vazios nem `projected: null`. **Não** inventar saldo 0. D202 **não** se aplica a `BOTH` nem ao histórico.
+
+`BOTH` + período inteiramente no futuro → seção `historical` vazia; **não** inventar `openingBalance`/`closingBalance` para intervalo histórico vazio (`startDate > hoje`).
+
+Datas oficiais:
+
+| Fato | Data |
+|---|---|
+| RECEIPT ACTIVE | `movement_date` |
+| payment ACCOUNT/NONE | `payment_date` |
+| pagamento de fatura | `payment_date` |
+| devolução ACCOUNT (RN117) | `created_at` (RN263, `America/Sao_Paulo`) |
+| transferência | `transfer_date` |
+| acerto | `adjustment_date` |
+
+Entram no histórico: RECEIPT ACTIVE; payments ACTIVE de despesa **não** `CANCELLED`/`REFUNDED`; pagamentos de fatura ACTIVE; `bankLiquidated` quando o fato existir; transferências ACTIVE; acertos ACTIVE.
+
+Não entram: compra no cartão; ACCRUAL; crédito de cartão; contribuição/resgate de meta; `REVERSED`; o que `calculateBalanceAsOf` também exclui.
+
+Transferências: no detalhe por conta aparecem; no consolidado o líquido é **zero** (não são receita nem despesa). Forma visual das linhas no consolidado: `docs/25` (duas pernas que se anulam). Acerto ≠ receita/despesa. Metas ≠ caixa.
+
+Default = consolidado de todas as contas do usuário (ativas e inativas com fato). `accountId` opcional; inexistente ou de outro usuário → **200** vazio.
+
+Saldos principais = `totalBalance` RN240 (não `availableBalance`). Janela histórica = `[startDate, min(endDate, hoje)]` (D-F20-09):
+
+```text
+openingBalance = totalBalance as-of (startDate − 1 dia)
+closingBalance = totalBalance as-of min(endDate, hoje)
+as-of inclusivo: data financeira <= asOfDate
+```
+
+`startDate > hoje`: histórico sem linhas e **sem** opening/closing artificiais.
+
+Invariante da seção histórica (intervalo não vazio):
+
+```text
+openingBalance + soma líquida dos fatos históricos elegíveis = closingBalance
+```
+
+Mesma elegibilidade de RN240. Transferências no consolidado: líquido 0.
+
+Projeção: saldo inicial = `totalBalance` no ponto de corte (`asOfDate` = hoje na API); eventos = `ProjectionService`. `availableBalance` só como complemento, se o schema de `docs/25` o expuser; **nunca** substitui `totalBalance`.
+
+---
+
+## 19.12.10 Fatura
+
+Relatório **somente** da fatura `invoiceId`. Sem `startDate`/`endDate`. Inexistente ou de outro usuário → **404** `NOT_FOUND`.
+
+`responsibleType` / `responsibleName` são **opcionais** (D-F20-12). A **capacidade** de filtrar é obrigatória no contrato; o envio dos parâmetros **não** é. Sem filtro: fatura completa. Com filtro: só o detalhe do responsável. Agrupar **não** substitui filtrar. PDF com filtro **não** inclui compras de outros responsáveis.
+
+Filtro informado sem compras correspondentes, fatura existente do usuário (D-F20-03): **200** com **cabeçalho oficial** (`invoiceId`, `totalAmount`, `paidAmount`, `remainingAmount` e metadados oficiais) e **listas/detalhes vazios**. “200 vazio” = coleções vazias, **não** envelope sem o recurso. O cabeçalho **não** é recalculado por responsável.
+
+`paidAmount` = SUM(invoice payments ACTIVE). `remainingAmount` = soma dos remainings das parcelas do ciclo (`docs/23` §197). Após **estorno de compra (RN117)**, `paidAmount` pode divergir de `total − remainingAmount`; não "corrigir". Reverse de pagamento de fatura reduz `paidAmount` e aumenta remaining.
+
+Créditos/alocações: só os daquela fatura. Rateio = alocação de pagamento/ajuste/crédito/settlement → parcela (RN247); **não** é divisão da compra entre responsáveis; alocação **não** se soma de novo ao valor da compra.
+
+Ajustes de parcela e de fatura em seções distintas.
+
+Fatura `SETTLED_BY_AGREEMENT`: status terminal; compras originais remaining 0; settlement/entrada conforme o domínio; despesa do Agreement **não** é compra desta fatura (nasce no ciclo futuro, RN110).
+
+PDF: OpenPDF; mesmo universo do JSON; sem UUID técnico, `creditLimit`, notas internas, e-mail do usuário, dados de outros usuários ou de responsáveis fora do filtro.
+
+---
+
+## 19.12.11 Arquitetura
+
+`ReportsController` → `ReportsService` → serviços oficiais (`ExpenseService`, `IncomeService`, `PayablesService`, `ProjectionService`, `AccountService`, serviços de cartão/fatura) e facts persistidos. **Não** reimplementar RN231, RN240, remaining de receita, §197, `ProjectionService`, saldo as-of, ownership nem timezone. Sem tabela JPA. Sem migration. Sem `payments.type`. PDF: OpenPDF 3.0.5.
+
+---
+
+## 19.12.12 Anti-duplicidade
+
+1. Despesa parcelada: uma linha de despesa; totais do período = parcelas do recorte.
+2. Compra de cartão ≠ saída de conta ≠ pagamento de fatura.
+3. Remaining da fatura não se repete em cada despesa.
+4. Agreement (D-F20-02): do `summary` efetivo saem **somente** as parcelas com `invoice_id` da fatura `SETTLED_BY_AGREEMENT`; não a despesa original inteira. A nova obrigação entra pelos installments do Agreement. Não somar parcela do ciclo liquidado + Agreement como duas obrigações efetivas do mesmo ciclo.
+5. Alocação de fatura não se soma de novo à compra.
+6. Histórico e projeção não repetem o mesmo fato.
+7. Transferência não altera o líquido consolidado.
+8. Payments `CANCELLED`/`REFUNDED` não contaminam o fluxo quando RN240 os exclui.
+9. Paginação não altera o `summary`.
+
+---
+
+## RN342 — Relatórios derivados
+
+O relatório não é fato persistido. Não criar tabela `reports`.
+
+## RN343 — Recorte de despesa por parcela
+
+Pertence ao período a despesa com parcela cujo `due_date` está no intervalo. Totais efetivos e `period*` usam **somente** essas parcelas, excluindo do `summary` as de despesa `CANCELLED`/`REFUNDED` e as parcelas com `invoice_id` de fatura `SETTLED_BY_AGREEMENT` (D-F20-02).
+
+## RN344 — dateType não é status
+
+`dateType` escolhe o campo de data. Sem `status`, o recorte inclui todos os estados cuja data cai no período. Totais efetivos excluem `CANCELLED` e, em despesas, também `REFUNDED`.
+
+## RN345 — Caixa de hoje
+
+Fato efetivo de hoje entra no histórico. Remaining ainda aberto (inclusive vencimento hoje) entra na projeção via `ProjectionService`.
+
+## RN346 — Saldos do fluxo
+
+`openingBalance` e `closingBalance` = `totalBalance` RN240 as-of. `availableBalance` não é o saldo principal.
+
+## RN347 — PDF equivalente
+
+O PDF representa o mesmo universo lógico do JSON (filtros, usuário, período, inclusão/exclusão, totais). `page`/`size` não recortam o PDF.
+
+
 # 20. Metas
 
 Regras gerais consolidadas na **Fase 15** (`§19.6`). Esta seção mantém referência resumida; em conflito, prevalece §19.6.

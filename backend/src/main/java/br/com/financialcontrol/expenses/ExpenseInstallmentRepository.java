@@ -110,4 +110,21 @@ public interface ExpenseInstallmentRepository extends JpaRepository<ExpenseInsta
       @Param("paymentMethods") Collection<PaymentMethod> paymentMethods,
       @Param("excludedStatuses") Collection<ExpenseStatus> excludedStatuses,
       @Param("rangeEnd") LocalDate rangeEnd);
+
+  @Query(
+      """
+      SELECT DISTINCT i FROM ExpenseInstallment i
+      JOIN FETCH i.expense e
+      JOIN FETCH e.category
+      LEFT JOIN FETCH e.account
+      LEFT JOIN FETCH e.creditCard
+      LEFT JOIN FETCH i.invoice
+      WHERE i.userId = :userId
+        AND i.dueDate >= :startDate
+        AND i.dueDate <= :endDate
+      """)
+  List<ExpenseInstallment> findAllByUserIdAndDueDateBetween(
+      @Param("userId") UUID userId,
+      @Param("startDate") LocalDate startDate,
+      @Param("endDate") LocalDate endDate);
 }
