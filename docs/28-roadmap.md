@@ -889,7 +889,7 @@ Usuário consegue movimentar dinheiro entre `BANK_ACCOUNT` próprias, reverter, 
 
 # 82. Fase 15 — Metas
 
-**Status:** implementação concluída — aguardando auditoria final da fase.
+**Status:** `CONCLUÍDA E APROVADA`.
 
 Objetivo:
 
@@ -938,6 +938,13 @@ Detalhe: `docs/24` §19.6 (RN264–RN280).
 # 85. Testes
 
 Ver `docs/27-testes.md` §40D. Classes: `FinancialGoalApiTest`, `FinancialGoalConcurrencyTest`, `GoalProgressTest`, `GoalReservationFoundationTest`.
+
+
+# 85A. Critério de conclusão — Fase 15
+
+Usuário consegue: criar meta vinculada a conta; contribuir e resgatar (inclusive em `COMPLETED`); concluir e cancelar conforme RN264–RN280; consultar `totalBalance`, `reservedAmount` e `availableBalance`; operações existentes respeitam saldo disponível.
+
+**Critério atendido. Fase 15 — CONCLUÍDA E APROVADA.**
 
 
 # 86. Fase 16 — Contas a pagar
@@ -1047,12 +1054,12 @@ Objetivo: acréscimos, recebimentos parciais, histórico, estorno por movimenta�
 
 Não criar tabela `receivables`. Migration V30 (`income_movements`) **executada**.
 
-Próxima etapa: **implementação da Fase 18 — Projeções** (`docs/28` §93), **somente após autorização explícita**. Permanece pendente a **auditoria final da Fase 15 — Metas**.
+Próxima etapa: **implementação da Fase 18 — Projeções** (`docs/28` §93), **somente após autorização explícita**.
 
 Fora da Parte 2: frontend, dashboard, PDF, Excel, projeções, over-receipt, patrimônio por responsável.
 
 
-# 92B. Critério da Parte 2 (implementado — aguardando reauditoria)
+# 92B. Critério da Parte 2 (implementado)
 
 Usuário consegue:
 
@@ -1664,15 +1671,15 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 9: CONCLUÍDAS. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**.
+Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9**. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 15: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**.
 
-Próxima etapa: **Fase 18 — Projeções** (`docs/28` §93), **somente após autorização explícita**. Permanece pendente a **auditoria final da Fase 15 — Metas**.
+Próxima etapa: **Fase 18 — Projeções** (`docs/28` §93), **somente após autorização explícita**. **Fase 18 — NÃO INICIADA.**
 
 **Fase 17 — CONCLUÍDA E APROVADA** (Parte 1 + Parte 2). Endpoint: `GET /api/v1/receivables`. Sem tabela `receivables`. Parte 2: `income_movements` (V30); movimentações; D73–D94 **implementadas**. Escrita de responsável (**D89**) **implementada**.
 
 Status da Fase 16: `CONCLUÍDA E APROVADA` (`docs/24` §19.7 / `docs/25` §66). Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
 
-Status da Fase 15: implementação concluída — aguardando auditoria final (`docs/24` §19.6 / `docs/25` §54E). **Não** declarar a fase `CONCLUÍDA E APROVADA` antes dessa auditoria.
+Status da Fase 15: `CONCLUÍDA E APROVADA` (`docs/24` §19.6 / `docs/25` §54E).
 
 Status da Fase 14: `CONCLUÍDA E APROVADA` (`docs/24` §19.5).
 

@@ -509,32 +509,38 @@ Ver `docs/26-seguranca.md`.
 
 Unitários, integração, API e segurança. Testcontainers com PostgreSQL. Ver `docs/27-testes.md`.
 
-Coleção Postman para testes manuais: `postman/Financial Control API.postman_collection.json` (instruções em `postman/README.md`). A collection acompanha as fases já implementadas; a pasta da Fase 7 (despesas) ainda não foi adicionada à collection.
+Coleção Postman para testes manuais: `postman/Financial Control API.postman_collection.json` (instruções em `postman/README.md`). A collection acompanha as fases já implementadas (até Fase 17 — receitas com movimentações e contas a receber).
 
 ---
 
 ## Status
 
+**Fase atual:** Fase 17 — Contas a receber — **CONCLUÍDA E APROVADA**
+
+**Próxima fase:** Fase 18 — Projeções — **NÃO INICIADA / AGUARDANDO AUTORIZAÇÃO EXPLÍCITA**
+
 ```text
-Fase 0 — Planejamento — CONCLUÍDA
-Fase 1 — Fundação / estrutura inicial — CONCLUÍDA
-Fase 2 — Persistência / modelo de dados — CONCLUÍDA
-Fase 3 — Autenticação e segurança — CONCLUÍDA
-Fase 4 — Contas — CONCLUÍDA
-Fase 5 — Categorias — CONCLUÍDA
-Fase 6 — Receitas — CONCLUÍDA
-Fase 7 — Despesas — CONCLUÍDA
-Fase 8 — Parcelamento de despesas — CONCLUÍDA
-Fase 9 — Cartões / faturas (expandida) — CONCLUÍDA / APROVADA
+Fase 0 — Planejamento — CONCLUÍDA E APROVADA
+Fase 1 — Fundação / estrutura inicial — CONCLUÍDA E APROVADA
+Fase 2 — Persistência / modelo de dados — CONCLUÍDA E APROVADA
+Fase 3 — Autenticação e segurança — CONCLUÍDA E APROVADA
+Fase 4 — Contas — CONCLUÍDA E APROVADA
+Fase 5 — Categorias — CONCLUÍDA E APROVADA
+Fase 6 — Receitas — CONCLUÍDA E APROVADA
+Fase 7 — Despesas — CONCLUÍDA E APROVADA
+Fase 8 — Parcelamento de despesas — CONCLUÍDA E APROVADA
+Fase 9 — Cartões / faturas (expandida) — CONCLUÍDA E APROVADA
+Fase 10–12 — Absorvidas na Fase 9
 Fase 13 — Parcelamento / negociação / renegociação de fatura — CONCLUÍDA E APROVADA
 Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial — CONCLUÍDA E APROVADA
-Fase 15 — Metas — implementação concluída — aguardando auditoria final
+Fase 15 — Metas — CONCLUÍDA E APROVADA
 Fase 16 — Contas a pagar — CONCLUÍDA E APROVADA
 Fase 17 — Contas a receber — CONCLUÍDA E APROVADA
+Fase 18 — Projeções — NÃO INICIADA
 ```
 
 Estado atual do backend (Fases 1–9 + 13 + 14 + 15 + 16 + 17): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas (movimentações V30), despesas, parcelamento (Fase 8), cartões/faturas (Fase 9), Agreements (Fase 13), transferências e Acerto de Saldos (Fase 14), metas financeiras (Fase 15), contas a pagar (Fase 16), contas a receber (Fase 17).
 
-Fase 13 — **CONCLUÍDA E APROVADA** (`docs/24` §19.4 / RN254). **Fase 14** — **`CONCLUÍDA E APROVADA`**. **Fase 15** — Metas: contrato em `docs/24` §19.6 / `docs/25` §54E — implementação concluída, **aguardando auditoria final**. **Fase 16** — Contas a pagar: **`CONCLUÍDA E APROVADA`**. **Fase 17** — Contas a receber (Parte 1 + Parte 2): **`CONCLUÍDA E APROVADA`** (`docs/24` §19.8 / §19.9); D73–D94 implementadas; **não** recriar `GET /api/v1/receivables`; **não** criar tabela `receivables`. Próxima fase planejada: **Fase 18 — Projeções** (não iniciada). Não implementar Refresh Token, `payments.type`, relatórios/PDF, frontend financeiro, auditoria genérica, extrato `/statement` nem `POST /invoices/{id}/close` sem autorização.
+Fases 0–17 encerradas. **Fase 18 — Projeções** é a próxima etapa planejada (**NÃO INICIADA**; somente após autorização explícita). D73–D94 implementadas; **não** recriar `GET /api/v1/receivables`; **não** criar tabela `receivables`. Não implementar Refresh Token, `payments.type`, relatórios/PDF, frontend financeiro, auditoria genérica, extrato `/statement` nem `POST /invoices/{id}/close` sem autorização.
 
 Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend financeiro, relatórios/PDF, auditoria genérica nem `payments.type` sem autorização. A edição de parcela já em fatura (§269.2.7) permanece **deferida**. Fechados: §269.3, §269.4, **§269.5** (Fase 13 — `CONCLUÍDA E APROVADA`).

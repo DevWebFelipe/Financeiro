@@ -1,0 +1,9 @@
+$kind: http-request
+description: Estorna uma movimentação (ACTIVE → REVERSED). Não cancela a duplicata. Histórico Fase 6 (removido) — POST /reverse.
+url: "{{baseUrl}}/api/v1/incomes/{{incomeId}}/movements/{{incomeMovementId}}/reverse"
+method: POST
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Movimentação deve estar REVERSED\", function () {\r\n    pm.expect(json.status).to.eql(\"REVERSED\");\r\n});\r"
+    language: text/javascript
+order: 6000

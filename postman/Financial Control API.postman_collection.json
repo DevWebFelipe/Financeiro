@@ -1837,6 +1837,125 @@
           "description": "Visão derivada de leitura. Sem tabela payables, sem GET por id e sem escritas."
         },
         {
+          "name": "Contas a Receber",
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/receivables?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "receivables"
+                  ],
+                  "query": [
+                    {
+                      "key": "startDate",
+                      "value": "2026-08-01",
+                      "disabled": true
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "2026-08-31",
+                      "disabled": true
+                    },
+                    {
+                      "key": "dateType",
+                      "value": "EXPECTED",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "EXPECTED",
+                      "disabled": true
+                    },
+                    {
+                      "key": "overdue",
+                      "value": "true",
+                      "disabled": true
+                    },
+                    {
+                      "key": "categoryId",
+                      "value": "{{incomeCategoryId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "accountId",
+                      "value": "{{accountId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "responsibleType",
+                      "value": "MINE",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sort",
+                      "value": "expectedDate",
+                      "disabled": true
+                    },
+                    {
+                      "key": "direction",
+                      "value": "asc",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Visão derivada. Resumo (summary) do universo filtrado. Período usa expectedDate ou movement_date conforme dateType."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir items\", function () {\r",
+                      "    pm.expect(json.items).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir paginação e summary\", function () {\r",
+                      "    pm.expect(json.page).to.exist;\r",
+                      "    pm.expect(json.size).to.exist;\r",
+                      "    pm.expect(json.totalItems).to.exist;\r",
+                      "    pm.expect(json.totalPages).to.exist;\r",
+                      "    pm.expect(json.summary).to.exist;\r",
+                      "    pm.expect(json.summary.futureAmount).to.exist;\r",
+                      "    pm.expect(json.summary.overdueAmount).to.exist;\r",
+                      "    pm.expect(json.summary.totalReceivableAmount).to.exist;\r",
+                      "    pm.expect(json.summary.receivedAmount).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Visão derivada de leitura (Income + income_movements). Sem tabela receivables, sem GET por id e sem escritas."
+        },
+        {
           "name": "Despesas",
           "item": [
             {
@@ -4354,12 +4473,12 @@
               ]
             },
             {
-              "name": "Receber",
+              "name": "Lançar acréscimo",
               "request": {
                 "method": "POST",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/incomes/{{incomeId}}/receive",
+                  "raw": "{{baseUrl}}/api/v1/incomes/{{incomeId}}/accruals",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4368,18 +4487,19 @@
                     "v1",
                     "incomes",
                     "{{incomeId}}",
-                    "receive"
+                    "accruals"
                   ]
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\r\n  \"accountId\": \"{{accountId}}\",\r\n  \"receivedDate\": \"{{today}}\"\r\n}",
+                  "raw": "{\r\n  \"amount\": 50.00,\r\n  \"date\": \"{{today}}\"\r\n}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "Registra ACCRUAL ACTIVE. Não movimenta conta bancária."
               },
               "response": [],
               "event": [
@@ -4389,20 +4509,13 @@
                     "exec": [
                       "const json = pm.response.json();\r",
                       "\r",
-                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
-                      "    pm.response.to.have.status(200);\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
                       "});\r",
                       "\r",
-                      "pm.test(\"Status deve ser RECEIVED\", function () {\r",
-                      "    pm.expect(json.status).to.eql(\"RECEIVED\");\r",
-                      "});\r",
-                      "\r",
-                      "pm.test(\"accountId deve ser preenchido\", function () {\r",
-                      "    pm.expect(json.accountId).to.exist;\r",
-                      "});\r",
-                      "\r",
-                      "pm.test(\"receivedDate deve ser preenchida\", function () {\r",
-                      "    pm.expect(json.receivedDate).to.exist;\r",
+                      "pm.test(\"Movimentação deve ser ACCRUAL ACTIVE\", function () {\r",
+                      "    pm.expect(json.type).to.eql(\"ACCRUAL\");\r",
+                      "    pm.expect(json.status).to.eql(\"ACTIVE\");\r",
                       "});\r"
                     ],
                     "type": "text/javascript",
@@ -4413,12 +4526,12 @@
               ]
             },
             {
-              "name": "Estornar",
+              "name": "Registrar recebimento",
               "request": {
                 "method": "POST",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/incomes/{{incomeId}}/reverse",
+                  "raw": "{{baseUrl}}/api/v1/incomes/{{incomeId}}/receipts",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4427,10 +4540,77 @@
                     "v1",
                     "incomes",
                     "{{incomeId}}",
-                    "reverse"
+                    "receipts"
                   ]
                 },
-                "description": "Desfaz o recebimento. Não cancela a duplicata."
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"accountId\": \"{{accountId}}\",\r\n  \"amount\": 100.00,\r\n  \"date\": \"{{today}}\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Registra RECEIPT ACTIVE em income_movements. Histórico Fase 6 (removido): POST /receive."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 201 Created\", function () {\r",
+                      "    pm.response.to.have.status(201);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Movimentação deve ser RECEIPT ACTIVE\", function () {\r",
+                      "    pm.expect(json.type).to.eql(\"RECEIPT\");\r",
+                      "    pm.expect(json.status).to.eql(\"ACTIVE\");\r",
+                      "});\r",
+                      "\r",
+                      "if (json.id) {\r",
+                      "    pm.environment.set(\"incomeMovementId\", json.id);\r",
+                      "}\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar movimentações",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/incomes/{{incomeId}}/movements?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "incomes",
+                    "{{incomeId}}",
+                    "movements"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Histórico paginado de income_movements (ACTIVE e REVERSED)."
               },
               "response": [],
               "event": [
@@ -4444,8 +4624,60 @@
                       "    pm.response.to.have.status(200);\r",
                       "});\r",
                       "\r",
-                      "pm.test(\"Status deve voltar para EXPECTED\", function () {\r",
-                      "    pm.expect(json.status).to.eql(\"EXPECTED\");\r",
+                      "pm.test(\"Resposta deve possuir items\", function () {\r",
+                      "    pm.expect(json.items).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir paginação\", function () {\r",
+                      "    pm.expect(json.page).to.exist;\r",
+                      "    pm.expect(json.size).to.exist;\r",
+                      "    pm.expect(json.totalItems).to.exist;\r",
+                      "    pm.expect(json.totalPages).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Estornar movimentação",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/incomes/{{incomeId}}/movements/{{incomeMovementId}}/reverse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "incomes",
+                    "{{incomeId}}",
+                    "movements",
+                    "{{incomeMovementId}}",
+                    "reverse"
+                  ]
+                },
+                "description": "Estorna uma movimentação (ACTIVE → REVERSED). Não cancela a duplicata. Histórico Fase 6 (removido): POST /reverse."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Movimentação deve estar REVERSED\", function () {\r",
+                      "    pm.expect(json.status).to.eql(\"REVERSED\");\r",
                       "});\r"
                     ],
                     "type": "text/javascript",

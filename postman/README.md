@@ -27,6 +27,7 @@ Financial Control API
 │   ├── Acerto de Saldos
 │   ├── Autenticação
 │   ├── Contas a Pagar
+│   ├── Contas a Receber
 │   ├── Despesas
 │   ├── Faturas
 │   ├── Metas
@@ -44,13 +45,16 @@ Estado da collection em relação às fases implementadas:
 
 - Fases 3 e 4: health, autenticação, usuários, contas (incluindo saldo inicial da Fase 14).
 - Fase 5: categorias.
-- Fase 6: receitas.
+- Fase 6: receitas (cadastro, listagem, consulta, alteração, cancelamento).
 - Fases 7 e 8: despesas, parcelas, pagamentos e ajustes de parcela.
 - Fase 9: cartões, créditos, faturas e pagamentos/ajustes de fatura.
 - Fase 13: negociações, renegociação e antecipação de parcela.
 - Fase 14: transferências, acerto de saldos e `PUT /accounts/{id}/initial-balance`.
 - Fase 15: metas financeiras (10 rotas em `02 - Processos → Metas`).
 - Fase 16: contas a pagar (`GET /api/v1/payables` em `02 - Processos → Contas a Pagar`).
+- Fase 17: movimentações de receita (`POST /accruals`, `POST /receipts`, `GET /movements`, `POST /movements/{id}/reverse`) e contas a receber (`GET /api/v1/receivables` em `02 - Processos → Contas a Receber`).
+
+Endpoints legados de receitas **removidos** (não constam na collection): `POST /incomes/{id}/receive` e `POST /incomes/{id}/reverse` (Fase 6 — substituídos na Fase 17 Parte 2).
 
 Não adicionar requests de endpoints que ainda não existem no backend. Não existem, por exemplo:
 
@@ -301,7 +305,23 @@ Para transferências, crie uma segunda conta `BANK_ACCOUNT` (execute `Criar` de 
 
 Receitas exigem categoria `INCOME`. Altere o body para `"type": "INCOME"`, execute `Criar` novamente e o script preencherá `{{incomeCategoryId}}`.
 
+`02 - Processos → Receitas` cobre cadastro e movimentações (Fase 17 Parte 2):
+
+- `Listar` / `Consultar` / `Criar` / `Alterar` / `Cancelar`
+- `Lançar acréscimo` → `POST /incomes/{id}/accruals`
+- `Registrar recebimento` → `POST /incomes/{id}/receipts` (preenche `{{incomeMovementId}}`)
+- `Listar movimentações` → `GET /incomes/{id}/movements`
+- `Estornar movimentação` → `POST /incomes/{id}/movements/{movementId}/reverse`
+
+Execute `Registrar recebimento` antes de `Estornar movimentação` para popular `{{incomeMovementId}}`.
+
 Não existe `GET /api/v1/categories/{id}` nem reativação de categoria.
+
+---
+
+# Contas a receber
+
+`02 - Processos → Contas a Receber → Listar` chama `GET /api/v1/receivables` com paginação e `summary` do universo filtrado. Visão derivada — sem escritas neste recurso.
 
 ---
 

@@ -616,7 +616,7 @@ Testar:
 
 # 40D. Metas financeiras (Fase 15)
 
-Contrato: `docs/24` §19.6 / `docs/25` §54E.
+**Status:** `CONCLUÍDA E APROVADA`. Contrato: `docs/24` §19.6 / `docs/25` §54E.
 
 Classes: `FinancialGoalApiTest`, `FinancialGoalConcurrencyTest`, `GoalProgressTest`, `GoalReservationFoundationTest`.
 

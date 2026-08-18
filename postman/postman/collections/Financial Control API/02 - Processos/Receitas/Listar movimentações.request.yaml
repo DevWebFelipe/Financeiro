@@ -1,0 +1,14 @@
+$kind: http-request
+description: Histórico paginado de income_movements (ACTIVE e REVERSED).
+url: "{{baseUrl}}/api/v1/incomes/{{incomeId}}/movements?page=0&size=20"
+method: GET
+queryParams:
+  - key: page
+    value: "0"
+  - key: size
+    value: "20"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Resposta deve possuir items\", function () {\r\n    pm.expect(json.items).to.be.an(\"array\");\r\n});\r\n\r\npm.test(\"Resposta deve possuir paginação\", function () {\r\n    pm.expect(json.page).to.exist;\r\n    pm.expect(json.size).to.exist;\r\n    pm.expect(json.totalItems).to.exist;\r\n    pm.expect(json.totalPages).to.exist;\r\n});\r"
+    language: text/javascript
+order: 5500

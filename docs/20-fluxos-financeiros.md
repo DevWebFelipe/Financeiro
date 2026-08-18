@@ -2880,28 +2880,32 @@ Then:
 saldo da conta A diminui R$ 500.
 
 
-# 174. Fluxo — Estorno de receita recebida
+# 174. Fluxo — Estorno de movimentação de receita (Fase 17 Parte 2)
 
-Receita em `RECEIVED`.
+Receita com RECEIPT `ACTIVE` (status `EXPECTED` parcial ou `RECEIVED` integral).
 
-O estorno **não cancela** a duplicata.
+O estorno **não cancela** a duplicata. Opera sobre **uma movimentação** em `income_movements`.
 
 Conta:
 
 R$ 10.000
 
 
-Recebimento original:
+Recebimento original (RECEIPT `ACTIVE`):
 
 +R$ 5.400
 
 
-Saldo:
+Saldo (RN240 — somente RECEIPT `ACTIVE`):
 
 R$ 15.400
 
 
-Usuário solicita estorno da movimentação (`POST /incomes/{id}/movements/{movementId}/reverse`). **Histórico Fase 6 (removido):** `POST /incomes/{id}/reverse`.
+Usuário solicita estorno da movimentação:
+
+`POST /incomes/{id}/movements/{movementId}/reverse`
+
+**Histórico Fase 6 (removido):** `POST /incomes/{id}/reverse`.
 
 
 ## Resultado
@@ -2911,21 +2915,26 @@ Saldo:
 R$ 10.000
 
 
+Movimentação:
+
+RECEIPT `REVERSED` (permanece no histórico)
+
+
 Receita:
 
-EXPECTED
+`EXPECTED` se remaining > 0; `RECEIVED` se remaining = 0 após outros RECEIPT `ACTIVE`
 
 
-`accountId` limpo (`null`).
+Remaining derivado:
 
-`receivedDate` limpo (`null`).
+`incomes.amount` + SUM(ACCRUAL `ACTIVE`) − SUM(RECEIPT `ACTIVE`)
 
 
-A duplicata continua ativa, continua existindo e pode ser recebida novamente.
+A conta e a data do recebimento ficam em `income_movements` (**D76-A**). Novos RECEIPTs **não** preenchem `incomes.account_id` / `incomes.received_date`. Colunas legadas no cabeçalho não são fonte de verdade.
 
-A movimentação desfeita é a que realmente ocorreu, na conta que recebeu o valor.
+A duplicata continua ativa e pode receber novamente via `POST /receipts`.
 
-O estorno não é bloqueado se o saldo ficar negativo.
+O estorno de RECEIPT mantém RN200 (**D80-A**): não bloqueado se o saldo ficar negativo.
 
 
 Exemplo:
@@ -2944,84 +2953,102 @@ RECEIVED → CANCELLED
 ```
 
 
-# 175. Fluxo — Correção de receita recebida
+# 175. Fluxo — Correção de receita com movimentações
 
-Para alterar valor, conta ou demais dados financeiros de uma receita já recebida:
+Para alterar valor, conta ou demais dados financeiros após recebimentos:
 
 ```text
-RECEIVED
+RECEIVED (ou EXPECTED com RECEIPT ACTIVE)
     ↓
-REVERSE
+POST /movements/{movementId}/reverse  (RECEIPT → REVERSED)
     ↓
-EXPECTED
+EXPECTED (se remaining > 0)
     ↓
-PUT / edição
+PUT / edição cadastral (somente EXPECTED; amount bloqueado se houver qualquer movimentação — D79)
     ↓
-EXPECTED
+POST /receipts  (novo RECEIPT ACTIVE)
     ↓
-RECEIVE
-    ↓
-RECEIVED
+RECEIVED (se remaining = 0)
 ```
 
 
 Exemplo:
 
-após o estorno, a receita é editada para R$ 5.500 e recebida novamente.
+após estornar o RECEIPT, a receita é editada (campos permitidos) e recebida novamente com conta e data informadas no body do receipt.
 
 
-Saldo final:
-
-R$ 15.500
-
-
-# 176. Fluxo — Transições de status de receita
+# 176. Fluxo — Transições de status de receita (Fase 17 Parte 2)
 
 Cancelamento e estorno **não são a mesma operação**.
+
+Modelo operacional atual:
+
+```text
+Income (duplicata)
+  ↓
+ACCRUAL / RECEIPT  →  income_movements
+  ↓
+remaining derivado  →  status EXPECTED / RECEIVED
+  ↓
+saldo (RECEIPT ACTIVE)  /  receivables  /  histórico
+```
 
 Ciclo oficial:
 
 ```text
-CRIAR RECEITA
+CRIAR RECEITA (EXPECTED)
       ↓
    EXPECTED
     ↙     ↘
-RECEBER   CANCELAR
+RECEIPT   CANCELAR (D73)
    ↓          ↓
 RECEIVED   CANCELLED
    ↓
-ESTORNAR
+ESTORNAR MOVIMENTO (RECEIPT → REVERSED)
    ↓
-EXPECTED
+EXPECTED (se remaining > 0)
+```
+
+Operações canônicas:
+
+```text
+POST /accruals          → ACCRUAL ACTIVE (não movimenta conta)
+POST /receipts          → RECEIPT ACTIVE (movimenta conta; remaining derivado)
+GET  /movements         → histórico (ACTIVE e REVERSED)
+POST /movements/{id}/reverse  → ACTIVE → REVERSED
+POST /cancel            → EXPECTED → CANCELLED (somente sem RECEIPT ACTIVE)
 ```
 
 Permitidas:
 
 ```text
 EXPECTED
-   ├── receive ──► RECEIVED
-   └── cancel  ──► CANCELLED
+   ├── POST /receipts (parcial ou integral) ──► EXPECTED ou RECEIVED
+   ├── POST /accruals ──► EXPECTED (reabre RECEIVED se remaining > 0)
+   └── POST /cancel ──► CANCELLED (somente sem RECEIPT ACTIVE)
 
 RECEIVED
-   └── reverse ──► EXPECTED
+   ├── POST /accruals ──► EXPECTED
+   └── POST /movements/{id}/reverse (RECEIPT) ──► EXPECTED (se remaining > 0)
 ```
 
-Cancelar inutiliza a duplicata. Estornar desfaz o recebimento e mantém a duplicata ativa como não recebida.
+Cancelar inutiliza a duplicata. Estornar desfaz **uma movimentação** e mantém a duplicata ativa.
 
-Não permitidas nesta fase:
+Não permitidas:
 
 ```text
-RECEIVED  → CANCELLED
+RECEIVED  → CANCELLED (D73)
 CANCELLED → EXPECTED
 CANCELLED → RECEIVED
-RECEIVED  → RECEIVED via receive
+Estorno de ACCRUAL se remaining < 0
+Cancelar com RECEIPT ACTIVE
 ```
 
 Não existe reativação de receita cancelada nesta fase.
 
-Não existe status `REVERSED`.
+Status da movimentação: `ACTIVE` / `REVERSED` (não confundir com status da duplicata).
 
-**Fase 17 Parte 2 (D73 — implementado):** cancelamento direto `RECEIVED` → `CANCELLED` **não** existe. Cancelar somente sem RECEIPT `ACTIVE`. Sem estorno automático. Caminho: estornar RECEIPT ACTIVE e depois cancelar. `docs/24` §19.9.8.
+**Receivables (D94):** `dateType=RECEIVED` considera qualquer RECEIPT histórico (`ACTIVE` ou `REVERSED`); `receivedAmount`, `remaining`, saldo e filtro `accountId` usam somente RECEIPT `ACTIVE`.
 
 
 # 177. Fluxo — Acerto de Saldos (Fase 14 — implementado)

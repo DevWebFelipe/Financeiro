@@ -1,0 +1,12 @@
+$kind: http-request
+description: Registra ACCRUAL ACTIVE. Não movimenta conta bancária.
+url: "{{baseUrl}}/api/v1/incomes/{{incomeId}}/accruals"
+method: POST
+body:
+  type: json
+  content: "{\r\n  \"amount\": 50.00,\r\n  \"date\": \"{{today}}\"\r\n}"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 201 Created\", function () {\r\n    pm.response.to.have.status(201);\r\n});\r\n\r\npm.test(\"Movimentação deve ser ACCRUAL ACTIVE\", function () {\r\n    pm.expect(json.type).to.eql(\"ACCRUAL\");\r\n    pm.expect(json.status).to.eql(\"ACTIVE\");\r\n});\r"
+    language: text/javascript
+order: 4500

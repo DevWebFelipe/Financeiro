@@ -3499,7 +3499,7 @@ Nenhuma lacuna abaixo pode ser preenchida por suposição técnica.
 
 Itens **ainda bloqueados**: 269.1 (`payments.type`); 269.2.7 (edição de parcela já em fatura).
 
-**Fase 17 Parte 2:** contrato consolidado em `docs/24` §19.9; D73–D93 **fechadas** (§269.6). **Não** é item 269 clássico de lacuna do modelo V1. A **implementação** (migration de `income_movements`) permanece bloqueada até autorização explícita. **D86** omitido de propósito.
+**Fase 17 Parte 2 — `CONCLUÍDA E APROVADA`:** contrato consolidado em `docs/24` §19.9; D73–D94 **fechadas e implementadas** (§269.6). Migration **V30** (`income_movements`) executada. **D86** omitido de propósito. Não é item 269 clássico de lacuna do modelo V1.
 
 O item 269.2 está **fechado** para ACCOUNT/NONE na Fase 8. O item **269.3 está fechado** na Fase 9 (rateio RN247; status da fatura RN090/RN091). O item **269.4 está fechado** na Fase 9 (RN117). O item **269.5 está fechado** (Fase 13 D1–D11 — `docs/24` §19.4).
 
@@ -3599,9 +3599,9 @@ Resumo (D1–D11 + emenda RN254 no código):
 10. `used_limit` = **contractedTotal** — D11.
 
 
-## 269.6 Fase 17 Parte 2 — decisões D73–D93 (FECHADAS)
+## 269.6 Fase 17 Parte 2 — decisões D73–D94 (FECHADAS E IMPLEMENTADAS)
 
-Contrato: `docs/24` §19.9. Auditoria: **APROVADA COM RESSALVAS**. Decisões **fechadas**. **Não** criar Flyway, entidade, enum, CHECK, teste de código nem endpoint até autorização explícita de implementar.
+Contrato: `docs/24` §19.9. Auditoria: **APROVADA COM RESSALVAS** (consolidação final concluída). Decisões **fechadas** e **implementadas**. Migration **V30** executada; tabela `income_movements` em produção.
 
 Enunciados fechados: `docs/24` §19.9.18. **D86** omitido de propósito (salto D85 → D87). Não criar D86 fictícia.
 
@@ -3628,5 +3628,6 @@ Enunciados fechados: `docs/24` §19.9.18. **D86** omitido de propósito (salto D
 | D91-A | RN010A: qualquer RECEIPT (ACTIVE ou REVERSED). |
 | D92-B | `summary.receivedAmount` = SUM(RECEIPT ACTIVE) do universo filtrado. |
 | D93 | PUT só `EXPECTED`. Sem exceção para RECEIVED. |
+| D94 | **Fechamento lacuna D88:** `dateType=RECEIVED` filtra `movement_date` de **qualquer** RECEIPT (ACTIVE ou REVERSED). Distinto de `receivedAmount`, `remaining`, saldo e `accountId` (somente RECEIPT ACTIVE). **IMPLEMENTADA.** |
 
-Não restam D73–D93 em aberto. A implementação continua bloqueada até autorização explícita.
+Todas as decisões D73–D94 estão **fechadas** e **implementadas**.

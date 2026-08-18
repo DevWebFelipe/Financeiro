@@ -1479,7 +1479,7 @@ Body: vazio.
 
 # 54E. Metas financeiras (Fase 15)
 
-**Status:** contrato oficial `docs/24` §19.6 — implementação concluída; aguardando auditoria final da fase.
+**Status:** contrato oficial `docs/24` §19.6 — **`CONCLUÍDA E APROVADA`**.
 
 Base: `/api/v1/financial-goals`. Auth: Bearer. Ownership: somente recursos do usuário autenticado; mismatch → **404** (sem distinguir). Propriedades JSON desconhecidas → **400** `VALIDATION_ERROR` (`FAIL_ON_UNKNOWN_PROPERTIES`).
 

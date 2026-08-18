@@ -1,0 +1,12 @@
+$kind: http-request
+description: Registra RECEIPT ACTIVE em income_movements. Histórico Fase 6 (removido) — POST /receive.
+url: "{{baseUrl}}/api/v1/incomes/{{incomeId}}/receipts"
+method: POST
+body:
+  type: json
+  content: "{\r\n  \"accountId\": \"{{accountId}}\",\r\n  \"amount\": 100.00,\r\n  \"date\": \"{{today}}\"\r\n}"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 201 Created\", function () {\r\n    pm.response.to.have.status(201);\r\n});\r\n\r\npm.test(\"Movimentação deve ser RECEIPT ACTIVE\", function () {\r\n    pm.expect(json.type).to.eql(\"RECEIPT\");\r\n    pm.expect(json.status).to.eql(\"ACTIVE\");\r\n});\r\n\r\nif (json.id) {\r\n    pm.environment.set(\"incomeMovementId\", json.id);\r\n}\r"
+    language: text/javascript
+order: 5000

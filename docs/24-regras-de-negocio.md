@@ -2833,7 +2833,7 @@ Usuário consegue: transferir entre `BANK_ACCOUNT` próprias; reverter transfer�
 
 # 19.6 Contrato da Fase 15 — Metas
 
-**Status:** implementação concluída — aguardando auditoria final da fase.
+**Status:** `CONCLUÍDA E APROVADA`.
 
 **Emenda (resgate em COMPLETED):** meta `COMPLETED` **permite** resgate (parcial ou total); resgate **não** altera o status. Ver §19.6.4, §19.6.6 e §19.6.14.
 
@@ -3535,13 +3535,11 @@ Nenhum POST/PUT/PATCH/DELETE em `/payables`. Nenhum `GET /payables/{id}` nesta f
 
 # 19.8 Contrato da Fase 17 — Contas a receber (Parte 1)
 
-**Status:** Parte 1 **CONCLUÍDA E APROVADA**. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes). Endpoint: `GET /api/v1/receivables`. Pacote: `receivables`.
+**Status:** **Fase 17 — CONCLUÍDA E APROVADA** (Parte 1 + Parte 2). Parte 1: auditoria final **APROVADA COM RESSALVAS** (não bloqueantes). Endpoint: `GET /api/v1/receivables`. Pacote: `receivables`. Parte 2: movimentações em `income_movements` (V30); D73–D94 **implementadas** — contrato em §19.9.
 
-Autoridade: `AGENTS.md` §28 → esta seção → `docs/25` §67 → `docs/27` §40F / `docs/28`.
+Autoridade: `AGENTS.md` §28 → esta seção → `docs/25` §67 → `docs/27` §40F / §40G / `docs/28`.
 
-Não declarar a Fase 17 inteira concluída. A Parte 2 (baixas/movimentações) permanece futura. Não declarar a Fase 15 `CONCLUÍDA E APROVADA` nesta etapa.
-
-Receivables **não** cria fato financeiro novo. A fonte de verdade permanece `incomes` (Fase 6). A visão apenas lê.
+Receivables **não** cria fato financeiro novo. A fonte de verdade permanece `incomes` + `income_movements` (Parte 2). A visão apenas lê.
 
 ---
 

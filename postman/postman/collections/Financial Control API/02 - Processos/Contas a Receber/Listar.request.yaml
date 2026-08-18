@@ -1,0 +1,44 @@
+$kind: http-request
+description: Visão derivada. Resumo (summary) do universo filtrado. Período usa expectedDate ou movement_date conforme dateType.
+url: "{{baseUrl}}/api/v1/receivables?page=0&size=20"
+method: GET
+queryParams:
+  - key: startDate
+    value: "2026-08-01"
+    disabled: true
+  - key: endDate
+    value: "2026-08-31"
+    disabled: true
+  - key: dateType
+    value: EXPECTED
+    disabled: true
+  - key: status
+    value: EXPECTED
+    disabled: true
+  - key: overdue
+    value: "true"
+    disabled: true
+  - key: categoryId
+    value: "{{incomeCategoryId}}"
+    disabled: true
+  - key: accountId
+    value: "{{accountId}}"
+    disabled: true
+  - key: responsibleType
+    value: MINE
+    disabled: true
+  - key: sort
+    value: expectedDate
+    disabled: true
+  - key: direction
+    value: asc
+    disabled: true
+  - key: page
+    value: "0"
+  - key: size
+    value: "20"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Resposta deve possuir items\", function () {\r\n    pm.expect(json.items).to.be.an(\"array\");\r\n});\r\n\r\npm.test(\"Resposta deve possuir paginação e summary\", function () {\r\n    pm.expect(json.page).to.exist;\r\n    pm.expect(json.size).to.exist;\r\n    pm.expect(json.totalItems).to.exist;\r\n    pm.expect(json.totalPages).to.exist;\r\n    pm.expect(json.summary).to.exist;\r\n    pm.expect(json.summary.futureAmount).to.exist;\r\n    pm.expect(json.summary.overdueAmount).to.exist;\r\n    pm.expect(json.summary.totalReceivableAmount).to.exist;\r\n    pm.expect(json.summary.receivedAmount).to.exist;\r\n});\r"
+    language: text/javascript
+order: 1000

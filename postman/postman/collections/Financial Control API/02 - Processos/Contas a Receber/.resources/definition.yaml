@@ -1,0 +1,3 @@
+$kind: collection
+description: Visão derivada de leitura (Income + income_movements). Sem tabela receivables, sem GET por id e sem escritas.
+order: 3500
