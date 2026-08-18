@@ -544,7 +544,8 @@
                     {
                       "key": "type",
                       "value": "EXPENSE",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Tipo da categoria.\n\nValores aceitos:\n- INCOME — Receita\n- EXPENSE — Despesa"
                     },
                     {
                       "key": "active",
@@ -602,7 +603,7 @@
                     }
                   }
                 },
-                "description": "Não existe GET /categories/{id} nem activate. Execute de novo com type INCOME para preencher incomeCategoryId (usado em Receitas)."
+                "description": "Não existe GET /categories/{id} nem activate. Execute de novo com type INCOME para preencher incomeCategoryId (usado em Receitas).\n\ntype — Tipo da categoria.\n\nValores aceitos:\n- INCOME — Receita\n- EXPENSE — Despesa"
               },
               "response": [],
               "event": [
@@ -670,7 +671,8 @@
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "type — Tipo da categoria.\n\nValores aceitos:\n- INCOME — Receita\n- EXPENSE — Despesa"
               },
               "response": [],
               "event": [
@@ -868,7 +870,7 @@
                     }
                   }
                 },
-                "description": "Execute uma segunda vez com outro nome para obter destinationAccountId via Listar (necessário em Transferências)."
+                "description": "Execute uma segunda vez com outro nome para obter destinationAccountId via Listar (necessário em Transferências).\n\ntype — Tipo da conta.\n\nValores aceitos:\n- BANK_ACCOUNT — Conta bancária\n- CASH — Dinheiro em espécie"
               },
               "response": [],
               "event": [
@@ -945,7 +947,8 @@
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "type — Tipo da conta.\n\nValores aceitos:\n- BANK_ACCOUNT — Conta bancária\n- CASH — Dinheiro em espécie"
               },
               "response": [],
               "event": [
@@ -1746,7 +1749,8 @@
                     {
                       "key": "status",
                       "value": "OPEN,PARTIALLY_PAID",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Filtro pelos status persistidos da origem da linha (parcela ACCOUNT/NONE ou fatura). Aceita um ou mais valores separados por vírgula. OVERDUE não é status.\n\nValores aceitos:\n- OPEN — Parcela/despesa aberta ou fatura aberta\n- PARTIALLY_PAID — Parcela/despesa parcialmente paga\n- PAID — Paga (na prática tende a conjunto vazio por elegibilidade)\n- CANCELLED — Cancelada (tende a conjunto vazio por elegibilidade)\n- REFUNDED — Estornada (tende a conjunto vazio por elegibilidade)\n- SCHEDULED — Fatura futura agendada\n- CLOSED — Fatura fechada\n- SETTLED_BY_AGREEMENT — Fatura liquidada por negociação (tende a conjunto vazio por elegibilidade)"
                     },
                     {
                       "key": "overdue",
@@ -1771,7 +1775,8 @@
                     {
                       "key": "responsibleType",
                       "value": "MINE",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Classificação do responsável para controle e prestação de contas. Não é usuário do sistema. OTHER exige responsibleName.\n\nValores aceitos:\n- MINE — Meu\n- GIULIA — Giulia\n- EDERSON — Ederson\n- ELISIANE — Elisiane\n- OTHER — Outro responsável\n\nNeste recurso o filtro vale somente para linhas INSTALLMENT. Faturas não são filtradas por responsável."
                     },
                     {
                       "key": "search",
@@ -1781,12 +1786,14 @@
                     {
                       "key": "sort",
                       "value": "dueDate",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Campo de ordenação. Default dueDate.\n\nValores aceitos:\n- name — Nome da linha\n- purchaseDate — Data da compra\n- dueDate — Data de vencimento\n- originalAmount — Valor original\n- remainingAmount — Saldo restante\n- status — Status persistido\n- paidAmount — Valor pago"
                     },
                     {
                       "key": "direction",
                       "value": "asc",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Direção da ordenação do campo principal. Default asc. Desempate sempre id ASC. A API aceita maiúsculas ou minúsculas.\n\nValores aceitos:\n- asc — Crescente\n- desc — Decrescente"
                     },
                     {
                       "key": "page",
@@ -1868,12 +1875,14 @@
                     {
                       "key": "dateType",
                       "value": "EXPECTED",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Qual data o período (startDate/endDate) recorta. Obrigatório quando há período.\n\nValores aceitos:\n- EXPECTED — Filtra por expectedDate\n- RECEIVED — Filtra por movement_date de qualquer RECEIPT (ACTIVE ou REVERSED)"
                     },
                     {
                       "key": "status",
                       "value": "EXPECTED",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Filtro de status da linha. Omitido = EXPECTED. CANCELLED não é aceito.\n\nValores aceitos:\n- EXPECTED — Receita esperada\n- RECEIVED — Receita recebida"
                     },
                     {
                       "key": "overdue",
@@ -1893,17 +1902,20 @@
                     {
                       "key": "responsibleType",
                       "value": "MINE",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Classificação do responsável para controle e prestação de contas. Não é usuário do sistema. OTHER exige responsibleName.\n\nValores aceitos:\n- MINE — Meu\n- GIULIA — Giulia\n- EDERSON — Ederson\n- ELISIANE — Elisiane\n- OTHER — Outro responsável"
                     },
                     {
                       "key": "sort",
                       "value": "expectedDate",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Campo de ordenação. Default expectedDate.\n\nValores aceitos:\n- amount — Valor\n- expectedDate — Data prevista\n- receivedDate — Data de recebimento\n- description — Descrição\n- status — Status\n- createdAt — Data de criação"
                     },
                     {
                       "key": "direction",
                       "value": "asc",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Direção da ordenação do campo principal. Default asc. Desempate sempre id ASC. A API aceita maiúsculas ou minúsculas.\n\nValores aceitos:\n- asc — Crescente\n- desc — Decrescente"
                     },
                     {
                       "key": "page",
@@ -2176,7 +2188,8 @@
                     {
                       "key": "status",
                       "value": "",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Status persistido da despesa. OVERDUE não é status; é um indicador derivado.\n\nValores aceitos:\n- OPEN — Aberta\n- PARTIALLY_PAID — Parcialmente paga\n- PAID — Paga\n- CANCELLED — Cancelada\n- REFUNDED — Estornada (refund da despesa)"
                     },
                     {
                       "key": "categoryId",
@@ -2196,12 +2209,14 @@
                     {
                       "key": "responsibleType",
                       "value": "",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Classificação do responsável para controle e prestação de contas. Não é usuário do sistema. OTHER exige responsibleName.\n\nValores aceitos:\n- MINE — Meu\n- GIULIA — Giulia\n- EDERSON — Ederson\n- ELISIANE — Elisiane\n- OTHER — Outro responsável"
                     },
                     {
                       "key": "paymentMethod",
                       "value": "",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Forma de pagamento da despesa.\n\nValores aceitos:\n- ACCOUNT — Via conta bancária ou dinheiro em espécie\n- CREDIT_CARD — Compra no cartão de crédito; liquidação somente pela fatura\n- NONE — Sem conta vinculada"
                     },
                     {
                       "key": "page",
@@ -2319,7 +2334,7 @@
                     }
                   }
                 },
-                "description": "Exemplo ACCOUNT 1/1. Para cartão: paymentMethod CREDIT_CARD e creditCardId. installmentCount omitido = 1. Despesa CREDIT_CARD não usa Pagar."
+                "description": "Exemplo ACCOUNT 1/1. Para cartão: paymentMethod CREDIT_CARD e creditCardId. installmentCount omitido = 1. Despesa CREDIT_CARD não usa Pagar.\n\npaymentMethod — Forma de pagamento da despesa.\n\nValores aceitos:\n- ACCOUNT — Via conta bancária ou dinheiro em espécie\n- CREDIT_CARD — Compra no cartão de crédito; liquidação somente pela fatura\n- NONE — Sem conta vinculada\n\nresponsibleType — Classificação do responsável para controle e prestação de contas. Não é usuário do sistema. OTHER exige responsibleName.\n\nValores aceitos:\n- MINE — Meu\n- GIULIA — Giulia\n- EDERSON — Ederson\n- ELISIANE — Elisiane\n- OTHER — Outro responsável"
               },
               "response": [],
               "event": [
@@ -2382,7 +2397,8 @@
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "paymentMethod — Forma de pagamento da despesa.\n\nValores aceitos:\n- ACCOUNT — Via conta bancária ou dinheiro em espécie\n- CREDIT_CARD — Compra no cartão de crédito; liquidação somente pela fatura\n- NONE — Sem conta vinculada\n\nresponsibleType — Classificação do responsável para controle e prestação de contas. Não é usuário do sistema. OTHER exige responsibleName.\n\nValores aceitos:\n- MINE — Meu\n- GIULIA — Giulia\n- EDERSON — Ederson\n- ELISIANE — Elisiane\n- OTHER — Outro responsável"
               },
               "response": [],
               "event": [
@@ -2652,7 +2668,8 @@
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "type — Tipo do ajuste. O amount é sempre positivo. reason é texto obrigatório e não é enum.\n\nValores aceitos:\n- DISCOUNT — Desconto (reduz a obrigação)\n- SURCHARGE — Acréscimo (aumenta a obrigação)"
               },
               "response": [],
               "event": [
@@ -2909,7 +2926,7 @@
                     }
                   }
                 },
-                "description": "ACCOUNT/NONE: não envie settlement (400 SETTLEMENT_NOT_ALLOWED). CREDIT_CARD exige settlement CARD_CREDIT ou ACCOUNT."
+                "description": "ACCOUNT/NONE: não envie settlement (400 SETTLEMENT_NOT_ALLOWED). CREDIT_CARD exige settlement CARD_CREDIT ou ACCOUNT.\n\nsettlement — Forma de liquidação do estorno de compra no cartão. Proibido em despesas ACCOUNT/NONE (400 SETTLEMENT_NOT_ALLOWED).\n\nValores aceitos:\n- CARD_CREDIT — Gera crédito no cartão no valor liquidado; não movimenta conta\n- ACCOUNT — Devolve à conta o que saiu dela; a parte paga com crédito de cartão volta como crédito"
               },
               "response": [],
               "event": [
@@ -3016,7 +3033,8 @@
                     {
                       "key": "status",
                       "value": "",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Status persistido da fatura. PARTIALLY_PAID não é status de fatura.\n\nValores aceitos:\n- SCHEDULED — Fatura futura agendada\n- OPEN — Fatura aberta (ciclo corrente)\n- CLOSED — Fatura fechada\n- PAID — Fatura paga\n- SETTLED_BY_AGREEMENT — Liquidada por negociação"
                     }
                   ]
                 }
@@ -3372,7 +3390,7 @@
                     }
                   }
                 },
-                "description": "SURCHARGE exige remaining > 0 (RN247A). reason é obrigatório."
+                "description": "SURCHARGE exige remaining > 0 (RN247A). reason é obrigatório.\n\ntype — Tipo do ajuste. O amount é sempre positivo. reason é texto obrigatório e não é enum.\n\nValores aceitos:\n- DISCOUNT — Desconto (reduz a obrigação)\n- SURCHARGE — Acréscimo (aumenta a obrigação)"
               },
               "response": [],
               "event": [
@@ -3522,7 +3540,8 @@
                     {
                       "key": "status",
                       "value": "ACTIVE",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Status persistido da meta.\n\nValores aceitos:\n- ACTIVE — Meta ativa\n- COMPLETED — Meta concluída\n- CANCELLED — Meta cancelada"
                     },
                     {
                       "key": "page",
@@ -4864,7 +4883,8 @@
                     {
                       "key": "status",
                       "value": "",
-                      "disabled": true
+                      "disabled": true,
+                      "description": "Status persistido da receita.\n\nValores aceitos:\n- EXPECTED — Receita esperada, ainda não recebida\n- RECEIVED — Receita recebida\n- CANCELLED — Receita cancelada"
                     },
                     {
                       "key": "categoryId",
@@ -4989,7 +5009,7 @@
                     }
                   }
                 },
-                "description": "Requer categoria type INCOME em {{incomeCategoryId}}."
+                "description": "Requer categoria type INCOME em {{incomeCategoryId}}.\n\nresponsibleType — Classificação opcional do responsável da receita (D89 / RN306). Não é usuário do sistema. OTHER exige responsibleName.\n\nValores aceitos:\n- MINE — Meu\n- GIULIA — Giulia\n- EDERSON — Ederson\n- ELISIANE — Elisiane\n- OTHER — Outro responsável"
               },
               "response": [],
               "event": [
@@ -5049,7 +5069,8 @@
                       "language": "json"
                     }
                   }
-                }
+                },
+                "description": "responsibleType — Classificação opcional do responsável da receita (D89 / RN306). Não é usuário do sistema. OTHER exige responsibleName.\n\nValores aceitos:\n- MINE — Meu\n- GIULIA — Giulia\n- EDERSON — Ederson\n- ELISIANE — Elisiane\n- OTHER — Outro responsável"
               },
               "response": [],
               "event": [
@@ -5373,7 +5394,8 @@
                         {
                           "key": "status",
                           "value": "OPEN",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Status persistido da despesa. OVERDUE não é status; é um indicador derivado.\n\nValores aceitos:\n- OPEN — Aberta\n- PARTIALLY_PAID — Parcialmente paga\n- PAID — Paga\n- CANCELLED — Cancelada\n- REFUNDED — Estornada (refund da despesa)"
                         },
                         {
                           "key": "categoryId",
@@ -5393,7 +5415,8 @@
                         {
                           "key": "responsibleType",
                           "value": "MINE",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Classificação do responsável para controle e prestação de contas. Não é usuário do sistema. OTHER exige responsibleName.\n\nValores aceitos:\n- MINE — Meu\n- GIULIA — Giulia\n- EDERSON — Ederson\n- ELISIANE — Elisiane\n- OTHER — Outro responsável"
                         },
                         {
                           "key": "responsibleName",
@@ -5403,17 +5426,20 @@
                         {
                           "key": "paymentMethod",
                           "value": "ACCOUNT",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Forma de pagamento da despesa.\n\nValores aceitos:\n- ACCOUNT — Via conta bancária ou dinheiro em espécie\n- CREDIT_CARD — Compra no cartão de crédito; liquidação somente pela fatura\n- NONE — Sem conta vinculada"
                         },
                         {
                           "key": "sort",
                           "value": "dueDate",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Campo de ordenação. Default dueDate.\n\nValores aceitos:\n- dueDate — Menor due_date das parcelas do recorte\n- expenseDate — Data da despesa\n- description — Descrição\n- status — Status\n- createdAt — Data de criação\n- periodObligation — Obrigação no período\n- periodRemaining — Restante no período"
                         },
                         {
                           "key": "direction",
                           "value": "asc",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Direção da ordenação do campo principal. Default asc. Desempate sempre id ASC. A API aceita maiúsculas ou minúsculas.\n\nValores aceitos:\n- asc — Crescente\n- desc — Decrescente"
                         },
                         {
                           "key": "page",
@@ -5492,7 +5518,8 @@
                         {
                           "key": "status",
                           "value": "OPEN",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Status persistido da despesa. OVERDUE não é status; é um indicador derivado.\n\nValores aceitos:\n- OPEN — Aberta\n- PARTIALLY_PAID — Parcialmente paga\n- PAID — Paga\n- CANCELLED — Cancelada\n- REFUNDED — Estornada (refund da despesa)"
                         },
                         {
                           "key": "categoryId",
@@ -5512,7 +5539,8 @@
                         {
                           "key": "responsibleType",
                           "value": "MINE",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Classificação do responsável para controle e prestação de contas. Não é usuário do sistema. OTHER exige responsibleName.\n\nValores aceitos:\n- MINE — Meu\n- GIULIA — Giulia\n- EDERSON — Ederson\n- ELISIANE — Elisiane\n- OTHER — Outro responsável"
                         },
                         {
                           "key": "responsibleName",
@@ -5522,17 +5550,20 @@
                         {
                           "key": "paymentMethod",
                           "value": "ACCOUNT",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Forma de pagamento da despesa.\n\nValores aceitos:\n- ACCOUNT — Via conta bancária ou dinheiro em espécie\n- CREDIT_CARD — Compra no cartão de crédito; liquidação somente pela fatura\n- NONE — Sem conta vinculada"
                         },
                         {
                           "key": "sort",
                           "value": "dueDate",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Campo de ordenação. Default dueDate.\n\nValores aceitos:\n- dueDate — Menor due_date das parcelas do recorte\n- expenseDate — Data da despesa\n- description — Descrição\n- status — Status\n- createdAt — Data de criação\n- periodObligation — Obrigação no período\n- periodRemaining — Restante no período"
                         },
                         {
                           "key": "direction",
                           "value": "asc",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Direção da ordenação do campo principal. Default asc. Desempate sempre id ASC. A API aceita maiúsculas ou minúsculas.\n\nValores aceitos:\n- asc — Crescente\n- desc — Decrescente"
                         },
                         {
                           "key": "page",
@@ -5599,7 +5630,8 @@
                       "query": [
                         {
                           "key": "dateType",
-                          "value": "EXPECTED"
+                          "value": "EXPECTED",
+                          "description": "Tipo de data do recorte. Obrigatório neste relatório.\n\nValores aceitos:\n- EXPECTED — Recorte por expectedDate\n- RECEIVED — Recorte por movement_date de RECEIPT ACTIVE"
                         },
                         {
                           "key": "startDate",
@@ -5614,7 +5646,8 @@
                         {
                           "key": "status",
                           "value": "EXPECTED",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Filtro de status da receita no relatório. Omitido = todos.\n\nValores aceitos:\n- EXPECTED — Receita esperada\n- RECEIVED — Receita recebida\n- CANCELLED — Receita cancelada"
                         },
                         {
                           "key": "categoryId",
@@ -5629,7 +5662,8 @@
                         {
                           "key": "responsibleType",
                           "value": "MINE",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Classificação do responsável para controle e prestação de contas. Não é usuário do sistema. OTHER exige responsibleName.\n\nValores aceitos:\n- MINE — Meu\n- GIULIA — Giulia\n- EDERSON — Ederson\n- ELISIANE — Elisiane\n- OTHER — Outro responsável"
                         },
                         {
                           "key": "responsibleName",
@@ -5639,12 +5673,14 @@
                         {
                           "key": "sort",
                           "value": "expectedDate",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Campo de ordenação. Default expectedDate quando dateType=EXPECTED, ou createdAt quando dateType=RECEIVED.\n\nValores aceitos:\n- expectedDate — Data prevista\n- description — Descrição\n- amount — Valor\n- status — Status\n- createdAt — Data de criação\n- receivedAmount — Valor recebido"
                         },
                         {
                           "key": "direction",
                           "value": "asc",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Direção da ordenação do campo principal. Default asc. Desempate sempre id ASC. A API aceita maiúsculas ou minúsculas.\n\nValores aceitos:\n- asc — Crescente\n- desc — Decrescente"
                         },
                         {
                           "key": "page",
@@ -5716,7 +5752,8 @@
                       "query": [
                         {
                           "key": "dateType",
-                          "value": "EXPECTED"
+                          "value": "EXPECTED",
+                          "description": "Tipo de data do recorte. Obrigatório neste relatório.\n\nValores aceitos:\n- EXPECTED — Recorte por expectedDate\n- RECEIVED — Recorte por movement_date de RECEIPT ACTIVE"
                         },
                         {
                           "key": "startDate",
@@ -5731,7 +5768,8 @@
                         {
                           "key": "status",
                           "value": "EXPECTED",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Filtro de status da receita no relatório. Omitido = todos.\n\nValores aceitos:\n- EXPECTED — Receita esperada\n- RECEIVED — Receita recebida\n- CANCELLED — Receita cancelada"
                         },
                         {
                           "key": "categoryId",
@@ -5746,7 +5784,8 @@
                         {
                           "key": "responsibleType",
                           "value": "MINE",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Classificação do responsável para controle e prestação de contas. Não é usuário do sistema. OTHER exige responsibleName.\n\nValores aceitos:\n- MINE — Meu\n- GIULIA — Giulia\n- EDERSON — Ederson\n- ELISIANE — Elisiane\n- OTHER — Outro responsável"
                         },
                         {
                           "key": "responsibleName",
@@ -5756,12 +5795,14 @@
                         {
                           "key": "sort",
                           "value": "expectedDate",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Campo de ordenação. Default expectedDate quando dateType=EXPECTED, ou createdAt quando dateType=RECEIVED.\n\nValores aceitos:\n- expectedDate — Data prevista\n- description — Descrição\n- amount — Valor\n- status — Status\n- createdAt — Data de criação\n- receivedAmount — Valor recebido"
                         },
                         {
                           "key": "direction",
                           "value": "asc",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Direção da ordenação do campo principal. Default asc. Desempate sempre id ASC. A API aceita maiúsculas ou minúsculas.\n\nValores aceitos:\n- asc — Crescente\n- desc — Decrescente"
                         },
                         {
                           "key": "page",
@@ -5828,7 +5869,8 @@
                       "query": [
                         {
                           "key": "dateType",
-                          "value": "EXPECTED"
+                          "value": "EXPECTED",
+                          "description": "Tipo de data do recorte. Obrigatório neste relatório.\n\nValores aceitos:\n- EXPECTED — Recorte por expectedDate\n- RECEIVED — Recorte por movement_date de RECEIPT ACTIVE"
                         },
                         {
                           "key": "startDate",
@@ -5843,12 +5885,14 @@
                         {
                           "key": "sort",
                           "value": "name",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Campo de ordenação. Default name.\n\nValores aceitos:\n- name — Nome da categoria\n- type — Tipo da categoria (EXPENSE ou INCOME)"
                         },
                         {
                           "key": "direction",
                           "value": "asc",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Direção da ordenação do campo principal. Default asc. Desempate sempre id ASC. A API aceita maiúsculas ou minúsculas.\n\nValores aceitos:\n- asc — Crescente\n- desc — Decrescente"
                         },
                         {
                           "key": "page",
@@ -5920,7 +5964,8 @@
                       "query": [
                         {
                           "key": "dateType",
-                          "value": "EXPECTED"
+                          "value": "EXPECTED",
+                          "description": "Tipo de data do recorte. Obrigatório neste relatório.\n\nValores aceitos:\n- EXPECTED — Recorte por expectedDate\n- RECEIVED — Recorte por movement_date de RECEIPT ACTIVE"
                         },
                         {
                           "key": "startDate",
@@ -5935,12 +5980,14 @@
                         {
                           "key": "sort",
                           "value": "name",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Campo de ordenação. Default name.\n\nValores aceitos:\n- name — Nome da categoria\n- type — Tipo da categoria (EXPENSE ou INCOME)"
                         },
                         {
                           "key": "direction",
                           "value": "asc",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Direção da ordenação do campo principal. Default asc. Desempate sempre id ASC. A API aceita maiúsculas ou minúsculas.\n\nValores aceitos:\n- asc — Crescente\n- desc — Decrescente"
                         },
                         {
                           "key": "page",
@@ -6008,11 +6055,13 @@
                         {
                           "key": "nature",
                           "value": "BOTH",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Natureza dos lançamentos. Default BOTH. Com EXPENSE, não envie dateType (400 VALIDATION_ERROR).\n\nValores aceitos:\n- EXPENSE — Somente despesas\n- INCOME — Somente receitas\n- BOTH — Despesas e receitas"
                         },
                         {
                           "key": "dateType",
-                          "value": "EXPECTED"
+                          "value": "EXPECTED",
+                          "description": "Tipo de data do recorte das receitas neste relatório. Obrigatório quando o relatório inclui receitas.\n\nValores aceitos:\n- EXPECTED — Recorte por expectedDate\n- RECEIVED — Recorte por movement_date de RECEIPT ACTIVE"
                         },
                         {
                           "key": "startDate",
@@ -6027,12 +6076,14 @@
                         {
                           "key": "sort",
                           "value": "responsibleType",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Campo de ordenação. Default responsibleType.\n\nValores aceitos:\n- responsibleType — Tipo do responsável\n- responsibleName — Nome do responsável (NULLS LAST em ASC)"
                         },
                         {
                           "key": "direction",
                           "value": "asc",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Direção da ordenação do campo principal. Default asc. Desempate sempre id ASC. A API aceita maiúsculas ou minúsculas.\n\nValores aceitos:\n- asc — Crescente\n- desc — Decrescente"
                         },
                         {
                           "key": "page",
@@ -6105,11 +6156,13 @@
                         {
                           "key": "nature",
                           "value": "BOTH",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Natureza dos lançamentos. Default BOTH. Com EXPENSE, não envie dateType (400 VALIDATION_ERROR).\n\nValores aceitos:\n- EXPENSE — Somente despesas\n- INCOME — Somente receitas\n- BOTH — Despesas e receitas"
                         },
                         {
                           "key": "dateType",
-                          "value": "EXPECTED"
+                          "value": "EXPECTED",
+                          "description": "Tipo de data do recorte das receitas neste relatório. Obrigatório quando o relatório inclui receitas.\n\nValores aceitos:\n- EXPECTED — Recorte por expectedDate\n- RECEIVED — Recorte por movement_date de RECEIPT ACTIVE"
                         },
                         {
                           "key": "startDate",
@@ -6124,12 +6177,14 @@
                         {
                           "key": "sort",
                           "value": "responsibleType",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Campo de ordenação. Default responsibleType.\n\nValores aceitos:\n- responsibleType — Tipo do responsável\n- responsibleName — Nome do responsável (NULLS LAST em ASC)"
                         },
                         {
                           "key": "direction",
                           "value": "asc",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Direção da ordenação do campo principal. Default asc. Desempate sempre id ASC. A API aceita maiúsculas ou minúsculas.\n\nValores aceitos:\n- asc — Crescente\n- desc — Decrescente"
                         },
                         {
                           "key": "page",
@@ -6212,12 +6267,14 @@
                         {
                           "key": "sort",
                           "value": "name",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Campo de ordenação. Default name.\n\nValores aceitos:\n- name — Nome do cartão\n- holderName — Nome do titular"
                         },
                         {
                           "key": "direction",
                           "value": "asc",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Direção da ordenação do campo principal. Default asc. Desempate sempre id ASC. A API aceita maiúsculas ou minúsculas.\n\nValores aceitos:\n- asc — Crescente\n- desc — Decrescente"
                         },
                         {
                           "key": "page",
@@ -6301,12 +6358,14 @@
                         {
                           "key": "sort",
                           "value": "name",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Campo de ordenação. Default name.\n\nValores aceitos:\n- name — Nome do cartão\n- holderName — Nome do titular"
                         },
                         {
                           "key": "direction",
                           "value": "asc",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Direção da ordenação do campo principal. Default asc. Desempate sempre id ASC. A API aceita maiúsculas ou minúsculas.\n\nValores aceitos:\n- asc — Crescente\n- desc — Decrescente"
                         },
                         {
                           "key": "page",
@@ -6375,7 +6434,8 @@
                         {
                           "key": "responsibleType",
                           "value": "MINE",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Classificação do responsável para controle e prestação de contas. Não é usuário do sistema. OTHER exige responsibleName.\n\nValores aceitos:\n- MINE — Meu\n- GIULIA — Giulia\n- EDERSON — Ederson\n- ELISIANE — Elisiane\n- OTHER — Outro responsável"
                         },
                         {
                           "key": "responsibleName",
@@ -6443,7 +6503,8 @@
                         {
                           "key": "responsibleType",
                           "value": "MINE",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Classificação do responsável para controle e prestação de contas. Não é usuário do sistema. OTHER exige responsibleName.\n\nValores aceitos:\n- MINE — Meu\n- GIULIA — Giulia\n- EDERSON — Ederson\n- ELISIANE — Elisiane\n- OTHER — Outro responsável"
                         },
                         {
                           "key": "responsibleName",
@@ -6516,7 +6577,8 @@
                         {
                           "key": "flowType",
                           "value": "BOTH",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Tipo de fluxo. Default BOTH. Este relatório não possui dateType.\n\nValores aceitos:\n- HISTORICAL — Somente fatos já ocorridos\n- PROJECTED — Somente projeção futura\n- BOTH — Histórico e projeção"
                         },
                         {
                           "key": "startDate",
@@ -6536,12 +6598,14 @@
                         {
                           "key": "sort",
                           "value": "date",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Campo de ordenação da seção histórica. Default date.\n\nValores aceitos:\n- date — Data do fato\n- amount — Valor\n- type — Tipo do fato histórico"
                         },
                         {
                           "key": "direction",
                           "value": "asc",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Direção da ordenação do campo principal. Default asc. Desempate sempre id ASC. A API aceita maiúsculas ou minúsculas.\n\nValores aceitos:\n- asc — Crescente\n- desc — Decrescente"
                         },
                         {
                           "key": "page",
@@ -6607,7 +6671,8 @@
                         {
                           "key": "flowType",
                           "value": "BOTH",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Tipo de fluxo. Default BOTH. Este relatório não possui dateType.\n\nValores aceitos:\n- HISTORICAL — Somente fatos já ocorridos\n- PROJECTED — Somente projeção futura\n- BOTH — Histórico e projeção"
                         },
                         {
                           "key": "startDate",
@@ -6627,12 +6692,14 @@
                         {
                           "key": "sort",
                           "value": "date",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Campo de ordenação da seção histórica. Default date.\n\nValores aceitos:\n- date — Data do fato\n- amount — Valor\n- type — Tipo do fato histórico"
                         },
                         {
                           "key": "direction",
                           "value": "asc",
-                          "disabled": true
+                          "disabled": true,
+                          "description": "Direção da ordenação do campo principal. Default asc. Desempate sempre id ASC. A API aceita maiúsculas ou minúsculas.\n\nValores aceitos:\n- asc — Crescente\n- desc — Decrescente"
                         },
                         {
                           "key": "page",
