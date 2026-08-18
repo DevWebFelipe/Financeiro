@@ -352,10 +352,13 @@ br.com.financialcontrol
 ├── payables
 ├── receivables
 ├── projections
+├── dashboard
 └── ...
 ```
 
 Pacote da Fase 18 (`projections`): visão derivada; **sem** entidade JPA; **sem** tabela (`docs/24` §19.10).
+
+Pacote da Fase 19 (`dashboard`): visão derivada; **sem** entidade JPA; **sem** tabela (`docs/24` §19.11).
 
 Pacotes da Fase 3:
 
@@ -398,6 +401,11 @@ Pacotes da Fase 18 (`docs/24` §19.10 — **CONCLUÍDA E APROVADA**):
 
 - Pacote `projections` — visão derivada de fluxo de caixa (`ProjectionController` → `ProjectionService` → `ProjectionCalculator` → consultas/repositórios).
 - **Sem** entidade JPA `Projection`, **sem** tabela `projections`, **sem** migration.
+
+Pacotes da Fase 19 (`docs/24` §19.11 — **CONCLUÍDA E APROVADA**):
+
+- Pacote `dashboard` — visão derivada consolidada (`DashboardController` → `DashboardService` → `ProjectionService` / `AccountService` / `PayablesService` / `ReceivablesService` / `CreditCardService`).
+- **Sem** entidade JPA `Dashboard`, **sem** tabela `dashboard`, **sem** migration.
 - Consome remaining e saldo oficiais; não cria fonte de verdade paralela.
 
 Pacotes da Fase 5:

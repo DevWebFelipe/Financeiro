@@ -1,0 +1,14 @@
+$kind: http-request
+description: Modo startDate + endDate (inclusivos). Horizonte só no bloco projection. Não misturar com year/month nem months.
+url: "{{baseUrl}}/api/v1/dashboard?startDate={{today}}&endDate={{today}}"
+method: GET
+queryParams:
+  - key: startDate
+    value: "{{today}}"
+  - key: endDate
+    value: "{{today}}"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Resposta deve possuir balance e projection.months\", function () {\r\n    pm.expect(json.balance.totalBalance).to.exist;\r\n    pm.expect(json.projection.months).to.be.an(\"array\").that.is.not.empty;\r\n});\r"
+    language: text/javascript
+order: 2000

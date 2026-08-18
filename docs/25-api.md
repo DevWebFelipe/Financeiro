@@ -2334,62 +2334,68 @@ Detalhe: `docs/24` §19.10.
 **SUPERADO.** Não implementar `GET /api/v1/projections/monthly`. A série mensal pertence a `GET /api/v1/projections` (`docs/25` §68 / `docs/24` §19.10).
 
 
-# 71. Dashboard
+# 71. Dashboard (Fase 19)
 
-Endpoint:
+**Status:** `docs/24` §19.11 — **CONCLUÍDA E APROVADA**. D282–D289 **fechadas** e **implementadas**. Endpoint: `GET /api/v1/dashboard`. Sem tabela `dashboard`. Sem frontend. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
 
+```text
 GET /api/v1/dashboard
+```
+
+Auth: Bearer obrigatório. Sem token / inválido / expirado / usuário desativado → **401** `UNAUTHORIZED`. Dono = JWT. Não existe `userId` na query.
+
+Visão derivada consolidada. Sem POST/PUT/PATCH/DELETE. Sem `GET /dashboard/{id}`. Sem `GET /dashboard/monthly` (superado). Sem `accountId`, `page`, `size`.
+
+Query params desconhecidos → **400** `VALIDATION_ERROR`.
+
+## Query params
+
+Os mesmos modos de período de `GET /api/v1/projections` (`docs/25` §68), **exceto** `accountId`, `page` e `size` (não existem neste recurso):
+
+| Param | Obrigatório | Default | Semântica |
+|---|---|---|---|
+| `startDate` | não | omitido | exige `endDate`; não misturar com `year`/`month` nem `months` |
+| `endDate` | não | omitido | exige `startDate` |
+| `year` | não | omitido | exige `month` |
+| `month` | não | omitido | 1–12; exige `year` |
+| `months` | não | omitido | 1–12 |
+
+Sem parâmetro de período: próximos **12** meses (primeiro mês parcial se hoje não for dia 1). Horizonte > 12 meses, filtros misturados, período **inteiramente** no passado → **400** `VALIDATION_ERROR` (D202).
+
+O horizonte recorta **somente** o bloco `projection`. Saldo, payables, receivables e cartões são snapshot de **hoje** (`America/Sao_Paulo`).
+
+## Response 200
+
+Envelope (`br.com.financialcontrol.dashboard.dto`):
+
+- `asOfDate`, `startDate`, `endDate`
+- `balance`: `totalBalance`, `reservedAmount`, `availableBalance` (contas ativas; RN240)
+- `projection`: `summary`, `months`, `quarters` — DTOs da Fase 18. **Sem** `events` / `undatedEvents` (permanecem em `GET /projections`)
+- `payables`: `totalRemaining`, `installmentRemaining`, `invoiceRemaining`, `overdueRemaining`, `overdueInstallmentRemaining`, `overdueInvoiceRemaining`, `openCount`, `overdueCount` (overdue = regra de payables; SCHEDULED nunca overdue)
+- `receivables`: `ReceivableSummaryResponse` oficial (universo default EXPECTED)
+- `accounts[]`: contas ativas com saldos oficiais
+- `creditCards[]`: cartões ativos com `creditLimit`, `usedLimit`, `availableLimit`, `invoiceRemaining`, `overdueInvoiceRemaining`
+
+`usedLimit` **não** é caixa. Não somar `payables.totalRemaining` com `projection.summary.projectedExpense`.
+
+Ownership: dados de outro usuário não vazam.
+
+Regras: `docs/24` §19.11. Testes: `docs/27` §40I (`DashboardApiTest`).
 
 
-# 72. Dashboard
+# 72. Dashboard — composição
 
-Deve fornecer informações suficientes para:
-
-saldo;
-
-receitas;
-
-despesas;
-
-faturas;
-
-contas a pagar;
-
-projeções.
+Deve fornecer, no mesmo GET: saldo; receitas previstas (receivables); obrigações em aberto (payables); faturas (remaining no bloco payables/cartões); projeção (sem eventos). Detalhe das listas: `GET /payables`, `GET /receivables`, `GET /projections`.
 
 
-# 73. Dashboard
+# 73. Dashboard — fontes
 
-Response conceitual:
-
-{
-  "balance": 5000.00,
-  "income": {
-    "received": 5400.00,
-    "expected": 3000.00
-  },
-  "expenses": {
-    "paid": 2000.00,
-    "open": 1500.00
-  },
-  "creditCards": {
-    "openInvoices": 2500.00
-  }
-}
+Saldo = `AccountService`. Remaining de parcela/fatura = serviços oficiais via `PayablesService.summarize`. Receivables = `ReceivablesService`. Projeção = `ProjectionService`. Sem fórmula paralela.
 
 
-# 74. Dashboard mensal
+# 74. Dashboard mensal (superado)
 
-Endpoint:
-
-GET /api/v1/dashboard/monthly
-
-
-Query:
-
-year
-
-month
+**SUPERADO.** Não implementar `GET /api/v1/dashboard/monthly`. A série mensal da projeção pertence a `GET /api/v1/projections` e ao bloco `projection.months` de `GET /api/v1/dashboard` (`docs/24` §19.11 / D283).
 
 
 # 75. Gráficos

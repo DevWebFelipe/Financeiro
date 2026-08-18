@@ -1956,6 +1956,195 @@
           "description": "Visão derivada de leitura (Income + income_movements). Sem tabela receivables, sem GET por id e sem escritas."
         },
         {
+          "name": "Dashboard",
+          "item": [
+            {
+              "name": "Consultar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/dashboard",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "dashboard"
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir snapshot e projection sem events\", function () {\r",
+                      "    pm.expect(json.asOfDate).to.exist;\r",
+                      "    pm.expect(json.balance).to.exist;\r",
+                      "    pm.expect(json.projection).to.exist;\r",
+                      "    pm.expect(json.projection.months).to.be.an(\"array\");\r",
+                      "    pm.expect(json.payables).to.exist;\r",
+                      "    pm.expect(json.receivables).to.exist;\r",
+                      "    pm.expect(json.accounts).to.be.an(\"array\");\r",
+                      "    pm.expect(json.creditCards).to.be.an(\"array\");\r",
+                      "    pm.expect(json.events).to.equal(undefined);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Série mensal default deve ter 12 meses\", function () {\r",
+                      "    pm.expect(json.projection.months.length).to.eql(12);\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar por período",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/dashboard?startDate={{today}}&endDate={{today}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "dashboard"
+                  ],
+                  "query": [
+                    {
+                      "key": "startDate",
+                      "value": "{{today}}"
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "{{today}}"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Consultar por ano e mês",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/dashboard?year={{projectionYear}}&month={{projectionMonth}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "dashboard"
+                  ],
+                  "query": [
+                    {
+                      "key": "year",
+                      "value": "{{projectionYear}}"
+                    },
+                    {
+                      "key": "month",
+                      "value": "{{projectionMonth}}"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const today = pm.collectionVariables.get(\"today\");\r",
+                      "const parts = today.split(\"-\");\r",
+                      "pm.variables.set(\"projectionYear\", parts[0]);\r",
+                      "pm.variables.set(\"projectionMonth\", String(Number(parts[1])));\r"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Série mensal da projection deve ter 1 mês\", function () {\r",
+                      "    pm.expect(json.projection.months).to.be.an(\"array\").that.has.lengthOf(1);\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar múltiplos meses",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/dashboard?months=3",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "dashboard"
+                  ],
+                  "query": [
+                    {
+                      "key": "months",
+                      "value": "3"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Série mensal da projection deve ter 3 meses\", function () {\r",
+                      "    pm.expect(json.projection.months).to.be.an(\"array\").that.has.lengthOf(3);\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Visão derivada consolidada. Sem tabela dashboard, sem escritas, sem GET /dashboard/monthly e sem accountId."
+        },
+        {
           "name": "Despesas",
           "item": [
             {
@@ -6008,6 +6197,207 @@
               ]
             },
             "description": "includeEvents não existe na V1. Parâmetro desconhecido → 400 VALIDATION_ERROR."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 400 Bad Request\", function () {\r",
+                  "    pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser VALIDATION_ERROR\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"VALIDATION_ERROR\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dashboard sem token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "GET /dashboard sem Authorization. Esperado 401 UNAUTHORIZED."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 401 Unauthorized\", function () {\r",
+                  "    pm.response.to.have.status(401);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser UNAUTHORIZED\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"UNAUTHORIZED\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dashboard com período no passado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard?startDate={{projectionPastStart}}&endDate={{projectionPastEnd}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "{{projectionPastStart}}"
+                },
+                {
+                  "key": "endDate",
+                  "value": "{{projectionPastEnd}}"
+                }
+              ]
+            },
+            "description": "Período solicitado inteiramente anterior a hoje. Esperado 400 VALIDATION_ERROR (D202)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const today = pm.collectionVariables.get(\"today\");\r",
+                  "const year = Number(today.split(\"-\")[0]) - 1;\r",
+                  "pm.variables.set(\"projectionPastStart\", year + \"-01-01\");\r",
+                  "pm.variables.set(\"projectionPastEnd\", year + \"-01-31\");\r"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 400 Bad Request\", function () {\r",
+                  "    pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser VALIDATION_ERROR\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"VALIDATION_ERROR\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dashboard com parâmetro includeEvents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard?includeEvents=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "includeEvents",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "includeEvents não existe no Dashboard. Parâmetro desconhecido → 400 VALIDATION_ERROR."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 400 Bad Request\", function () {\r",
+                  "    pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser VALIDATION_ERROR\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"VALIDATION_ERROR\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dashboard com accountId",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard?accountId={{accountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "{{accountId}}"
+                }
+              ]
+            },
+            "description": "accountId não existe em GET /dashboard (visão consolidada). Parâmetro desconhecido → 400 VALIDATION_ERROR."
           },
           "response": [],
           "event": [

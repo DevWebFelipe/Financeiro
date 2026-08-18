@@ -40,6 +40,8 @@ Do not create provisional code, preparatory migrations, presumed enums/CHECKs, o
 
 **Phase 18 — `CONCLUÍDA E APROVADA`:** `docs/24` §19.10 — projections (`GET /api/v1/projections`; D95–D204 implemented). No `projections` table. No Flyway migration. Final audit: **APROVADA COM RESSALVAS** (non-blocking).
 
+**Phase 19 — `CONCLUÍDA E APROVADA`:** `docs/24` §19.11 — dashboard (`GET /api/v1/dashboard`; D282–D289 implemented). No `dashboard` table. No `GET /dashboard/monthly`. No `accountId`. Frontend out of this phase. Final audit: **APROVADA COM RESSALVAS** (non-blocking).
+
 Mandatory remaining questions: `docs/23-modelo-de-dados.md` seção 269 (`payments.type`; §269.2.7).
 
 Everything else already consolidated in `docs/23` remains the source of truth.

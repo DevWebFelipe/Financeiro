@@ -1138,33 +1138,28 @@ Usuário deve conseguir responder:
 
 # 98. Fase 19 — Dashboard
 
+**Status:** **CONCLUÍDA E APROVADA**. D282–D289 **fechadas** e **implementadas**. Endpoint `GET /api/v1/dashboard`. Sem tabela `dashboard`. Sem frontend. Sem `GET /dashboard/monthly`. Sem `GET /projections/monthly`. Collection Postman atualizada. Testes: `DashboardApiTest`. Suíte: **519** testes; `mvn verify` BUILD SUCCESS. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes; não reabrem a fase). Sem correções obrigatórias.
+
 Objetivo:
 
-Criar visão geral financeira.
+Visão geral financeira de leitura. Reutiliza a projeção da Fase 18. Contrato: `docs/24` §19.11 / `docs/25` §71 / `docs/27` §40I.
 
 
 # 99. Dashboard
 
-Exibir:
+Exibir (backend):
 
-- saldo total;
-- receitas;
-- despesas;
-- faturas;
-- contas a pagar;
+- saldo total / reservado / disponível;
+- receitas previstas (receivables);
+- obrigações em aberto (payables: parcela vs fatura);
+- faturas (remaining);
 - contas a receber;
-- projeção.
+- projeção (summary + months + quarters; eventos em `GET /projections`).
 
 
 # 100. Dashboard
 
-Criar gráficos:
-
-- despesas por categoria;
-- despesas por cartão;
-- despesas por responsável;
-- receitas;
-- fluxo de caixa.
+Gráficos por categoria/cartão/responsável e `GET /api/v1/reports/*` **fora** desta fase (Fase 20 / frontend). O fluxo de caixa mensal do Dashboard usa `projection.months`.
 
 
 # 101. Fase 20 — Relatórios
@@ -1685,11 +1680,13 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9**. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 15: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**. Fase 17: **CONCLUÍDA E APROVADA**. Fase 18: **CONCLUÍDA E APROVADA**.
+Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9**. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 15: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**. Fase 17: **CONCLUÍDA E APROVADA**. Fase 18: **CONCLUÍDA E APROVADA**. Fase 19: **CONCLUÍDA E APROVADA**.
 
-Próxima etapa: **Fase 19 — Dashboard** (`docs/28` §98). **NÃO INICIADA.**
+Próxima etapa: **Fase 20 — Relatórios** (`docs/28` §101). **NÃO INICIADA.** Frontend da Fase 19 permanece fora até a Fase 21.
 
-**Fase 18 — CONCLUÍDA E APROVADA.** Endpoint: `GET /api/v1/projections`. Sem tabela `projections`. D95–D204 **implementadas**. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes). Testes: `ProjectionApiTest`, `ProjectionCalculatorTest`. Suíte: **509** testes.
+**Fase 19 — CONCLUÍDA E APROVADA.** Endpoint: `GET /api/v1/dashboard`. Sem tabela `dashboard`. D282–D289 **implementadas**. Testes: `DashboardApiTest`. Suíte: **519** testes. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
+
+**Fase 18 — CONCLUÍDA E APROVADA.** Endpoint: `GET /api/v1/projections`. Sem tabela `projections`. D95–D204 **implementadas**. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes). Testes: `ProjectionApiTest`, `ProjectionCalculatorTest`.
 
 **Fase 17 — CONCLUÍDA E APROVADA** (Parte 1 + Parte 2). Endpoint: `GET /api/v1/receivables`. Sem tabela `receivables`. Parte 2: `income_movements` (V30); movimentações; D73–D94 **implementadas**. Escrita de responsável (**D89**) **implementada**.
 

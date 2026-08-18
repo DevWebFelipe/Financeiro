@@ -1,0 +1,3 @@
+$kind: collection
+description: Visão derivada consolidada do Dashboard. Sem tabela dashboard, sem GET por id, sem escritas, sem GET /dashboard/monthly e sem accountId.
+order: 3600

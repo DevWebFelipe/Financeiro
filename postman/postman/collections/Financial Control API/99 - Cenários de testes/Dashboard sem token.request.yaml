@@ -1,0 +1,11 @@
+$kind: http-request
+description: GET /dashboard sem Authorization. Esperado 401 UNAUTHORIZED.
+url: "{{baseUrl}}/api/v1/dashboard"
+method: GET
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 401 Unauthorized\", function () {\r\n    pm.response.to.have.status(401);\r\n});\r\n\r\npm.test(\"Código de erro deve ser UNAUTHORIZED\", function () {\r\n    pm.expect(json.code).to.eql(\"UNAUTHORIZED\");\r\n});\r"
+    language: text/javascript
+order: 11150

@@ -5130,6 +5130,74 @@ Grupo separado. Não alteram `closingBalance` de nenhum período nem `projectedF
 A V1 não possui `includeEvents`. Eventos seguem o contrato normal. O parâmetro, se enviado, é desconhecido → **400**.
 
 
+# 19.11 Contrato da Fase 19 — Dashboard
+
+**Status:** **CONCLUÍDA E APROVADA**. Decisões **D282–D289 fechadas** e **implementadas**. Endpoint `GET /api/v1/dashboard`. Sem tabela `dashboard`. Sem frontend. Sem migration. Sem `GET /dashboard/monthly`. Sem `GET /projections/monthly`. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes; não reabrem a fase). Sem correções obrigatórias.
+
+Autoridade: `AGENTS.md` §28 → esta seção → `docs/25` §71 → `docs/27` §40I → `docs/28` §98.
+
+O Dashboard é uma **visão derivada consolidada**. Não cria fato financeiro. Não reabre D95–D204, RN240, RN256, D201, D124/D135 nem remaining oficiais.
+
+## 19.11.1 Escopo
+
+**Inclui (implementado):**
+
+1. `GET /api/v1/dashboard` (Bearer; dono = JWT);
+2. snapshot de saldo (RN145 / RN240 / reserved / available) das contas **ativas**;
+3. bloco de projeção reutilizando `ProjectionService` **sem** `events` / `undatedEvents`;
+4. resumo de contas a pagar (parcela ACCOUNT/NONE vs fatura; overdue pela regra de payables);
+5. resumo de contas a receber (universo default `EXPECTED` de `ReceivablesService`);
+6. saldos oficiais por conta ativa;
+7. cartões ativos: limite derivado + remaining de fatura (não são caixa).
+
+**Fora do escopo desta fase:**
+
+- frontend, gráficos, `GET /api/v1/reports/*` (Fase 20);
+- `GET /dashboard/monthly`;
+- `accountId` neste endpoint (projeção por conta permanece em `GET /projections`);
+- lista de metas, lista de eventos, transferências como fluxo;
+- indicador histórico de “pago no período”;
+- tabela / migration / persistência.
+
+## 19.11.2 Fontes oficiais
+
+| Bloco | Fonte |
+|---|---|
+| Saldo | `AccountService.calculateCurrentBalance` / `calculateReservedAmount` |
+| Projeção | `ProjectionService.project` (D95–D204 intactos) |
+| Payables | `PayablesService.summarize` (remaining RN231 / fatura; overdue de payables) |
+| Receivables | `ReceivablesService.list` default EXPECTED (`ReceivableSummaryResponse`) |
+| Cartões | `CreditCardService.getLimit` + remaining INVOICE de payables |
+
+**Proibido** somar `payables.totalRemaining` com `projection.projectedExpense` (mesmo remaining em recortes diferentes: estoque atual vs horizonte). Compra CREDIT_CARD não é saída de conta; a fatura é.
+
+## 19.11.3 Período
+
+Query iguais às da Fase 18 (sem `accountId`, `page`, `size`): `startDate`, `endDate`, `year`, `month`, `months`. Default 12 meses. Teto 12 meses calendário. Período inteiramente no passado → **400** (D202). Snapshot de saldo/payables/receivables/cartões é **hoje** (`America/Sao_Paulo`); o horizonte aplica-se só ao bloco `projection`.
+
+## 19.11.4 Decisões D282–D289 (FECHADAS)
+
+| Id | Decisão |
+|---|---|
+| **D282** | Fase 19 = Dashboard. Reutiliza a projeção da Fase 18. Sem novo contrato de projeção. Frontend fora. |
+| **D283** | Endpoint de série mensal = `GET /api/v1/projections`. Não criar `/projections/monthly`. |
+| **D284** | Atrasados na projeção continuam no primeiro período (D124/D135). Sem seção nova de atrasados na projeção. |
+| **D285** | `accountId` na projeção: saldo da conta; eventos UNASSIGNED (D201). Dashboard consolidado, sem `accountId`. |
+| **D286** | Período da projeção inalterado. `startDate`/`endDate` não obrigatórios. |
+| **D287** | Eventos permanecem no envelope de `/projections`. Dashboard não aninha eventos no mês. |
+| **D288** | Tipos de evento da Fase 18 inalterados. Sem TRANSFER futuro. |
+| **D289** | Reverse de RECEIPT reabre remaining; a receita pode voltar à projeção como EXPECTED. |
+
+## RN336 — Dashboard derivado
+
+O Dashboard não é fato persistido. Não criar tabela `dashboard`. Consome saldo, remaining e projeção oficiais.
+
+
+## RN337 — Não duplicação no Dashboard
+
+Não somar payables + projeção + receivables como se fossem obrigações distintas. Não tratar `usedLimit` como caixa. Transferência não é entrada nem saída do Dashboard.
+
+
 # 20. Metas
 
 Regras gerais consolidadas na **Fase 15** (`§19.6`). Esta seção mantém referência resumida; em conflito, prevalece §19.6.
@@ -5253,37 +5321,27 @@ O sistema não deve considerar uma receita `EXPECTED` como dinheiro disponível 
 
 ## RN145 — Saldo total
 
-Saldo total é a soma dos saldos das contas ativas.
+Saldo total do Dashboard é a soma dos saldos das contas **ativas** (RN240). Cartões não entram. Detalhe: §19.11.
 
 
 ## RN146 — Cartões
 
-Cartões não entram no saldo bancário.
+Cartões não entram no saldo bancário. `usedLimit` é compromisso de limite, não caixa. A obrigação de caixa é a fatura.
 
 
 ## RN147 — Faturas
 
-Faturas não devem ser subtraídas duas vezes.
+Faturas não devem ser subtraídas duas vezes (compra + fatura). No Dashboard, remaining de fatura vem de payables; a projeção embutida usa o mesmo remaining oficial.
 
 
 ## RN148 — Receitas
 
-Dashboard deve diferenciar:
-
-recebidas;
-
-previstas.
+Dashboard diferencia previstas (`EXPECTED` remaining / `ReceivableSummaryResponse`) e já recebidas (efeito no saldo atual; reverse reabre remaining — D289).
 
 
 ## RN149 — Despesas
 
-Dashboard deve diferenciar:
-
-pagas;
-
-abertas;
-
-futuras.
+Dashboard diferencia obrigações em aberto (payables: parcela vs fatura; overdue vs não overdue) e fluxo futuro (projeção). “Pagas” = já no saldo atual; não há contador histórico de pago-no-período nesta fase.
 
 
 # 24. Relatórios

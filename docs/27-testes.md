@@ -1043,6 +1043,37 @@ Não persistir projeção. Não criar tabela. Não testar recorrência, cenário
 Suíte: **509** testes; 0 falhas; `mvn test` e `mvn verify` BUILD SUCCESS. Não alterar regras das Fases 0–17 para “facilitar” a projeção.
 
 
+# 40I. Dashboard (Fase 19 — concluída e aprovada)
+
+Contrato: `docs/24` §19.11 / `docs/25` §71.
+
+**Status:** **CONCLUÍDA E APROVADA**. D282–D289 **fechadas** e **implementadas**. Classe: `DashboardApiTest`. Sem tabela. Sem frontend. Sem `GET /dashboard/monthly`. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
+
+Timezone / relógio: o mesmo da Fase 18 (`America/Sao_Paulo`; Clock injetável; `2026-08-17`).
+
+## Cenários mínimos (implementados)
+
+1. 401 sem Bearer;
+2. query desconhecida (`includeEvents`, `accountId`) → 400;
+3. período inteiramente no passado / `year` xor `month` / `months=13` → 400;
+4. default 12 meses; sem fatos: saldo = inicial; payables/receivables 0;
+5. saldo e `projection.summary` coincidem com `GET /accounts/{id}/balance` e `GET /projections`;
+6. envelope **sem** `events` / `undatedEvents`;
+7. receita parcial + reverse de RECEIPT (D289);
+8. cancelamento de receita/despesa não entra;
+9. parcelas ACCOUNT vs fatura CREDIT_CARD (sem dupla contagem);
+10. overdue de payables (parcela) sem seção nova na projeção;
+11. transferência: consolidado inalterado; sem fluxo IN/OUT;
+12. meta: `reservedAmount` não reduz `totalBalance`;
+13. isolamento por usuário.
+
+## Regressão
+
+`ProjectionApiTest` e `ProjectionCalculatorTest` permanecem verdes (overdue no 1º período; D201; paginação de eventos; teto 12 meses).
+
+Suíte: **519** testes; 0 falhas; `mvn test` e `mvn verify` BUILD SUCCESS.
+
+
 # 41. Atomicidade
 
 Se uma etapa da transferência falhar:

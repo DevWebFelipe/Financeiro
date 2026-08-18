@@ -1,0 +1,25 @@
+$kind: http-request
+description: Sem filtro de período. Default = próximos 12 meses no bloco projection (primeiro mês parcial se hoje não for dia 1). Snapshot de saldo/payables/receivables é hoje. Sem events no envelope. Sem accountId.
+url: "{{baseUrl}}/api/v1/dashboard"
+method: GET
+queryParams:
+  - key: startDate
+    value: "{{today}}"
+    disabled: true
+  - key: endDate
+    value: "{{today}}"
+    disabled: true
+  - key: year
+    value: "2026"
+    disabled: true
+  - key: month
+    value: "8"
+    disabled: true
+  - key: months
+    value: "12"
+    disabled: true
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Resposta deve possuir snapshot e projection sem events\", function () {\r\n    pm.expect(json.asOfDate).to.exist;\r\n    pm.expect(json.startDate).to.exist;\r\n    pm.expect(json.endDate).to.exist;\r\n    pm.expect(json.balance).to.exist;\r\n    pm.expect(json.balance.totalBalance).to.exist;\r\n    pm.expect(json.balance.reservedAmount).to.exist;\r\n    pm.expect(json.balance.availableBalance).to.exist;\r\n    pm.expect(json.projection).to.exist;\r\n    pm.expect(json.projection.summary).to.exist;\r\n    pm.expect(json.projection.months).to.be.an(\"array\");\r\n    pm.expect(json.payables).to.exist;\r\n    pm.expect(json.payables.totalRemaining).to.exist;\r\n    pm.expect(json.receivables).to.exist;\r\n    pm.expect(json.accounts).to.be.an(\"array\");\r\n    pm.expect(json.creditCards).to.be.an(\"array\");\r\n    pm.expect(json.events).to.equal(undefined);\r\n    pm.expect(json.undatedEvents).to.equal(undefined);\r\n});\r\n\r\npm.test(\"Série mensal default deve ter 12 meses\", function () {\r\n    pm.expect(json.projection.months.length).to.eql(12);\r\n});\r"
+    language: text/javascript
+order: 1000

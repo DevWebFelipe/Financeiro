@@ -27,9 +27,11 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -176,6 +178,67 @@ public class PayablesService {
             : List.copyOf(lines.subList(from, Math.min(from + size, totalItems)));
     return new PayablePageResponse(
         items, page, size, totalItems, totalPages, totalRemaining, totalOriginal, totalPaid);
+  }
+
+  @Transactional(readOnly = true)
+  public PayablesSummary summarize(AuthenticatedUser authenticatedUser) {
+    LocalDate today = LocalDate.now(clock.withZone(FINANCIAL_ZONE));
+    UUID userId = authenticatedUser.userId();
+    List<PayableItemResponse> lines = new ArrayList<>();
+    lines.addAll(
+        invoiceLines(userId, null, null, null, null, false, Set.of(), null, null, null, today));
+    lines.addAll(
+        installmentLines(
+            userId, null, null, null, null, false, Set.of(), null, null, null, null, today));
+    return toSummary(lines);
+  }
+
+  private static PayablesSummary toSummary(List<PayableItemResponse> lines) {
+    BigDecimal installmentRemaining = money(BigDecimal.ZERO);
+    BigDecimal invoiceRemaining = money(BigDecimal.ZERO);
+    BigDecimal overdueInstallmentRemaining = money(BigDecimal.ZERO);
+    BigDecimal overdueInvoiceRemaining = money(BigDecimal.ZERO);
+    long overdueCount = 0;
+    Map<UUID, BigDecimal> invoiceRemainingByCardId = new HashMap<>();
+    Map<UUID, BigDecimal> overdueInvoiceRemainingByCardId = new HashMap<>();
+    for (PayableItemResponse line : lines) {
+      BigDecimal remaining = money(line.remainingAmount());
+      if (line.type() == PayableItemType.INSTALLMENT) {
+        installmentRemaining = money(installmentRemaining.add(remaining));
+        if (line.overdue()) {
+          overdueInstallmentRemaining = money(overdueInstallmentRemaining.add(remaining));
+          overdueCount++;
+        }
+        continue;
+      }
+      invoiceRemaining = money(invoiceRemaining.add(remaining));
+      invoiceRemainingByCardId.merge(line.creditCardId(), remaining, PayablesService::addMoney);
+      if (line.overdue()) {
+        overdueInvoiceRemaining = money(overdueInvoiceRemaining.add(remaining));
+        overdueInvoiceRemainingByCardId.merge(
+            line.creditCardId(), remaining, PayablesService::addMoney);
+        overdueCount++;
+      }
+    }
+    return new PayablesSummary(
+        money(installmentRemaining.add(invoiceRemaining)),
+        installmentRemaining,
+        invoiceRemaining,
+        money(overdueInstallmentRemaining.add(overdueInvoiceRemaining)),
+        overdueInstallmentRemaining,
+        overdueInvoiceRemaining,
+        lines.size(),
+        overdueCount,
+        Map.copyOf(invoiceRemainingByCardId),
+        Map.copyOf(overdueInvoiceRemainingByCardId));
+  }
+
+  private static BigDecimal addMoney(BigDecimal left, BigDecimal right) {
+    return money(left.add(right));
+  }
+
+  private static BigDecimal money(BigDecimal value) {
+    return value.setScale(2, RoundingMode.HALF_UP);
   }
 
   private List<PayableItemResponse> installmentLines(

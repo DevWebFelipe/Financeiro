@@ -81,9 +81,12 @@ public class AccountService {
 
   @Transactional(readOnly = true)
   public List<AccountResponse> list(AuthenticatedUser authenticatedUser) {
-    return accountRepository.findAllByUserIdOrderByCreatedAtAsc(authenticatedUser.userId()).stream()
-        .map(AccountResponse::from)
-        .toList();
+    return listOwned(authenticatedUser).stream().map(AccountResponse::from).toList();
+  }
+
+  @Transactional(readOnly = true)
+  public List<Account> listOwned(AuthenticatedUser authenticatedUser) {
+    return accountRepository.findAllByUserIdOrderByCreatedAtAsc(authenticatedUser.userId());
   }
 
   @Transactional(readOnly = true)

@@ -49,6 +49,7 @@ Never modify an already-applied shared/production migration.
 - Fase 17 Parte 1 (`receivables`, `CONCLUÍDA E APROVADA`): **não** criar tabela `receivables`; **não** tornar `expected_date` nullable; **não** criar índices só por antecipação (`docs/24` §19.8 / RN293 / RN303).
 - Fase 17 (`docs/24` §19.8 / §19.9 / `docs/23` §269.6): **`CONCLUÍDA E APROVADA`**. D73–D94 **fechadas** e **implementadas**. Tabela `income_movements` (V30); índice `(user_id, income_id)`. **Não** persistir remaining/recebido/acumulado em `incomes`. **Não** criar tabela `receivables`. **D86** omitido.
 - Fase 18 (`projections`, `docs/24` §19.10): **CONCLUÍDA E APROVADA**. D95–D204 **fechadas** e **implementadas**. **Não** criar tabela `projections` nem migration de projeção. Auditoria final: **APROVADA COM RESSALVAS**.
+- Fase 19 (`dashboard`, `docs/24` §19.11): **CONCLUÍDA E APROVADA**. D282–D289 **fechadas** e **implementadas**. **Não** criar tabela `dashboard` nem migration de dashboard.
 - Columns: snake_case
 - Primary key: `id UUID`
 - Foreign keys: `account_id`, `credit_card_id`

@@ -1,0 +1,17 @@
+$kind: http-request
+description: Período solicitado inteiramente anterior a hoje. Esperado 400 VALIDATION_ERROR (D202), igual a GET /projections.
+url: "{{baseUrl}}/api/v1/dashboard?startDate={{projectionPastStart}}&endDate={{projectionPastEnd}}"
+method: GET
+queryParams:
+  - key: startDate
+    value: "{{projectionPastStart}}"
+  - key: endDate
+    value: "{{projectionPastEnd}}"
+scripts:
+  - type: beforeRequest
+    code: "const today = pm.collectionVariables.get(\"today\");\r\nconst year = Number(today.split(\"-\")[0]) - 1;\r\npm.variables.set(\"projectionPastStart\", year + \"-01-01\");\r\npm.variables.set(\"projectionPastEnd\", year + \"-01-31\");\r"
+    language: text/javascript
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 400 Bad Request\", function () {\r\n    pm.response.to.have.status(400);\r\n});\r\n\r\npm.test(\"Código de erro deve ser VALIDATION_ERROR\", function () {\r\n    pm.expect(json.code).to.eql(\"VALIDATION_ERROR\");\r\n});\r"
+    language: text/javascript
+order: 11200
