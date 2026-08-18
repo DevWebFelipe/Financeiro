@@ -968,17 +968,17 @@ O sort `receivedDate` em `/receivables` usa `incomes.received_date` (legado). No
 Os 35 testes da Parte 1 (`ReceivablesApiTest`); `IncomeApiTest`; `PayablesApiTest`; `mvn verify`. Atualizar somente o que a evolução aditiva exigir.
 
 
-# 40H. Projeções (Fase 18 — especificação aprovada; implementação não autorizada)
+# 40H. Projeções (Fase 18 — implementada)
 
 Contrato: `docs/24` §19.10 / `docs/25` §68.
 
-**Status:** **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO**. D95–D204 **fechadas**. **Não** criar classes de teste de implementação até autorização explícita. Este parágrafo **não** autoriza código.
+**Status:** **CONCLUÍDA E APROVADA**. D95–D204 **fechadas** e **implementadas**. Classes: `ProjectionApiTest`, `ProjectionCalculatorTest`.
 
 Timezone / relógio: `America/Sao_Paulo`; `Clock` injetável (`asOfDate` interno). Reutilizar o padrão da Fase 17 (ex.: `2026-08-17`).
 
 Não persistir projeção. Não criar tabela. Não testar recorrência, cenários, IA, filtro de cartão/categoria/responsável, `asOfDate` público, `GET /projections/monthly` nem frontend.
 
-## Cenários mínimos (quando implementada)
+## Cenários mínimos (implementados)
 
 1. saldo atual + receita futura;
 2. saldo atual + despesa futura;
@@ -1012,7 +1012,7 @@ Não persistir projeção. Não criar tabela. Não testar recorrência, cenário
 3. período totalmente no passado → **400** (não 200 vazio; não deslocar horizonte);
 4. evento sem data **não** altera `closingBalance`;
 5. evento sem data **não** altera `projectedFinalBalance`;
-6. evento sem data aparece em grupo separado quando a resposta expõe eventos;
+6. evento sem data aparece em grupo separado quando a resposta expõe eventos (`ProjectionCalculatorTest`; no modelo vigente `expected_date` / `due_date` são obrigatórias, então `undatedEvents` da API tende a vazio);
 7. `includeEvents` **não** é parâmetro da V1 (query desconhecida → **400**).
 
 ## Não duplicação (categoria explícita, obrigatória)
@@ -1040,7 +1040,7 @@ Não persistir projeção. Não criar tabela. Não testar recorrência, cenário
 
 ## Regressão obrigatória na implementação
 
-Suíte existente (`mvn verify`) deve permanecer verde. Não alterar regras das Fases 0–17 para “facilitar” a projeção.
+Suíte: **509** testes; 0 falhas; `mvn test` e `mvn verify` BUILD SUCCESS. Não alterar regras das Fases 0–17 para “facilitar” a projeção.
 
 
 # 41. Atomicidade

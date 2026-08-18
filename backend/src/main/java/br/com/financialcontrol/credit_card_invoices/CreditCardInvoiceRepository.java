@@ -2,6 +2,7 @@ package br.com.financialcontrol.credit_card_invoices;
 
 import br.com.financialcontrol.credit_cards.CreditCard;
 import jakarta.persistence.LockModeType;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -83,4 +84,17 @@ public interface CreditCardInvoiceRepository extends JpaRepository<CreditCardInv
   List<CreditCardInvoice> findAllByUserIdAndStatusInWithCard(
       @Param("userId") UUID userId,
       @Param("statuses") Collection<CreditCardInvoiceStatus> statuses);
+
+  @Query(
+      """
+      SELECT DISTINCT i FROM CreditCardInvoice i
+      JOIN FETCH i.creditCard
+      WHERE i.userId = :userId
+        AND i.status IN :statuses
+        AND i.dueDate <= :rangeEnd
+      """)
+  List<CreditCardInvoice> findAllByUserIdAndStatusInWithCardDueOnOrBefore(
+      @Param("userId") UUID userId,
+      @Param("statuses") Collection<CreditCardInvoiceStatus> statuses,
+      @Param("rangeEnd") LocalDate rangeEnd);
 }

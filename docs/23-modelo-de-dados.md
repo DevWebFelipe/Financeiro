@@ -2583,7 +2583,7 @@ Remaining do ciclo: alocações de entrada (`credit_card_invoice_payments`) + al
 
 # 200. Projeções
 
-Projeções **não** possuem tabela. Contrato da Fase 18: `docs/24` §19.10 (D95–D204). **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO.**
+Projeções **não** possuem tabela. Contrato da Fase 18: `docs/24` §19.10 (D95–D204). **CONCLUÍDA E APROVADA.** Cálculo dinâmico; sem migration.
 
 
 # 201. Projeções

@@ -1479,7 +1479,7 @@ O valor das faturas não deve ser subtraído duas vezes.
 
 # 73. Fluxo — Projeção mensal
 
-Contrato oficial da Fase 18: `docs/24` §19.10 / `docs/25` §68. A série é mensal (mês calendário), a partir do saldo real atual. **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO.**
+Contrato oficial da Fase 18: `docs/24` §19.10 / `docs/25` §68. A série é mensal (mês calendário), a partir do saldo real atual. **CONCLUÍDA E APROVADA.**
 
 Usuário seleciona:
 

@@ -27,7 +27,7 @@ Controller → Service → Repository
 
 Controller does not access Repository.
 
-Default: one Service per module (`AccountService`, `ExpenseService`, `IncomeService`, `TransferService`, `BalanceAdjustmentService`, `PaymentService`, `CreditCardService`, `CreditCardInvoiceService`, `FinancialGoalService`, `PayablesService` — Fase 16, consulta; **sem** entidade JPA; `CONCLUÍDA E APROVADA`, `docs/24` §19.7; `ReceivablesService` — Fase 17, consulta; **sem** entidade JPA; `CONCLUÍDA E APROVADA`, `docs/24` §19.8 / §19.9 — **não** recriar o endpoint; movimentações no domínio `incomes` via `IncomeService` → `IncomeMovementRepository`; D73–D94 fechadas e implementadas). Fase 18 (`ProjectionService` / `ProjectionCalculator`, `docs/24` §19.10): **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO** (D95–D204); **não** criar classes até autorização explícita.
+Default: one Service per module (`AccountService`, `ExpenseService`, `IncomeService`, `TransferService`, `BalanceAdjustmentService`, `PaymentService`, `CreditCardService`, `CreditCardInvoiceService`, `FinancialGoalService`, `PayablesService` — Fase 16, consulta; **sem** entidade JPA; `CONCLUÍDA E APROVADA`, `docs/24` §19.7; `ReceivablesService` — Fase 17, consulta; **sem** entidade JPA; `CONCLUÍDA E APROVADA`, `docs/24` §19.8 / §19.9 — **não** recriar o endpoint; movimentações no domínio `incomes` via `IncomeService` → `IncomeMovementRepository`; D73–D94 fechadas e implementadas). Fase 18 (`ProjectionService` / `ProjectionCalculator`, `docs/24` §19.10): **CONCLUÍDA E APROVADA** (D95–D204 implementadas); **sem** entidade JPA; **sem** tabela `projections`.
 
 Do not create `CreateExpenseUseCase`, `GetExpenseUseCase`, `ListExpenseUseCase`.
 

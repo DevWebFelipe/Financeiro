@@ -49,7 +49,7 @@ Do not repeat the same assertion at unit + API + E2E without a reason.
 - Atomic operations roll back on failure
 - Official API error format from `docs/25-api.md`
 - Pagination contract: `items`, `totalItems`, `totalPages`
-- Phase 18 projections (`docs/27` §40H): specification approved (D95–D204); do not add projection test classes until explicit implementation authorization. When authorized, include non-duplication cases and D201–D204.
+- Phase 18 projections (`docs/27` §40H): **CONCLUÍDA E APROVADA** (D95–D204). Tests: `ProjectionApiTest`, `ProjectionCalculatorTest` — include non-duplication cases and D201–D204.
 
 ---
 

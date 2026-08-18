@@ -1054,7 +1054,7 @@ Objetivo: acréscimos, recebimentos parciais, histórico, estorno por movimenta�
 
 Não criar tabela `receivables`. Migration V30 (`income_movements`) **executada**.
 
-Próxima etapa: **Fase 18 — Projeções** (`docs/28` §93 / `docs/24` §19.10). Especificação **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO** (D95–D204). **Implementação NÃO AUTORIZADA** nesta etapa.
+A Fase 18 — Projeções (`docs/28` §93) está **CONCLUÍDA E APROVADA**.
 
 Fora da Parte 2: frontend, dashboard, PDF, Excel, projeções, over-receipt, patrimônio por responsável.
 
@@ -1080,7 +1080,7 @@ Testes: `docs/27` §40G. Suíte: **481** testes; 0 falhas; `mvn verify` BUILD SU
 
 # 93. Fase 18 — Projeções
 
-**Status:** **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO**. D95–D204 **fechadas**. A implementação **não** está autorizada nesta etapa.
+**Status:** **CONCLUÍDA E APROVADA**. D95–D204 **fechadas** e **implementadas**. Endpoint `GET /api/v1/projections`. Sem tabela `projections`.
 
 Objetivo:
 
@@ -1133,7 +1133,7 @@ Usuário deve conseguir responder:
 
 ("Provavelmente" = fatos conhecidos e ainda relevantes — não probabilidade estatística.)
 
-**Critério desta etapa documental:** contrato D95–D204 fechado. Especificação **CONCLUÍDA E APROVADA**. A implementação **não** está autorizada.
+**Critério atendido.** Especificação D95–D204 e implementação backend **CONCLUÍDA E APROVADA**. Testes: `docs/27` §40H (`ProjectionApiTest`, `ProjectionCalculatorTest`). Suíte: **509** testes; `mvn verify` BUILD SUCCESS.
 
 
 # 98. Fase 19 — Dashboard
@@ -1685,9 +1685,11 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9**. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 15: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**.
+Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9**. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 15: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**. Fase 17: **CONCLUÍDA E APROVADA**. Fase 18: **CONCLUÍDA E APROVADA**.
 
-Próxima etapa: **Fase 18 — Projeções** (`docs/28` §93 / `docs/24` §19.10). Especificação **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO** (D95–D204). **Implementação NÃO AUTORIZADA** nesta etapa. **Não** iniciar código da Fase 18 sem autorização explícita.
+Próxima etapa: **Fase 19 — Dashboard** (`docs/28` §98). **NÃO INICIADA.**
+
+**Fase 18 — CONCLUÍDA E APROVADA.** Endpoint: `GET /api/v1/projections`. Sem tabela `projections`. D95–D204 **implementadas**. Testes: `ProjectionApiTest`, `ProjectionCalculatorTest`. Suíte: **509** testes.
 
 **Fase 17 — CONCLUÍDA E APROVADA** (Parte 1 + Parte 2). Endpoint: `GET /api/v1/receivables`. Sem tabela `receivables`. Parte 2: `income_movements` (V30); movimentações; D73–D94 **implementadas**. Escrita de responsável (**D89**) **implementada**.
 

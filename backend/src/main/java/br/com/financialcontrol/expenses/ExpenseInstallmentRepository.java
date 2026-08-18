@@ -1,6 +1,7 @@
 package br.com.financialcontrol.expenses;
 
 import jakarta.persistence.LockModeType;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -91,4 +92,22 @@ public interface ExpenseInstallmentRepository extends JpaRepository<ExpenseInsta
       @Param("userId") UUID userId,
       @Param("paymentMethods") Collection<PaymentMethod> paymentMethods,
       @Param("excludedStatuses") Collection<ExpenseStatus> excludedStatuses);
+
+  @Query(
+      """
+      SELECT DISTINCT i FROM ExpenseInstallment i
+      JOIN FETCH i.expense e
+      JOIN FETCH e.category
+      LEFT JOIN FETCH e.account
+      WHERE i.userId = :userId
+        AND e.paymentMethod IN :paymentMethods
+        AND e.status NOT IN :excludedStatuses
+        AND i.status NOT IN :excludedStatuses
+        AND i.dueDate <= :rangeEnd
+      """)
+  List<ExpenseInstallment> findAllByUserIdAndPaymentMethodsExcludingStatusesDueOnOrBefore(
+      @Param("userId") UUID userId,
+      @Param("paymentMethods") Collection<PaymentMethod> paymentMethods,
+      @Param("excludedStatuses") Collection<ExpenseStatus> excludedStatuses,
+      @Param("rangeEnd") LocalDate rangeEnd);
 }

@@ -2225,9 +2225,9 @@ Filtros (**D78-A** / **D88** / **D94**): `dateType=RECEIVED` usa `movement_date`
 Frontend, dashboard, PDF/Excel, projeções, over-receipt, tabela `receivables`, exclusão física.
 
 
-# 68. Projeções (Fase 18 — especificação aprovada)
+# 68. Projeções (Fase 18)
 
-**Status:** `docs/24` §19.10 — **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO**. D95–D204 **fechadas**. **Não** criar este endpoint até autorização explícita da implementação.
+**Status:** `docs/24` §19.10 — **CONCLUÍDA E APROVADA**. D95–D204 **fechadas** e **implementadas**. Endpoint: `GET /api/v1/projections`.
 
 Endpoint único:
 
@@ -2272,12 +2272,12 @@ Ponto inicial: saldo real atual (`America/Sao_Paulo`). Não reconstruir o mês c
 
 ## Response 200 — conceitos obrigatórios
 
-Envelope conceitual (nomes JSON estáveis na implementação; não criar DTO agora):
+Envelope JSON (DTOs em `br.com.financialcontrol.projections.dto`):
 
 - `summary`: `currentBalance`, `projectedFinalBalance`, `projectedIncome`, `projectedExpense`, `projectedNetCashFlow`, `minimumProjectedBalance`, `minimumProjectedBalanceDate`; quando aplicável `reservedAmount`, `availableProjectedBalance`.
 - `months[]`: `period` (ano-mês), `openingBalance`, `totalIncome`, `totalExpense`, `netCashFlow`, `closingBalance`, `minimumProjectedBalance`, `minimumProjectedBalanceDate`, `negative`; quando aplicável `reservedAmount`, `availableProjectedBalance`.
 - `quarters[]`: presente quando houver trimestre calendário completo no recorte; cada item lista os meses e o total do trimestre.
-- `events`: lista paginada de eventos datados (`items`, `page`, `size`, `totalItems`, `totalPages`). Faz parte do contrato normal da V1 (**D204**). Campos: `date`, `type`, `description`, `amount`, `direction` (`IN` \| `OUT`), `sourceId`, `sourceType`, `overdue` (característica; não é `type`). Sem conta determinada: identificáveis como `UNASSIGNED` (**D201**); no filtro `accountId` não entram nos totais da conta.
+- `events`: lista paginada de eventos datados (`items`, `page`, `size`, `totalItems`, `totalPages`). Faz parte do contrato normal da V1 (**D204**). Campos: `date`, `type`, `description`, `amount`, `direction` (`IN` \| `OUT`), `sourceId`, `sourceType`, `overdue` (característica; não é `type`), `accountAssignment` (`UNASSIGNED` quando a conta efetiva não é determinada — **D201**). No filtro `accountId` esses eventos não entram nos totais nem na lista da conta.
 - `undatedEvents[]`: eventos sem data (**D203**); **não** atribuídos a um mês; **não** alteram `closingBalance` nem `projectedFinalBalance`.
 
 `amount` do evento sempre positivo. `type` / `sourceType` conceituais: `INCOME`, `EXPENSE`, `CREDIT_CARD_INVOICE`, `TRANSFER`.
@@ -2319,7 +2319,7 @@ Exemplo ilustrativo (não é contrato de campos extras):
 }
 ```
 
-Regras financeiras: `docs/24` §19.10. Testes futuros: `docs/27` §40H.
+Regras financeiras: `docs/24` §19.10. Testes: `docs/27` §40H (`ProjectionApiTest`, `ProjectionCalculatorTest`).
 
 
 # 69. Projeção — regras de caixa (resumo)

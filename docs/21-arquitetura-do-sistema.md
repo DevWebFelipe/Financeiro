@@ -351,10 +351,11 @@ br.com.financialcontrol
 ├── financial_goals
 ├── payables
 ├── receivables
+├── projections
 └── ...
 ```
 
-Pacote planejado da Fase 18 (`projections`): **não** criar no código até autorização da implementação (`docs/24` §19.10).
+Pacote da Fase 18 (`projections`): visão derivada; **sem** entidade JPA; **sem** tabela (`docs/24` §19.10).
 
 Pacotes da Fase 3:
 
@@ -393,12 +394,11 @@ Pacotes da Fase 17 — Parte 1 (`CONCLUÍDA E APROVADA`):
 - Vocabulário de data: `expectedDate` (sem alias `dueDate`). Filtros, ordenação, paginação e resumo **no banco** (não copiar o filtro em memória de payables). Contrato: `docs/24` §19.8.
 - A Fase 17 está **`CONCLUÍDA E APROVADA`** (Parte 1 + Parte 2). Pacote `receivables`: visão de leitura; **sem** tabela `receivables`. Domínio `incomes`: tabela `income_movements` (V30); movimentações ACCRUAL/RECEIPT; D73–D94 **fechadas** e **implementadas**. Escrita de responsável em Income (**D89** / RN306) **implementada**. **Não** criar `IncomeMovementService` nem módulo `transactions`.
 
-Pacotes da Fase 18 (`docs/24` §19.10 — **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO**):
+Pacotes da Fase 18 (`docs/24` §19.10 — **CONCLUÍDA E APROVADA**):
 
-- Pacote planejado `projections` — visão derivada de fluxo de caixa (`ProjectionController` → `ProjectionService` → `ProjectionCalculator` → consultas/repositórios).
+- Pacote `projections` — visão derivada de fluxo de caixa (`ProjectionController` → `ProjectionService` → `ProjectionCalculator` → consultas/repositórios).
 - **Sem** entidade JPA `Projection`, **sem** tabela `projections`, **sem** migration.
 - Consome remaining e saldo oficiais; não cria fonte de verdade paralela.
-- **Não** criar o pacote Java nem classes até autorização explícita da implementação.
 
 Pacotes da Fase 5:
 

@@ -4480,7 +4480,7 @@ Qualquer RECEIPT (`ACTIVE` ou `REVERSED`) conta como movimentação efetiva da c
 
 # 19.10 Contrato da Fase 18 — Projeções
 
-**Status:** **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO**. Decisões **D95–D204 fechadas**. A implementação **não** está autorizada nesta etapa. Não criar código, migration, endpoint, DTO, teste de implementação nem frontend até **autorização explícita**.
+**Status:** **CONCLUÍDA E APROVADA**. Decisões **D95–D204 fechadas** e **implementadas**. Endpoint `GET /api/v1/projections`. Sem tabela `projections`. Sem frontend. Sem migration.
 
 Autoridade: `AGENTS.md` §28 → esta seção → `docs/25` §68 → `docs/27` §40H → `docs/28` §93.
 
@@ -4490,7 +4490,7 @@ A projeção **não** cria fato financeiro novo. Consome remaining, saldo e stat
 
 ## 19.10.1 Escopo
 
-**Inclui (especificação; implementação futura):**
+**Inclui (implementado):**
 
 1. Visão derivada de fluxo de caixa (`GET /api/v1/projections`);
 2. Saldo projetado a partir do saldo real atual;
@@ -4866,7 +4866,7 @@ Consulta **somente leitura**. Sem lock pessimista.
 
 Priorizar agregação no banco quando isso reduzir volume transferido a Java. Não carregar todas as entidades do usuário para filtrar em memória. Sem N+1.
 
-Arquitetura futura (sem abstrações extras):
+Arquitetura (sem abstrações extras):
 
 ```text
 ProjectionController
@@ -5181,7 +5181,7 @@ Conclusão é ação **explícita** do usuário (`POST .../complete`). **Não** 
 
 # 21. Projeções
 
-Contrato oficial da **Fase 18:** **§19.10** (D95–D204). Em conflito com os resumos abaixo, prevalece §19.10. **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO.** A implementação **não** está autorizada.
+Contrato oficial da **Fase 18:** **§19.10** (D95–D204). Em conflito com os resumos abaixo, prevalece §19.10. **CONCLUÍDA E APROVADA.** Implementado: `GET /api/v1/projections`.
 
 ## RN133 — Projeção
 
