@@ -2583,27 +2583,25 @@ Remaining do ciclo: alocações de entrada (`credit_card_invoice_payments`) + al
 
 # 200. Projeções
 
-Projeções não devem possuir tabela específica inicialmente.
+Projeções **não** possuem tabela. Contrato da Fase 18: `docs/24` §19.10 (D95–D204). **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO.**
 
 
 # 201. Projeções
 
-Devem ser calculadas a partir de:
+Devem ser calculadas dinamicamente a partir de:
 
-receitas esperadas;
+- saldo atual (RN240);
+- remaining oficial de receitas `EXPECTED`;
+- remaining oficial de parcelas ACCOUNT/NONE;
+- remaining oficial de faturas `SCHEDULED`/`OPEN`/`CLOSED`;
+- obrigações futuras de Agreement já materializadas no domínio.
 
-despesas abertas;
-
-parcelas futuras;
-
-faturas;
-
-parcelamentos.
+Não persistir o resultado. Não duplicar compra de cartão com fatura.
 
 
 # 202. Regra
 
-Não duplicar dados apenas para gerar projeção.
+Não duplicar dados apenas para gerar projeção. Não criar `projections` / itens de projeção / migration específica.
 
 
 # 203. Saldo

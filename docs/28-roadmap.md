@@ -1054,7 +1054,7 @@ Objetivo: acréscimos, recebimentos parciais, histórico, estorno por movimenta�
 
 Não criar tabela `receivables`. Migration V30 (`income_movements`) **executada**.
 
-Próxima etapa: **implementação da Fase 18 — Projeções** (`docs/28` §93), **somente após autorização explícita**.
+Próxima etapa: **Fase 18 — Projeções** (`docs/28` §93 / `docs/24` §19.10). Especificação **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO** (D95–D204). **Implementação NÃO AUTORIZADA** nesta etapa.
 
 Fora da Parte 2: frontend, dashboard, PDF, Excel, projeções, over-receipt, patrimônio por responsável.
 
@@ -1080,39 +1080,49 @@ Testes: `docs/27` §40G. Suíte: **481** testes; 0 falhas; `mvn verify` BUILD SU
 
 # 93. Fase 18 — Projeções
 
+**Status:** **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO**. D95–D204 **fechadas**. A implementação **não** está autorizada nesta etapa.
+
 Objetivo:
 
-Criar planejamento financeiro futuro.
+Visão derivada de fluxo de caixa: saldo projetado a partir do saldo real atual, com composição do fluxo. Contrato: `docs/24` §19.10 / `docs/25` §68 / `docs/27` §40H.
+
+Não persistir. Sem tabela `projections`. Sem frontend. Sem recorrência. Sem cenários.
 
 
-# 94. Fase 18
+# 94. Fase 18 — Períodos
 
-Permitir consultar:
+Permitir consultar, no mesmo `GET /api/v1/projections`:
 
-- mês;
-- trimestre;
-- vários meses.
+- mês calendário;
+- trimestre calendário (meses + total);
+- vários meses (máximo 12; default 12).
+
+Granularidade V1: mensal. Sem projeção diária. Sem `GET /projections/monthly`.
 
 
-# 95. Fase 18
+# 95. Fase 18 — Composição
 
 Considerar:
 
-- saldo atual;
-- receitas futuras;
-- despesas futuras;
-- parcelas;
-- faturas;
-- transferências quando aplicável.
+- saldo atual (não reconstruir o mês desde o dia 1);
+- receitas futuras `EXPECTED` (remaining; vencidas entram imediatamente);
+- despesas/parcelas ACCOUNT/NONE (remaining);
+- faturas `SCHEDULED`/`OPEN`/`CLOSED` com remaining > 0;
+- obrigações futuras de Agreement via domínio existente;
+- transferências somente no saldo atual / efeito consolidado nulo;
+- metas: `reservedAmount` e `availableProjectedBalance` (não são caixa).
 
 
-# 96. Fase 18
+# 96. Fase 18 — Exclusões
 
 Não considerar:
 
 - limite de cartão como dinheiro;
-- despesas canceladas;
-- receitas canceladas.
+- compra no cartão como saída de conta (a fatura é a saída);
+- despesas `CANCELLED` / `REFUNDED` como compromisso futuro;
+- receitas `CANCELLED` ou já recebidas;
+- fatos já incorporados ao saldo atual;
+- filtros de categoria, responsável ou cartão.
 
 
 # 97. Critério
@@ -1120,6 +1130,10 @@ Não considerar:
 Usuário deve conseguir responder:
 
 "Quanto dinheiro provavelmente terei em dezembro?"
+
+("Provavelmente" = fatos conhecidos e ainda relevantes — não probabilidade estatística.)
+
+**Critério desta etapa documental:** contrato D95–D204 fechado. Especificação **CONCLUÍDA E APROVADA**. A implementação **não** está autorizada.
 
 
 # 98. Fase 19 — Dashboard
@@ -1673,7 +1687,7 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9**. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 15: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**.
 
-Próxima etapa: **Fase 18 — Projeções** (`docs/28` §93), **somente após autorização explícita**. **Fase 18 — NÃO INICIADA.**
+Próxima etapa: **Fase 18 — Projeções** (`docs/28` §93 / `docs/24` §19.10). Especificação **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO** (D95–D204). **Implementação NÃO AUTORIZADA** nesta etapa. **Não** iniciar código da Fase 18 sem autorização explícita.
 
 **Fase 17 — CONCLUÍDA E APROVADA** (Parte 1 + Parte 2). Endpoint: `GET /api/v1/receivables`. Sem tabela `receivables`. Parte 2: `income_movements` (V30); movimentações; D73–D94 **implementadas**. Escrita de responsável (**D89**) **implementada**.
 

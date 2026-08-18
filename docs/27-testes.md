@@ -968,6 +968,81 @@ O sort `receivedDate` em `/receivables` usa `incomes.received_date` (legado). No
 Os 35 testes da Parte 1 (`ReceivablesApiTest`); `IncomeApiTest`; `PayablesApiTest`; `mvn verify`. Atualizar somente o que a evolução aditiva exigir.
 
 
+# 40H. Projeções (Fase 18 — especificação aprovada; implementação não autorizada)
+
+Contrato: `docs/24` §19.10 / `docs/25` §68.
+
+**Status:** **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO**. D95–D204 **fechadas**. **Não** criar classes de teste de implementação até autorização explícita. Este parágrafo **não** autoriza código.
+
+Timezone / relógio: `America/Sao_Paulo`; `Clock` injetável (`asOfDate` interno). Reutilizar o padrão da Fase 17 (ex.: `2026-08-17`).
+
+Não persistir projeção. Não criar tabela. Não testar recorrência, cenários, IA, filtro de cartão/categoria/responsável, `asOfDate` público, `GET /projections/monthly` nem frontend.
+
+## Cenários mínimos (quando implementada)
+
+1. saldo atual + receita futura;
+2. saldo atual + despesa futura;
+3. receita + despesa;
+4. parcelas;
+5. parcela parcialmente paga (somente remaining);
+6. descontos;
+7. surcharge;
+8. reversão;
+9. fatura;
+10. fatura parcialmente paga;
+11. fatura com crédito (remaining oficial; sem recálculo);
+12. Agreement (fatura liquidada não entra; obrigação nova pelas faturas futuras);
+13. receita vencida (entra no primeiro período);
+14. despesa vencida (entra no primeiro período);
+15. cancelamento (não entra);
+16. refund (não gera entrada futura artificial);
+17. transferências (histórico no saldo; consolidado inalterado; sem evento futuro);
+18. múltiplas contas (consolidado);
+19. metas (`reservedAmount` não reduz `closingBalance`; `availableProjectedBalance`);
+20. saldo negativo (200 válido; `negative`; mínimo e data);
+21. múltiplos meses (encadeamento opening/closing);
+22. trimestre calendário (meses + total);
+23. 12 meses (default e teto; > 12 → 400);
+24. isolamento por usuário.
+
+## D201–D204 (obrigatório)
+
+1. evento sem conta determinada participa do consolidado;
+2. evento sem conta determinada **não** é atribuído artificialmente à conta filtrada (`UNASSIGNED` no detalhe);
+3. período totalmente no passado → **400** (não 200 vazio; não deslocar horizonte);
+4. evento sem data **não** altera `closingBalance`;
+5. evento sem data **não** altera `projectedFinalBalance`;
+6. evento sem data aparece em grupo separado quando a resposta expõe eventos;
+7. `includeEvents` **não** é parâmetro da V1 (query desconhecida → **400**).
+
+## Não duplicação (categoria explícita, obrigatória)
+
+- compra de cartão **não** duplicada com a fatura;
+- pagamento já realizado **não** projetado novamente;
+- receita já recebida **não** projetada novamente;
+- transferência **não** duplicada no consolidado;
+- eventos já incorporados ao saldo atual **não** contabilizados novamente.
+
+## HTTP / contrato
+
+- 401 sem Bearer;
+- query desconhecida → 400 (inclui `includeEvents`);
+- filtros de período conflitantes → 400;
+- período inteiramente no passado → 400;
+- série mensal sem paginação; eventos no contrato normal, com proteção de volume;
+- DTOs próprios; nunca entidade JPA.
+
+## Cálculo
+
+- unitário de `ProjectionCalculator` (fórmula, meses parciais, mínimo);
+- API/integração sobre remaining oficiais (não reimplementar RN231 / fatura / Fase 17);
+- agregação no banco; sem N+1; sem lock pessimista.
+
+## Regressão obrigatória na implementação
+
+Suíte existente (`mvn verify`) deve permanecer verde. Não alterar regras das Fases 0–17 para “facilitar” a projeção.
+
+
 # 41. Atomicidade
 
 Se uma etapa da transferência falhar:

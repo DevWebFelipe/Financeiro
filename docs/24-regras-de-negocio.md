@@ -4478,6 +4478,658 @@ Qualquer RECEIPT (`ACTIVE` ou `REVERSED`) conta como movimentação efetiva da c
 `status=EXPECTED` + `dateType=RECEIVED` é permitido (**D88**). `dateType=RECEIVED` usa `movement_date` de qualquer RECEIPT (**D94**). Permanecem 400: `status=RECEIVED` + `dateType=EXPECTED`; `status=RECEIVED` + `overdue`. `overdue` deriva de `expectedDate`. **IMPLEMENTADO.**
 
 
+# 19.10 Contrato da Fase 18 — Projeções
+
+**Status:** **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO**. Decisões **D95–D204 fechadas**. A implementação **não** está autorizada nesta etapa. Não criar código, migration, endpoint, DTO, teste de implementação nem frontend até **autorização explícita**.
+
+Autoridade: `AGENTS.md` §28 → esta seção → `docs/25` §68 → `docs/27` §40H → `docs/28` §93.
+
+A projeção **não** cria fato financeiro novo. Consome remaining, saldo e status oficiais das Fases 0–17. Não reabre RN240, RN231, RN247, RN254, RN265 nem qualquer regra consolidada.
+
+---
+
+## 19.10.1 Escopo
+
+**Inclui (especificação; implementação futura):**
+
+1. Visão derivada de fluxo de caixa (`GET /api/v1/projections`);
+2. Saldo projetado a partir do saldo real atual;
+3. Composição do fluxo (entradas e saídas futuras ainda relevantes);
+4. Granularidade mensal (mês calendário); trimestre calendário; até 12 meses;
+5. Consolidado do usuário e filtro opcional por `accountId`;
+6. Exposição conceitual de eventos projetados (DTOs próprios);
+7. `reservedAmount` e `availableProjectedBalance` (metas), sem tratar contribuição/resgate como caixa.
+
+**Fora do escopo desta fase:**
+
+- persistir projeção (tabela `projections`, itens, migration);
+- IA, ML, estatística, estimativa por histórico, recorrência implícita;
+- cenários otimista/pessimista/realista, confidence, probabilidade;
+- projeção diária;
+- transferências futuras/agendadas;
+- acertos de saldo futuros;
+- filtro por categoria, responsável, cartão ou tipo de evento arbitrário;
+- frontend, dashboard, gráficos, relatórios, PDF;
+- alertas de negócio (o Dashboard poderá consumir `negative` / mínimo posteriormente);
+- `userId` enviado pelo cliente;
+- parâmetro público `asOfDate` na V1;
+- parâmetro `includeEvents` (**D204**);
+- consulta de período inteiramente no passado como relatório histórico (**D202**).
+
+---
+
+## 19.10.2 Conceito e fórmula (D95–D99)
+
+A projeção é uma **visão derivada de fluxo de caixa**. O resultado principal é o **saldo projetado**, acompanhado da composição do fluxo.
+
+```text
+saldo projetado = saldo atual + entradas futuras − saídas futuras
+```
+
+Determinística. "Provavelmente" significa apenas: projeção baseada nos **fatos financeiros conhecidos e ainda relevantes**.
+
+Não utiliza: IA; machine learning; estatística; estimativa baseada em histórico; recorrência implícita; cenários otimista/pessimista; confidence/probabilidade.
+
+---
+
+## 19.10.3 Persistência (D100–D105)
+
+A projeção **não** é persistida.
+
+Não criar: tabela `projections`; tabela de itens de projeção; migration específica; nova fonte de verdade financeira.
+
+Cálculo dinâmico a partir dos dados existentes. Remaining, obligation, saldo (RN240), `reservedAmount` e status **continuam** nas fórmulas oficiais dos respectivos domínios.
+
+---
+
+## 19.10.4 Ponto inicial, timezone e as-of (D122–D126)
+
+A projeção começa no **saldo real atual** (RN240 / `totalBalance`). Timezone financeiro: `America/Sao_Paulo`.
+
+Se hoje for 17/08:
+
+- **não** reconstruir agosto desde 01/08;
+- usar o saldo real existente em 17/08;
+- considerar somente os eventos ainda relevantes **a partir desse ponto**.
+
+`asOfDate` existe **internamente** (Clock injetável; testes; evolução). **Não** é parâmetro público da V1.
+
+Eventos vencidos e ainda abertos entram **no primeiro período** da projeção (a partir de `asOfDate`), não no mês civil original já passado.
+
+---
+
+## 19.10.5 Não duplicação — eventos já realizados (D127–D133)
+
+Tudo que já alterou o saldo atual **não** pode ser contabilizado novamente:
+
+- receitas já recebidas (RECEIPT `ACTIVE` já na RN240);
+- despesas já pagas (payments `ACTIVE` já na RN240);
+- pagamentos já realizados (parcela ou fatura);
+- transferências já realizadas (`ACTIVE` já na RN240);
+- acertos de saldo já realizados (`ACTIVE` já na RN240);
+- refunds já efetivados e refletidos no saldo (RN117 / RN237).
+
+A projeção **não** reimplementa remaining. Consome o remaining operacional oficial. Créditos, discounts, surcharges, alocações e settlement já refletidos no remaining **não** são recalculados.
+
+---
+
+## 19.10.6 Receitas (D134–D140)
+
+Entram: receitas `EXPECTED` com `remainingAmount > 0` (fórmula oficial da Fase 17: original + ACCRUAL `ACTIVE` − RECEIPT `ACTIVE`). Valor projetado = **remaining**, não o `amount` original.
+
+Receitas ainda não recebidas e já vencidas (`expectedDate` < hoje) continuam relevantes e entram **imediatamente** (primeiro período).
+
+Não entram: `RECEIVED` (remaining 0); `CANCELLED`; a parcela já recebida de uma `EXPECTED` parcial (já está no saldo).
+
+Não inventar receitas por histórico ou recorrência. Se não estiver cadastrada, não existe para a projeção.
+
+Receitas sem data **não** recebem data artificial; vão para o grupo de eventos sem data quando a API os expor. No modelo vigente `expected_date` é **obrigatória** (RN303) — o grupo tende a vazio na V1; **não** tornar a coluna nullable.
+
+---
+
+## 19.10.7 Despesas ACCOUNT / NONE (D141–D146)
+
+Entram obrigações futuras relevantes de `ACCOUNT` / `NONE` pelo **remaining** da parcela (RN231), não pelo valor original.
+
+`PARTIALLY_PAID`: somente o remaining. `CANCELLED` não entra. `REFUNDED` não gera entrada futura artificial (o efeito de caixa já está no saldo atual).
+
+Vencidas e ainda abertas (`remaining > 0`) entram imediatamente.
+
+Despesas/parcelas sem vencimento não recebem data artificial. No modelo vigente `due_date` da parcela é **obrigatória**; o grupo sem data tende a vazio; **não** tornar a coluna nullable.
+
+Despesa `CREDIT_CARD` **não** é saída de conta. Ver §19.10.9.
+
+---
+
+## 19.10.8 Parcelas (D147–D150)
+
+Parcelas futuras ACCOUNT/NONE são consideradas **individualmente** (uma parcela = um evento de saída, no `due_date` da parcela, valor = remaining oficial).
+
+Pagamento parcial, desconto, surcharge ou reversão: usar o remaining já calculado pelo domínio. A projeção **não** reimplementa RN231 / RN238 / RN239.
+
+Parcela de cartão **não** é evento de caixa. A obrigação de caixa é a **fatura**.
+
+---
+
+## 19.10.9 Cartões e faturas (D151–D159)
+
+A compra no cartão **não** é saída futura de dinheiro da conta. A projeção considera a **fatura**.
+
+**Proibido** contabilizar compra + fatura como duas saídas. O limite do cartão **nunca** é dinheiro disponível.
+
+Faturas relevantes: `SCHEDULED`, `OPEN`, `CLOSED`, **desde que** `remaining > 0` (obrigação futura). Valor = remaining operacional da fatura (`docs/23` §197 = soma dos remainings das parcelas do ciclo; créditos, ajustes e settlement já estão nesse remaining).
+
+`PAID` não entra. `SETTLED_BY_AGREEMENT` tem remaining 0 (RN254) e **não** entra; a obrigação nova entra só pelas faturas futuras da despesa `CREDIT_CARD` do Agreement. Não criar lógica financeira paralela.
+
+`OPEN` com remaining 0 **não** é obrigação futura de caixa (não entra), alinhado a remaining operacional.
+
+Cartão **não** é filtro da V1 (a unidade de caixa é a fatura).
+
+---
+
+## 19.10.10 Agreements (D160–D163)
+
+Obrigações futuras originadas de Agreements entram **via o domínio já existente** (novas parcelas/faturas da despesa `CREDIT_CARD` criada pelo Agreement; remaining oficial).
+
+Entrada (`entryAmount`) ainda não liquidada: na data correspondente, se o domínio a expuser como fato futuro. Entrada já paga (padrão da Fase 13 na criação) **não** entra de novo.
+
+Não criar Service/fórmula paralela de Agreement. Settlement já está no remaining da fatura liquidada.
+
+---
+
+## 19.10.11 Transferências (D164–D168)
+
+A Fase 18 **não** cria suporte a transferências futuras/agendadas (RN256 já proíbe `transfer_date` futura).
+
+Históricas já estão no saldo atual. Não transformá-las em eventos futuros.
+
+Consolidado: transferência entre contas do usuário **não** altera o patrimônio consolidado.
+
+Por conta: se existisse evento futuro, saída na origem e entrada no destino. Na V1 esse ramo é vazio. O tipo de evento `TRANSFER` existe no vocabulário; a série futura de transferências da V1 é vazia.
+
+---
+
+## 19.10.12 Contas — consolidado e por conta (D169–D172)
+
+**Consolidado:** soma dos saldos das contas do usuário autenticado (ponto inicial = soma dos `totalBalance` RN240). Contas inativas têm saldo 0 (RN007A); o total coincide com RN145.
+
+**Por conta:** query opcional `accountId` (UUID da conta do usuário). Conta inexistente ou de outro usuário: sem dados alheios e sem vazar existência (padrão das visões de consulta: **200** vazio / recorte sem linhas daquela conta — não inventar 404 só por query filter).
+
+Não permitir `userId` no cliente. Dono = JWT.
+
+O contrato prepara "quanto terei no total?" e "quanto terei em cada conta?".
+
+### Eventos sem conta determinada (**D201**)
+
+Se a conta de origem/destino do movimento futuro **não** puder ser determinada com segurança, o evento **não** é atribuído artificialmente a conta alguma.
+
+Não criar conta financeira fictícia. Não escolher conta padrão. Preferência/associação cadastral **não** é confirmação da conta que realizará o movimento. Em particular, `expenses.account_id` (preferência, RN228) **não** autoriza atribuir a saída futura àquela conta.
+
+Exemplos de **UNASSIGNED** (não é tipo financeiro; é classificação de conta):
+
+- receita `EXPECTED` (conta pertence ao RECEIPT, ainda inexistente);
+- despesa `NONE`;
+- fatura ainda não paga (a conta do pagamento ainda não é conhecida);
+- demais obrigações cuja conta efetiva o domínio não garante.
+
+**Consolidado:** eventos UNASSIGNED **participam normalmente** do fluxo e dos saldos projetados (se tiverem data).
+
+**Filtro `accountId`:** eventos UNASSIGNED **não** entram nos totais daquela conta. No detalhamento, quando expostos, permanecem identificáveis como sem conta determinada / `UNASSIGNED` — nunca como se pertencessem à conta filtrada.
+
+---
+
+## 19.10.13 Metas (D173–D177)
+
+Contribuições e resgates **não** alteram o saldo financeiro total (RN265). **Não** são entradas/saídas de caixa da projeção.
+
+A projeção **pode** apresentar:
+
+```text
+reservedAmount              = valor reservado oficial atual da(s) conta(s) do recorte
+availableProjectedBalance   = closingBalance − reservedAmount
+```
+
+`reservedAmount` **não** é subtraído de `closingBalance`. O saldo total continua sendo o dinheiro total. Não projetar contribuições futuras (não há fato agendado; recorrência proibida).
+
+---
+
+## 19.10.14 Acertos de saldo (D178–D179)
+
+Acertos históricos já estão no saldo atual. **Não** há suporte a acertos futuros nesta fase.
+
+---
+
+## 19.10.15 Saldo negativo (D180–D183)
+
+Saldo projetado negativo é **válido**. Não mascarar, limitar a zero nem rejeitar.
+
+Exemplo: atual 1.000 + entradas 1.000 − saídas 5.000 → projetado **−3.000**.
+
+Sinalizar no resultado: `negative`; meses negativos; `minimumProjectedBalance`; `minimumProjectedBalanceDate`.
+
+Sem alertas de negócio nesta fase.
+
+`minimumProjectedBalanceDate` é a **data financeira** (`LocalDate`, `America/Sao_Paulo`) em que o saldo projetado **corrente** (após aplicar os eventos datados em ordem) atinge o mínimo no horizonte. Isso **não** cria endpoint diário. Empate: a primeira data em que o mínimo ocorre. Se o mínimo for o saldo de abertura (sem eventos posteriores que desçam mais), a data é o `asOfDate` interno (ou o início efetivo do horizonte).
+
+---
+
+## 19.10.16 Períodos (D115–D121)
+
+**Mês** = mês calendário (`01/12/2026` → `31/12/2026`). Não usar janela móvel de 30 dias.
+
+**Trimestre** = trimestre calendário: Q1 jan–mar; Q2 abr–jun; Q3 jul–set; Q4 out–dez. O resultado do trimestre apresenta os **meses** que o compõem e o **total** do trimestre.
+
+Vários meses em uma operação. Granularidade da série da V1: **mensal**. Sem projeção diária.
+
+Primeiro mês do horizonte corrente: **parcial** quando `asOfDate` não é o dia 1 (abertura = saldo real atual; eventos só a partir de `asOfDate`).
+
+Limite máximo: **12 meses**. Exceder → **400**.
+
+Sem filtro de período: **próximos 12 meses** a partir do mês calendário corrente (primeiro mês parcial se aplicável).
+
+Não há query param `quarter`. O cliente seleciona o intervalo (datas ou `year`/`month` + `months`). Quando o intervalo contém um ou mais trimestres calendário **completos**, a resposta inclui o bloco de trimestre (meses + total). Trimestre incompleto no recorte **não** é inventado como trimestre.
+
+### Período inteiramente no passado (**D202**)
+
+Se o período **solicitado** está inteiramente antes de `asOfDate` interno (hoje na API pública, `America/Sao_Paulo`) → **400**. Não deslocar o horizonte. Não transformar em relatório histórico. Não devolver **200** vazio.
+
+Exemplo: hoje = 17/08/2026; `startDate=2026-06-01` e `endDate=2026-06-30` → **400**.
+
+Período **parcialmente** passado: permanece a regra já fechada (D122–D124) — abertura = saldo atual; somente eventos ainda relevantes a partir da data de referência; não reconstruir o mês corrente desde o dia 1. Sem regra extra.
+
+---
+
+## 19.10.17 Endpoint e filtros (D106–D114, D198–D200)
+
+Endpoint único:
+
+```text
+GET /api/v1/projections
+```
+
+Não criar `GET /projections/monthly` (o antigo §70 de `docs/25` fica **SUPERADO**). Não criar outros endpoints nesta fase.
+
+Query oficiais: `startDate`, `endDate`, `year`, `month`, `months`, `accountId`. **Não** existe `includeEvents` (**D204**). `includeEvents` é parâmetro desconhecido → **400**.
+
+Modos de período (mutuamente exclusivos):
+
+1. `startDate` + `endDate` (inclusivos; datas civis `America/Sao_Paulo`);
+2. `year` + `month` (mês calendário), opcionalmente com `months` (quantidade a partir daquele mês);
+3. somente `months` (quantidade a partir do mês corrente / `asOfDate`);
+4. nenhum: default 12 meses.
+
+Filtros conflitantes → **400** `VALIDATION_ERROR`:
+
+- `startDate`/`endDate` misturado com `year`/`month`;
+- `startDate`/`endDate` misturado com `months`;
+- `year` sem `month` ou `month` sem `year`;
+- `startDate` sem `endDate` ou `endDate` sem `startDate`;
+- `startDate` > `endDate`;
+- `months` < 1 ou `months` > 12;
+- horizonte resultante > 12 meses;
+- `month` fora de 1–12;
+- query param desconhecido (inclui `includeEvents` — **D204**);
+- período solicitado **inteiramente** anterior a `asOfDate` (**D202**).
+
+**Suportar:** período; ano/mês; quantidade de meses; conta.
+
+**Não suportar:** categoria; responsável; cartão; filtros arbitrários de tipo de evento.
+
+Auth: Bearer. Dono = JWT.
+
+---
+
+## 19.10.18 Resultado — mês, consolidado e eventos (D184–D197)
+
+DTOs **próprios**. Nunca expor entidade JPA.
+
+### Série mensal (sem paginação)
+
+No mínimo:
+
+```text
+period
+openingBalance
+totalIncome
+totalExpense
+netCashFlow
+closingBalance
+minimumProjectedBalance
+minimumProjectedBalanceDate
+negative
+```
+
+Se metas no resultado:
+
+```text
+reservedAmount
+availableProjectedBalance
+```
+
+```text
+openingBalance(mês 1)     = saldo atual (recorte)
+closingBalance(mês n)     = openingBalance(mês n) + netCashFlow(mês n)
+openingBalance(mês n+1)   = closingBalance(mês n)
+netCashFlow               = totalIncome − totalExpense
+negative                  = closingBalance < 0  (e/ou o mês teve saldo corrente < 0 — ver campo do mês)
+```
+
+`totalIncome` / `totalExpense` do mês = soma dos eventos **datados** daquele mês calendário (vencidos imediatos no primeiro mês). Eventos sem data **não** entram nesses totais.
+
+### Consolidado do horizonte
+
+```text
+currentBalance
+projectedFinalBalance
+projectedIncome
+projectedExpense
+projectedNetCashFlow
+minimumProjectedBalance
+minimumProjectedBalanceDate
+```
+
+E, quando aplicável: `reservedAmount`, `availableProjectedBalance`.
+
+`projectedFinalBalance` = closing do último mês da série. Eventos **sem data** (**D203**) **não** entram nessa cifra nem em `closingBalance` de nenhum mês.
+
+### Eventos
+
+A API **expõe** os eventos que compõem a projeção no contrato normal da V1 (**D204** — sem parâmetro `includeEvents`):
+
+```text
+date
+type
+description
+amount
+direction
+sourceId
+sourceType
+```
+
+Quando a conta não for determinada: marca `UNASSIGNED` (**D201**), sem `accountId` fictício. `overdue` é **característica** do evento (não é `type` financeiro).
+
+Tipos conceituais mínimos de origem: `INCOME`; `EXPENSE` (somente ACCOUNT/NONE); `CREDIT_CARD_INVOICE`; `TRANSFER` (série futura vazia na V1).
+
+`direction`: `IN` (entrada) ou `OUT` (saída). `amount` sempre positivo; o sentido está em `direction`.
+
+`sourceId` + `sourceType` devem permitir navegação futura ao recurso original (receita, parcela, fatura, transferência).
+
+Eventos sem data (**D203**): grupo separado (`undatedEvents`). **Não** atribuir ao mês atual, ao primeiro mês, ao último mês nem inventar data. **Não** alteram `totalIncome` / `totalExpense` / `netCashFlow` / `closingBalance` de nenhum período, nem `projectedIncome` / `projectedExpense` / `projectedNetCashFlow` / `projectedFinalBalance`. A série temporal usa **somente** eventos com data conhecida. A API **não** afirma que o saldo final inclui valor sem data.
+
+Resumo mensal **não** é paginado. Eventos detalhados fazem parte do contrato normal (**D204**); proteção de volume = paginação do envelope oficial (`items` / `page` / `size` / `totalItems` / `totalPages`; default `size=20`, máximo `100`). `page`/`size` **não** fatiam a série mensal. Sem flag para omitir eventos.
+
+---
+
+## 19.10.19 Performance e arquitetura
+
+Consulta **somente leitura**. Sem lock pessimista.
+
+Priorizar agregação no banco quando isso reduzir volume transferido a Java. Não carregar todas as entidades do usuário para filtrar em memória. Sem N+1.
+
+Arquitetura futura (sem abstrações extras):
+
+```text
+ProjectionController
+        ↓
+ProjectionService
+        ↓
+ProjectionCalculator
+        ↓
+Repositories / queries
+```
+
+Pacote: `br.com.financialcontrol.projections`. Sem entidade JPA `Projection`. Sem tabela. Sem UseCase por filtro. `ProjectionCalculator` isola o cálculo para teste unitário; o Controller não conhece regras financeiras.
+
+Reutilizar remaining/saldo oficiais via consultas; **não** copiar fórmulas em paralelo.
+
+---
+
+## 19.10.20 Recorrência, cenários, frontend e relatórios
+
+Sem recorrência. Sem inferir "salário sempre cai no dia 5".
+
+Uma única realidade: fatos conhecidos. Sem cenários, confidence ou probabilidade.
+
+Fase 18 **não** inclui frontend. A API deve ser adequada para a Fase 19 — Dashboard.
+
+Fase 18 **não** implementa relatórios. Projeção = visão operacional/preditiva.
+
+---
+
+## 19.10.21 Adaptação ao domínio existente
+
+A projeção adapta-se ao domínio. Não alterar regras das Fases 0–17 para facilitar o cálculo.
+
+Mapeamento de consumo (não são fórmulas novas):
+
+| Origem | O que a projeção usa |
+|---|---|
+| Saldo | RN240 `totalBalance` no `asOfDate` interno (= hoje na V1 pública) |
+| Receita | `remainingAmount` Fase 17; status `EXPECTED` |
+| Parcela ACCOUNT/NONE | remaining RN231; despesa não `CANCELLED`/`REFUNDED` |
+| Fatura | remaining `docs/23` §197; status `SCHEDULED`/`OPEN`/`CLOSED`; remaining > 0 |
+| Agreement | novas faturas/parcelas oficiais; fatura `SETTLED_BY_AGREEMENT` remaining 0 |
+| Transferência / acerto | só no saldo atual |
+| Meta | `reservedAmount` atual; não entra no fluxo |
+
+Anti-duplicidade cartão: idêntica em espírito a §19.7.5 (payables) — linha de caixa = fatura, nunca compra + fatura.
+
+---
+
+## 19.10.22 Decisões D201–D204 (FECHADAS)
+
+Não restam pontos funcionais em aberto para a implementação da Fase 18. A ressalva documental da Fase 17 (`§19.8.12` — texto residual sobre escrita de responsável em Income, já implementada) permanece **fora do escopo** desta fase.
+
+| Id | Decisão |
+|---|---|
+| **D201 — A** | Eventos sem conta determinada **não** são atribuídos artificialmente a uma conta. Participam do **consolidado**. No filtro por conta, não entram nos saldos da conta. No detalhamento: `UNASSIGNED`. Sem conta fictícia. Preferência cadastral ≠ conta do movimento futuro. |
+| **D202 — A** | Período solicitado **inteiramente** no passado → **400**. Sem deslocar horizonte, sem relatório histórico, sem **200** vazio. Parcialmente passado: D122–D124 inalteradas. |
+| **D203 — A** | Eventos sem data ficam separados e **não** alteram saldo projetado de nenhum período nem `projectedFinalBalance`. |
+| **D204 — A** | V1 **não** tem parâmetro `includeEvents`. Eventos do contrato normal. Query `includeEvents` → **400** (desconhecido). |
+
+---
+
+## 19.10.23 Registro das decisões D95–D204 (APROVADAS)
+
+Não reabrir. Contrato normativo = esta seção. Índice oficial da consolidação:
+
+| Id | Decisão |
+|---|---|
+| **D95** | Projeção = visão derivada de fluxo de caixa. |
+| **D96** | Resultado principal = saldo projetado + composição do fluxo. |
+| **D97** | Fórmula: saldo atual + entradas futuras − saídas futuras. |
+| **D98** | Cálculo determinístico. |
+| **D99** | Sem IA, ML, estatística, histórico estimado, recorrência implícita, cenários, confidence. |
+| **D100** | Projeção não persistida. |
+| **D101** | Sem tabela `projections`. |
+| **D102** | Sem tabela de itens de projeção. |
+| **D103** | Sem migration específica. |
+| **D104** | Sem nova fonte de verdade financeira. |
+| **D105** | Cálculo dinâmico sobre dados existentes. |
+| **D106** | Endpoint `GET /api/v1/projections`. |
+| **D107** | Filtro `startDate` / `endDate`. |
+| **D108** | Filtro `year` / `month`. |
+| **D109** | Filtro `months`. |
+| **D110** | Filtro opcional `accountId`. |
+| **D111** | Filtros conflitantes → HTTP 400. |
+| **D112** | Sem filtro de período → próximos 12 meses. |
+| **D113** | Limite máximo 12 meses. |
+| **D114** | Sem endpoints adicionais desnecessários nesta fase. |
+| **D115** | Mês = mês calendário. |
+| **D116** | Não usar janela móvel de 30 dias. |
+| **D117** | Trimestre = trimestre calendário Q1–Q4. |
+| **D118** | Resultado do trimestre: meses componentes + total do trimestre. |
+| **D119** | Vários meses em uma operação. |
+| **D120** | Granularidade V1 = mensal. |
+| **D121** | Sem projeção diária. |
+| **D122** | Ponto inicial = saldo real atual. |
+| **D123** | Não reconstruir o mês corrente desde o dia 1. |
+| **D124** | Somente eventos ainda relevantes a partir desse ponto. |
+| **D125** | `asOfDate` interno; não público na V1. |
+| **D126** | Timezone `America/Sao_Paulo`. |
+| **D127** | Receitas já recebidas não entram de novo. |
+| **D128** | Despesas já pagas não entram de novo. |
+| **D129** | Pagamentos já realizados não entram de novo. |
+| **D130** | Transferências já realizadas não entram de novo. |
+| **D131** | Acertos já realizados não entram de novo. |
+| **D132** | Refunds já refletidos no saldo não entram de novo. |
+| **D133** | Vedada qualquer dupla contagem. |
+| **D134** | Receitas futuras `EXPECTED` entram. |
+| **D135** | Receitas não recebidas e vencidas entram imediatamente. |
+| **D136** | Receitas já recebidas não entram. |
+| **D137** | Receitas canceladas nunca entram. |
+| **D138** | Não inventar receitas por histórico/recorrência. |
+| **D139** | Receita futura não cadastrada não existe para a projeção. |
+| **D140** | Receita sem data: grupo sem data; sem data artificial. |
+| **D141** | Despesas futuras relevantes entram. |
+| **D142** | Parcialmente paga: somente `remaining`. |
+| **D143** | Canceladas não entram. |
+| **D144** | Refundadas não geram entrada futura artificial. |
+| **D145** | Vencidas ainda abertas entram imediatamente. |
+| **D146** | Sem vencimento: sem data artificial. |
+| **D147** | Parcelas futuras consideradas individualmente. |
+| **D148** | Parcial/desconto/surcharge/reversão: remaining operacional do domínio. |
+| **D149** | Projeção não reimplementa essas regras. |
+| **D150** | Consome valores oficiais do domínio. |
+| **D151** | Compra no cartão não é saída futura de conta. |
+| **D152** | Projeção considera a fatura. |
+| **D153** | Nunca compra + fatura como duas saídas. |
+| **D154** | Limite do cartão nunca é dinheiro disponível. |
+| **D155** | Faturas relevantes pelo remaining operacional. |
+| **D156** | `SCHEDULED` / `OPEN` / `CLOSED` se ainda forem obrigação futura. |
+| **D157** | `PAID` não entra. |
+| **D158** | Não usar valor original da fatura no lugar do remaining. |
+| **D159** | Créditos/ajustes já no remaining não são recalculados. |
+| **D160** | Obrigações futuras de Agreements entram. |
+| **D161** | Entrada futura não liquidada na data correspondente. |
+| **D162** | Entrada já paga não entra de novo. |
+| **D163** | Sem lógica financeira paralela para Agreements. |
+| **D164** | Sem transferências futuras/agendadas nesta fase. |
+| **D165** | Transferências históricas já estão no saldo atual. |
+| **D166** | Consolidado: transferência não altera patrimônio. |
+| **D167** | Por conta: saída na origem, entrada no destino. |
+| **D168** | Não transformar transferências históricas em eventos futuros. |
+| **D169** | Consolidado: contas do usuário. |
+| **D170** | Por conta: `accountId` opcional. |
+| **D171** | Preparar "quanto terei no total?" e "em cada conta?". |
+| **D172** | Sem `userId` do cliente; JWT. |
+| **D173** | Contribuição/resgate não alteram saldo financeiro total. |
+| **D174** | Não são caixa adicional da projeção. |
+| **D175** | Pode expor `reservedAmount` e `availableProjectedBalance`. |
+| **D176** | `availableProjectedBalance = closingBalance − reservedAmount`. |
+| **D177** | `reservedAmount` não é subtraído de `closingBalance`. |
+| **D178** | Acertos históricos já no saldo atual. |
+| **D179** | Sem acertos futuros nesta fase. |
+| **D180** | Saldo projetado negativo é válido. |
+| **D181** | Não mascarar, limitar a zero nem rejeitar. |
+| **D182** | Sinalizar `negative`, meses negativos, mínimo e respectiva data. |
+| **D183** | Sem alertas de negócio nesta fase. |
+| **D184** | Contrato mensal mínimo: period, opening/closing, totais, net, mínimo, data do mínimo, negative. |
+| **D185** | Se metas: `reservedAmount`, `availableProjectedBalance`. |
+| **D186** | Documentar o contrato; não implementar DTO nesta etapa documental. |
+| **D187** | Contrato consolidado: current/final, income/expense/net, mínimo e data. |
+| **D188** | Consolidado também pode expor reserva e disponível projetado. |
+| **D189** | API preparada para expor eventos da composição. |
+| **D190** | Evento: date, type, description, amount, direction, sourceId, sourceType. |
+| **D191** | DTOs próprios; nunca JPA na API. |
+| **D192** | Identificação suficiente para navegar ao recurso original. |
+| **D193** | Distinguir ao menos INCOME, EXPENSE, CREDIT_CARD_INVOICE, TRANSFER. |
+| **D194** | `OVERDUE` não é tipo financeiro; é característica/estado. |
+| **D195** | Eventos sem data não recebem data artificial. |
+| **D196** | Representá-los como eventos sem data. |
+| **D197** | Não colocá-los automaticamente no mês atual ou no primeiro mês. |
+| **D198** | V1: período, ano/mês, quantidade de meses, conta. |
+| **D199** | V1: sem categoria, responsável, cartão, tipo de evento arbitrário. |
+| **D200** | Cartão não é filtro principal; a obrigação de caixa é a fatura. |
+| **D201** | Sem atribuição artificial a conta; consolidado sim; filtro por conta não; detalhe `UNASSIGNED`. |
+| **D202** | Período inteiramente no passado → HTTP 400. |
+| **D203** | Eventos sem data separados; não alteram saldos temporais nem o saldo final. |
+| **D204** | Sem parâmetro `includeEvents` na V1. |
+
+Paginação da série, performance, arquitetura, recorrência, cenários, frontend e relatórios (§19.10.19–§19.10.20) fazem parte do mesmo contrato. Testes: `docs/27` §40H.
+
+---
+
+## RN320 — Projeção derivada
+
+A projeção não é fato persistido. Não criar tabela `projections` nem segunda fonte de verdade. Fonte: saldo atual (RN240) + fatos ainda relevantes com remaining operacional oficial.
+
+
+## RN321 — Fórmula do saldo projetado
+
+`saldo projetado = saldo atual + entradas futuras − saídas futuras`. Determinístico. Sem estimativa, recorrência ou cenário.
+
+
+## RN322 — Ponto inicial
+
+Abertura = saldo real em `asOfDate` interno (hoje na API pública). Não reconstruir o mês corrente desde o dia 1. Timezone `America/Sao_Paulo`.
+
+
+## RN323 — Não duplicação
+
+Fato já incorporado ao saldo atual não entra na projeção. Compra no cartão e fatura não são duas saídas. Remaining oficial; sem recalcular crédito/ajuste/settlement.
+
+
+## RN324 — Receitas na projeção
+
+`EXPECTED` com remaining > 0 entra pelo remaining. Vencida entra no primeiro período. `RECEIVED` e `CANCELLED` não entram. Sem inventar receita.
+
+
+## RN325 — Despesas e parcelas ACCOUNT/NONE na projeção
+
+Parcela individual pelo remaining (RN231). Parcial = remaining. `CANCELLED`/`REFUNDED` fora. Vencida aberta entra no primeiro período. `CREDIT_CARD` não é evento de conta.
+
+
+## RN326 — Faturas na projeção
+
+Fatura `SCHEDULED`/`OPEN`/`CLOSED` com remaining > 0 entra pelo remaining. `PAID` e `SETTLED_BY_AGREEMENT` não entram. Limite do cartão não é caixa.
+
+
+## RN327 — Transferências e acertos na projeção
+
+Sem fatos futuros desses tipos na Fase 18. Histórico só via saldo atual. Consolidado: transferência não muda patrimônio.
+
+
+## RN328 — Metas na projeção
+
+Não são fluxo de caixa. `availableProjectedBalance = closingBalance − reservedAmount`. `reservedAmount` não reduz `closingBalance`.
+
+
+## RN329 — Saldo projetado negativo
+
+Resultado válido. Expor `negative`, meses negativos, mínimo e data do mínimo. Sem alerta de negócio.
+
+
+## RN330 — Horizonte e filtros
+
+Máximo 12 meses. Default 12 meses. Mês/trimestre calendário. Filtros conflitantes, horizonte excedido e período **inteiramente** no passado (**D202**) → **400**. Sem `userId` de cliente. Sem filtro de cartão/categoria/responsável. Sem `includeEvents` (**D204**).
+
+
+## RN331 — Isolamento da projeção
+
+Somente dados do `userId` autenticado. Usuário B nunca recebe projeção do usuário A.
+
+
+## RN332 — Eventos sem conta determinada (D201)
+
+Não atribuir artificialmente a uma conta. Consolidado: participam (se tiverem data). Filtro `accountId`: fora dos saldos da conta. Detalhe: `UNASSIGNED`. Preferência cadastral não confirma a conta do movimento futuro.
+
+
+## RN333 — Período de projeção no passado (D202)
+
+Horizonte solicitado inteiramente anterior a hoje (`America/Sao_Paulo`) → **400**. Não deslocar. Não reportar histórico. Não devolver vazio. Parcialmente passado: RN322.
+
+
+## RN334 — Eventos sem data (D203)
+
+Grupo separado. Não alteram `closingBalance` de nenhum período nem `projectedFinalBalance`. Sem data artificial.
+
+
+## RN335 — Sem includeEvents (D204)
+
+A V1 não possui `includeEvents`. Eventos seguem o contrato normal. O parâmetro, se enviado, é desconhecido → **400**.
+
+
 # 20. Metas
 
 Regras gerais consolidadas na **Fase 15** (`§19.6`). Esta seção mantém referência resumida; em conflito, prevalece §19.6.
@@ -4529,78 +5181,72 @@ Conclusão é ação **explícita** do usuário (`POST .../complete`). **Não** 
 
 # 21. Projeções
 
+Contrato oficial da **Fase 18:** **§19.10** (D95–D204). Em conflito com os resumos abaixo, prevalece §19.10. **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO.** A implementação **não** está autorizada.
+
 ## RN133 — Projeção
 
-Projeções são calculadas a partir dos dados existentes.
+Projeções são calculadas a partir dos dados existentes. Não persistir. Detalhe: RN320 / §19.10.
 
 
 ## RN134 — Receita futura
 
-Receitas EXPECTED participam da projeção.
+Receitas `EXPECTED` com remaining > 0 participam da projeção (remaining oficial da Fase 17). Detalhe: RN324.
 
 
 ## RN135 — Receita recebida
 
-Receitas RECEIVED representam histórico realizado.
+Receitas `RECEIVED` (remaining 0) representam histórico já no saldo atual; não entram de novo.
 
 
 ## RN136 — Despesa futura
 
-Despesas OPEN participam da projeção conforme seu vencimento.
+Obrigações ACCOUNT/NONE com remaining > 0 participam conforme o vencimento da **parcela** (não só despesa `OPEN`; incluir `PARTIALLY_PAID` pelo remaining). `CREDIT_CARD` não é saída de conta. Detalhe: RN325 / RN326.
 
 
 ## RN137 — Parcela futura
 
-Parcelas OPEN participam da projeção.
+Parcelas ACCOUNT/NONE com remaining > 0 participam individualmente. Parcelas de cartão não são eventos de caixa.
 
 
 ## RN138 — Fatura
 
-Compromissos futuros de cartão participam da projeção.
+A obrigação de caixa do cartão é a fatura (`SCHEDULED`/`OPEN`/`CLOSED` com remaining > 0). Não somar compra + fatura.
 
 
 ## RN139 — Cancelamento
 
-Despesas CANCELLED não participam da projeção.
+Despesas `CANCELLED` não participam da projeção.
 
-Receitas CANCELLED também não participam da projeção (RN045). Receita estornada volta a `EXPECTED` e, portanto, volta a participar da projeção enquanto permanecer prevista.
+Receitas `CANCELLED` também não participam da projeção (RN045). Receita com remaining > 0 volta a `EXPECTED` após estorno de RECEIPT e participa enquanto prevista.
 
 
 ## RN140 — Estorno
 
-Despesas REFUNDED não devem representar compromisso futuro ativo.
+Despesas `REFUNDED` não devem representar compromisso futuro ativo nem gerar entrada futura artificial.
 
 
 # 22. Saldo projetado
 
+Autoridade: §19.10 / RN321–RN329.
+
 ## RN141 — Saldo projetado
 
-Saldo projetado é diferente do saldo atual.
+Saldo projetado é diferente do saldo atual. Abertura = saldo real atual (RN322).
 
 
 ## RN142 — Fórmula conceitual
 
-Saldo projetado:
-
-saldo atual
-
-+
-
-receitas previstas
-
--
-
-compromissos futuros
+Saldo projetado = saldo atual + entradas futuras − saídas futuras (RN321).
 
 
 ## RN143 — Projeção
 
-O sistema não deve considerar limite de cartão como dinheiro disponível.
+O sistema não deve considerar limite de cartão como dinheiro disponível (RN326).
 
 
 ## RN144 — Projeção
 
-O sistema não deve considerar uma receita EXPECTED como dinheiro disponível atualmente.
+O sistema não deve considerar uma receita `EXPECTED` como dinheiro disponível atualmente.
 
 
 # 23. Dashboard

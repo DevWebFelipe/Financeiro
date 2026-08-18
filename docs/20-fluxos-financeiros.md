@@ -1479,6 +1479,8 @@ O valor das faturas não deve ser subtraído duas vezes.
 
 # 73. Fluxo — Projeção mensal
 
+Contrato oficial da Fase 18: `docs/24` §19.10 / `docs/25` §68. A série é mensal (mês calendário), a partir do saldo real atual. **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO.**
+
 Usuário seleciona:
 
 Dezembro/2026
@@ -1522,6 +1524,8 @@ Saldo projetado não significa saldo bancário atual.
 
 
 # 76. Fluxo — Projeção de cartão
+
+A Fase 18 **não** filtra a projeção de caixa por cartão. A saída de dinheiro é a **fatura** (remaining), não a compra. Agrupar remaining de faturas por cartão é apresentação (Dashboard / contas a pagar), não query de `GET /projections`.
 
 Usuário possui:
 
@@ -2032,11 +2036,11 @@ R$ 200
 
 # 114. Projeção
 
-Sistema deve mostrar cada parcela no mês correspondente.
+Sistema deve mostrar cada parcela ACCOUNT/NONE no mês correspondente ao `due_date` da parcela (remaining oficial).
 
-Cada parcela de cartão é vinculada à fatura do respectivo ciclo (`expense_installments.invoice_id`).
+Cada parcela de cartão é vinculada à fatura do respectivo ciclo (`expense_installments.invoice_id`). Na projeção de **caixa**, o evento é a **fatura**, não a parcela de cartão isolada. A despesa original não possui `invoice_id`.
 
-A despesa original não possui `invoice_id`.
+Contrato: `docs/24` §19.10.
 
 
 # 115. Fluxo — Compra cancelada antes da liquidação
@@ -2472,6 +2476,8 @@ Sistema apresenta:
 
 
 # 145. Fluxo — Projeção
+
+Contrato: `docs/24` §19.10. Abertura = saldo atual. Sem reconstruir o mês desde o dia 1.
 
 Usuário possui:
 

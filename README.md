@@ -517,7 +517,7 @@ Coleção Postman para testes manuais: `postman/Financial Control API.postman_co
 
 **Fase atual:** Fase 17 — Contas a receber — **CONCLUÍDA E APROVADA**
 
-**Próxima fase:** Fase 18 — Projeções — **NÃO INICIADA / AGUARDANDO AUTORIZAÇÃO EXPLÍCITA**
+**Próxima fase:** Fase 18 — Projeções — **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO** (D95–D204 fechadas; implementação não autorizada)
 
 ```text
 Fase 0 — Planejamento — CONCLUÍDA E APROVADA
@@ -536,11 +536,11 @@ Fase 14 — Transferências, Acerto de Saldos e Saldo Inicial — CONCLUÍDA E A
 Fase 15 — Metas — CONCLUÍDA E APROVADA
 Fase 16 — Contas a pagar — CONCLUÍDA E APROVADA
 Fase 17 — Contas a receber — CONCLUÍDA E APROVADA
-Fase 18 — Projeções — NÃO INICIADA
+Fase 18 — Projeções — CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO
 ```
 
 Estado atual do backend (Fases 1–9 + 13 + 14 + 15 + 16 + 17): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas (movimentações V30), despesas, parcelamento (Fase 8), cartões/faturas (Fase 9), Agreements (Fase 13), transferências e Acerto de Saldos (Fase 14), metas financeiras (Fase 15), contas a pagar (Fase 16), contas a receber (Fase 17).
 
-Fases 0–17 encerradas. **Fase 18 — Projeções** é a próxima etapa planejada (**NÃO INICIADA**; somente após autorização explícita). D73–D94 implementadas; **não** recriar `GET /api/v1/receivables`; **não** criar tabela `receivables`. Não implementar Refresh Token, `payments.type`, relatórios/PDF, frontend financeiro, auditoria genérica, extrato `/statement` nem `POST /invoices/{id}/close` sem autorização.
+Fases 0–17 encerradas. **Fase 18 — Projeções:** especificação **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO** (`docs/24` §19.10; D95–D204). **Não** implementar código, migration, endpoint nem testes de implementação até autorização explícita. D73–D94 implementadas; **não** recriar `GET /api/v1/receivables`; **não** criar tabela `receivables` nem `projections`. Não implementar Refresh Token, `payments.type`, relatórios/PDF, frontend financeiro, auditoria genérica, extrato `/statement` nem `POST /invoices/{id}/close` sem autorização.
 
 Não implementar Refresh Token, logout, OAuth, MFA, roles, rate limiting, frontend financeiro, relatórios/PDF, auditoria genérica nem `payments.type` sem autorização. A edição de parcela já em fatura (§269.2.7) permanece **deferida**. Fechados: §269.3, §269.4, **§269.5** (Fase 13 — `CONCLUÍDA E APROVADA`).

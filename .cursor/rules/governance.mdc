@@ -38,6 +38,8 @@ Do not create provisional code, preparatory migrations, presumed enums/CHECKs, o
 
 **Phase 17 — CONCLUÍDA E APROVADA (Parte 1 + Parte 2):** `docs/24` §19.8 / §19.9 / `docs/23` §269.6. D73–D94 **closed** and **implemented**. Income responsible **write** implemented (RN306 / D89). Canonical movement endpoints live; legacy `/receive` and `/reverse` removed (D74-A). D94 closes D88 lacuna. Table `income_movements` (V30) exists.
 
+**Phase 18 — Projections:** specification **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO** (`docs/24` §19.10; D95–D204 closed). **Do not implement** until explicit authorization. No `projections` table. No Java package until authorized.
+
 Mandatory remaining questions: `docs/23-modelo-de-dados.md` seção 269 (`payments.type`; §269.2.7).
 
 Everything else already consolidated in `docs/23` remains the source of truth.

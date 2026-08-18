@@ -2225,46 +2225,113 @@ Filtros (**D78-A** / **D88** / **D94**): `dateType=RECEIVED` usa `movement_date`
 Frontend, dashboard, PDF/Excel, projeções, over-receipt, tabela `receivables`, exclusão física.
 
 
-# 68. Projeções
+# 68. Projeções (Fase 18 — especificação aprovada)
 
-Endpoint:
+**Status:** `docs/24` §19.10 — **CONCLUÍDA E APROVADA — AGUARDANDO IMPLEMENTAÇÃO**. D95–D204 **fechadas**. **Não** criar este endpoint até autorização explícita da implementação.
 
+Endpoint único:
+
+```text
 GET /api/v1/projections
+```
 
+Auth: Bearer obrigatório. Sem token / inválido / expirado / usuário desativado → **401** `UNAUTHORIZED`. Dono = JWT. Não existe `userId` na query.
 
-Query:
+Visão derivada. Sem tabela `projections`. Sem POST/PUT/PATCH/DELETE. Sem `GET /projections/{id}`. Sem `GET /projections/monthly` (superado).
 
-startDate
+Propriedades JSON não se aplicam (GET sem body). Query params desconhecidos → **400** `VALIDATION_ERROR`.
 
-endDate
+## Query params
 
+| Param | Obrigatório | Default | Semântica |
+|---|---|---|---|
+| `startDate` | não | omitido | `LocalDate` início inclusivo; exige `endDate`. Não misturar com `year`/`month` nem com `months`. |
+| `endDate` | não | omitido | `LocalDate` fim inclusivo; exige `startDate`. |
+| `year` | não | omitido | ano do mês inicial; exige `month`. |
+| `month` | não | omitido | 1–12; exige `year`. Mês calendário. |
+| `months` | não | omitido | quantidade de meses (1–12). Sozinho: a partir do mês corrente / `asOfDate` interno. Com `year`/`month`: a partir daquele mês. |
+| `accountId` | não | omitido | UUID da conta do usuário; omisso = consolidado. Eventos sem conta determinada (**D201**) **não** são atribuídos a esta conta. |
+| `page` | não | `0` | ≥ 0; **somente** a lista de eventos. |
+| `size` | não | `20` | 1–100; **somente** eventos. A série mensal **não** é paginada. |
 
-# 69. Projeção
+Não existe `includeEvents` (**D204**). Enviar `includeEvents` → **400** `VALIDATION_ERROR` (parâmetro desconhecido).
 
-Response conceitual:
+Sem parâmetro de período: próximos **12** meses (primeiro mês parcial se `asOfDate` não for dia 1).
 
+**400** `VALIDATION_ERROR`: modos de período misturados; `year` xor `month`; só `startDate` ou só `endDate`; `startDate` > `endDate`; `months` < 1 ou > 12; horizonte > 12 meses; `month` inválido; param desconhecido (inclui `includeEvents`); período solicitado **inteiramente** anterior a hoje em `America/Sao_Paulo` (**D202** — não deslocar, não devolver 200 vazio, não virar relatório histórico).
+
+Período **parcialmente** passado: abertura = saldo atual; eventos ainda relevantes a partir de hoje; não reconstruir o mês desde o dia 1.
+
+`page < 0`, `size < 1` ou `size > 100` → **400** (mesmo rigor das listagens oficiais).
+
+Não existem: `categoryId`, `responsibleType`, `creditCardId`, filtro de tipo de evento, `asOfDate` público, `userId`, `quarter`, `includeEvents`.
+
+Trimestre calendário: o cliente monta o intervalo (`startDate`/`endDate` ou `year`/`month` + `months`). A resposta inclui bloco de trimestre quando o recorte contém trimestre **completo** (Q1–Q4). Contrato: `docs/24` §19.10.16.
+
+Ponto inicial: saldo real atual (`America/Sao_Paulo`). Não reconstruir o mês corrente desde o dia 1. Eventos já no saldo não reaparecem.
+
+## Response 200 — conceitos obrigatórios
+
+Envelope conceitual (nomes JSON estáveis na implementação; não criar DTO agora):
+
+- `summary`: `currentBalance`, `projectedFinalBalance`, `projectedIncome`, `projectedExpense`, `projectedNetCashFlow`, `minimumProjectedBalance`, `minimumProjectedBalanceDate`; quando aplicável `reservedAmount`, `availableProjectedBalance`.
+- `months[]`: `period` (ano-mês), `openingBalance`, `totalIncome`, `totalExpense`, `netCashFlow`, `closingBalance`, `minimumProjectedBalance`, `minimumProjectedBalanceDate`, `negative`; quando aplicável `reservedAmount`, `availableProjectedBalance`.
+- `quarters[]`: presente quando houver trimestre calendário completo no recorte; cada item lista os meses e o total do trimestre.
+- `events`: lista paginada de eventos datados (`items`, `page`, `size`, `totalItems`, `totalPages`). Faz parte do contrato normal da V1 (**D204**). Campos: `date`, `type`, `description`, `amount`, `direction` (`IN` \| `OUT`), `sourceId`, `sourceType`, `overdue` (característica; não é `type`). Sem conta determinada: identificáveis como `UNASSIGNED` (**D201**); no filtro `accountId` não entram nos totais da conta.
+- `undatedEvents[]`: eventos sem data (**D203**); **não** atribuídos a um mês; **não** alteram `closingBalance` nem `projectedFinalBalance`.
+
+`amount` do evento sempre positivo. `type` / `sourceType` conceituais: `INCOME`, `EXPENSE`, `CREDIT_CARD_INVOICE`, `TRANSFER`.
+
+Saldo projetado negativo é **200** válido (`negative: true`). Não mascarar.
+
+Ownership: dados de outro usuário não vazam. `accountId` que não pertence ao autenticado: **200** sem dados alheios (não vazar existência). Eventos sem conta determinada participam do consolidado e **não** são atribuídos à conta filtrada (**D201**).
+
+Exemplo ilustrativo (não é contrato de campos extras):
+
+```json
 {
-  "startDate": "2026-09-01",
-  "endDate": "2026-12-31",
-  "openingBalance": 5000.00,
-  "projectedIncome": 15000.00,
-  "projectedExpenses": 12000.00,
-  "projectedBalance": 8000.00
+  "startDate": "2026-08-17",
+  "endDate": "2026-08-31",
+  "summary": {
+    "currentBalance": 1000.00,
+    "projectedIncome": 1000.00,
+    "projectedExpense": 5000.00,
+    "projectedNetCashFlow": -4000.00,
+    "projectedFinalBalance": -3000.00,
+    "minimumProjectedBalance": -3000.00,
+    "minimumProjectedBalanceDate": "2026-08-25",
+    "reservedAmount": 200.00,
+    "availableProjectedBalance": -3200.00
+  },
+  "months": [
+    {
+      "period": "2026-08",
+      "openingBalance": 1000.00,
+      "totalIncome": 1000.00,
+      "totalExpense": 5000.00,
+      "netCashFlow": -4000.00,
+      "closingBalance": -3000.00,
+      "minimumProjectedBalance": -3000.00,
+      "minimumProjectedBalanceDate": "2026-08-25",
+      "negative": true
+    }
+  ]
 }
+```
+
+Regras financeiras: `docs/24` §19.10. Testes futuros: `docs/27` §40H.
 
 
-# 70. Projeção mensal
+# 69. Projeção — regras de caixa (resumo)
 
-Endpoint:
+Compra no cartão **não** é saída de conta; a fatura é. Remaining oficial. Sem dupla contagem com o saldo atual. Limite do cartão não é dinheiro.
 
-GET /api/v1/projections/monthly
+Detalhe: `docs/24` §19.10.
 
 
-Query:
+# 70. Projeção mensal (superado)
 
-startDate
-
-endDate
+**SUPERADO.** Não implementar `GET /api/v1/projections/monthly`. A série mensal pertence a `GET /api/v1/projections` (`docs/25` §68 / `docs/24` §19.10).
 
 
 # 71. Dashboard
