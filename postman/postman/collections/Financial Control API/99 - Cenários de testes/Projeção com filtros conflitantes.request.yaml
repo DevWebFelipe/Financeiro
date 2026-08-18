@@ -1,0 +1,21 @@
+$kind: http-request
+description: startDate/endDate misturado com year/month. Combinação documentada como inválida → 400 VALIDATION_ERROR.
+url: "{{baseUrl}}/api/v1/projections?startDate={{today}}&endDate={{today}}&year={{projectionYear}}&month={{projectionMonth}}"
+method: GET
+queryParams:
+  - key: startDate
+    value: "{{today}}"
+  - key: endDate
+    value: "{{today}}"
+  - key: year
+    value: "{{projectionYear}}"
+  - key: month
+    value: "{{projectionMonth}}"
+scripts:
+  - type: beforeRequest
+    code: "const today = pm.collectionVariables.get(\"today\");\r\nconst parts = today.split(\"-\");\r\npm.variables.set(\"projectionYear\", parts[0]);\r\npm.variables.set(\"projectionMonth\", String(Number(parts[1])));\r"
+    language: text/javascript
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 400 Bad Request\", function () {\r\n    pm.response.to.have.status(400);\r\n});\r\n\r\npm.test(\"Código de erro deve ser VALIDATION_ERROR\", function () {\r\n    pm.expect(json.code).to.eql(\"VALIDATION_ERROR\");\r\n});\r"
+    language: text/javascript
+order: 11200

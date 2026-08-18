@@ -1,0 +1,12 @@
+$kind: http-request
+description: accountId bem-formado que não pertence ao autenticado. A API não vaza existência (200 com recorte zerado, não 404). Mesmo UUID sentinela usado em Consultar conta inexistente.
+url: "{{baseUrl}}/api/v1/projections?accountId=00000000-0000-7000-0000-000000000001"
+method: GET
+queryParams:
+  - key: accountId
+    value: "00000000-0000-7000-0000-000000000001"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Não deve vazar dados de outra conta\", function () {\r\n    pm.expect(Number(json.summary.currentBalance)).to.eql(0);\r\n    pm.expect(json.events.items).to.be.an(\"array\").that.is.empty;\r\n});\r"
+    language: text/javascript
+order: 11300

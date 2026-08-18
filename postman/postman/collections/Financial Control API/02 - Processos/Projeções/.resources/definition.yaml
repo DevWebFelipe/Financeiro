@@ -1,0 +1,3 @@
+$kind: collection
+description: Visão derivada de fluxo de caixa. Sem tabela projections, sem GET por id, sem escritas e sem GET /projections/monthly.
+order: 6500

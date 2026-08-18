@@ -4228,6 +4228,422 @@
           ]
         },
         {
+          "name": "Projeções",
+          "item": [
+            {
+              "name": "Consultar",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projections",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projections"
+                  ],
+                  "query": [
+                    {
+                      "key": "startDate",
+                      "value": "{{today}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "{{today}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "year",
+                      "value": "2026",
+                      "disabled": true
+                    },
+                    {
+                      "key": "month",
+                      "value": "8",
+                      "disabled": true
+                    },
+                    {
+                      "key": "months",
+                      "value": "12",
+                      "disabled": true
+                    },
+                    {
+                      "key": "accountId",
+                      "value": "{{accountId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "0",
+                      "disabled": true
+                    },
+                    {
+                      "key": "size",
+                      "value": "20",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Sem filtro de período. Default = próximos 12 meses a partir do mês corrente (primeiro mês parcial se hoje não for dia 1). Eventos paginados no contrato normal (page/size omitidos usam 0/20). Parâmetros oficiais listados desabilitados para referência; includeEvents não existe na V1."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir summary, months e events\", function () {\r",
+                      "    pm.expect(json.startDate).to.exist;\r",
+                      "    pm.expect(json.endDate).to.exist;\r",
+                      "    pm.expect(json.summary).to.exist;\r",
+                      "    pm.expect(json.summary.currentBalance).to.exist;\r",
+                      "    pm.expect(json.summary.projectedFinalBalance).to.exist;\r",
+                      "    pm.expect(json.months).to.be.an(\"array\");\r",
+                      "    pm.expect(json.events).to.exist;\r",
+                      "    pm.expect(json.events.items).to.be.an(\"array\");\r",
+                      "    pm.expect(json.undatedEvents).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Série mensal default deve ter 12 meses\", function () {\r",
+                      "    pm.expect(json.months.length).to.eql(12);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Série mensal deve expor estrutura de saldo\", function () {\r",
+                      "    const month = json.months[0];\r",
+                      "    pm.expect(month.period).to.exist;\r",
+                      "    pm.expect(month.openingBalance).to.exist;\r",
+                      "    pm.expect(month.closingBalance).to.exist;\r",
+                      "    pm.expect(month.totalIncome).to.exist;\r",
+                      "    pm.expect(month.totalExpense).to.exist;\r",
+                      "    pm.expect(month.netCashFlow).to.exist;\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Eventos datados, quando presentes, devem ter campos principais\", function () {\r",
+                      "    if (json.events.items.length === 0) {\r",
+                      "        return;\r",
+                      "    }\r",
+                      "    const event = json.events.items[0];\r",
+                      "    pm.expect(event.date).to.exist;\r",
+                      "    pm.expect(event.type).to.exist;\r",
+                      "    pm.expect(event.amount).to.exist;\r",
+                      "    pm.expect(event.direction).to.exist;\r",
+                      "    pm.expect(event.sourceId).to.exist;\r",
+                      "    pm.expect(event.accountAssignment).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar por período",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projections?startDate={{today}}&endDate={{today}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projections"
+                  ],
+                  "query": [
+                    {
+                      "key": "startDate",
+                      "value": "{{today}}"
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "{{today}}"
+                    }
+                  ]
+                },
+                "description": "Modo startDate + endDate (inclusivos). Usa {{today}} como início e fim do recorte (um dia, válido se inclui hoje). Não misturar com year/month nem months."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir summary e months\", function () {\r",
+                      "    pm.expect(json.summary).to.exist;\r",
+                      "    pm.expect(json.summary.currentBalance).to.exist;\r",
+                      "    pm.expect(json.summary.projectedFinalBalance).to.exist;\r",
+                      "    pm.expect(json.months).to.be.an(\"array\").that.is.not.empty;\r",
+                      "    pm.expect(json.events.items).to.be.an(\"array\");\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar por ano e mês",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projections?year={{projectionYear}}&month={{projectionMonth}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projections"
+                  ],
+                  "query": [
+                    {
+                      "key": "year",
+                      "value": "{{projectionYear}}"
+                    },
+                    {
+                      "key": "month",
+                      "value": "{{projectionMonth}}"
+                    }
+                  ]
+                },
+                "description": "Modo year + month (mês calendário corrente, derivado de {{today}}). Sem months = um mês."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const today = pm.collectionVariables.get(\"today\");\r",
+                      "const parts = today.split(\"-\");\r",
+                      "pm.variables.set(\"projectionYear\", parts[0]);\r",
+                      "pm.variables.set(\"projectionMonth\", String(Number(parts[1])));\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Série mensal deve ter 1 mês\", function () {\r",
+                      "    pm.expect(json.months).to.be.an(\"array\").that.has.lengthOf(1);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir saldo atual e projetado\", function () {\r",
+                      "    pm.expect(json.summary.currentBalance).to.exist;\r",
+                      "    pm.expect(json.summary.projectedFinalBalance).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar múltiplos meses",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projections?months=3",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projections"
+                  ],
+                  "query": [
+                    {
+                      "key": "months",
+                      "value": "3"
+                    }
+                  ]
+                },
+                "description": "Modo somente months. Quantidade a partir do mês corrente / asOfDate interno. Valor 3 (entre 1 e 12)."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Série mensal deve ter 3 meses\", function () {\r",
+                      "    pm.expect(json.months).to.be.an(\"array\").that.has.lengthOf(3);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir saldo atual e projetado\", function () {\r",
+                      "    pm.expect(json.summary.currentBalance).to.exist;\r",
+                      "    pm.expect(json.summary.projectedFinalBalance).to.exist;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar por conta",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projections?accountId={{accountId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projections"
+                  ],
+                  "query": [
+                    {
+                      "key": "accountId",
+                      "value": "{{accountId}}"
+                    }
+                  ]
+                },
+                "description": "Filtro accountId da conta do usuário autenticado ({{accountId}}). Eventos sem conta determinada (UNASSIGNED) não entram nos totais nem na lista desta conta."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Resposta deve possuir summary e months\", function () {\r",
+                      "    pm.expect(json.summary).to.exist;\r",
+                      "    pm.expect(json.summary.currentBalance).to.exist;\r",
+                      "    pm.expect(json.summary.projectedFinalBalance).to.exist;\r",
+                      "    pm.expect(json.months).to.be.an(\"array\");\r",
+                      "    pm.expect(json.events.items).to.be.an(\"array\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Eventos UNASSIGNED não entram no recorte da conta\", function () {\r",
+                      "    pm.expect(json.events.items).to.be.an(\"array\").that.is.empty;\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Consultar com paginação",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projections?page=0&size=5",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projections"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "5"
+                    }
+                  ]
+                },
+                "description": "page e size paginam somente a lista de eventos datados. A série mensal não é paginada. Default size=20, máximo 100."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const json = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Paginação aplica-se aos eventos\", function () {\r",
+                      "    pm.expect(json.events.page).to.eql(0);\r",
+                      "    pm.expect(json.events.size).to.eql(5);\r",
+                      "    pm.expect(json.events.items).to.be.an(\"array\");\r",
+                      "    pm.expect(json.events.items.length).to.be.at.most(5);\r",
+                      "    pm.expect(json.events.totalItems).to.exist;\r",
+                      "    pm.expect(json.events.totalPages).to.exist;\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Série mensal não é paginada\", function () {\r",
+                      "    pm.expect(json.months).to.be.an(\"array\").that.has.lengthOf(12);\r",
+                      "});\r"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Visão derivada de fluxo de caixa. Sem tabela projections, sem GET por id, sem escritas e sem GET /projections/monthly."
+        },
+        {
           "name": "Receitas",
           "item": [
             {
@@ -5503,9 +5919,242 @@
               }
             }
           ]
+        },
+        {
+          "name": "Projeção com período no passado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projections?startDate={{projectionPastStart}}&endDate={{projectionPastEnd}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "projections"
+              ],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "{{projectionPastStart}}"
+                },
+                {
+                  "key": "endDate",
+                  "value": "{{projectionPastEnd}}"
+                }
+              ]
+            },
+            "description": "Período solicitado inteiramente anterior a hoje (America/Sao_Paulo). Janeiro do ano anterior a {{today}}. Esperado 400 VALIDATION_ERROR. Não desloca horizonte e não devolve 200 vazio."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const today = pm.collectionVariables.get(\"today\");\r",
+                  "const year = Number(today.split(\"-\")[0]) - 1;\r",
+                  "pm.variables.set(\"projectionPastStart\", year + \"-01-01\");\r",
+                  "pm.variables.set(\"projectionPastEnd\", year + \"-01-31\");\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 400 Bad Request\", function () {\r",
+                  "    pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser VALIDATION_ERROR\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"VALIDATION_ERROR\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Projeção com parâmetro includeEvents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projections?includeEvents=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "projections"
+              ],
+              "query": [
+                {
+                  "key": "includeEvents",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "includeEvents não existe na V1. Parâmetro desconhecido → 400 VALIDATION_ERROR."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 400 Bad Request\", function () {\r",
+                  "    pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser VALIDATION_ERROR\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"VALIDATION_ERROR\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Projeção com filtros conflitantes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projections?startDate={{today}}&endDate={{today}}&year={{projectionYear}}&month={{projectionMonth}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "projections"
+              ],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "{{today}}"
+                },
+                {
+                  "key": "endDate",
+                  "value": "{{today}}"
+                },
+                {
+                  "key": "year",
+                  "value": "{{projectionYear}}"
+                },
+                {
+                  "key": "month",
+                  "value": "{{projectionMonth}}"
+                }
+              ]
+            },
+            "description": "startDate/endDate misturado com year/month. Combinação documentada como inválida → 400 VALIDATION_ERROR."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const today = pm.collectionVariables.get(\"today\");\r",
+                  "const parts = today.split(\"-\");\r",
+                  "pm.variables.set(\"projectionYear\", parts[0]);\r",
+                  "pm.variables.set(\"projectionMonth\", String(Number(parts[1])));\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 400 Bad Request\", function () {\r",
+                  "    pm.response.to.have.status(400);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Código de erro deve ser VALIDATION_ERROR\", function () {\r",
+                  "    pm.expect(json.code).to.eql(\"VALIDATION_ERROR\");\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
+        },
+        {
+          "name": "Projeção com conta inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projections?accountId=00000000-0000-7000-0000-000000000001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "projections"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "00000000-0000-7000-0000-000000000001"
+                }
+              ]
+            },
+            "description": "accountId bem-formado que não pertence ao autenticado. A API não vaza existência (200 com recorte zerado, não 404). Mesmo UUID sentinela usado em Consultar conta inexistente."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();\r",
+                  "\r",
+                  "pm.test(\"Status deve ser 200 OK\", function () {\r",
+                  "    pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Não deve vazar dados de outra conta\", function () {\r",
+                  "    pm.expect(Number(json.summary.currentBalance)).to.eql(0);\r",
+                  "    pm.expect(json.events.items).to.be.an(\"array\").that.is.empty;\r",
+                  "});\r"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ]
         }
       ],
-      "description": "Cenários negativos pontuais. Não cobrem todas as regras; priorizam autenticação, ownership, saldo insuficiente e metas."
+      "description": "Cenários negativos pontuais. Não cobrem todas as regras; priorizam autenticação, ownership, saldo insuficiente, metas e projeções."
     }
   ],
   "auth": {

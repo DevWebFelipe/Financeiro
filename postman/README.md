@@ -33,6 +33,7 @@ Financial Control API
 │   ├── Metas
 │   ├── Negociações
 │   ├── Pagamentos
+│   ├── Projeções
 │   ├── Receitas
 │   └── Transferências
 │
@@ -53,6 +54,7 @@ Estado da collection em relação às fases implementadas:
 - Fase 15: metas financeiras (10 rotas em `02 - Processos → Metas`).
 - Fase 16: contas a pagar (`GET /api/v1/payables` em `02 - Processos → Contas a Pagar`).
 - Fase 17: movimentações de receita (`POST /accruals`, `POST /receipts`, `GET /movements`, `POST /movements/{id}/reverse`) e contas a receber (`GET /api/v1/receivables` em `02 - Processos → Contas a Receber`).
+- Fase 18: projeções (`GET /api/v1/projections` em `02 - Processos → Projeções`). Sem `GET /projections/monthly` e sem parâmetro `includeEvents`.
 
 Endpoints legados de receitas **removidos** (não constam na collection): `POST /incomes/{id}/receive` e `POST /incomes/{id}/reverse` (Fase 6 — substituídos na Fase 17 Parte 2).
 
@@ -325,6 +327,23 @@ Não existe `GET /api/v1/categories/{id}` nem reativação de categoria.
 
 ---
 
+# Projeções
+
+`02 - Processos → Projeções` chama `GET /api/v1/projections` (visão derivada de fluxo de caixa). Sem tabela, sem escritas e sem `GET /projections/monthly`.
+
+Requests:
+
+- `Consultar` — sem período (default = próximos 12 meses)
+- `Consultar por período` — `startDate` + `endDate`
+- `Consultar por ano e mês` — `year` + `month`
+- `Consultar múltiplos meses` — `months`
+- `Consultar por conta` — `accountId={{accountId}}`
+- `Consultar com paginação` — `page` e `size` paginam só os eventos
+
+Parâmetros oficiais: `startDate`, `endDate`, `year`, `month`, `months`, `accountId`, `page`, `size`. Não existe `includeEvents`.
+
+---
+
 # Cartões, faturas e negociações
 
 `01 - Cadastros → Cartões` cobre cadastro, limite derivado, créditos, ativar e desativar.
@@ -437,7 +456,11 @@ A data `{{today}}` é definida automaticamente antes de cada request, no fuso `A
 - listagem de metas com `page < 0` (**400** `BUSINESS_RULE_VIOLATION`);
 - criar meta com conta inexistente (**404**);
 - consultar meta inexistente (**404**);
-- concluir meta já concluída (**400** `BUSINESS_RULE_VIOLATION`).
+- concluir meta já concluída (**400** `BUSINESS_RULE_VIOLATION`);
+- projeção com período inteiramente no passado (**400** `VALIDATION_ERROR`);
+- projeção com `includeEvents` (**400** `VALIDATION_ERROR`);
+- projeção com filtros de período conflitantes (**400** `VALIDATION_ERROR`);
+- projeção com conta inexistente (**200** recorte zerado; a API não vaza existência).
 
 ---
 

@@ -1,0 +1,12 @@
+$kind: http-request
+description: Modo somente months. Quantidade a partir do mês corrente / asOfDate interno. Valor 3 (entre 1 e 12).
+url: "{{baseUrl}}/api/v1/projections?months=3"
+method: GET
+queryParams:
+  - key: months
+    value: "3"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Série mensal deve ter 3 meses\", function () {\r\n    pm.expect(json.months).to.be.an(\"array\").that.has.lengthOf(3);\r\n});\r\n\r\npm.test(\"Resposta deve possuir saldo atual e projetado\", function () {\r\n    pm.expect(json.summary.currentBalance).to.exist;\r\n    pm.expect(json.summary.projectedFinalBalance).to.exist;\r\n});\r"
+    language: text/javascript
+order: 4000

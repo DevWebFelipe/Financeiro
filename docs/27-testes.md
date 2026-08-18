@@ -972,7 +972,7 @@ Os 35 testes da Parte 1 (`ReceivablesApiTest`); `IncomeApiTest`; `PayablesApiTes
 
 Contrato: `docs/24` §19.10 / `docs/25` §68.
 
-**Status:** **CONCLUÍDA E APROVADA**. D95–D204 **fechadas** e **implementadas**. Classes: `ProjectionApiTest`, `ProjectionCalculatorTest`.
+**Status:** **CONCLUÍDA E APROVADA**. D95–D204 **fechadas** e **implementadas**. Classes: `ProjectionApiTest`, `ProjectionCalculatorTest`. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
 
 Timezone / relógio: `America/Sao_Paulo`; `Clock` injetável (`asOfDate` interno). Reutilizar o padrão da Fase 17 (ex.: `2026-08-17`).
 

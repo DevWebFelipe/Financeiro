@@ -1,0 +1,14 @@
+$kind: http-request
+description: page e size paginam somente a lista de eventos datados. A série mensal não é paginada. Default size=20, máximo 100.
+url: "{{baseUrl}}/api/v1/projections?page=0&size=5"
+method: GET
+queryParams:
+  - key: page
+    value: "0"
+  - key: size
+    value: "5"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Paginação aplica-se aos eventos\", function () {\r\n    pm.expect(json.events.page).to.eql(0);\r\n    pm.expect(json.events.size).to.eql(5);\r\n    pm.expect(json.events.items).to.be.an(\"array\");\r\n    pm.expect(json.events.items.length).to.be.at.most(5);\r\n    pm.expect(json.events.totalItems).to.exist;\r\n    pm.expect(json.events.totalPages).to.exist;\r\n});\r\n\r\npm.test(\"Série mensal não é paginada\", function () {\r\n    pm.expect(json.months).to.be.an(\"array\").that.has.lengthOf(12);\r\n});\r"
+    language: text/javascript
+order: 6000

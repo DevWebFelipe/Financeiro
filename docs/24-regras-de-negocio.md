@@ -4480,7 +4480,7 @@ Qualquer RECEIPT (`ACTIVE` ou `REVERSED`) conta como movimentação efetiva da c
 
 # 19.10 Contrato da Fase 18 — Projeções
 
-**Status:** **CONCLUÍDA E APROVADA**. Decisões **D95–D204 fechadas** e **implementadas**. Endpoint `GET /api/v1/projections`. Sem tabela `projections`. Sem frontend. Sem migration.
+**Status:** **CONCLUÍDA E APROVADA**. Decisões **D95–D204 fechadas** e **implementadas**. Endpoint `GET /api/v1/projections`. Sem tabela `projections`. Sem frontend. Sem migration. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes; não reabrem a fase).
 
 Autoridade: `AGENTS.md` §28 → esta seção → `docs/25` §68 → `docs/27` §40H → `docs/28` §93.
 

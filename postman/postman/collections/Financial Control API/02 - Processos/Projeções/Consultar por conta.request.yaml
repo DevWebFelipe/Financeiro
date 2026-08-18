@@ -1,0 +1,12 @@
+$kind: http-request
+description: Filtro accountId da conta do usuário autenticado ({{accountId}}). Eventos sem conta determinada (UNASSIGNED) não entram nos totais nem na lista desta conta.
+url: "{{baseUrl}}/api/v1/projections?accountId={{accountId}}"
+method: GET
+queryParams:
+  - key: accountId
+    value: "{{accountId}}"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Resposta deve possuir summary e months\", function () {\r\n    pm.expect(json.summary).to.exist;\r\n    pm.expect(json.summary.currentBalance).to.exist;\r\n    pm.expect(json.summary.projectedFinalBalance).to.exist;\r\n    pm.expect(json.months).to.be.an(\"array\");\r\n    pm.expect(json.events.items).to.be.an(\"array\");\r\n});\r\n\r\npm.test(\"Eventos UNASSIGNED não entram no recorte da conta\", function () {\r\n    pm.expect(json.events.items).to.be.an(\"array\").that.is.empty;\r\n});\r
+    language: text/javascript
+order: 5000

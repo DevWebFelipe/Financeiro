@@ -1,0 +1,14 @@
+$kind: http-request
+description: Modo startDate + endDate (inclusivos). Usa {{today}} como início e fim do recorte (um dia, válido se inclui hoje). Não misturar com year/month nem months.
+url: "{{baseUrl}}/api/v1/projections?startDate={{today}}&endDate={{today}}"
+method: GET
+queryParams:
+  - key: startDate
+    value: "{{today}}"
+  - key: endDate
+    value: "{{today}}"
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Resposta deve possuir summary e months\", function () {\r\n    pm.expect(json.summary).to.exist;\r\n    pm.expect(json.summary.currentBalance).to.exist;\r\n    pm.expect(json.summary.projectedFinalBalance).to.exist;\r\n    pm.expect(json.months).to.be.an(\"array\").that.is.not.empty;\r\n    pm.expect(json.events.items).to.be.an(\"array\");\r\n});\r"
+    language: text/javascript
+order: 2000

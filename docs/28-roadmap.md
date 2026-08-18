@@ -1080,7 +1080,7 @@ Testes: `docs/27` §40G. Suíte: **481** testes; 0 falhas; `mvn verify` BUILD SU
 
 # 93. Fase 18 — Projeções
 
-**Status:** **CONCLUÍDA E APROVADA**. D95–D204 **fechadas** e **implementadas**. Endpoint `GET /api/v1/projections`. Sem tabela `projections`.
+**Status:** **CONCLUÍDA E APROVADA**. D95–D204 **fechadas** e **implementadas**. Endpoint `GET /api/v1/projections`. Sem tabela `projections`. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes; não reabrem a fase). Collection Postman atualizada (`GET /api/v1/projections`).
 
 Objetivo:
 
@@ -1133,7 +1133,7 @@ Usuário deve conseguir responder:
 
 ("Provavelmente" = fatos conhecidos e ainda relevantes — não probabilidade estatística.)
 
-**Critério atendido.** Especificação D95–D204 e implementação backend **CONCLUÍDA E APROVADA**. Testes: `docs/27` §40H (`ProjectionApiTest`, `ProjectionCalculatorTest`). Suíte: **509** testes; `mvn verify` BUILD SUCCESS.
+**Critério atendido.** Especificação D95–D204 e implementação backend **CONCLUÍDA E APROVADA**. Auditoria final: **APROVADA COM RESSALVAS** (D203 estrutural; remaining via serviços oficiais; `UNASSIGNED`; débito técnico de rota inexistente). Testes: `docs/27` §40H (`ProjectionApiTest`, `ProjectionCalculatorTest`). Suíte: **509** testes; `mvn verify` BUILD SUCCESS.
 
 
 # 98. Fase 19 — Dashboard
@@ -1689,7 +1689,7 @@ Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9*
 
 Próxima etapa: **Fase 19 — Dashboard** (`docs/28` §98). **NÃO INICIADA.**
 
-**Fase 18 — CONCLUÍDA E APROVADA.** Endpoint: `GET /api/v1/projections`. Sem tabela `projections`. D95–D204 **implementadas**. Testes: `ProjectionApiTest`, `ProjectionCalculatorTest`. Suíte: **509** testes.
+**Fase 18 — CONCLUÍDA E APROVADA.** Endpoint: `GET /api/v1/projections`. Sem tabela `projections`. D95–D204 **implementadas**. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes). Testes: `ProjectionApiTest`, `ProjectionCalculatorTest`. Suíte: **509** testes.
 
 **Fase 17 — CONCLUÍDA E APROVADA** (Parte 1 + Parte 2). Endpoint: `GET /api/v1/receivables`. Sem tabela `receivables`. Parte 2: `income_movements` (V30); movimentações; D73–D94 **implementadas**. Escrita de responsável (**D89**) **implementada**.
 

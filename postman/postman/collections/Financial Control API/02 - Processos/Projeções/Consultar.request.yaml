@@ -1,0 +1,34 @@
+$kind: http-request
+description: Sem filtro de período. Default = próximos 12 meses a partir do mês corrente (primeiro mês parcial se hoje não for dia 1). Eventos paginados no contrato normal (page/size omitidos usam 0/20). Parâmetros oficiais listados desabilitados para referência; includeEvents não existe na V1.
+url: "{{baseUrl}}/api/v1/projections"
+method: GET
+queryParams:
+  - key: startDate
+    value: "{{today}}"
+    disabled: true
+  - key: endDate
+    value: "{{today}}"
+    disabled: true
+  - key: year
+    value: "2026"
+    disabled: true
+  - key: month
+    value: "8"
+    disabled: true
+  - key: months
+    value: "12"
+    disabled: true
+  - key: accountId
+    value: "{{accountId}}"
+    disabled: true
+  - key: page
+    value: "0"
+    disabled: true
+  - key: size
+    value: "20"
+    disabled: true
+scripts:
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Resposta deve possuir summary, months e events\", function () {\r\n    pm.expect(json.startDate).to.exist;\r\n    pm.expect(json.endDate).to.exist;\r\n    pm.expect(json.summary).to.exist;\r\n    pm.expect(json.summary.currentBalance).to.exist;\r\n    pm.expect(json.summary.projectedFinalBalance).to.exist;\r\n    pm.expect(json.months).to.be.an(\"array\");\r\n    pm.expect(json.events).to.exist;\r\n    pm.expect(json.events.items).to.be.an(\"array\");\r\n    pm.expect(json.undatedEvents).to.be.an(\"array\");\r\n});\r\n\r\npm.test(\"Série mensal default deve ter 12 meses\", function () {\r\n    pm.expect(json.months.length).to.eql(12);\r\n});\r\n\r\npm.test(\"Série mensal deve expor estrutura de saldo\", function () {\r\n    const month = json.months[0];\r\n    pm.expect(month.period).to.exist;\r\n    pm.expect(month.openingBalance).to.exist;\r\n    pm.expect(month.closingBalance).to.exist;\r\n    pm.expect(month.totalIncome).to.exist;\r\n    pm.expect(month.totalExpense).to.exist;\r\n    pm.expect(month.netCashFlow).to.exist;\r\n});\r\n\r\npm.test(\"Eventos datados, quando presentes, devem ter campos principais\", function () {\r\n    if (json.events.items.length === 0) {\r\n        return;\r\n    }\r\n    const event = json.events.items[0];\r\n    pm.expect(event.date).to.exist;\r\n    pm.expect(event.type).to.exist;\r\n    pm.expect(event.amount).to.exist;\r\n    pm.expect(event.direction).to.exist;\r\n    pm.expect(event.sourceId).to.exist;\r\n    pm.expect(event.accountAssignment).to.exist;\r\n});\r"
+    language: text/javascript
+order: 1000

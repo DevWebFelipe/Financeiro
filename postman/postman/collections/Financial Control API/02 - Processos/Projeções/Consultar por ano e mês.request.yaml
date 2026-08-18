@@ -1,0 +1,17 @@
+$kind: http-request
+description: Modo year + month (mês calendário corrente, derivado de {{today}}). Sem months = um mês.
+url: "{{baseUrl}}/api/v1/projections?year={{projectionYear}}&month={{projectionMonth}}"
+method: GET
+queryParams:
+  - key: year
+    value: "{{projectionYear}}"
+  - key: month
+    value: "{{projectionMonth}}"
+scripts:
+  - type: beforeRequest
+    code: "const today = pm.collectionVariables.get(\"today\");\r\nconst parts = today.split(\"-\");\r\npm.variables.set(\"projectionYear\", parts[0]);\r\npm.variables.set(\"projectionMonth\", String(Number(parts[1])));\r"
+    language: text/javascript
+  - type: afterResponse
+    code: "const json = pm.response.json();\r\n\r\npm.test(\"Status deve ser 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Série mensal deve ter 1 mês\", function () {\r\n    pm.expect(json.months).to.be.an(\"array\").that.has.lengthOf(1);\r\n});\r\n\r\npm.test(\"Resposta deve possuir saldo atual e projetado\", function () {\r\n    pm.expect(json.summary.currentBalance).to.exist;\r\n    pm.expect(json.summary.projectedFinalBalance).to.exist;\r\n});\r"
+    language: text/javascript
+order: 3000

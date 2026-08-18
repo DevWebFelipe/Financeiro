@@ -2227,7 +2227,7 @@ Frontend, dashboard, PDF/Excel, projeções, over-receipt, tabela `receivables`,
 
 # 68. Projeções (Fase 18)
 
-**Status:** `docs/24` §19.10 — **CONCLUÍDA E APROVADA**. D95–D204 **fechadas** e **implementadas**. Endpoint: `GET /api/v1/projections`.
+**Status:** `docs/24` §19.10 — **CONCLUÍDA E APROVADA**. D95–D204 **fechadas** e **implementadas**. Endpoint: `GET /api/v1/projections`. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
 
 Endpoint único:
 
