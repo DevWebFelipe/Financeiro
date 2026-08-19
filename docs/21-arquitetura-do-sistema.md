@@ -1194,6 +1194,28 @@ Fora deste bloco na UI: criação `CREDIT_CARD` (sem feature de cartões no fron
 Estados: `loading` | `loaded` | `empty` | `error`. Paginação server-side. Filtros disparam nova listagem. Detalhe, pagamento, cancelamento e estorno em painéis na mesma rota. `VALIDATION_ERROR.fields` nos controles; regras por `error.code`.
 
 
+# 96J. Receitas (Fase 21 — Bloco B10)
+
+A página `/incomes` é lazy-loaded sob o AuthGuard do MainLayout. A navegação passa a incluir Receitas neste bloco.
+
+Feature em `frontend/src/app/features/incomes/`: `IncomesPage` → `IncomesService` → `HttpClient`. Apoio cadastral: `CategoriesService` (categorias `INCOME` ativas) e `AccountsService` (nomes e select de conta no recebimento). Sem recálculo financeiro; sem campos inventados.
+
+Contrato utilizado:
+
+- `GET /api/v1/incomes` — paginação oficial (`items`, `page`, `size`, `totalItems`, `totalPages`; default `page=0`, `size=20`). Filtros opcionais: `startDate`, `endDate`, `status`, `categoryId`, `accountId`. Período filtra `expectedDate`. Ordem `createdAt` ASC.
+- `GET /api/v1/incomes/{id}` — detalhe (painel na mesma rota).
+- `POST /api/v1/incomes` — criação (`EXPECTED`; `accountId` e `receivedDate` nulos).
+- `PUT /api/v1/incomes/{id}` — somente `EXPECTED`.
+- `POST /api/v1/incomes/{id}/receipts` — recebimento (`amount`, `date`, `accountId`); resposta é o movimento.
+- `GET /api/v1/incomes/{id}/movements` — histórico paginado.
+- `POST /api/v1/incomes/{id}/movements/{movementId}/reverse` — estorno de movimento `ACTIVE`.
+- `POST /api/v1/incomes/{id}/cancel` — somente `EXPECTED` sem RECEIPT `ACTIVE`.
+
+`dateType` e `overdue` **não** existem em `GET /incomes` (pertencem a `GET /receivables`). A UI de Receitas não inventa atraso nem `dateType`. Sem rota `/incomes/:id`. Sem feature Contas a Receber neste bloco. Acréscimo (`POST /accruals`) fora da UI deste bloco.
+
+Estados: `loading` | `loaded` | `empty` | `error`. Paginação server-side. Filtros disparam nova listagem. Detalhe, recebimento, cancelamento e estorno em painéis na mesma rota. `VALIDATION_ERROR.fields` nos controles; regras por `error.code`.
+
+
 # 97. Dashboard
 
 Dashboard deve apresentar:

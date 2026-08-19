@@ -1,0 +1,533 @@
+<section aria-labelledby="incomes-title" [attr.aria-busy]="status() === 'loading'">
+  <header class="page-header">
+    <div class="page-header__intro">
+      <h1 id="incomes-title">Receitas</h1>
+      <p class="page-header__meta">Entradas previstas e recebidas nesta sessão.</p>
+    </div>
+    @if (status() === 'loaded' && (incomes().length > 0 || hasFilters())) {
+      <button type="button" (click)="openCreate()">Nova receita</button>
+    }
+  </header>
+
+  @if (status() === 'loading') {
+    <p class="visually-hidden">Carregando receitas.</p>
+    <div class="skeleton" aria-hidden="true">
+      <div class="skeleton__block skeleton__block--title"></div>
+      <div class="skeleton__block"></div>
+      <div class="skeleton__block"></div>
+    </div>
+  }
+
+  @if (status() === 'error') {
+    <app-error-state
+      message="Não foi possível carregar as receitas."
+      retryLabel="Tentar novamente"
+      (retry)="retry()"
+    />
+  }
+
+  @if (status() === 'loaded') {
+    @if (actionError(); as message) {
+      <app-error-state [message]="message" />
+    }
+
+    <section class="filters" aria-labelledby="income-filters-title">
+      <h2 id="income-filters-title" class="filters__title">Filtros</h2>
+      <div class="filters__controls">
+        <div class="field field--compact">
+          <label for="filter-status">Status</label>
+          <select
+            id="filter-status"
+            [value]="statusFilter()"
+            (change)="onStatusFilterChange($any($event.target).value)"
+          >
+            <option value="">Todos</option>
+            @for (option of statusOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-category">Categoria</label>
+          <select
+            id="filter-category"
+            [value]="categoryFilter()"
+            (change)="onCategoryFilterChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (category of categories(); track category.id) {
+              <option [value]="category.id">{{ category.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-account">Conta</label>
+          <select
+            id="filter-account"
+            [value]="accountFilter()"
+            (change)="onAccountFilterChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (account of accounts(); track account.id) {
+              <option [value]="account.id">{{ account.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-start-date">Prevista de</label>
+          <input
+            id="filter-start-date"
+            type="date"
+            [value]="startDateFilter()"
+            (change)="onStartDateFilterChange($any($event.target).value)"
+          />
+        </div>
+        <div class="field field--compact">
+          <label for="filter-end-date">Prevista até</label>
+          <input
+            id="filter-end-date"
+            type="date"
+            [value]="endDateFilter()"
+            (change)="onEndDateFilterChange($any($event.target).value)"
+          />
+        </div>
+      </div>
+    </section>
+
+    @if (isEmpty()) {
+      <app-empty-state
+        [message]="
+          hasFilters()
+            ? 'Nenhuma receita corresponde aos filtros selecionados.'
+            : 'Nenhuma receita cadastrada.'
+        "
+      >
+        <button type="button" (click)="openCreate()">Nova receita</button>
+      </app-empty-state>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <caption class="visually-hidden">
+            Receitas cadastradas
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Descrição</th>
+              <th scope="col">Categoria</th>
+              <th scope="col">Valor</th>
+              <th scope="col">Data prevista</th>
+              <th scope="col">Status</th>
+              <th scope="col">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (income of incomes(); track income.id) {
+              <tr>
+                <th scope="row" data-label="Descrição">
+                  <span class="name">{{ income.description }}</span>
+                </th>
+                <td data-label="Categoria">{{ categoryName(income.categoryId) }}</td>
+                <td data-label="Valor">{{ income.amount | brlCurrency }}</td>
+                <td data-label="Data prevista">{{ income.expectedDate | isoDate }}</td>
+                <td data-label="Status">
+                  <span class="status">{{ statusLabel(income.status) }}</span>
+                </td>
+                <td class="actions" data-label="Ações">
+                  <div class="actions__group">
+                    <button type="button" (click)="openDetail(income)" [disabled]="submitting()">
+                      Detalhes
+                    </button>
+                    @if (canEditItem(income)) {
+                      <button type="button" (click)="openEdit(income)" [disabled]="submitting()">
+                        Editar
+                      </button>
+                    }
+                    @if (canReceiveItem(income)) {
+                      <button type="button" (click)="openReceive(income)" [disabled]="submitting()">
+                        Receber
+                      </button>
+                    }
+                    @if (canCancelItem(income)) {
+                      <button
+                        type="button"
+                        (click)="openCancelConfirm(income)"
+                        [disabled]="submitting()"
+                      >
+                        Cancelar
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalPages() > 1) {
+        <nav class="pagination" aria-label="Paginação de receitas">
+          <p class="pagination__meta">
+            Página {{ pageIndex() + 1 }} de {{ totalPages() }} — {{ totalItems() }} receitas
+          </p>
+          <div class="pagination__controls">
+            <button type="button" (click)="goToPage(pageIndex() - 1)" [disabled]="!canGoPrev()">
+              Anterior
+            </button>
+            <button type="button" (click)="goToPage(pageIndex() + 1)" [disabled]="!canGoNext()">
+              Próxima
+            </button>
+          </div>
+        </nav>
+      }
+    }
+
+    @if (panelMode() === 'detail' && selectedIncome(); as income) {
+      <section class="panel" aria-labelledby="income-detail-title">
+        <h2 id="income-detail-title">Detalhes da receita</h2>
+
+        @if (detailLoading()) {
+          <p class="visually-hidden">Carregando detalhes.</p>
+          <div class="skeleton" aria-hidden="true">
+            <div class="skeleton__block"></div>
+          </div>
+        } @else {
+          @if (detailError(); as message) {
+            <app-error-state [message]="message" />
+          } @else {
+            <dl class="detail-list">
+              <div>
+                <dt>Descrição</dt>
+                <dd>{{ income.description }}</dd>
+              </div>
+              <div>
+                <dt>Categoria</dt>
+                <dd>{{ categoryName(income.categoryId) }}</dd>
+              </div>
+              <div>
+                <dt>Valor</dt>
+                <dd>{{ income.amount | brlCurrency }}</dd>
+              </div>
+              <div>
+                <dt>Data prevista</dt>
+                <dd>{{ income.expectedDate | isoDate }}</dd>
+              </div>
+              @if (income.receivedDate) {
+                <div>
+                  <dt>Data de recebimento (cabeçalho)</dt>
+                  <dd>{{ income.receivedDate | isoDate }}</dd>
+                </div>
+              }
+              <div>
+                <dt>Status</dt>
+                <dd>{{ statusLabel(income.status) }}</dd>
+              </div>
+              <div>
+                <dt>Responsável</dt>
+                <dd>
+                  {{ responsibleLabel(income.responsibleType) }}
+                  @if (income.responsibleName) {
+                    — {{ income.responsibleName }}
+                  }
+                </dd>
+              </div>
+              @if (income.notes) {
+                <div>
+                  <dt>Observações</dt>
+                  <dd>{{ income.notes }}</dd>
+                </div>
+              }
+            </dl>
+
+            <h3>Movimentações</h3>
+            @if (movements().length === 0) {
+              <p class="panel__meta">Nenhuma movimentação nesta receita.</p>
+            } @else {
+              <div class="table-wrap">
+                <table>
+                  <caption class="visually-hidden">
+                    Movimentações da receita
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Tipo</th>
+                      <th scope="col">Valor</th>
+                      <th scope="col">Data</th>
+                      <th scope="col">Conta</th>
+                      <th scope="col">Situação</th>
+                      <th scope="col">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (movement of movements(); track movement.id) {
+                      <tr>
+                        <td data-label="Tipo">{{ movementTypeLabel(movement.type) }}</td>
+                        <td data-label="Valor">{{ movement.amount | brlCurrency }}</td>
+                        <td data-label="Data">{{ movement.movementDate | isoDate }}</td>
+                        <td data-label="Conta">{{ accountName(movement.accountId) }}</td>
+                        <td data-label="Situação">{{ movementStatusLabel(movement.status) }}</td>
+                        <td class="actions" data-label="Ações">
+                          @if (canReverseItem(movement, income)) {
+                            <button
+                              type="button"
+                              (click)="openReverseConfirm(movement, income)"
+                              [disabled]="submitting()"
+                            >
+                              Estornar
+                            </button>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          }
+
+          <div class="form-actions">
+            <button type="button" (click)="closeDetail()">Fechar</button>
+          </div>
+        }
+      </section>
+    }
+
+    @if (panelMode() === 'cancel-confirm' && selectedIncome(); as income) {
+      <section class="panel panel--confirm" aria-labelledby="income-cancel-title">
+        <h2 id="income-cancel-title">Cancelar receita</h2>
+        <p>
+          Deseja cancelar a receita <strong>{{ income.description }}</strong
+          >? Esta ação não pode ser desfeita.
+        </p>
+        @if (formError(); as message) {
+          <app-error-state [message]="message" />
+        }
+        <div class="form-actions">
+          <button type="button" (click)="confirmCancel()" [disabled]="submitting()">
+            Confirmar cancelamento
+          </button>
+          <button type="button" (click)="closeCancelConfirm()" [disabled]="submitting()">
+            Voltar
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (panelMode() === 'reverse-confirm' && selectedMovement(); as movement) {
+      <section class="panel panel--confirm" aria-labelledby="income-reverse-title">
+        <h2 id="income-reverse-title">Estornar movimentação</h2>
+        <p>
+          Deseja estornar o {{ movementTypeLabel(movement.type).toLowerCase() }} de
+          {{ movement.amount | brlCurrency }}?
+        </p>
+        @if (formError(); as message) {
+          <app-error-state [message]="message" />
+        }
+        <div class="form-actions">
+          <button type="button" (click)="confirmReverse()" [disabled]="submitting()">
+            Confirmar estorno
+          </button>
+          <button type="button" (click)="closeReverseConfirm()" [disabled]="submitting()">
+            Voltar
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (formMode() === 'create' || formMode() === 'edit') {
+      <section class="panel" aria-labelledby="income-form-title">
+        <h2 id="income-form-title">
+          {{ formMode() === 'create' ? 'Nova receita' : 'Editar receita' }}
+        </h2>
+
+        <form [formGroup]="incomeForm" (ngSubmit)="submitIncomeForm()" novalidate>
+          <div class="field">
+            <label for="income-category">Categoria</label>
+            <select
+              id="income-category"
+              formControlName="categoryId"
+              [attr.aria-invalid]="incomeFieldError('categoryId') != null"
+              [attr.aria-describedby]="
+                incomeFieldError('categoryId') != null ? 'income-category-error' : null
+              "
+            >
+              <option value="" disabled>Selecione</option>
+              @for (category of categories(); track category.id) {
+                <option [value]="category.id">{{ category.name }}</option>
+              }
+            </select>
+            @if (incomeFieldError('categoryId'); as message) {
+              <p id="income-category-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="income-description">Descrição</label>
+            <input
+              id="income-description"
+              type="text"
+              formControlName="description"
+              maxlength="255"
+              [attr.aria-invalid]="incomeFieldError('description') != null"
+              [attr.aria-describedby]="
+                incomeFieldError('description') != null ? 'income-description-error' : null
+              "
+            />
+            @if (incomeFieldError('description'); as message) {
+              <p id="income-description-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="income-amount">Valor</label>
+            <input
+              id="income-amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              formControlName="amount"
+              [attr.aria-invalid]="incomeFieldError('amount') != null"
+              [attr.aria-describedby]="
+                incomeFieldError('amount') != null ? 'income-amount-error' : null
+              "
+            />
+            @if (incomeFieldError('amount'); as message) {
+              <p id="income-amount-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="income-expected-date">Data prevista</label>
+            <input
+              id="income-expected-date"
+              type="date"
+              formControlName="expectedDate"
+              [attr.aria-invalid]="incomeFieldError('expectedDate') != null"
+              [attr.aria-describedby]="
+                incomeFieldError('expectedDate') != null ? 'income-expected-date-error' : null
+              "
+            />
+            @if (incomeFieldError('expectedDate'); as message) {
+              <p id="income-expected-date-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="income-responsible">Responsável</label>
+            <select id="income-responsible" formControlName="responsibleType">
+              <option value="">Não informado</option>
+              @for (option of responsibleOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+
+          @if (showResponsibleNameField()) {
+            <div class="field">
+              <label for="income-responsible-name">Nome do responsável</label>
+              <input
+                id="income-responsible-name"
+                type="text"
+                formControlName="responsibleName"
+                [attr.aria-invalid]="incomeFieldError('responsibleName') != null"
+                [attr.aria-describedby]="
+                  incomeFieldError('responsibleName') != null
+                    ? 'income-responsible-name-error'
+                    : null
+                "
+              />
+              @if (incomeFieldError('responsibleName'); as message) {
+                <p id="income-responsible-name-error" class="field__error">{{ message }}</p>
+              }
+            </div>
+          }
+
+          <div class="field">
+            <label for="income-notes">Observações</label>
+            <textarea id="income-notes" rows="3" formControlName="notes"></textarea>
+          </div>
+
+          @if (formError(); as message) {
+            <app-error-state [message]="message" />
+          }
+
+          <div class="form-actions">
+            <button type="submit" [disabled]="submitting()">Salvar</button>
+            <button type="button" (click)="closeForm()" [disabled]="submitting()">Cancelar</button>
+          </div>
+        </form>
+      </section>
+    }
+
+    @if (formMode() === 'receive' && selectedIncome(); as income) {
+      <section class="panel" aria-labelledby="income-receive-title">
+        <h2 id="income-receive-title">Receber receita</h2>
+        <p class="panel__meta">{{ income.description }} — {{ income.amount | brlCurrency }}</p>
+
+        <form [formGroup]="receiveForm" (ngSubmit)="submitReceive()" novalidate>
+          <div class="field">
+            <label for="receive-account">Conta</label>
+            <select
+              id="receive-account"
+              formControlName="accountId"
+              [attr.aria-invalid]="receiveFieldError('accountId') != null"
+              [attr.aria-describedby]="
+                receiveFieldError('accountId') != null ? 'receive-account-error' : null
+              "
+            >
+              <option value="" disabled>Selecione</option>
+              @for (account of activeAccounts(); track account.id) {
+                <option [value]="account.id">{{ account.name }}</option>
+              }
+            </select>
+            @if (receiveFieldError('accountId'); as message) {
+              <p id="receive-account-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="receive-amount">Valor</label>
+            <input
+              id="receive-amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              formControlName="amount"
+              [attr.aria-invalid]="receiveFieldError('amount') != null"
+              [attr.aria-describedby]="
+                receiveFieldError('amount') != null ? 'receive-amount-error' : null
+              "
+            />
+            @if (receiveFieldError('amount'); as message) {
+              <p id="receive-amount-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="receive-date">Data do recebimento</label>
+            <input
+              id="receive-date"
+              type="date"
+              formControlName="date"
+              [attr.aria-invalid]="receiveFieldError('date') != null"
+              [attr.aria-describedby]="
+                receiveFieldError('date') != null ? 'receive-date-error' : null
+              "
+            />
+            @if (receiveFieldError('date'); as message) {
+              <p id="receive-date-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          @if (formError(); as message) {
+            <app-error-state [message]="message" />
+          }
+
+          <div class="form-actions">
+            <button type="submit" [disabled]="submitting()">Confirmar recebimento</button>
+            <button type="button" (click)="closeForm()" [disabled]="submitting()">Cancelar</button>
+          </div>
+        </form>
+      </section>
+    }
+  }
+</section>

@@ -47,6 +47,12 @@ export const routes: Routes = [
           import('./features/expenses/expenses-page').then((module) => module.ExpensesPage),
         title: 'Despesas — Financeiro',
       },
+      {
+        path: 'incomes',
+        loadComponent: () =>
+          import('./features/incomes/incomes-page').then((module) => module.IncomesPage),
+        title: 'Receitas — Financeiro',
+      },
       { path: '**', redirectTo: 'dashboard' },
     ],
   },

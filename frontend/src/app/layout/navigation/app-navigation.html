@@ -44,6 +44,14 @@
                   />
                 </svg>
               }
+              @case ('incomes') {
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M12 3.75 16.5 8.25h-3v6h-3v-6h-3zm-7.5 12.75h15v3.75h-15z"
+                  />
+                </svg>
+              }
             }
           </span>
           <span [class.visually-hidden]="collapsed()">{{ item.label }}</span>
