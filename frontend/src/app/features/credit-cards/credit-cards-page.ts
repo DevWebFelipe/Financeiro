@@ -1,15 +1,30 @@
 import { Component, computed, DestroyRef, HostListener, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { catchError, EMPTY, firstValueFrom, forkJoin, startWith, Subject, switchMap } from 'rxjs';
 import { ApiError, isApiError } from '../../core/errors/api-error';
 import { EmptyState } from '../../shared/components/empty-state/empty-state';
 import { ErrorState } from '../../shared/components/error-state/error-state';
 import { BrlCurrencyPipe } from '../../shared/pipes/brl-currency.pipe';
-import { creditCardStatusLabel, formatLastFourDigits } from './credit-cards-format';
 import {
+  creditAvailabilityLabel,
+  creditCardStatusLabel,
+  creditOriginLabel,
+  formatCreditInstantDate,
+  formatLastFourDigits,
+  sumRemainingCredits,
+} from './credit-cards-format';
+import {
+  CreateCreditCardCreditRequest,
   CreateCreditCardRequest,
   CreditCard,
+  CreditCardCredit,
   CreditCardLimit,
   CreditCardListParams,
   CreditCardWithLimit,
@@ -59,6 +74,20 @@ export class CreditCardsPage {
   );
   readonly statusLabel = creditCardStatusLabel;
   readonly lastFourLabel = formatLastFourDigits;
+  readonly originLabel = creditOriginLabel;
+  readonly availabilityLabel = creditAvailabilityLabel;
+  readonly instantDate = formatCreditInstantDate;
+
+  readonly creditsStatus = signal<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  readonly credits = signal<CreditCardCredit[]>([]);
+  readonly creditsError = signal<string | null>(null);
+  readonly creditFormOpen = signal(false);
+  readonly creditFormError = signal<string | null>(null);
+  readonly creditSuccess = signal<string | null>(null);
+  readonly availableCreditsTotal = computed(() => sumRemainingCredits(this.credits()));
+  readonly isCreditsEmpty = computed(
+    () => this.creditsStatus() === 'loaded' && this.credits().length === 0,
+  );
 
   readonly form = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(255)]],
@@ -78,6 +107,15 @@ export class CreditCardsPage {
       Validators.min(1),
       Validators.max(31),
     ]),
+  });
+
+  readonly creditForm = this.formBuilder.nonNullable.group({
+    amount: this.formBuilder.control<number | null>(null, [
+      Validators.required,
+      Validators.min(0.01),
+      moneyDigitsValidator,
+    ]),
+    reason: ['', Validators.required],
   });
 
   constructor() {
@@ -113,6 +151,10 @@ export class CreditCardsPage {
     }
     if (this.panelMode() === 'deactivate-confirm' || this.panelMode() === 'activate-confirm') {
       this.closeConfirm();
+      return;
+    }
+    if (this.creditFormOpen()) {
+      this.closeCreditForm();
       return;
     }
     if (this.formMode() !== 'closed') {
@@ -174,6 +216,7 @@ export class CreditCardsPage {
     this.selectedLimit.set(item.limit);
     this.detailError.set(null);
     this.detailLoading.set(true);
+    this.resetCreditsState();
 
     try {
       const detail = await firstValueFrom(
@@ -190,9 +233,12 @@ export class CreditCardsPage {
           ? 'Não foi possível carregar os detalhes do cartão.'
           : 'Não foi possível carregar os detalhes do cartão.',
       );
-    } finally {
       this.detailLoading.set(false);
+      return;
     }
+
+    this.detailLoading.set(false);
+    await this.reloadCredits(item.card.id);
   }
 
   closeDetail(): void {
@@ -201,6 +247,88 @@ export class CreditCardsPage {
     this.selectedLimit.set(null);
     this.detailError.set(null);
     this.detailLoading.set(false);
+    this.resetCreditsState();
+    this.closeCreditForm();
+  }
+
+  retryCredits(): void {
+    const card = this.selectedCard();
+    if (card == null) {
+      return;
+    }
+    void this.reloadCredits(card.id);
+  }
+
+  openCreditForm(): void {
+    if (this.selectedCard() == null || this.submitting()) {
+      return;
+    }
+    this.closeForm();
+    this.resetCreditForm();
+    this.creditFormOpen.set(true);
+  }
+
+  closeCreditForm(): void {
+    this.creditFormOpen.set(false);
+    this.resetCreditForm();
+  }
+
+  creditFieldError(controlName: 'amount' | 'reason'): string | null {
+    const control = this.creditForm.get(controlName);
+    if (control == null || !control.touched || control.valid) {
+      return null;
+    }
+    if (control.hasError('required')) {
+      return 'Campo obrigatório.';
+    }
+    if (control.hasError('min')) {
+      return 'Informe um valor maior que zero.';
+    }
+    if (control.hasError('digits')) {
+      return 'O valor deve ter no máximo 17 dígitos inteiros e 2 decimais.';
+    }
+    return null;
+  }
+
+  async submitCredit(): Promise<void> {
+    const card = this.selectedCard();
+    if (card == null || this.submitting() || !this.creditFormOpen()) {
+      return;
+    }
+
+    const raw = this.creditForm.getRawValue();
+    if (raw.reason.trim() === '') {
+      this.creditForm.controls.reason.setErrors({ required: true });
+    }
+    if (this.creditForm.invalid) {
+      this.creditForm.markAllAsTouched();
+      return;
+    }
+    if (raw.amount == null) {
+      this.creditForm.markAllAsTouched();
+      return;
+    }
+
+    const request: CreateCreditCardCreditRequest = {
+      amount: raw.amount,
+      reason: raw.reason.trim(),
+    };
+
+    this.submitting.set(true);
+    this.creditFormError.set(null);
+    this.creditSuccess.set(null);
+    try {
+      await firstValueFrom(this.creditCardsService.createCredit(card.id, request));
+      this.closeCreditForm();
+      this.creditSuccess.set('Crédito adicionado com sucesso.');
+      await this.refreshAfterCredit(card.id);
+    } catch (error: unknown) {
+      this.creditFormError.set(
+        isApiError(error) ? error.message : 'Não foi possível registrar o crédito.',
+      );
+    } finally {
+      this.submitting.set(false);
+    }
   }
 
   openDeactivateConfirm(item: CreditCardWithLimit): void {
@@ -208,6 +336,7 @@ export class CreditCardsPage {
       return;
     }
     this.closeForm();
+    this.closeCreditForm();
     this.pendingCard.set(item);
     this.panelMode.set('deactivate-confirm');
   }
@@ -217,6 +346,7 @@ export class CreditCardsPage {
       return;
     }
     this.closeForm();
+    this.closeCreditForm();
     this.pendingCard.set(item);
     this.panelMode.set('activate-confirm');
   }
@@ -479,6 +609,48 @@ export class CreditCardsPage {
     this.pendingCard.set(null);
     this.detailError.set(null);
     this.detailLoading.set(false);
+    this.resetCreditsState();
+    this.closeCreditForm();
+  }
+
+  private async reloadCredits(cardId: string): Promise<void> {
+    this.creditsError.set(null);
+    this.creditsStatus.set('loading');
+    this.credits.set([]);
+    try {
+      const credits = await firstValueFrom(this.creditCardsService.listCredits(cardId));
+      this.credits.set(credits);
+      this.creditsStatus.set('loaded');
+    } catch {
+      this.credits.set([]);
+      this.creditsError.set('Não foi possível carregar os créditos do cartão.');
+      this.creditsStatus.set('error');
+    }
+  }
+
+  private async refreshAfterCredit(cardId: string): Promise<void> {
+    await this.reloadCredits(cardId);
+    try {
+      const limit = await firstValueFrom(this.creditCardsService.getLimit(cardId));
+      this.selectedLimit.set(limit);
+      this.cards.update((items) =>
+        items.map((item) => (item.card.id === cardId ? { ...item, limit } : item)),
+      );
+    } catch {
+      this.detailError.set('Não foi possível carregar os detalhes do cartão.');
+    }
+  }
+
+  private resetCreditsState(): void {
+    this.creditsStatus.set('idle');
+    this.credits.set([]);
+    this.creditsError.set(null);
+    this.creditSuccess.set(null);
+  }
+
+  private resetCreditForm(): void {
+    this.creditForm.reset({ amount: null, reason: '' });
+    this.creditFormError.set(null);
   }
 
   private refreshOpenDetail(cards: CreditCardWithLimit[]): void {
@@ -493,4 +665,20 @@ export class CreditCardsPage {
     this.selectedCard.set(updated.card);
     this.selectedLimit.set(updated.limit);
   }
+}
+
+function moneyDigitsValidator(control: AbstractControl): ValidationErrors | null {
+  const value = control.value;
+  if (value == null || value === '') {
+    return null;
+  }
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return { digits: true };
+  }
+  const [integerPart, fractionPart = ''] = String(value).split('.');
+  const integerDigits = integerPart.replace('-', '').replace(/^0+(?=\d)/, '');
+  if (integerDigits.length > 17 || fractionPart.length > 2) {
+    return { digits: true };
+  }
+  return null;
 }

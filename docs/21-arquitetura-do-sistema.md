@@ -1308,6 +1308,19 @@ Contrato utilizado:
 
 Tipos e status oficiais do backend. `SURCHARGE` bloqueado na UI quando `remainingAmount <= 0`. Ajustes permitidos enquanto a fatura não é `PAID` nem `SETTLED_BY_AGREEMENT`. Após criar/reverter: recarregar fatura, ajustes e itens (parcelas atualizadas pelo backend); **não** recarregar pagamentos; painel permanece aberto; valores oficiais da API. Sem cálculo local de remaining/status.
 
+# 96Q. Créditos de cartão (Fase 21 — Bloco C6)
+
+A página `/credit-cards` consulta e cria créditos no painel de detalhe do cartão selecionado. Sem rota `/credits`. Sem aplicação manual, reverse, edição ou exclusão. Sem C7/B12.
+
+`CreditCardsPage` → `CreditCardsService` (`listCredits`, `createCredit`) → `HttpClient`.
+
+Contrato utilizado:
+
+- `GET /api/v1/credit-cards/{id}/credits` — array de `CreditCardCreditResponse` (ordem do backend)
+- `POST /api/v1/credit-cards/{id}/credits` — `amount` (`> 0`), `reason` obrigatório; origem `MANUAL` definida pelo backend
+
+Response oficial: `id`, `creditCardId`, `amount`, `remainingAmount`, `reason`, `origin` (`MANUAL` / `CARD_PURCHASE_REFUND`), `expenseId` (nullable), `createdAt`. Sem status de domínio. Classificação visual Disponível/Utilizado a partir de `remainingAmount`. Soma dos `remainingAmount` é agregação de apresentação. Após criar: recarregar créditos e `GET .../limit`; não somar crédito ao limite; não afirmar aplicação a fatura.
+
 # 97. Dashboard
 
 Dashboard deve apresentar:

@@ -2,10 +2,18 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { API_BASE_URL, joinApiUrl } from '../../core/config/api-config';
-import { parseCreditCard, parseCreditCardLimit, parseCreditCardList } from './credit-cards-parse';
 import {
+  parseCreditCard,
+  parseCreditCardCredit,
+  parseCreditCardCreditList,
+  parseCreditCardLimit,
+  parseCreditCardList,
+} from './credit-cards-parse';
+import {
+  CreateCreditCardCreditRequest,
   CreateCreditCardRequest,
   CreditCard,
+  CreditCardCredit,
   CreditCardLimit,
   CreditCardListParams,
   CreditCardWithLimit,
@@ -132,6 +140,37 @@ export class CreditCardsService {
           ),
         ),
       );
+  }
+
+  listCredits(cardId: string): Observable<CreditCardCredit[]> {
+    const path = `/credit-cards/${encodeURIComponent(cardId)}/credits`;
+    return this.http.get<unknown>(joinApiUrl(this.apiBaseUrl, path)).pipe(
+      map((body) => {
+        const parsed = parseCreditCardCreditList(body);
+        if (parsed == null) {
+          throw new Error('Credit card credits response did not match the expected contract.');
+        }
+        return parsed;
+      }),
+    );
+  }
+
+  createCredit(
+    cardId: string,
+    request: CreateCreditCardCreditRequest,
+  ): Observable<CreditCardCredit> {
+    const path = `/credit-cards/${encodeURIComponent(cardId)}/credits`;
+    return this.http.post<unknown>(joinApiUrl(this.apiBaseUrl, path), request).pipe(
+      map((body) => {
+        const parsed = parseCreditCardCredit(body);
+        if (parsed == null) {
+          throw new Error(
+            'Create credit card credit response did not match the expected contract.',
+          );
+        }
+        return parsed;
+      }),
+    );
   }
 
   private requireCard(body: unknown, message: string): CreditCard {

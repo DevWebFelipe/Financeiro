@@ -1,8 +1,13 @@
 import { TestBed } from '@angular/core/testing';
-import { NEVER, of, throwError } from 'rxjs';
+import { NEVER, of, Subject, throwError } from 'rxjs';
 import { ApiError } from '../../core/errors/api-error';
 import { CreditCardsPage } from './credit-cards-page';
-import { CreditCard, CreditCardLimit, CreditCardWithLimit } from './credit-cards.models';
+import {
+  CreditCard,
+  CreditCardCredit,
+  CreditCardLimit,
+  CreditCardWithLimit,
+} from './credit-cards.models';
 import { CreditCardsService } from './credit-cards.service';
 
 const CARD_ID = '01900000-0000-7000-8000-000000000040';
@@ -42,6 +47,20 @@ function item(
   };
 }
 
+function credit(overrides: Partial<CreditCardCredit> = {}): CreditCardCredit {
+  return {
+    id: '01900000-0000-7000-8000-000000000060',
+    creditCardId: CARD_ID,
+    amount: 100,
+    remainingAmount: 40,
+    reason: 'Ajuste comercial',
+    origin: 'MANUAL',
+    expenseId: null,
+    createdAt: '2026-08-20T12:00:00Z',
+    ...overrides,
+  };
+}
+
 const loadError: ApiError = {
   timestamp: '2026-08-19T15:00:00Z',
   status: 500,
@@ -68,6 +87,8 @@ describe('CreditCardsPage', () => {
   let update: ReturnType<typeof vi.fn>;
   let activate: ReturnType<typeof vi.fn>;
   let deactivate: ReturnType<typeof vi.fn>;
+  let listCredits: ReturnType<typeof vi.fn>;
+  let createCredit: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     listWithLimits = vi.fn();
@@ -77,13 +98,25 @@ describe('CreditCardsPage', () => {
     update = vi.fn();
     activate = vi.fn();
     deactivate = vi.fn();
+    listCredits = vi.fn().mockReturnValue(of([]));
+    createCredit = vi.fn();
 
     await TestBed.configureTestingModule({
       imports: [CreditCardsPage],
       providers: [
         {
           provide: CreditCardsService,
-          useValue: { listWithLimits, get, getLimit, create, update, activate, deactivate },
+          useValue: {
+            listWithLimits,
+            get,
+            getLimit,
+            create,
+            update,
+            activate,
+            deactivate,
+            listCredits,
+            createCredit,
+          },
         },
       ],
     }).compileComponents();
@@ -227,6 +260,7 @@ describe('CreditCardsPage', () => {
 
     expect(get).toHaveBeenCalledWith(CARD_ID);
     expect(getLimit).toHaveBeenCalledWith(CARD_ID);
+    expect(listCredits).toHaveBeenCalledWith(CARD_ID);
     expect(fixture.nativeElement.textContent).toContain('Detalhes do cartão');
     expect(fixture.nativeElement.textContent).toContain('Dia de fechamento');
     expect(fixture.nativeElement.textContent).toContain('10');
@@ -552,5 +586,228 @@ describe('CreditCardsPage', () => {
     const fixture = TestBed.createComponent(CreditCardsPage);
     expect(fixture.componentInstance).toBeTruthy();
     expect(listWithLimits).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads credits in the card detail and shows an empty state', async () => {
+    listWithLimits.mockReturnValue(of([item()]));
+    get.mockReturnValue(of(card()));
+    getLimit.mockReturnValue(of(limit()));
+    const fixture = TestBed.createComponent(CreditCardsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.componentInstance.openDetail(item());
+    fixture.detectChanges();
+
+    expect(listCredits).toHaveBeenCalledWith(CARD_ID);
+    expect(fixture.nativeElement.textContent).toContain('Créditos do cartão');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Nenhum crédito registrado para este cartão.',
+    );
+    expect(buttonByText(fixture.nativeElement, 'Adicionar crédito')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).not.toContain('Aplicar crédito');
+  });
+
+  it('keeps card detail visible when credits fail and retries only credits', async () => {
+    listCredits.mockReturnValueOnce(throwError(() => loadError)).mockReturnValue(of([]));
+    listWithLimits.mockReturnValue(of([item()]));
+    get.mockReturnValue(of(card()));
+    getLimit.mockReturnValue(of(limit()));
+    const fixture = TestBed.createComponent(CreditCardsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.componentInstance.openDetail(item());
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'Não foi possível carregar os créditos do cartão.',
+    );
+    expect(fixture.nativeElement.textContent).toContain('Detalhes do cartão');
+
+    buttonByText(fixture.nativeElement, 'Tentar novamente')?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(listCredits).toHaveBeenCalledTimes(2);
+    expect(fixture.nativeElement.textContent).toContain(
+      'Nenhum crédito registrado para este cartão.',
+    );
+  });
+
+  it('presents remainingAmount = 0 credits as used history without hiding them', async () => {
+    listCredits.mockReturnValue(
+      of([
+        credit(),
+        credit({
+          id: '01900000-0000-7000-8000-000000000061',
+          remainingAmount: 0,
+          origin: 'CARD_PURCHASE_REFUND',
+          reason: 'Estorno',
+        }),
+      ]),
+    );
+    listWithLimits.mockReturnValue(of([item()]));
+    get.mockReturnValue(of(card()));
+    getLimit.mockReturnValue(of(limit()));
+    const fixture = TestBed.createComponent(CreditCardsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.componentInstance.openDetail(item());
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Crédito manual');
+    expect(fixture.nativeElement.textContent).toContain('Estorno de compra');
+    expect(fixture.nativeElement.textContent).toContain('Disponível');
+    expect(fixture.nativeElement.textContent).toContain('Utilizado');
+    expect(fixture.nativeElement.textContent).toContain('Ajuste comercial');
+    const remaining = new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(40);
+    expect(fixture.nativeElement.textContent).toContain(remaining);
+  });
+
+  it('creates a manual credit without extra fields and reloads credits and limit', async () => {
+    createCredit.mockReturnValue(of(credit({ remainingAmount: 100 })));
+    listWithLimits.mockReturnValue(of([item()]));
+    get.mockReturnValue(of(card()));
+    getLimit.mockReturnValue(of(limit()));
+    const fixture = TestBed.createComponent(CreditCardsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.componentInstance.openDetail(item());
+    fixture.detectChanges();
+
+    fixture.componentInstance.openCreditForm();
+    fixture.detectChanges();
+    getLimit.mockReturnValue(of(limit({ usedLimit: 1400, availableLimit: 3600 })));
+    listCredits.mockReturnValue(of([credit({ remainingAmount: 100 })]));
+
+    fixture.componentInstance.creditForm.patchValue({
+      amount: 100,
+      reason: '  Ajuste comercial  ',
+    });
+    await fixture.componentInstance.submitCredit();
+    fixture.detectChanges();
+
+    expect(createCredit).toHaveBeenCalledWith(CARD_ID, {
+      amount: 100,
+      reason: 'Ajuste comercial',
+    });
+    expect(createCredit.mock.calls[0]?.[0]).not.toBeUndefined();
+    expect(createCredit.mock.calls[0]?.[1]).not.toHaveProperty('origin');
+    expect(createCredit.mock.calls[0]?.[1]).not.toHaveProperty('expenseId');
+    expect(listCredits).toHaveBeenCalledTimes(2);
+    expect(getLimit.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(fixture.nativeElement.textContent).toContain('Crédito adicionado com sucesso.');
+    expect(fixture.nativeElement.textContent).toContain('Detalhes do cartão');
+    expect(fixture.nativeElement.querySelector('#card-credit-amount')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('aplicados à fatura');
+  });
+
+  it('rejects empty, zero and negative credit amounts and whitespace reason', async () => {
+    listWithLimits.mockReturnValue(of([item()]));
+    get.mockReturnValue(of(card()));
+    getLimit.mockReturnValue(of(limit()));
+    const fixture = TestBed.createComponent(CreditCardsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.componentInstance.openDetail(item());
+    fixture.componentInstance.openCreditForm();
+
+    const page = fixture.componentInstance;
+    page.creditForm.patchValue({ amount: null, reason: 'Motivo' });
+    await page.submitCredit();
+    page.creditForm.patchValue({ amount: 0 });
+    await page.submitCredit();
+    page.creditForm.patchValue({ amount: -10 });
+    await page.submitCredit();
+    page.creditForm.patchValue({ amount: 10, reason: '   ' });
+    await page.submitCredit();
+
+    expect(createCredit).not.toHaveBeenCalled();
+  });
+
+  it('closes the credit form with Escape without posting and keeps the detail open', async () => {
+    listWithLimits.mockReturnValue(of([item()]));
+    get.mockReturnValue(of(card()));
+    getLimit.mockReturnValue(of(limit()));
+    const fixture = TestBed.createComponent(CreditCardsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.componentInstance.openDetail(item());
+    fixture.componentInstance.openCreditForm();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#card-credit-amount')).not.toBeNull();
+
+    pressEscape();
+    fixture.detectChanges();
+    expect(createCredit).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('#card-credit-amount')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Detalhes do cartão');
+  });
+
+  it('shows credits loading after card detail is ready without hanging on GET', async () => {
+    listCredits.mockReturnValue(NEVER);
+    listWithLimits.mockReturnValue(of([item()]));
+    get.mockReturnValue(of(card()));
+    getLimit.mockReturnValue(of(limit()));
+    const fixture = TestBed.createComponent(CreditCardsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    void fixture.componentInstance.openDetail(item());
+    await Promise.resolve();
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Carregando créditos do cartão.');
+    expect(fixture.nativeElement.textContent).toContain('Detalhes do cartão');
+  });
+
+  it('shows API error on credit create without closing the detail', async () => {
+    createCredit.mockReturnValue(
+      throwError(() => ({
+        timestamp: '2026-08-19T15:00:00Z',
+        status: 400,
+        code: 'VALIDATION_ERROR',
+        message: 'O valor deve ser maior que zero.',
+        path: `/api/v1/credit-cards/${CARD_ID}/credits`,
+      })),
+    );
+    listWithLimits.mockReturnValue(of([item()]));
+    get.mockReturnValue(of(card()));
+    getLimit.mockReturnValue(of(limit()));
+    const fixture = TestBed.createComponent(CreditCardsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.componentInstance.openDetail(item());
+    fixture.componentInstance.openCreditForm();
+    fixture.componentInstance.creditForm.patchValue({ amount: 100, reason: 'Motivo' });
+    await fixture.componentInstance.submitCredit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('O valor deve ser maior que zero.');
+    expect(fixture.nativeElement.textContent).toContain('Detalhes do cartão');
+  });
+
+  it('prevents duplicate credit submits while a request is in flight', async () => {
+    const pending = new Subject<CreditCardCredit>();
+    createCredit.mockReturnValue(pending.asObservable());
+    listWithLimits.mockReturnValue(of([item()]));
+    get.mockReturnValue(of(card()));
+    getLimit.mockReturnValue(of(limit()));
+    const fixture = TestBed.createComponent(CreditCardsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.componentInstance.openDetail(item());
+    fixture.componentInstance.openCreditForm();
+    fixture.componentInstance.creditForm.patchValue({ amount: 10, reason: 'Motivo' });
+
+    const first = fixture.componentInstance.submitCredit();
+    const second = fixture.componentInstance.submitCredit();
+    await second;
+    expect(createCredit).toHaveBeenCalledTimes(1);
+    pending.next(credit());
+    pending.complete();
+    await first;
   });
 });

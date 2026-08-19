@@ -2,7 +2,9 @@
   <header class="page-header">
     <div class="page-header__intro">
       <h1 id="credit-cards-title">Cartões</h1>
-      <p class="page-header__meta">Cartões de crédito cadastrados nesta sessão.</p>
+      <p class="page-header__meta">
+        Cartões de crédito cadastrados nesta sessão. Créditos do cartão ficam no detalhe.
+      </p>
     </div>
     @if (status() === 'loaded' && (cards().length > 0 || hasFilters())) {
       <button type="button" (click)="openCreate()">Novo cartão</button>
@@ -175,10 +177,134 @@
             }
           </dl>
 
+          <h3 id="credit-card-credits-title">Créditos do cartão</h3>
+          <p class="panel__meta">
+            Créditos disponíveis neste cartão. A aplicação às faturas é feita automaticamente pelo
+            sistema.
+          </p>
+
+          @if (creditsStatus() === 'loaded' && credits().length > 0) {
+            <p class="panel__meta">
+              Total disponível (soma dos remainingAmount oficiais):
+              {{ availableCreditsTotal() | brlCurrency }}
+            </p>
+          }
+
+          @if (creditSuccess(); as message) {
+            <p class="credit-success" role="status">{{ message }}</p>
+          }
+
+          @if (creditsStatus() === 'loading') {
+            <p class="visually-hidden">Carregando créditos do cartão.</p>
+            <div class="skeleton" aria-hidden="true">
+              <div class="skeleton__block"></div>
+            </div>
+          }
+
+          @if (creditsStatus() === 'error') {
+            <app-error-state
+              [message]="creditsError() ?? 'Não foi possível carregar os créditos do cartão.'"
+              retryLabel="Tentar novamente"
+              (retry)="retryCredits()"
+            />
+          }
+
+          @if (isCreditsEmpty()) {
+            <app-empty-state message="Nenhum crédito registrado para este cartão." />
+          }
+
+          @if (creditsStatus() === 'loaded' && credits().length > 0) {
+            <div class="table-wrap">
+              <table>
+                <caption class="visually-hidden">
+                  Créditos do cartão
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Data</th>
+                    <th scope="col">Origem</th>
+                    <th scope="col">Motivo</th>
+                    <th scope="col">Valor</th>
+                    <th scope="col">Disponível</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (credit of credits(); track credit.id) {
+                    <tr [class.is-used]="credit.remainingAmount === 0">
+                      <th scope="row" data-label="Data">{{ instantDate(credit.createdAt) }}</th>
+                      <td data-label="Origem">{{ originLabel(credit.origin) }}</td>
+                      <td data-label="Motivo">{{ credit.reason }}</td>
+                      <td data-label="Valor">{{ credit.amount | brlCurrency }}</td>
+                      <td data-label="Disponível">
+                        {{ credit.remainingAmount | brlCurrency }}
+                        <span class="badge">{{ availabilityLabel(credit.remainingAmount) }}</span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
           <div class="form-actions">
+            <button type="button" (click)="openCreditForm()" [disabled]="submitting()">
+              Adicionar crédito
+            </button>
             <button type="button" (click)="closeDetail()">Fechar</button>
           </div>
         }
+      </section>
+    }
+
+    @if (creditFormOpen() && selectedCard(); as card) {
+      <section class="panel" aria-labelledby="credit-card-credit-form-title">
+        <h2 id="credit-card-credit-form-title">Adicionar crédito</h2>
+        <p class="panel__meta">
+          Crédito manual para {{ card.name }}. A origem é definida pelo sistema.
+        </p>
+        <form [formGroup]="creditForm" (ngSubmit)="submitCredit()" novalidate>
+          @if (creditFormError(); as message) {
+            <app-error-state [message]="message" />
+          }
+          <div class="field">
+            <label for="card-credit-amount">Valor</label>
+            <input
+              id="card-credit-amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              formControlName="amount"
+              [attr.aria-invalid]="creditFieldError('amount') != null"
+              [attr.aria-describedby]="
+                creditFieldError('amount') != null ? 'card-credit-amount-error' : null
+              "
+            />
+            @if (creditFieldError('amount'); as message) {
+              <p id="card-credit-amount-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+          <div class="field">
+            <label for="card-credit-reason">Motivo</label>
+            <input
+              id="card-credit-reason"
+              type="text"
+              formControlName="reason"
+              [attr.aria-invalid]="creditFieldError('reason') != null"
+              [attr.aria-describedby]="
+                creditFieldError('reason') != null ? 'card-credit-reason-error' : null
+              "
+            />
+            @if (creditFieldError('reason'); as message) {
+              <p id="card-credit-reason-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+          <div class="form-actions">
+            <button type="submit" [disabled]="submitting()">Salvar crédito</button>
+            <button type="button" (click)="closeCreditForm()" [disabled]="submitting()">
+              Cancelar
+            </button>
+          </div>
+        </form>
       </section>
     }
 

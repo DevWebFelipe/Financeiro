@@ -1,4 +1,10 @@
-import { parseCreditCard, parseCreditCardLimit, parseCreditCardList } from './credit-cards-parse';
+import {
+  parseCreditCard,
+  parseCreditCardCredit,
+  parseCreditCardCreditList,
+  parseCreditCardLimit,
+  parseCreditCardList,
+} from './credit-cards-parse';
 
 const CARD_ID = '01900000-0000-7000-8000-000000000040';
 
@@ -49,5 +55,70 @@ describe('credit-cards-parse', () => {
 
   it('rejects a limit payload that omits availableLimit', () => {
     expect(parseCreditCardLimit({ creditLimit: 5000, usedLimit: 100 })).toBeNull();
+  });
+
+  it('parses MANUAL and CARD_PURCHASE_REFUND credits including nullable expenseId', () => {
+    const manual = parseCreditCardCredit({
+      id: CARD_ID,
+      creditCardId: CARD_ID,
+      amount: 100,
+      remainingAmount: 40,
+      reason: 'Ajuste comercial',
+      origin: 'MANUAL',
+      expenseId: null,
+      createdAt: '2026-08-20T12:00:00Z',
+    });
+    expect(manual).toEqual(
+      expect.objectContaining({
+        amount: 100,
+        remainingAmount: 40,
+        origin: 'MANUAL',
+        expenseId: null,
+      }),
+    );
+
+    const refund = parseCreditCardCredit({
+      id: CARD_ID,
+      creditCardId: CARD_ID,
+      amount: 50,
+      remainingAmount: 0,
+      reason: 'Estorno',
+      origin: 'CARD_PURCHASE_REFUND',
+      expenseId: CARD_ID,
+      createdAt: '2026-08-20T12:00:00Z',
+    });
+    expect(refund?.origin).toBe('CARD_PURCHASE_REFUND');
+    expect(refund?.expenseId).toBe(CARD_ID);
+    expect(refund?.remainingAmount).toBe(0);
+  });
+
+  it('parses a credit list and rejects invented origins', () => {
+    expect(
+      parseCreditCardCreditList([
+        {
+          id: CARD_ID,
+          creditCardId: CARD_ID,
+          amount: 10,
+          remainingAmount: 10,
+          reason: 'Manual',
+          origin: 'MANUAL',
+          expenseId: null,
+          createdAt: '2026-08-20T12:00:00Z',
+        },
+      ]),
+    ).toHaveLength(1);
+    expect(parseCreditCardCreditList({ items: [] })).toBeNull();
+    expect(
+      parseCreditCardCredit({
+        id: CARD_ID,
+        creditCardId: CARD_ID,
+        amount: 10,
+        remainingAmount: 10,
+        reason: 'Manual',
+        origin: 'PROMO',
+        expenseId: null,
+        createdAt: '2026-08-20T12:00:00Z',
+      }),
+    ).toBeNull();
   });
 });

@@ -1228,6 +1228,8 @@ Bloco C4 — Pagamento de faturas — **implementado** (histórico `GET /invoice
 
 Bloco C5 — Ajustes de fatura — **implementado** (histórico `GET /invoices/{id}/adjustments`, criação `POST /invoices/{id}/adjustments`, reversão `POST .../adjustments/{adjustmentId}/reverse`). Sem créditos, acordos, fechamento manual. Sem B12. Sem C6. Sem C7.
 
+Bloco C6 — Créditos de cartão — **implementado** (consulta `GET /credit-cards/{id}/credits`, criação manual `POST /credit-cards/{id}/credits`). Sem aplicação manual, reverse, edição ou exclusão. Sem B12. Sem C7.
+
 
 # 106. Frontend
 

@@ -43,3 +43,21 @@ export interface UpdateCreditCardRequest {
   readonly closingDay: number;
   readonly dueDay: number;
 }
+
+export type CreditCardCreditOrigin = 'MANUAL' | 'CARD_PURCHASE_REFUND';
+
+export interface CreditCardCredit {
+  readonly id: string;
+  readonly creditCardId: string;
+  readonly amount: number;
+  readonly remainingAmount: number;
+  readonly reason: string;
+  readonly origin: CreditCardCreditOrigin;
+  readonly expenseId: string | null;
+  readonly createdAt: string;
+}
+
+export interface CreateCreditCardCreditRequest {
+  readonly amount: number;
+  readonly reason: string;
+}

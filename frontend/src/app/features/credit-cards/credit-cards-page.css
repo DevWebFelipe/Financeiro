@@ -125,6 +125,58 @@
   margin-bottom: var(--space-lg);
 }
 
+.panel h3 {
+  margin-bottom: var(--space-md);
+}
+
+.panel__meta {
+  margin-bottom: var(--space-md);
+  color: var(--color-text-secondary);
+}
+
+.credit-success {
+  margin-bottom: var(--space-md);
+  color: var(--color-income);
+}
+
+.badge {
+  display: inline-block;
+  margin-left: var(--space-xs);
+  padding: var(--space-2xs) var(--space-xs);
+  font-size: var(--font-size-helper);
+  color: var(--color-text-secondary);
+  background-color: color-mix(in srgb, var(--color-border) 60%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.is-used {
+  color: var(--color-text-muted);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  margin-bottom: var(--space-lg);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: var(--space-sm) var(--space-xs);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+thead th {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
 form {
   display: grid;
   gap: var(--space-sm);
@@ -180,5 +232,54 @@ app-empty-state {
 @media (min-width: 64rem) {
   .card-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 63.99rem) {
+  thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  table,
+  tbody,
+  tr,
+  th,
+  td {
+    display: block;
+    width: 100%;
+  }
+
+  tr {
+    padding: var(--space-md) 0;
+    border-bottom: var(--border-width) solid var(--color-border);
+  }
+
+  tr:last-child {
+    border-bottom: 0;
+  }
+
+  th,
+  td {
+    display: grid;
+    grid-template-columns: minmax(7rem, 38%) minmax(0, 1fr);
+    gap: var(--space-sm);
+    padding: var(--space-2xs) 0;
+    border-bottom: 0;
+  }
+
+  th::before,
+  td::before {
+    content: attr(data-label);
+    font-size: var(--font-size-label);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
   }
 }

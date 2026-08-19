@@ -37,6 +37,20 @@ function limitBody(overrides: Record<string, unknown> = {}): Record<string, unkn
   };
 }
 
+function creditBody(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: '01900000-0000-7000-8000-000000000060',
+    creditCardId: CARD_ID,
+    amount: 100,
+    remainingAmount: 40,
+    reason: 'Ajuste comercial',
+    origin: 'MANUAL',
+    expenseId: null,
+    createdAt: '2026-08-20T12:00:00Z',
+    ...overrides,
+  };
+}
+
 describe('CreditCardsService', () => {
   let service: CreditCardsService;
   let httpTesting: HttpTestingController;
@@ -232,5 +246,55 @@ describe('CreditCardsService', () => {
     httpTesting.expectOne(api('/credit-cards')).flush({ id: CARD_ID });
     const error = await pending;
     expect(error).toBeInstanceOf(Error);
+  });
+
+  it('lists credits for a card without query params', async () => {
+    const pending = firstValueFrom(service.listCredits(CARD_ID));
+    const request = httpTesting.expectOne(api(`/credit-cards/${CARD_ID}/credits`));
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.keys()).toEqual([]);
+    request.flush([creditBody()]);
+
+    const credits = await pending;
+    expect(credits).toHaveLength(1);
+    expect(credits[0]?.remainingAmount).toBe(40);
+    expect(credits[0]?.origin).toBe('MANUAL');
+  });
+
+  it('creates a manual credit with amount and reason only', async () => {
+    const pending = firstValueFrom(
+      service.createCredit(CARD_ID, { amount: 100, reason: 'Ajuste comercial' }),
+    );
+    const request = httpTesting.expectOne(api(`/credit-cards/${CARD_ID}/credits`));
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ amount: 100, reason: 'Ajuste comercial' });
+    expect(request.request.body).not.toHaveProperty('origin');
+    expect(request.request.body).not.toHaveProperty('creditCardId');
+    expect(request.request.body).not.toHaveProperty('expenseId');
+    request.flush(creditBody(), { status: 201, statusText: 'Created' });
+    await pending;
+  });
+
+  it('propagates API errors from createCredit', async () => {
+    const pending = firstValueFrom(
+      service.createCredit(CARD_ID, { amount: 100, reason: 'Ajuste comercial' }),
+    );
+    httpTesting.expectOne(api(`/credit-cards/${CARD_ID}/credits`)).flush(
+      {
+        timestamp: '2026-08-19T15:00:00Z',
+        status: 400,
+        code: 'VALIDATION_ERROR',
+        message: 'O motivo é obrigatório.',
+        path: `/api/v1/credit-cards/${CARD_ID}/credits`,
+      },
+      { status: 400, statusText: 'Bad Request' },
+    );
+
+    try {
+      await pending;
+      throw new Error('expected createCredit to fail');
+    } catch (error: unknown) {
+      expect(isApiError(error)).toBe(true);
+    }
   });
 });
