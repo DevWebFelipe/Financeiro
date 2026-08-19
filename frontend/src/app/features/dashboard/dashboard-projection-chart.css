@@ -1,0 +1,143 @@
+:host {
+  display: block;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label);
+}
+
+.legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.legend__item::before {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: var(--radius-sm);
+  content: '';
+}
+
+.legend__item--income::before {
+  background-color: var(--color-income);
+}
+
+.legend__item--expense::before {
+  background-color: var(--color-expense);
+}
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.bars__month {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.bars__track {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.bars__fill {
+  display: block;
+  width: var(--bar-size, 0%);
+  min-height: 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.bars__fill--income {
+  background-color: var(--color-income);
+}
+
+.bars__fill--expense {
+  background-color: var(--color-expense);
+}
+
+.bars__label {
+  font-size: var(--font-size-helper);
+  color: var(--color-text-muted);
+  text-transform: capitalize;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 36rem;
+  font-size: var(--font-size-label);
+}
+
+caption {
+  caption-side: top;
+  margin-bottom: var(--space-sm);
+  font-weight: var(--font-weight-medium);
+  text-align: left;
+  color: var(--color-text-secondary);
+}
+
+th,
+td {
+  padding: var(--space-xs) var(--space-sm);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+th {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+td {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 64rem) {
+  .bars {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(3.5rem, 1fr));
+    align-items: end;
+    min-height: 10rem;
+  }
+
+  .bars__month {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    min-width: 0;
+  }
+
+  .bars__track {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: center;
+    height: 8rem;
+    gap: var(--space-2xs);
+  }
+
+  .bars__fill {
+    width: 0.65rem;
+    min-height: 0;
+    height: var(--bar-size, 0%);
+  }
+
+  .bars__label {
+    text-align: center;
+  }
+}

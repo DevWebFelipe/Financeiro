@@ -1,0 +1,54 @@
+<div class="projection-chart">
+  <p class="legend">
+    <span class="legend__item legend__item--income">Entradas</span>
+    <span class="legend__item legend__item--expense">Saídas</span>
+  </p>
+
+  <div class="bars" role="img" aria-hidden="true">
+    @for (month of months(); track month.period) {
+      <div class="bars__month">
+        <div class="bars__track">
+          <span
+            class="bars__fill bars__fill--income"
+            [style.--bar-size]="barPercent(month.totalIncome) + '%'"
+          ></span>
+          <span
+            class="bars__fill bars__fill--expense"
+            [style.--bar-size]="barPercent(month.totalExpense) + '%'"
+          ></span>
+        </div>
+        <span class="bars__label">{{ formatYearMonth(month.period) }}</span>
+      </div>
+    }
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <caption>
+        Projeção mensal oficial
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Mês</th>
+          <th scope="col">Entradas</th>
+          <th scope="col">Saídas</th>
+          <th scope="col">Saldo final</th>
+          <th scope="col">Situação</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (month of months(); track month.period) {
+          <tr>
+            <th scope="row">{{ formatYearMonth(month.period) }}</th>
+            <td>{{ formatBrl(month.totalIncome) }}</td>
+            <td>{{ formatBrl(month.totalExpense) }}</td>
+            <td>{{ formatBrl(month.closingBalance) }}</td>
+            <td>
+              {{ month.negative ? 'Saldo projetado negativo' : 'Saldo projetado não negativo' }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

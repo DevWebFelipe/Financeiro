@@ -1204,6 +1204,8 @@ Bloco B3 — Autenticação, sessão e inicialização — **implementado** (Aut
 
 Bloco B4 — App Shell, layout responsivo e navegação — **implementado** (MainLayout, Header, Sidebar colapsável, Drawer mobile, `/dashboard` como entrada autenticada). Dashboard funcional e features financeiras fora deste bloco.
 
+Bloco B5 — Dashboard funcional — **implementado** (`GET /api/v1/dashboard`, estados loading/loaded/error, projeção mensal oficial, sem ECharts e sem CRUDs).
+
 
 # 106. Frontend
 
@@ -1686,7 +1688,7 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9**. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 15: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**. Fase 17: **CONCLUÍDA E APROVADA**. Fase 18: **CONCLUÍDA E APROVADA**. Fase 19: **CONCLUÍDA E APROVADA**. Fase 20: **CONCLUÍDA E APROVADA**.
 
-**Fase 20 — Relatórios:** **CONCLUÍDA E APROVADA** (`docs/28` §101 / `docs/24` §19.12 / `docs/25` §76; D-F20-01 a D-F20-16 **implementadas**). 7 JSON + 7 PDF. OpenPDF 3.0.5. Collection atualizada (14 requests). Flyway V30; sem tabela `reports`. Testes: `ReportsApiTest`. Suíte: **578** testes. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento; não bloqueante). Próxima fase do roadmap: **Fase 21 — Frontend completo**. Bloco B1 (Design System base) **implementado**. Bloco B2 (HTTP / erros) **implementado**. Bloco B3 (autenticação) **implementado**. Bloco B4 (App Shell) **implementado**.
+**Fase 20 — Relatórios:** **CONCLUÍDA E APROVADA** (`docs/28` §101 / `docs/24` §19.12 / `docs/25` §76; D-F20-01 a D-F20-16 **implementadas**). 7 JSON + 7 PDF. OpenPDF 3.0.5. Collection atualizada (14 requests). Flyway V30; sem tabela `reports`. Testes: `ReportsApiTest`. Suíte: **578** testes. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento; não bloqueante). Próxima fase do roadmap: **Fase 21 — Frontend completo**. Bloco B1 (Design System base) **implementado**. Bloco B2 (HTTP / erros) **implementado**. Bloco B3 (autenticação) **implementado**. Bloco B4 (App Shell) **implementado**. Bloco B5 (Dashboard funcional) **implementado**.
 
 **Fase 19 — CONCLUÍDA E APROVADA.** Endpoint: `GET /api/v1/dashboard`. Sem tabela `dashboard`. D282–D289 **implementadas**. Testes: `DashboardApiTest`. Suíte: **519** testes. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
 

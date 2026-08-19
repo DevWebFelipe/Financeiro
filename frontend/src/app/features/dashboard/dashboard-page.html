@@ -1,4 +1,188 @@
-<section aria-labelledby="dashboard-title">
-  <h1 id="dashboard-title">Dashboard</h1>
-  <p>O conteúdo desta área será implementado em um bloco posterior.</p>
+<section aria-labelledby="dashboard-title" [attr.aria-busy]="status() === 'loading'">
+  <header class="page-header">
+    <h1 id="dashboard-title">Dashboard</h1>
+    @if (data(); as dashboard) {
+      <p class="page-header__meta">
+        Posição em {{ formatIsoDate(dashboard.asOfDate) }}. Projeção de
+        {{ formatIsoDate(dashboard.startDate) }} a {{ formatIsoDate(dashboard.endDate) }}.
+      </p>
+    }
+  </header>
+
+  @if (status() === 'loading') {
+    <p class="visually-hidden">Carregando dashboard.</p>
+    <div class="skeleton" aria-hidden="true">
+      <div class="skeleton__block skeleton__block--title"></div>
+      <div class="skeleton__grid">
+        <div class="skeleton__block"></div>
+        <div class="skeleton__block"></div>
+        <div class="skeleton__block"></div>
+      </div>
+      <div class="skeleton__block skeleton__block--chart"></div>
+    </div>
+  }
+
+  @if (status() === 'error') {
+    <div class="banner banner--error" role="alert">
+      <p>Não foi possível carregar o dashboard.</p>
+      <button type="button" (click)="retry()">Tentar novamente</button>
+    </div>
+  }
+
+  @if (status() === 'loaded' && data(); as dashboard) {
+    @if (isEmpty()) {
+      <p class="empty">Não há contas ativas neste momento.</p>
+    }
+
+    <section class="panel" aria-labelledby="balance-title">
+      <h2 id="balance-title">Situação atual</h2>
+      <p class="lead">
+        <span class="lead__label">Disponível</span>
+        <span class="lead__value">{{ formatBrl(dashboard.balance.availableBalance) }}</span>
+      </p>
+      <dl class="metrics">
+        <div>
+          <dt>Saldo total</dt>
+          <dd>{{ formatBrl(dashboard.balance.totalBalance) }}</dd>
+        </div>
+        <div>
+          <dt>Reservado em metas</dt>
+          <dd>{{ formatBrl(dashboard.balance.reservedAmount) }}</dd>
+        </div>
+        <div>
+          <dt>Disponível</dt>
+          <dd>{{ formatBrl(dashboard.balance.availableBalance) }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="panel" aria-labelledby="projection-title">
+      <h2 id="projection-title">Projeção</h2>
+      <p class="hint">
+        Horizonte oficial da API, sem seletor de período. O primeiro mês inclui valores já vencidos,
+        quando existirem.
+      </p>
+      <dl class="metrics">
+        <div>
+          <dt>Entradas projetadas</dt>
+          <dd class="is-income">{{ formatBrl(dashboard.projection.summary.projectedIncome) }}</dd>
+        </div>
+        <div>
+          <dt>Saídas projetadas</dt>
+          <dd class="is-expense">{{ formatBrl(dashboard.projection.summary.projectedExpense) }}</dd>
+        </div>
+        <div>
+          <dt>Saldo projetado ao final</dt>
+          <dd>{{ formatBrl(dashboard.projection.summary.projectedFinalBalance) }}</dd>
+        </div>
+      </dl>
+      @if (dashboard.projection.months.length > 0) {
+        <app-dashboard-projection-chart [months]="dashboard.projection.months" />
+      }
+      @if (dashboard.projection.quarters.length > 0) {
+        <h3>Trimestres completos no horizonte</h3>
+        <ul class="quarters">
+          @for (quarter of dashboard.projection.quarters; track quarter.period) {
+            <li>
+              {{ formatQuarter(quarter.period) }}: entradas {{ formatBrl(quarter.totalIncome) }},
+              saídas {{ formatBrl(quarter.totalExpense) }}.
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <div class="split">
+      <section class="panel" aria-labelledby="payables-title">
+        <h2 id="payables-title">Contas a pagar</h2>
+        <dl class="metrics metrics--stack">
+          <div>
+            <dt>Em aberto</dt>
+            <dd>{{ formatBrl(dashboard.payables.totalRemaining) }}</dd>
+          </div>
+          <div>
+            <dt>Parcelas</dt>
+            <dd>{{ formatBrl(dashboard.payables.installmentRemaining) }}</dd>
+          </div>
+          <div>
+            <dt>Faturas</dt>
+            <dd>{{ formatBrl(dashboard.payables.invoiceRemaining) }}</dd>
+          </div>
+          <div>
+            <dt>Em atraso</dt>
+            <dd [class.is-overdue]="dashboard.payables.overdueCount > 0">
+              {{ formatBrl(dashboard.payables.overdueRemaining) }}
+              @if (dashboard.payables.overdueCount > 0) {
+                <span class="tag">{{ dashboard.payables.overdueCount }} em atraso</span>
+              }
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="panel" aria-labelledby="receivables-title">
+        <h2 id="receivables-title">Contas a receber</h2>
+        <dl class="metrics metrics--stack">
+          <div>
+            <dt>A receber</dt>
+            <dd class="is-income">{{ formatBrl(dashboard.receivables.totalReceivableAmount) }}</dd>
+          </div>
+          <div>
+            <dt>A vencer</dt>
+            <dd>{{ formatBrl(dashboard.receivables.futureAmount) }}</dd>
+          </div>
+          <div>
+            <dt>Em atraso</dt>
+            <dd [class.is-overdue]="dashboard.receivables.overdueAmount > 0">
+              {{ formatBrl(dashboard.receivables.overdueAmount) }}
+            </dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+
+    @if (hasAccounts()) {
+      <section class="panel" aria-labelledby="accounts-title">
+        <h2 id="accounts-title">Contas ativas</h2>
+        <ul class="list">
+          @for (account of dashboard.accounts; track account.id) {
+            <li>
+              <span class="list__title">{{ account.name }}</span>
+              <span class="list__meta">{{ accountTypeLabel(account.type) }}</span>
+              <span class="list__value">{{ formatBrl(account.availableBalance) }}</span>
+              <span class="list__meta">
+                Total {{ formatBrl(account.totalBalance) }} · Reservado
+                {{ formatBrl(account.reservedAmount) }}
+              </span>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    @if (hasCreditCards()) {
+      <section class="panel" aria-labelledby="cards-title">
+        <h2 id="cards-title">Cartões ativos</h2>
+        <p class="hint">O limite usado não é saldo em conta.</p>
+        <ul class="list">
+          @for (card of dashboard.creditCards; track card.id) {
+            <li>
+              <span class="list__title">{{ card.name }}</span>
+              <span class="list__value">Usado {{ formatBrl(card.usedLimit) }}</span>
+              <span class="list__meta">
+                Limite {{ formatBrl(card.creditLimit) }} · Disponível
+                {{ formatBrl(card.availableLimit) }}
+              </span>
+              <span class="list__meta">
+                Fatura em aberto {{ formatBrl(card.invoiceRemaining) }}
+                @if (card.overdueInvoiceRemaining > 0) {
+                  · Fatura em atraso {{ formatBrl(card.overdueInvoiceRemaining) }}
+                }
+              </span>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
 </section>

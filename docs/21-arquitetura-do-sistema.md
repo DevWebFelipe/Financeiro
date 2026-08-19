@@ -1101,7 +1101,18 @@ Desktop (`min-width: 64rem`): sidebar permanente, colapsável; header e conteúd
 
 Entrada autenticada: `/dashboard` (AuthGuard no layout pai). `/` redireciona para `/dashboard`. Login e registro permanecem públicos (`guestGuard`). Logout no Header usa `AuthService`. O usuário exibido vem de `AuthService.user()` — sem novo `GET /users/me`.
 
-O Dashboard deste bloco é placeholder de rota, sem KPIs, gráficos ou chamadas financeiras. Páginas futuras podem ser lazy-loaded como filhas do MainLayout.
+Páginas futuras podem ser lazy-loaded como filhas do MainLayout.
+
+
+# 96E. Dashboard funcional (Fase 21 — Bloco B5)
+
+A página `/dashboard` consome **somente** `GET /api/v1/dashboard` (Fase 19). Não chama `/accounts`, `/balance`, `/incomes`, `/expenses` nem `/projections` para montar o painel. Não recalcula saldo. Não há seletor de período: o horizonte é o default oficial de 12 meses.
+
+Feature em `frontend/src/app/features/dashboard/`: `DashboardPage` → `DashboardService` → `HttpClient`. Estados: `loading` | `loaded` | `error`. Empty = loaded sem contas nem cartões ativos. Retry refaz o mesmo GET. Falha do endpoint é erro da página (um único contrato consolidado).
+
+A série mensal vem de `projection.months` do próprio dashboard (sem `events`). Visualização: barras CSS + tabela acessível. ECharts permanece a biblioteca oficial da V1, mas **não** foi instalado neste bloco.
+
+Não somar `payables` com `projection.summary.projectedExpense`. `usedLimit` não é tratado como caixa.
 
 
 # 97. Dashboard

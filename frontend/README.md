@@ -22,7 +22,7 @@ The API base URL is centralized in `src/app/core/config/`. Development uses `htt
 
 Authentication lives in `src/app/core/auth/`. The JWT is stored only in `sessionStorage`. Login is `/login`; registration is `/register` and does not auto-login.
 
-The authenticated shell lives in `src/app/layout/`. After login, the app opens `/dashboard` inside MainLayout (header, collapsible desktop sidebar, mobile navigation drawer). The Dashboard page in this block is a placeholder; financial screens are not implemented yet.
+The authenticated shell lives in `src/app/layout/`. After login, the app opens `/dashboard` inside MainLayout (header, collapsible desktop sidebar, mobile navigation drawer). The Dashboard page consumes `GET /api/v1/dashboard` and does not recalculate balances. Financial CRUDs are not implemented yet.
 
 ## Code scaffolding
 
