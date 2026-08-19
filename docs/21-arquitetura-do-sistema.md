@@ -1059,6 +1059,20 @@ Tokens visuais, reset e base styles: `frontend/src/styles/`. Não criar uma bibl
 Angular Material, CDK e ECharts permanecem fora do Bloco B1.
 
 
+# 96B. HTTP e erros (Fase 21 — Bloco B2)
+
+Configuração da API: `frontend/src/app/core/config/`.
+
+- desenvolvimento (`ng serve`): `http://localhost:8080/api/v1`
+- produção (`ng build`): `/api/v1` (same-origin)
+
+HttpClient e interceptors funcionais: `frontend/src/app/core/http/`. Sem wrapper de `HttpClient`. O interceptor de Authorization / sessão entra no B3; B2 não acessa `sessionStorage` nem cria `AuthService`.
+
+Contrato de erro: `ApiError` alinhado a `docs/25-api.md`. Normalização segura: `frontend/src/app/core/errors/`. Códigos internos de transporte (`HTTP_TRANSPORT_ERROR`, `HTTP_UNPARSEABLE_RESPONSE`) não são códigos semânticos do backend.
+
+401 é identificado e **propagado**. Encerrar sessão e redirecionar para login pertencem ao B3. 403 **não** encerra sessão.
+
+
 # 97. Dashboard
 
 Dashboard deve apresentar:

@@ -515,7 +515,7 @@ Coleção Postman para testes manuais: `postman/Financial Control API.postman_co
 
 ## Status
 
-**Fase atual:** Fase 21 — Frontend completo (Bloco B1 — Design System base — implementado)
+**Fase atual:** Fase 21 — Frontend completo (Bloco B2 — Core HTTP e contrato de erros — implementado)
 
 **Fase anterior:** Fase 20 — Relatórios — **CONCLUÍDA E APROVADA** (auditoria final **APROVADA COM RESSALVAS**)
 
