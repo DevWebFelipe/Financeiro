@@ -727,6 +727,34 @@ describe('CreditCardsPage', () => {
     expect(createCredit).not.toHaveBeenCalled();
   });
 
+  it('accepts credit amount at 17 integer digits and 2 fraction digits and rejects 18 integer digits', async () => {
+    createCredit.mockReturnValue(of(credit()));
+    listWithLimits.mockReturnValue(of([item()]));
+    get.mockReturnValue(of(card()));
+    getLimit.mockReturnValue(of(limit()));
+    const fixture = TestBed.createComponent(CreditCardsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.componentInstance.openDetail(item());
+    fixture.componentInstance.openCreditForm();
+
+    const page = fixture.componentInstance;
+    page.creditForm.patchValue({ amount: 10.12, reason: 'Motivo' });
+    expect(page.creditForm.controls.amount.hasError('digits')).toBe(false);
+
+    page.creditForm.patchValue({ amount: 10_000_000_000_000_000, reason: 'Motivo' });
+    expect(page.creditForm.controls.amount.hasError('digits')).toBe(false);
+    expect(page.creditForm.valid).toBe(true);
+    await page.submitCredit();
+    expect(createCredit).toHaveBeenCalledTimes(1);
+
+    page.openCreditForm();
+    page.creditForm.patchValue({ amount: 100000000000000000.0, reason: 'Motivo' });
+    expect(page.creditForm.controls.amount.hasError('digits')).toBe(true);
+    await page.submitCredit();
+    expect(createCredit).toHaveBeenCalledTimes(1);
+  });
+
   it('closes the credit form with Escape without posting and keeps the detail open', async () => {
     listWithLimits.mockReturnValue(of([item()]));
     get.mockReturnValue(of(card()));

@@ -1310,16 +1310,16 @@ Tipos e status oficiais do backend. `SURCHARGE` bloqueado na UI quando `remainin
 
 # 96Q. Créditos de cartão (Fase 21 — Bloco C6)
 
-A página `/credit-cards` consulta e cria créditos no painel de detalhe do cartão selecionado. Sem rota `/credits`. Sem aplicação manual, reverse, edição ou exclusão. Sem C7/B12.
+A página `/credit-cards` consulta e cria créditos no painel inline de detalhe do cartão selecionado. Sem rota `/credits`. Sem UI de créditos em `/invoices`. Sem aplicação manual, reverse, cancelamento, edição ou exclusão. Sem C7/B12.
 
 `CreditCardsPage` → `CreditCardsService` (`listCredits`, `createCredit`) → `HttpClient`.
 
 Contrato utilizado:
 
 - `GET /api/v1/credit-cards/{id}/credits` — array de `CreditCardCreditResponse` (ordem do backend)
-- `POST /api/v1/credit-cards/{id}/credits` — `amount` (`> 0`), `reason` obrigatório; origem `MANUAL` definida pelo backend
+- `POST /api/v1/credit-cards/{id}/credits` — somente `amount` (`> 0`) e `reason` obrigatório; origem `MANUAL` definida pelo backend (não enviada pelo frontend)
 
-Response oficial: `id`, `creditCardId`, `amount`, `remainingAmount`, `reason`, `origin` (`MANUAL` / `CARD_PURCHASE_REFUND`), `expenseId` (nullable), `createdAt`. Sem status de domínio. Classificação visual Disponível/Utilizado a partir de `remainingAmount`. Soma dos `remainingAmount` é agregação de apresentação. Após criar: recarregar créditos e `GET .../limit`; não somar crédito ao limite; não afirmar aplicação a fatura.
+Response oficial: `id`, `creditCardId`, `amount`, `remainingAmount` oficial, `reason`, `origin` (`MANUAL` / `CARD_PURCHASE_REFUND`), `expenseId` (nullable), `createdAt`. Sem status de domínio. Classificação visual Disponível/Utilizado a partir de `remainingAmount`. Soma dos `remainingAmount` é agregação de apresentação. A aplicação às faturas é automática no backend. Após criar: recarregar créditos e `GET .../limit`; o crédito não aumenta o limite do cartão; não afirmar aplicação a fatura.
 
 # 97. Dashboard
 

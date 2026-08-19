@@ -1230,6 +1230,21 @@ Bloco C5 — Ajustes de fatura — **implementado** (histórico `GET /invoices/{
 
 Bloco C6 — Créditos de cartão — **implementado** (consulta `GET /credit-cards/{id}/credits`, criação manual `POST /credit-cards/{id}/credits`). Sem aplicação manual, reverse, edição ou exclusão. Sem B12. Sem C7.
 
+Status dos blocos C (Fase 21 — Frontend):
+
+```text
+C1 — Cartões .................... CONCLUÍDO / APROVADO COM RESSALVAS
+C2 — Despesas CC ................ CONCLUÍDO / APROVADO COM RESSALVAS
+C3 — Faturas .................... CONCLUÍDO / APROVADO COM RESSALVAS
+C4 — Pagamentos ................. CONCLUÍDO / APROVADO COM RESSALVAS
+C5 — Ajustes .................... CONCLUÍDO / APROVADO COM RESSALVAS
+C6 — Créditos ................... CONCLUÍDO / APROVADO COM RESSALVAS
+C7 — Acordos / Renegociação ..... futuro
+B12 ............................. futuro
+```
+
+C7 e B12 permanecem futuros: **não iniciados**.
+
 
 # 106. Frontend
 
@@ -1712,7 +1727,7 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9**. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 15: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**. Fase 17: **CONCLUÍDA E APROVADA**. Fase 18: **CONCLUÍDA E APROVADA**. Fase 19: **CONCLUÍDA E APROVADA**. Fase 20: **CONCLUÍDA E APROVADA**.
 
-**Fase 20 — Relatórios:** **CONCLUÍDA E APROVADA** (`docs/28` §101 / `docs/24` §19.12 / `docs/25` §76; D-F20-01 a D-F20-16 **implementadas**). 7 JSON + 7 PDF. OpenPDF 3.0.5. Collection atualizada (14 requests). Flyway V30; sem tabela `reports`. Testes: `ReportsApiTest`. Suíte: **578** testes. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento; não bloqueante). Próxima fase do roadmap: **Fase 21 — Frontend completo**. Bloco B1 (Design System base) **implementado**. Bloco B2 (HTTP / erros) **implementado**. Bloco B3 (autenticação) **implementado**. Bloco B4 (App Shell) **implementado**. Bloco B5 (Dashboard funcional) **implementado**. Bloco B6 (Shared UI) **implementado**. Bloco B7 (Contas) **implementado**. Bloco B8 (Categorias) **implementado**. Bloco B9 (Despesas) **implementado**. Bloco B10 (Receitas) **implementado**. Bloco B11 (Contas a pagar) **implementado**. Bloco C1 (Cartões) **implementado**. Bloco C2 (Cartões ↔ Despesas) **implementado**. Bloco C3 (Faturas) **implementado**. Bloco C4 (Pagamento de faturas) **implementado**.
+**Fase 20 — Relatórios:** **CONCLUÍDA E APROVADA** (`docs/28` §101 / `docs/24` §19.12 / `docs/25` §76; D-F20-01 a D-F20-16 **implementadas**). 7 JSON + 7 PDF. OpenPDF 3.0.5. Collection atualizada (14 requests). Flyway V30; sem tabela `reports`. Testes: `ReportsApiTest`. Suíte: **578** testes. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento; não bloqueante). Próxima fase do roadmap: **Fase 21 — Frontend completo**. Bloco B1 (Design System base) **implementado**. Bloco B2 (HTTP / erros) **implementado**. Bloco B3 (autenticação) **implementado**. Bloco B4 (App Shell) **implementado**. Bloco B5 (Dashboard funcional) **implementado**. Bloco B6 (Shared UI) **implementado**. Bloco B7 (Contas) **implementado**. Bloco B8 (Categorias) **implementado**. Bloco B9 (Despesas) **implementado**. Bloco B10 (Receitas) **implementado**. Bloco B11 (Contas a pagar) **implementado**. Blocos C1–C6 **implementados** (`CONCLUÍDO / APROVADO COM RESSALVAS`). C7 (acordos/renegociação) e B12 permanecem **futuros** (não iniciados).
 
 **Fase 19 — CONCLUÍDA E APROVADA.** Endpoint: `GET /api/v1/dashboard`. Sem tabela `dashboard`. D282–D289 **implementadas**. Testes: `DashboardApiTest`. Suíte: **519** testes. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
 

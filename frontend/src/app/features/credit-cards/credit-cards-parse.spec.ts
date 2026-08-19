@@ -8,6 +8,20 @@ import {
 
 const CARD_ID = '01900000-0000-7000-8000-000000000040';
 
+function creditResponse(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: CARD_ID,
+    creditCardId: CARD_ID,
+    amount: 100,
+    remainingAmount: 40,
+    reason: 'Ajuste comercial',
+    origin: 'MANUAL',
+    expenseId: null,
+    createdAt: '2026-08-20T12:00:00Z',
+    ...overrides,
+  };
+}
+
 function cardBody(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     id: CARD_ID,
@@ -58,16 +72,7 @@ describe('credit-cards-parse', () => {
   });
 
   it('parses MANUAL and CARD_PURCHASE_REFUND credits including nullable expenseId', () => {
-    const manual = parseCreditCardCredit({
-      id: CARD_ID,
-      creditCardId: CARD_ID,
-      amount: 100,
-      remainingAmount: 40,
-      reason: 'Ajuste comercial',
-      origin: 'MANUAL',
-      expenseId: null,
-      createdAt: '2026-08-20T12:00:00Z',
-    });
+    const manual = parseCreditCardCredit(creditResponse());
     expect(manual).toEqual(
       expect.objectContaining({
         amount: 100,
@@ -77,16 +82,15 @@ describe('credit-cards-parse', () => {
       }),
     );
 
-    const refund = parseCreditCardCredit({
-      id: CARD_ID,
-      creditCardId: CARD_ID,
-      amount: 50,
-      remainingAmount: 0,
-      reason: 'Estorno',
-      origin: 'CARD_PURCHASE_REFUND',
-      expenseId: CARD_ID,
-      createdAt: '2026-08-20T12:00:00Z',
-    });
+    const refund = parseCreditCardCredit(
+      creditResponse({
+        amount: 50,
+        remainingAmount: 0,
+        reason: 'Estorno',
+        origin: 'CARD_PURCHASE_REFUND',
+        expenseId: CARD_ID,
+      }),
+    );
     expect(refund?.origin).toBe('CARD_PURCHASE_REFUND');
     expect(refund?.expenseId).toBe(CARD_ID);
     expect(refund?.remainingAmount).toBe(0);
@@ -94,31 +98,19 @@ describe('credit-cards-parse', () => {
 
   it('parses a credit list and rejects invented origins', () => {
     expect(
-      parseCreditCardCreditList([
-        {
-          id: CARD_ID,
-          creditCardId: CARD_ID,
-          amount: 10,
-          remainingAmount: 10,
-          reason: 'Manual',
-          origin: 'MANUAL',
-          expenseId: null,
-          createdAt: '2026-08-20T12:00:00Z',
-        },
-      ]),
+      parseCreditCardCreditList([creditResponse({ amount: 10, remainingAmount: 10 })]),
     ).toHaveLength(1);
     expect(parseCreditCardCreditList({ items: [] })).toBeNull();
-    expect(
-      parseCreditCardCredit({
-        id: CARD_ID,
-        creditCardId: CARD_ID,
-        amount: 10,
-        remainingAmount: 10,
-        reason: 'Manual',
-        origin: 'PROMO',
-        expenseId: null,
-        createdAt: '2026-08-20T12:00:00Z',
-      }),
-    ).toBeNull();
+    expect(parseCreditCardCredit(creditResponse({ origin: 'PROMO' }))).toBeNull();
+  });
+
+  it('rejects a credit when a required field is missing or invalid', () => {
+    expect(parseCreditCardCredit(creditResponse({ id: '' }))).toBeNull();
+    expect(parseCreditCardCredit(creditResponse({ creditCardId: '' }))).toBeNull();
+    expect(parseCreditCardCredit(creditResponse({ amount: '100' }))).toBeNull();
+    expect(parseCreditCardCredit(creditResponse({ remainingAmount: undefined }))).toBeNull();
+    expect(parseCreditCardCredit(creditResponse({ reason: '' }))).toBeNull();
+    expect(parseCreditCardCredit(creditResponse({ origin: undefined }))).toBeNull();
+    expect(parseCreditCardCredit(creditResponse({ createdAt: '' }))).toBeNull();
   });
 });
