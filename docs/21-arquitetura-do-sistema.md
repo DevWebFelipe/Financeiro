@@ -1353,25 +1353,60 @@ Ressalvas da auditoria (não bloqueantes):
 
 # 96S. Transferências, metas, projeções e relatórios (Fase 21 — Bloco B12)
 
-**Status:** **IMPLEMENTADA / AGUARDANDO AUDITORIA**. Não aprovada.
+**Status:** **CONCLUÍDA / APROVADA COM RESSALVAS**.
 
-Quatro features lazy-loaded sob o AuthGuard do MainLayout, cada uma com serviço próprio (`Page → FeatureService → HttpClient`). Sem serviços globais extras. `AccountsService` reutilizado para seleção/nomes de conta. C1–C7 não foram reabertas.
+Quatro features lazy-loaded sob o AuthGuard do MainLayout, cada uma com serviço próprio (`Page → FeatureService → HttpClient` → interceptors → API). Sem serviços globais extras. `AccountsService` reutilizado para seleção/nomes de conta. O backend permanece autoridade de contratos, DTOs, enums, ownership, regras financeiras, cálculos, elegibilidade, paginação, filtros e ordenação. **B12 não reabriu C1–C7.**
 
 ## Transferências (`/transfers`)
 
-`TransfersPage` → `TransfersService`. Lista em array (`GET /api/v1/transfers`) com filtros oficiais `startDate`, `endDate`, `accountId` — sem paginação, sort, search ou status. Detalhe `GET /transfers/{id}`. Criação `POST /transfers` somente `sourceAccountId`, `destinationAccountId`, `amount`, `transferDate` e `description` opcional (trim; vazio omitido). Reversão `POST /transfers/{id}/reverse` sem body, com confirmação. Status oficiais `ACTIVE` / `REVERSED`. A UI não calcula saldo nem elegibilidade financeira.
+`TransfersPage` → `TransfersService`.
+
+- Listagem: `GET /api/v1/transfers` (array; ordem do backend). Filtros oficiais: `startDate`, `endDate`, `accountId`. Sem `page`, `size`, sort, search ou filtro de status.
+- Detalhe: `GET /api/v1/transfers/{id}`.
+- Criação: `POST /api/v1/transfers` somente `sourceAccountId`, `destinationAccountId`, `amount`, `transferDate` e `description` opcional (trim; vazio omitido).
+- Reversão: `POST /api/v1/transfers/{id}/reverse` sem body, com confirmação.
+- Status oficiais: `ACTIVE`, `REVERSED`.
+
+A UI não calcula saldo nem elegibilidade financeira.
 
 ## Metas (`/goals`)
 
-Feature `financial-goals/`. Lista paginada `GET /api/v1/financial-goals` (`status`, `page`, `size`; default 0/20; ordenação do backend). Detalhe `GET /financial-goals/{id}`. Criação `POST` (`accountId`, `name`, `description`, `targetAmount`, `targetDate`). Edição `PUT` sem `accountId`. Contribuições e resgates com POST/GET oficiais. Conclusão e cancelamento com confirmação. `currentAmount` e `progressPercent` são oficiais; o frontend não os recalcula.
+Feature `financial-goals/` (`FinancialGoalsPage` → `FinancialGoalsService`).
+
+- Listagem paginada: `GET /api/v1/financial-goals` (`status`, `page`, `size`; default `page=0`, `size=20`; ordenação do backend).
+- Detalhe: `GET /api/v1/financial-goals/{id}`.
+- Criação: `POST /api/v1/financial-goals` (`accountId`, `name`, `description`, `targetAmount`, `targetDate`).
+- Edição: `PUT /api/v1/financial-goals/{id}` (`name`, `description`, `targetAmount`, `targetDate`; sem alteração de `accountId`).
+- Contribuições: `GET`/`POST /api/v1/financial-goals/{id}/contributions`.
+- Resgates: `GET`/`POST /api/v1/financial-goals/{id}/redemptions`.
+- Conclusão: `POST /api/v1/financial-goals/{id}/complete` (confirmação).
+- Cancelamento: `POST /api/v1/financial-goals/{id}/cancel` (confirmação).
+- Status oficiais: `ACTIVE`, `COMPLETED`, `CANCELLED`.
+- `currentAmount` e `progressPercent` vêm da API; o frontend não os recalcula.
 
 ## Projeções (`/projections`)
 
-Somente leitura. `GET /api/v1/projections` com parâmetros oficiais `startDate`, `endDate`, `year`, `month`, `months`, `accountId`, `page`, `size`. A UI mapeia modos de período amigáveis para combinações válidas (não mistura intervalo com year/month/months). Summary, meses (`negative` oficial), trimestres, eventos paginados e `undatedEvents` (sem data artificial) vêm da API. Sem recálculo.
+Somente leitura (`ProjectionsPage` → `ProjectionsService`).
+
+- `GET /api/v1/projections` com parâmetros oficiais: `startDate`, `endDate`, `year`, `month`, `months`, `accountId`, `page`, `size`.
+- A UI oferece seleção de período amigável e traduz para combinações válidas (não mistura intervalo com `year`/`month`/`months`).
+- A resposta oficial inclui `startDate`/`endDate`, `summary`, meses, trimestres, eventos paginados e `undatedEvents` (sem data artificial).
+- Summary, `negative` dos meses e `overdue` dos eventos são valores oficiais.
+- Sem cálculos financeiros locais.
 
 ## Relatórios (`/reports`)
 
-Uma rota e um seletor de tipo. Contratos específicos por relatório (não um DTO genérico): despesas, receitas, categorias, responsáveis, cartões, fluxo de caixa e fatura. PDF via `GET .../pdf` (`application/pdf`, download do arquivo oficial; sem geração no browser). Filtros, sort e paginação somente onde o backend admite. `dateType` obrigatório em receitas/categorias; em responsáveis, omitido quando `nature=EXPENSE`. Não existe distinção simplificado/detalhado no contrato atual.
+Uma única feature e uma única rota. O usuário escolhe o tipo de lista/relatório no seletor. **Não existe rota individual para cada relatório.** **Não existe DTO genérico único** para todos os relatórios: cada tipo mantém endpoint, request, response, enums, filtros, sort e paginação próprios.
+
+JSON: `GET /api/v1/reports/expenses`, `/incomes`, `/categories`, `/responsibles`, `/cards`, `/cash-flow`, `/invoices/{invoiceId}` (fatura por `invoiceId`; sem paginação nesse JSON).
+
+PDF: os mesmos recursos com `/pdf`. O arquivo é o da API (`application/pdf`, `Content-Disposition`). **Não existe geração de PDF no frontend.** **Não existe aplicação manual de crédito dentro de Reports.** Filtros, sort e paginação somente onde o contrato individual admite. `dateType` obrigatório em receitas e categorias; em responsáveis, omitido quando `nature=EXPENSE`. Não existe distinção simplificado/detalhado no contrato atual.
+
+Ressalvas da auditoria (não bloqueantes):
+
+- **AUD-B12-A1 — BAIXO:** validação visual/browser não executada durante a auditoria formal.
+- **AUD-B12-A2 — BAIXO:** download de PDF apresentou avisos de jsdom relacionados à navegação durante os testes. Os testes passaram e o contrato do download está correto, mas a experiência real do download no navegador não foi validada.
+- **AUD-B12-A3 — INFORMATIVO:** as validações financeiras permanecem deliberadamente no backend. O frontend não deve reproduzir regras como saldo disponível, elegibilidade financeira, limites de resgate ou outras regras de domínio.
 
 # 97. Dashboard
 
