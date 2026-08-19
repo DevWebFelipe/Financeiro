@@ -92,6 +92,37 @@ export function canCreateInvoiceSurcharge(remainingAmount: number): boolean {
   return remainingAmount > 0;
 }
 
+export function invoiceAgreementStatusLabel(status: string): string {
+  switch (status) {
+    case 'ACTIVE':
+      return 'Ativo';
+    case 'COMPLETED':
+      return 'Concluído';
+    case 'RENEGOTIATED':
+      return 'Renegociado';
+    case 'CANCELLED':
+      return 'Cancelado';
+    default:
+      return status;
+  }
+}
+
+export function canCreateInvoiceAgreement(status: string, remainingAmount: number): boolean {
+  return status === 'CLOSED' && remainingAmount > 0;
+}
+
+export function canPayAgreementInstallment(remainingAmount: number): boolean {
+  return remainingAmount > 0;
+}
+
+export function formatAdditionalCostPercent(fraction: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'percent',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(fraction);
+}
+
 export function formatInvoiceInstantDate(value: string): string {
   const instant = new Date(value);
   if (Number.isNaN(instant.getTime())) {

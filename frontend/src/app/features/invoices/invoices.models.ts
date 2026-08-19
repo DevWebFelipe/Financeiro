@@ -107,3 +107,65 @@ export const INVOICE_MONTH_OPTIONS: readonly { value: number; label: string }[] 
   { value: 11, label: 'Novembro' },
   { value: 12, label: 'Dezembro' },
 ];
+
+export type InvoiceAgreementStatus = 'ACTIVE' | 'COMPLETED' | 'RENEGOTIATED' | 'CANCELLED';
+
+export type InvoiceAgreementInstallmentStatus =
+  'OPEN' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED' | 'REFUNDED';
+
+export interface InvoiceAgreementInstallment {
+  readonly id: string;
+  readonly expenseId: string;
+  readonly installmentNumber: number;
+  readonly totalInstallments: number;
+  readonly amount: number;
+  readonly remainingAmount: number;
+  readonly dueDate: string;
+  readonly status: InvoiceAgreementInstallmentStatus;
+  readonly invoiceId: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface InvoiceAgreement {
+  readonly id: string;
+  readonly creditCardId: string;
+  readonly sourceInvoiceId: string;
+  readonly expenseId: string;
+  readonly status: InvoiceAgreementStatus;
+  readonly entryAmount: number;
+  readonly financedAmount: number;
+  readonly installmentCount: number;
+  readonly installmentAmount: number;
+  readonly contractedTotal: number;
+  readonly additionalCost: number;
+  readonly additionalCostPercent: number;
+  readonly createdAt: string;
+  readonly supersededByAgreementId: string | null;
+  readonly installments: readonly InvoiceAgreementInstallment[];
+}
+
+export interface CreateInvoiceAgreementRequest {
+  readonly entryAmount: number;
+  readonly accountId: string;
+  readonly entryPaymentDate: string;
+  readonly installmentCount: number;
+  readonly installmentAmount: number;
+}
+
+export interface CreateInvoiceRenegotiationRequest {
+  readonly entryAmount: number;
+  readonly accountId: string;
+  readonly entryPaymentDate: string;
+  readonly installmentCount: number;
+  readonly installmentAmount: number;
+  readonly anticipatedFuturesNetAmount: number;
+}
+
+export interface AnticipateAgreementInstallmentRequest {
+  readonly accountId: string;
+  readonly amount: number;
+  readonly paymentDate: string;
+  readonly settled: boolean;
+  readonly notes?: string;
+}

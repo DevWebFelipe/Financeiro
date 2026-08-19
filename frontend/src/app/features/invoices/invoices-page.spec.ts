@@ -7,7 +7,13 @@ import { CreditCard } from '../credit-cards/credit-cards.models';
 import { CreditCardsService } from '../credit-cards/credit-cards.service';
 import { todayIsoDate } from '../expenses/today-iso-date';
 import { InvoicesPage } from './invoices-page';
-import { Invoice, InvoiceAdjustment, InvoiceItem, InvoicePayment } from './invoices.models';
+import {
+  Invoice,
+  InvoiceAdjustment,
+  InvoiceAgreement,
+  InvoiceItem,
+  InvoicePayment,
+} from './invoices.models';
 import { InvoicesService } from './invoices.service';
 
 const CARD_ID = '01900000-0000-7000-8000-000000000040';
@@ -18,6 +24,8 @@ const EXPENSE_ID = '01900000-0000-7000-8000-000000000010';
 const ACCOUNT_ID = '01900000-0000-7000-8000-000000000003';
 const PAYMENT_ID = '01900000-0000-7000-8000-000000000052';
 const ADJUSTMENT_ID = '01900000-0000-7000-8000-000000000053';
+const AGREEMENT_ID = '01900000-0000-7000-8000-000000000070';
+const AGREEMENT_INSTALLMENT_ID = '01900000-0000-7000-8000-000000000071';
 
 function card(overrides: Partial<CreditCard> = {}): CreditCard {
   return {
@@ -110,6 +118,41 @@ function adjustment(overrides: Partial<InvoiceAdjustment> = {}): InvoiceAdjustme
   };
 }
 
+function agreement(overrides: Partial<InvoiceAgreement> = {}): InvoiceAgreement {
+  return {
+    id: AGREEMENT_ID,
+    creditCardId: CARD_ID,
+    sourceInvoiceId: INVOICE_ID,
+    expenseId: EXPENSE_ID,
+    status: 'ACTIVE',
+    entryAmount: 0,
+    financedAmount: 800,
+    installmentCount: 2,
+    installmentAmount: 420,
+    contractedTotal: 840,
+    additionalCost: 40,
+    additionalCostPercent: 0.05,
+    createdAt: '2026-08-20T12:00:00Z',
+    supersededByAgreementId: null,
+    installments: [
+      {
+        id: AGREEMENT_INSTALLMENT_ID,
+        expenseId: EXPENSE_ID,
+        installmentNumber: 1,
+        totalInstallments: 2,
+        amount: 420,
+        remainingAmount: 420,
+        dueDate: '2026-09-20',
+        status: 'OPEN',
+        invoiceId: INVOICE_ID,
+        createdAt: '2026-08-20T12:00:00Z',
+        updatedAt: '2026-08-20T12:00:00Z',
+      },
+    ],
+    ...overrides,
+  };
+}
+
 const cardsError: ApiError = {
   timestamp: '2026-08-19T15:00:00Z',
   status: 500,
@@ -152,6 +195,11 @@ describe('InvoicesPage', () => {
   let listAdjustments: ReturnType<typeof vi.fn>;
   let createAdjustment: ReturnType<typeof vi.fn>;
   let reverseAdjustment: ReturnType<typeof vi.fn>;
+  let listAgreements: ReturnType<typeof vi.fn>;
+  let createAgreement: ReturnType<typeof vi.fn>;
+  let createRenegotiation: ReturnType<typeof vi.fn>;
+  let getAgreement: ReturnType<typeof vi.fn>;
+  let anticipateInstallment: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     listCards = vi.fn().mockReturnValue(of([card()]));
@@ -165,6 +213,11 @@ describe('InvoicesPage', () => {
     listAdjustments = vi.fn().mockReturnValue(of([]));
     createAdjustment = vi.fn();
     reverseAdjustment = vi.fn();
+    listAgreements = vi.fn().mockReturnValue(of([]));
+    createAgreement = vi.fn();
+    createRenegotiation = vi.fn();
+    getAgreement = vi.fn();
+    anticipateInstallment = vi.fn();
 
     await TestBed.configureTestingModule({
       imports: [InvoicesPage],
@@ -183,6 +236,11 @@ describe('InvoicesPage', () => {
             listAdjustments,
             createAdjustment,
             reverseAdjustment,
+            listAgreements,
+            createAgreement,
+            createRenegotiation,
+            getAgreement,
+            anticipateInstallment,
           },
         },
       ],
@@ -387,6 +445,7 @@ describe('InvoicesPage', () => {
     expect(listItems).toHaveBeenCalledWith(INVOICE_ID);
     expect(listPayments).toHaveBeenCalledWith(INVOICE_ID);
     expect(listAdjustments).toHaveBeenCalledWith(INVOICE_ID);
+    expect(listAgreements).toHaveBeenCalledWith(INVOICE_ID);
     expect(fixture.nativeElement.textContent).toContain('Detalhes da fatura');
     expect(fixture.nativeElement.textContent).toContain('Parcelas desta fatura');
     expect(fixture.nativeElement.textContent).toContain('2/3');
@@ -1045,5 +1104,236 @@ describe('InvoicesPage', () => {
     pending.next(adjustment());
     pending.complete();
     await first;
+  });
+
+  it('loads agreements in the invoice detail and shows empty state', async () => {
+    const fixture = TestBed.createComponent(InvoicesPage);
+    await openInvoice(fixture);
+    expect(listAgreements).toHaveBeenCalledWith(INVOICE_ID);
+    expect(fixture.nativeElement.textContent).toContain('Acordos / Renegociação');
+    expect(fixture.nativeElement.textContent).toContain('Nenhum acordo registrado nesta fatura.');
+    expect(buttonByText(fixture.nativeElement, 'Nova negociação')).toBeTruthy();
+    expect(buttonByText(fixture.nativeElement, 'Nova renegociação')).toBeTruthy();
+  });
+
+  it('offers negotiation only for CLOSED invoices with remaining greater than zero', async () => {
+    const fixture = TestBed.createComponent(InvoicesPage);
+    await openInvoice(fixture, invoice({ status: 'OPEN' }));
+    expect(buttonByText(fixture.nativeElement, 'Nova negociação')).toBeUndefined();
+
+    fixture.componentInstance.closeDetail();
+    await openInvoice(fixture, invoice({ status: 'PAID', remainingAmount: 0 }));
+    expect(buttonByText(fixture.nativeElement, 'Nova negociação')).toBeUndefined();
+
+    fixture.componentInstance.closeDetail();
+    await openInvoice(fixture, invoice({ status: 'SETTLED_BY_AGREEMENT', remainingAmount: 0 }));
+    expect(buttonByText(fixture.nativeElement, 'Nova negociação')).toBeUndefined();
+  });
+
+  it('creates a negotiation with the official payload after confirmation', async () => {
+    createAgreement.mockReturnValue(of(agreement()));
+    listAgreements.mockReturnValueOnce(of([])).mockReturnValue(of([agreement()]));
+    const fixture = TestBed.createComponent(InvoicesPage);
+    await openInvoice(fixture);
+    fixture.componentInstance.openAgreementForm('negotiate');
+    fixture.componentInstance.agreementForm.patchValue({
+      entryAmount: 0,
+      accountId: ACCOUNT_ID,
+      entryPaymentDate: todayIsoDate(),
+      installmentCount: 2,
+      installmentAmount: 420,
+    });
+    fixture.componentInstance.prepareAgreementConfirm();
+    expect(createAgreement).not.toHaveBeenCalled();
+    await fixture.componentInstance.confirmAgreement();
+    fixture.detectChanges();
+
+    expect(createAgreement).toHaveBeenCalledWith(INVOICE_ID, {
+      entryAmount: 0,
+      accountId: ACCOUNT_ID,
+      entryPaymentDate: todayIsoDate(),
+      installmentCount: 2,
+      installmentAmount: 420,
+    });
+    expect(createAgreement.mock.calls[0]?.[1]).not.toHaveProperty('financedAmount');
+    expect(createAgreement.mock.calls[0]?.[1]).not.toHaveProperty('origin');
+    expect(listAgreements).toHaveBeenCalledTimes(2);
+    expect(listPayments).toHaveBeenCalled();
+    expect(listAdjustments).toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('Acordo criado com sucesso.');
+    expect(fixture.nativeElement.textContent).toContain('Detalhes da fatura');
+  });
+
+  it('rejects entry equal to remaining without posting', async () => {
+    const fixture = TestBed.createComponent(InvoicesPage);
+    await openInvoice(fixture);
+    fixture.componentInstance.openAgreementForm('negotiate');
+    fixture.componentInstance.agreementForm.patchValue({
+      entryAmount: 800,
+      accountId: ACCOUNT_ID,
+      installmentCount: 1,
+      installmentAmount: 10,
+    });
+    fixture.componentInstance.prepareAgreementConfirm();
+    expect(createAgreement).not.toHaveBeenCalled();
+  });
+
+  it('creates a renegotiation with anticipatedFuturesNetAmount only', async () => {
+    createRenegotiation.mockReturnValue(of(agreement()));
+    const fixture = TestBed.createComponent(InvoicesPage);
+    await openInvoice(fixture);
+    fixture.componentInstance.openAgreementForm('renegotiate');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#invoice-agreement-futures')).not.toBeNull();
+    fixture.componentInstance.agreementForm.patchValue({
+      entryAmount: 100,
+      accountId: ACCOUNT_ID,
+      entryPaymentDate: todayIsoDate(),
+      installmentCount: 2,
+      installmentAmount: 400,
+      anticipatedFuturesNetAmount: 50,
+    });
+    fixture.componentInstance.prepareAgreementConfirm();
+    await fixture.componentInstance.confirmAgreement();
+
+    expect(createRenegotiation).toHaveBeenCalledWith(INVOICE_ID, {
+      entryAmount: 100,
+      accountId: ACCOUNT_ID,
+      entryPaymentDate: todayIsoDate(),
+      installmentCount: 2,
+      installmentAmount: 400,
+      anticipatedFuturesNetAmount: 50,
+    });
+    expect(createRenegotiation.mock.calls[0]?.[1]).not.toHaveProperty('agreementIds');
+  });
+
+  it('pays an agreement installment partially without notes or invented totals', async () => {
+    anticipateInstallment.mockReturnValue(of(agreement({ status: 'ACTIVE' })));
+    getAgreement.mockReturnValue(of(agreement()));
+    listAgreements.mockReturnValue(of([agreement()]));
+    const fixture = TestBed.createComponent(InvoicesPage);
+    await openInvoice(fixture);
+    fixture.componentInstance.openInstallmentPay(agreement(), agreement().installments[0]!);
+    fixture.componentInstance.installmentPayForm.patchValue({
+      accountId: ACCOUNT_ID,
+      amount: 100,
+      paymentDate: todayIsoDate(),
+      settled: false,
+      notes: '  ',
+    });
+    await fixture.componentInstance.prepareInstallmentPay();
+
+    expect(anticipateInstallment).toHaveBeenCalledWith(AGREEMENT_ID, AGREEMENT_INSTALLMENT_ID, {
+      accountId: ACCOUNT_ID,
+      amount: 100,
+      paymentDate: todayIsoDate(),
+      settled: false,
+    });
+    expect(anticipateInstallment.mock.calls[0]?.[2]).not.toHaveProperty('notes');
+    expect(getAgreement).toHaveBeenCalledWith(AGREEMENT_ID);
+    expect(fixture.nativeElement.textContent).toContain('Detalhes da fatura');
+  });
+
+  it('asks confirmation before settling an installment', async () => {
+    anticipateInstallment.mockReturnValue(of(agreement({ status: 'COMPLETED' })));
+    getAgreement.mockReturnValue(of(agreement({ status: 'COMPLETED' })));
+    listAgreements.mockReturnValue(of([agreement()]));
+    const fixture = TestBed.createComponent(InvoicesPage);
+    await openInvoice(fixture);
+    fixture.componentInstance.openInstallmentPay(agreement(), agreement().installments[0]!);
+    fixture.componentInstance.installmentPayForm.patchValue({
+      accountId: ACCOUNT_ID,
+      amount: 100,
+      paymentDate: todayIsoDate(),
+      settled: true,
+    });
+    fixture.componentInstance.prepareInstallmentPay();
+    expect(anticipateInstallment).not.toHaveBeenCalled();
+    await fixture.componentInstance.confirmInstallmentSettle();
+    expect(anticipateInstallment).toHaveBeenCalledWith(
+      AGREEMENT_ID,
+      AGREEMENT_INSTALLMENT_ID,
+      expect.objectContaining({ settled: true, amount: 100 }),
+    );
+  });
+
+  it('closes the agreement form with Escape without posting', async () => {
+    const fixture = TestBed.createComponent(InvoicesPage);
+    await openInvoice(fixture);
+    fixture.componentInstance.openAgreementForm('negotiate');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#invoice-agreement-entry')).not.toBeNull();
+    pressEscape();
+    fixture.detectChanges();
+    expect(createAgreement).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('#invoice-agreement-entry')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Detalhes da fatura');
+  });
+
+  it('shows API error on agreement create and keeps the panel open', async () => {
+    createAgreement.mockReturnValue(
+      throwError(() => ({
+        timestamp: '2026-08-19T15:00:00Z',
+        status: 400,
+        code: 'BUSINESS_RULE_VIOLATION',
+        message: 'A fatura já possui negociação.',
+        path: `/api/v1/invoices/${INVOICE_ID}/agreements`,
+      })),
+    );
+    const fixture = TestBed.createComponent(InvoicesPage);
+    await openInvoice(fixture);
+    fixture.componentInstance.openAgreementForm('negotiate');
+    fixture.componentInstance.agreementForm.patchValue({
+      entryAmount: 0,
+      accountId: ACCOUNT_ID,
+      installmentCount: 1,
+      installmentAmount: 10,
+    });
+    fixture.componentInstance.prepareAgreementConfirm();
+    await fixture.componentInstance.confirmAgreement();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('A fatura já possui negociação.');
+    expect(fixture.nativeElement.textContent).toContain('Detalhes da fatura');
+  });
+
+  it('prevents duplicate agreement submits while a request is in flight', async () => {
+    const pending = new Subject<InvoiceAgreement>();
+    createAgreement.mockReturnValue(pending.asObservable());
+    const fixture = TestBed.createComponent(InvoicesPage);
+    await openInvoice(fixture);
+    fixture.componentInstance.openAgreementForm('negotiate');
+    fixture.componentInstance.agreementForm.patchValue({
+      entryAmount: 0,
+      accountId: ACCOUNT_ID,
+      installmentCount: 1,
+      installmentAmount: 10,
+    });
+    fixture.componentInstance.prepareAgreementConfirm();
+    const first = fixture.componentInstance.confirmAgreement();
+    const second = fixture.componentInstance.confirmAgreement();
+    await second;
+    expect(createAgreement).toHaveBeenCalledTimes(1);
+    pending.next(agreement());
+    pending.complete();
+    await first;
+  });
+
+  it('presents CANCELLED and RENEGOTIATED statuses from the API without a cancel action', async () => {
+    listAgreements.mockReturnValue(
+      of([
+        agreement({ status: 'CANCELLED' }),
+        agreement({
+          id: '01900000-0000-7000-8000-000000000072',
+          status: 'RENEGOTIATED',
+          supersededByAgreementId: AGREEMENT_ID,
+        }),
+      ]),
+    );
+    const fixture = TestBed.createComponent(InvoicesPage);
+    await openInvoice(fixture);
+    expect(fixture.nativeElement.textContent).toContain('Cancelado');
+    expect(fixture.nativeElement.textContent).toContain('Renegociado');
+    expect(fixture.nativeElement.textContent).toContain('Renegociado por outro acordo.');
+    expect(buttonByText(fixture.nativeElement, 'Cancelar acordo')).toBeUndefined();
   });
 });

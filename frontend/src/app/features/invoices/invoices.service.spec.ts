@@ -79,6 +79,27 @@ function adjustmentBody(overrides: Record<string, unknown> = {}): Record<string,
   };
 }
 
+function agreementBody(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: ITEM_ID,
+    creditCardId: CARD_ID,
+    sourceInvoiceId: INVOICE_ID,
+    expenseId: EXPENSE_ID,
+    status: 'ACTIVE',
+    entryAmount: 0,
+    financedAmount: 800,
+    installmentCount: 2,
+    installmentAmount: 420,
+    contractedTotal: 840,
+    additionalCost: 40,
+    additionalCostPercent: 0.05,
+    createdAt: '2026-08-20T12:00:00Z',
+    supersededByAgreementId: null,
+    installments: [],
+    ...overrides,
+  };
+}
+
 describe('InvoicesService', () => {
   let service: InvoicesService;
   let httpTesting: HttpTestingController;
@@ -306,5 +327,99 @@ describe('InvoicesService', () => {
     } catch (error: unknown) {
       expect(isApiError(error)).toBe(true);
     }
+  });
+
+  it('lists invoice agreements without query params', async () => {
+    const pending = firstValueFrom(service.listAgreements(INVOICE_ID));
+    const request = httpTesting.expectOne(api(`/invoices/${INVOICE_ID}/agreements`));
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.keys()).toEqual([]);
+    request.flush([agreementBody()]);
+    const agreements = await pending;
+    expect(agreements).toHaveLength(1);
+    expect(agreements[0]?.financedAmount).toBe(800);
+  });
+
+  it('posts a new agreement with only contract fields', async () => {
+    const pending = firstValueFrom(
+      service.createAgreement(INVOICE_ID, {
+        entryAmount: 0,
+        accountId: ACCOUNT_ID,
+        entryPaymentDate: '2026-08-20',
+        installmentCount: 2,
+        installmentAmount: 420,
+      }),
+    );
+    const request = httpTesting.expectOne(api(`/invoices/${INVOICE_ID}/agreements`));
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      entryAmount: 0,
+      accountId: ACCOUNT_ID,
+      entryPaymentDate: '2026-08-20',
+      installmentCount: 2,
+      installmentAmount: 420,
+    });
+    expect(request.request.body).not.toHaveProperty('financedAmount');
+    expect(request.request.body).not.toHaveProperty('creditCardId');
+    request.flush(agreementBody(), { status: 201, statusText: 'Created' });
+    await pending;
+  });
+
+  it('posts a renegotiation with anticipatedFuturesNetAmount', async () => {
+    const pending = firstValueFrom(
+      service.createRenegotiation(INVOICE_ID, {
+        entryAmount: 100,
+        accountId: ACCOUNT_ID,
+        entryPaymentDate: '2026-08-20',
+        installmentCount: 2,
+        installmentAmount: 400,
+        anticipatedFuturesNetAmount: 50,
+      }),
+    );
+    const request = httpTesting.expectOne(api(`/invoices/${INVOICE_ID}/renegotiations`));
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      entryAmount: 100,
+      accountId: ACCOUNT_ID,
+      entryPaymentDate: '2026-08-20',
+      installmentCount: 2,
+      installmentAmount: 400,
+      anticipatedFuturesNetAmount: 50,
+    });
+    expect(request.request.body).not.toHaveProperty('agreementIds');
+    request.flush(agreementBody(), { status: 201, statusText: 'Created' });
+    await pending;
+  });
+
+  it('loads an agreement by id', async () => {
+    const pending = firstValueFrom(service.getAgreement(ITEM_ID));
+    const request = httpTesting.expectOne(api(`/agreements/${ITEM_ID}`));
+    expect(request.request.method).toBe('GET');
+    request.flush(agreementBody());
+    await pending;
+  });
+
+  it('posts installment anticipation with settled and omits empty notes', async () => {
+    const pending = firstValueFrom(
+      service.anticipateInstallment(ITEM_ID, ITEM_ID, {
+        accountId: ACCOUNT_ID,
+        amount: 100,
+        paymentDate: '2026-08-20',
+        settled: false,
+      }),
+    );
+    const request = httpTesting.expectOne(
+      api(`/agreements/${ITEM_ID}/installments/${ITEM_ID}/anticipate`),
+    );
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      accountId: ACCOUNT_ID,
+      amount: 100,
+      paymentDate: '2026-08-20',
+      settled: false,
+    });
+    expect(request.request.body).not.toHaveProperty('notes');
+    request.flush(agreementBody());
+    await pending;
   });
 });

@@ -592,6 +592,363 @@
           </form>
         }
 
+        <h3 id="invoice-agreements-title">Acordos / Renegociação</h3>
+        <p class="panel__meta">
+          Histórico de acordos desta fatura. A aplicação de créditos permanece automática no
+          sistema.
+        </p>
+
+        @if (agreementSuccess(); as message) {
+          <p class="agreement-success" role="status">{{ message }}</p>
+        }
+
+        @if (agreementsStatus() === 'loading') {
+          <p class="visually-hidden">Carregando acordos da fatura.</p>
+          <div class="skeleton" aria-hidden="true">
+            <div class="skeleton__block"></div>
+          </div>
+        }
+
+        @if (agreementsStatus() === 'error') {
+          <app-error-state
+            [message]="agreementsError() ?? 'Não foi possível carregar os acordos da fatura.'"
+            retryLabel="Tentar novamente"
+            (retry)="retryAgreements()"
+          />
+        }
+
+        @if (isAgreementsEmpty()) {
+          <app-empty-state message="Nenhum acordo registrado nesta fatura." />
+        }
+
+        @if (agreementsStatus() === 'loaded' && agreements().length > 0) {
+          @for (agreement of agreements(); track agreement.id) {
+            <article class="agreement">
+              <dl class="detail-list">
+                <div>
+                  <dt>Situação</dt>
+                  <dd>{{ agreementStatusLabel(agreement.status) }}</dd>
+                </div>
+                <div>
+                  <dt>Entrada</dt>
+                  <dd>{{ agreement.entryAmount | brlCurrency }}</dd>
+                </div>
+                <div>
+                  <dt>Financiado</dt>
+                  <dd>{{ agreement.financedAmount | brlCurrency }}</dd>
+                </div>
+                <div>
+                  <dt>Parcelas</dt>
+                  <dd>
+                    {{ agreement.installmentCount }} ×
+                    {{ agreement.installmentAmount | brlCurrency }}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Total contratado</dt>
+                  <dd>{{ agreement.contractedTotal | brlCurrency }}</dd>
+                </div>
+                <div>
+                  <dt>Custo adicional</dt>
+                  <dd>
+                    {{ agreement.additionalCost | brlCurrency }} ({{
+                      additionalCostPercent(agreement.additionalCostPercent)
+                    }})
+                  </dd>
+                </div>
+                <div>
+                  <dt>Data</dt>
+                  <dd>{{ instantDate(agreement.createdAt) }}</dd>
+                </div>
+              </dl>
+              @if (
+                agreement.status === 'RENEGOTIATED' && agreement.supersededByAgreementId != null
+              ) {
+                <p class="panel__meta">Renegociado por outro acordo.</p>
+              }
+              @if (agreement.installments.length > 0) {
+                <div class="table-wrap">
+                  <table>
+                    <caption class="visually-hidden">
+                      Parcelas do acordo
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Nº</th>
+                        <th scope="col">Vencimento</th>
+                        <th scope="col">Valor</th>
+                        <th scope="col">Restante</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (installment of agreement.installments; track installment.id) {
+                        <tr>
+                          <th scope="row" data-label="Nº">
+                            {{ installment.installmentNumber }}/{{ installment.totalInstallments }}
+                          </th>
+                          <td data-label="Vencimento">{{ installment.dueDate | isoDate }}</td>
+                          <td data-label="Valor">{{ installment.amount | brlCurrency }}</td>
+                          <td data-label="Restante">
+                            {{ installment.remainingAmount | brlCurrency }}
+                          </td>
+                          <td data-label="Status">{{ itemStatusLabel(installment.status) }}</td>
+                          <td class="actions" data-label="Ações">
+                            @if (canPayInstallment(installment.remainingAmount)) {
+                              <button
+                                type="button"
+                                (click)="openInstallmentPay(agreement, installment)"
+                                [disabled]="submitting()"
+                              >
+                                Pagar parcela
+                              </button>
+                            }
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </article>
+          }
+        }
+
+        @if (canCreateAgreement(invoice.status, invoice.remainingAmount)) {
+          <div class="form-actions">
+            <button
+              type="button"
+              (click)="openAgreementForm('negotiate')"
+              [disabled]="submitting()"
+            >
+              Nova negociação
+            </button>
+            <button
+              type="button"
+              (click)="openAgreementForm('renegotiate')"
+              [disabled]="submitting()"
+            >
+              Nova renegociação
+            </button>
+          </div>
+        }
+
+        @if (agreementFormMode() !== 'closed' && !agreementConfirming()) {
+          <h3 id="invoice-agreement-form-title">
+            {{ agreementFormMode() === 'renegotiate' ? 'Nova renegociação' : 'Nova negociação' }}
+          </h3>
+          <p class="panel__meta">
+            Saldo atual da fatura: {{ invoice.remainingAmount | brlCurrency }}. O sistema calcula
+            financiado e custo adicional.
+          </p>
+          <form [formGroup]="agreementForm" (ngSubmit)="prepareAgreementConfirm()" novalidate>
+            @if (agreementFormError(); as message) {
+              <app-error-state [message]="message" />
+            }
+            <div class="field">
+              <label for="invoice-agreement-entry">Entrada</label>
+              <input
+                id="invoice-agreement-entry"
+                type="number"
+                step="0.01"
+                min="0"
+                formControlName="entryAmount"
+                [attr.aria-invalid]="agreementFieldError('entryAmount') != null"
+              />
+              @if (agreementFieldError('entryAmount'); as message) {
+                <p class="field__error">{{ message }}</p>
+              }
+            </div>
+            <div class="field">
+              <label for="invoice-agreement-account">Conta</label>
+              <select id="invoice-agreement-account" formControlName="accountId">
+                <option value="">Selecione</option>
+                @for (account of activeAccounts(); track account.id) {
+                  <option [value]="account.id">{{ account.name }}</option>
+                }
+              </select>
+              @if (agreementFieldError('accountId'); as message) {
+                <p class="field__error">{{ message }}</p>
+              }
+            </div>
+            <div class="field">
+              <label for="invoice-agreement-date">Data da entrada</label>
+              <input id="invoice-agreement-date" type="date" formControlName="entryPaymentDate" />
+              @if (agreementFieldError('entryPaymentDate'); as message) {
+                <p class="field__error">{{ message }}</p>
+              }
+            </div>
+            <div class="field">
+              <label for="invoice-agreement-count">Quantidade de parcelas</label>
+              <input
+                id="invoice-agreement-count"
+                type="number"
+                step="1"
+                min="1"
+                formControlName="installmentCount"
+              />
+              @if (agreementFieldError('installmentCount'); as message) {
+                <p class="field__error">{{ message }}</p>
+              }
+            </div>
+            <div class="field">
+              <label for="invoice-agreement-installment">Valor da parcela</label>
+              <input
+                id="invoice-agreement-installment"
+                type="number"
+                step="0.01"
+                min="0.01"
+                formControlName="installmentAmount"
+              />
+              @if (agreementFieldError('installmentAmount'); as message) {
+                <p class="field__error">{{ message }}</p>
+              }
+            </div>
+            @if (agreementFormMode() === 'renegotiate') {
+              <div class="field">
+                <label for="invoice-agreement-futures">Valor líquido dos futuros</label>
+                <input
+                  id="invoice-agreement-futures"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  formControlName="anticipatedFuturesNetAmount"
+                />
+                @if (agreementFieldError('anticipatedFuturesNetAmount'); as message) {
+                  <p class="field__error">{{ message }}</p>
+                }
+              </div>
+            }
+            <div class="form-actions">
+              <button type="submit" [disabled]="submitting()">Continuar</button>
+              <button type="button" (click)="closeAgreementForm()" [disabled]="submitting()">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        }
+
+        @if (agreementConfirming()) {
+          <section class="panel panel--confirm" aria-labelledby="invoice-agreement-confirm-title">
+            <h2 id="invoice-agreement-confirm-title">
+              {{
+                agreementFormMode() === 'renegotiate'
+                  ? 'Confirmar renegociação?'
+                  : 'Confirmar negociação?'
+              }}
+            </h2>
+            <p>
+              Saldo da fatura {{ invoice.remainingAmount | brlCurrency }}. Entrada
+              {{ agreementForm.controls.entryAmount.value ?? 0 | brlCurrency }}.
+              {{ agreementForm.controls.installmentCount.value }} parcela(s) de
+              {{ agreementForm.controls.installmentAmount.value ?? 0 | brlCurrency }}.
+            </p>
+            @if (agreementFormError(); as message) {
+              <app-error-state [message]="message" />
+            }
+            <div class="form-actions">
+              <button type="button" (click)="confirmAgreement()" [disabled]="submitting()">
+                Confirmar
+              </button>
+              <button type="button" (click)="closeAgreementConfirm()" [disabled]="submitting()">
+                Voltar
+              </button>
+            </div>
+          </section>
+        }
+
+        @if (pendingInstallmentPay(); as pending) {
+          <h3 id="invoice-installment-pay-title">Pagar parcela</h3>
+          <p class="panel__meta">
+            Pagamento parcial ou integral da parcela {{ pending.installment.installmentNumber }}/{{
+              pending.installment.totalInstallments
+            }}. Restante oficial: {{ pending.installment.remainingAmount | brlCurrency }}.
+          </p>
+          <form [formGroup]="installmentPayForm" (ngSubmit)="prepareInstallmentPay()" novalidate>
+            @if (installmentPayError(); as message) {
+              <app-error-state [message]="message" />
+            }
+            <div class="field">
+              <label for="invoice-installment-account">Conta</label>
+              <select id="invoice-installment-account" formControlName="accountId">
+                <option value="">Selecione</option>
+                @for (account of activeAccounts(); track account.id) {
+                  <option [value]="account.id">{{ account.name }}</option>
+                }
+              </select>
+              @if (installmentPayFieldError('accountId'); as message) {
+                <p class="field__error">{{ message }}</p>
+              }
+            </div>
+            <div class="field">
+              <label for="invoice-installment-amount">Valor</label>
+              <input
+                id="invoice-installment-amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                formControlName="amount"
+              />
+              @if (installmentPayFieldError('amount'); as message) {
+                <p class="field__error">{{ message }}</p>
+              }
+            </div>
+            <div class="field">
+              <label for="invoice-installment-date">Data</label>
+              <input id="invoice-installment-date" type="date" formControlName="paymentDate" />
+              @if (installmentPayFieldError('paymentDate'); as message) {
+                <p class="field__error">{{ message }}</p>
+              }
+            </div>
+            <div class="field">
+              <label for="invoice-installment-settled">
+                <input id="invoice-installment-settled" type="checkbox" formControlName="settled" />
+                Quitar parcela
+              </label>
+              <p class="panel__meta">
+                Se marcado, a parcela será quitada. O backend pode registrar o desconto necessário
+                quando o valor for menor que o restante.
+              </p>
+            </div>
+            <div class="field">
+              <label for="invoice-installment-notes">Observação</label>
+              <input id="invoice-installment-notes" type="text" formControlName="notes" />
+            </div>
+            <div class="form-actions">
+              <button type="submit" [disabled]="submitting()">Pagar parcela</button>
+              <button type="button" (click)="closeInstallmentPay()" [disabled]="submitting()">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        }
+
+        @if (installmentSettleConfirming()) {
+          <section class="panel panel--confirm" aria-labelledby="invoice-installment-settle-title">
+            <h2 id="invoice-installment-settle-title">Confirmar quitação da parcela?</h2>
+            <p>
+              A parcela será quitada. Se o valor informado for menor que o restante, o backend pode
+              registrar o desconto necessário. Esta ação não calcula o desconto nesta tela.
+            </p>
+            @if (installmentPayError(); as message) {
+              <app-error-state [message]="message" />
+            }
+            <div class="form-actions">
+              <button type="button" (click)="confirmInstallmentSettle()" [disabled]="submitting()">
+                Confirmar quitação
+              </button>
+              <button
+                type="button"
+                (click)="closeInstallmentSettleConfirm()"
+                [disabled]="submitting()"
+              >
+                Voltar
+              </button>
+            </div>
+          </section>
+        }
+
         @if (adjustmentPendingReverse(); as adjustment) {
           <section class="panel panel--confirm" aria-labelledby="invoice-adjust-reverse-title">
             <h2 id="invoice-adjust-reverse-title">Reverter ajuste</h2>

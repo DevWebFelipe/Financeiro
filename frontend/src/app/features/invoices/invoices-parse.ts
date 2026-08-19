@@ -4,6 +4,10 @@ import {
   InvoiceAdjustment,
   InvoiceAdjustmentStatus,
   InvoiceAdjustmentType,
+  InvoiceAgreement,
+  InvoiceAgreementInstallment,
+  InvoiceAgreementInstallmentStatus,
+  InvoiceAgreementStatus,
   InvoiceItem,
   InvoicePayment,
   InvoiceStatus,
@@ -313,4 +317,170 @@ function parseIsoDate(value: unknown): string | null {
 
 function parseInstant(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+export function parseInvoiceAgreementList(body: unknown): InvoiceAgreement[] | null {
+  if (!Array.isArray(body)) {
+    return null;
+  }
+
+  const agreements: InvoiceAgreement[] = [];
+  for (const item of body) {
+    const parsed = parseInvoiceAgreement(item);
+    if (parsed == null) {
+      return null;
+    }
+    agreements.push(parsed);
+  }
+  return agreements;
+}
+
+export function parseInvoiceAgreement(value: unknown): InvoiceAgreement | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const id = parseId(value['id']);
+  const creditCardId = parseId(value['creditCardId']);
+  const sourceInvoiceId = parseId(value['sourceInvoiceId']);
+  const expenseId = parseId(value['expenseId']);
+  const status = parseAgreementStatus(value['status']);
+  const entryAmount = parseMoney(value['entryAmount']);
+  const financedAmount = parseMoney(value['financedAmount']);
+  const installmentCount = parseCount(value['installmentCount']);
+  const installmentAmount = parseMoney(value['installmentAmount']);
+  const contractedTotal = parseMoney(value['contractedTotal']);
+  const additionalCost = parseMoney(value['additionalCost']);
+  const additionalCostPercent = parseMoney(value['additionalCostPercent']);
+  const createdAt = parseInstant(value['createdAt']);
+  const supersededByAgreementId = parseOptionalId(value['supersededByAgreementId']);
+  const installments = parseAgreementInstallmentList(value['installments']);
+
+  if (
+    id == null ||
+    creditCardId == null ||
+    sourceInvoiceId == null ||
+    expenseId == null ||
+    status == null ||
+    entryAmount == null ||
+    financedAmount == null ||
+    installmentCount == null ||
+    installmentAmount == null ||
+    contractedTotal == null ||
+    additionalCost == null ||
+    additionalCostPercent == null ||
+    createdAt == null ||
+    supersededByAgreementId === undefined ||
+    installments == null
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    creditCardId,
+    sourceInvoiceId,
+    expenseId,
+    status,
+    entryAmount,
+    financedAmount,
+    installmentCount,
+    installmentAmount,
+    contractedTotal,
+    additionalCost,
+    additionalCostPercent,
+    createdAt,
+    supersededByAgreementId,
+    installments,
+  };
+}
+
+function parseAgreementInstallmentList(body: unknown): InvoiceAgreementInstallment[] | null {
+  if (!Array.isArray(body)) {
+    return null;
+  }
+
+  const installments: InvoiceAgreementInstallment[] = [];
+  for (const item of body) {
+    const parsed = parseAgreementInstallment(item);
+    if (parsed == null) {
+      return null;
+    }
+    installments.push(parsed);
+  }
+  return installments;
+}
+
+function parseAgreementInstallment(value: unknown): InvoiceAgreementInstallment | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const id = parseId(value['id']);
+  const expenseId = parseId(value['expenseId']);
+  const installmentNumber = parseCount(value['installmentNumber']);
+  const totalInstallments = parseCount(value['totalInstallments']);
+  const amount = parseMoney(value['amount']);
+  const remainingAmount = parseMoney(value['remainingAmount']);
+  const dueDate = parseIsoDate(value['dueDate']);
+  const status = parseAgreementInstallmentStatus(value['status']);
+  const invoiceId = parseOptionalId(value['invoiceId']);
+  const createdAt = parseInstant(value['createdAt']);
+  const updatedAt = parseInstant(value['updatedAt']);
+
+  if (
+    id == null ||
+    expenseId == null ||
+    installmentNumber == null ||
+    totalInstallments == null ||
+    amount == null ||
+    remainingAmount == null ||
+    dueDate == null ||
+    status == null ||
+    invoiceId === undefined ||
+    createdAt == null ||
+    updatedAt == null
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    expenseId,
+    installmentNumber,
+    totalInstallments,
+    amount,
+    remainingAmount,
+    dueDate,
+    status,
+    invoiceId,
+    createdAt,
+    updatedAt,
+  };
+}
+
+function parseAgreementStatus(value: unknown): InvoiceAgreementStatus | null {
+  return value === 'ACTIVE' ||
+    value === 'COMPLETED' ||
+    value === 'RENEGOTIATED' ||
+    value === 'CANCELLED'
+    ? value
+    : null;
+}
+
+function parseAgreementInstallmentStatus(value: unknown): InvoiceAgreementInstallmentStatus | null {
+  return value === 'OPEN' ||
+    value === 'PARTIALLY_PAID' ||
+    value === 'PAID' ||
+    value === 'CANCELLED' ||
+    value === 'REFUNDED'
+    ? value
+    : null;
+}
+
+function parseOptionalId(value: unknown): string | null | undefined {
+  if (value == null) {
+    return null;
+  }
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }

@@ -1321,6 +1321,36 @@ Contrato utilizado:
 
 Response oficial: `id`, `creditCardId`, `amount`, `remainingAmount` oficial, `reason`, `origin` (`MANUAL` / `CARD_PURCHASE_REFUND`), `expenseId` (nullable), `createdAt`. Sem status de domínio. Classificação visual Disponível/Utilizado a partir de `remainingAmount`. Soma dos `remainingAmount` é agregação de apresentação. A aplicação às faturas é automática no backend. Após criar: recarregar créditos e `GET .../limit`; o crédito não aumenta o limite do cartão; não afirmar aplicação a fatura.
 
+# 96R. Acordos / Renegociação (Fase 21 — Bloco C7)
+
+**Status:** **CONCLUÍDA / APROVADA COM RESSALVAS**. Implementada no painel de detalhe de `/invoices`. Sem rota `/agreements`. Sem `AgreementsService`. Sem B12.
+
+`InvoicesPage` → `InvoicesService` (`listAgreements`, `createAgreement`, `createRenegotiation`, `getAgreement`, `anticipateInstallment`) → `HttpClient`. Contas via `AccountsService.list()` existente.
+
+Escopo implementado: histórico de acordos; nova negociação; nova renegociação (operação própria do backend; sem seleção manual de parcelas/acordos futuros e sem preview financeiro); detalhe do acordo; parcelas oficiais; pagamento/antecipação (parcial ou quitação); status oficiais; confirmação das operações financeiras relevantes.
+
+Contrato utilizado:
+
+- `GET /api/v1/invoices/{invoiceId}/agreements` — array de `AgreementResponse` (ordem do backend)
+- `POST /api/v1/invoices/{invoiceId}/agreements` — somente `entryAmount`, `accountId`, `entryPaymentDate`, `installmentCount`, `installmentAmount`
+- `POST /api/v1/invoices/{invoiceId}/renegotiations` — os mesmos + `anticipatedFuturesNetAmount`
+- `GET /api/v1/agreements/{agreementId}`
+- `POST /api/v1/agreements/{agreementId}/installments/{installmentId}/anticipate` — `accountId`, `amount`, `paymentDate`, `settled`; `notes` quando preenchido
+
+O frontend não envia campos de response nem valores financeiros calculados localmente (`financedAmount`, `contractedTotal`, `additionalCost`, `remainingAmount`, status).
+
+Status oficiais do acordo: `ACTIVE`, `COMPLETED`, `RENEGOTIATED`, `CANCELLED`. `CANCELLED` é suportado na leitura; C7 não implementa cancelamento.
+
+Nova negociação/renegociação na UI somente se a fatura estiver `CLOSED` e `remainingAmount > 0`. `entryAmount` pode ser `0`. `installmentCount` ≥ 1. `installmentAmount` > 0. Pagamento da parcela: `amount > 0` e `amount <= remainingAmount` oficial. `settled` representa quitação. O backend permanece a autoridade das regras financeiras; o frontend não as reproduz. Após mutations, recarregam-se os dados oficiais afetados.
+
+Fora do escopo da C7: cancelar, reverter, excluir ou editar acordo; seleção manual de parcelas futuras ou acordos anteriores; aplicação manual de créditos; relatórios; PDF; dashboard; alterações no backend; migrations; novas dependências; B12.
+
+Ressalvas da auditoria (não bloqueantes):
+
+- **AUD-C7-A1 — BAIXO:** cobertura visual/integrada ainda não executada.
+- **AUD-C7-A2 — BAIXO:** a estratégia de refresh após mutations é abrangente e poderá ser otimizada futuramente caso seja necessário.
+- **AUD-C7-A3 — INFORMATIVO:** o backend permanece como autoridade financeira; o frontend não deve expandir as validações locais para reproduzir regras financeiras do backend.
+
 # 97. Dashboard
 
 Dashboard deve apresentar:

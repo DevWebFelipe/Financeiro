@@ -1,12 +1,15 @@
 import {
   canAdjustInvoice,
+  canCreateInvoiceAgreement,
   canCreateInvoiceSurcharge,
   canPayInvoice,
   canReverseInvoiceAdjustment,
   canReverseInvoicePayment,
+  formatAdditionalCostPercent,
   formatInvoiceInstantDate,
   invoiceAdjustmentStatusLabel,
   invoiceAdjustmentTypeLabel,
+  invoiceAgreementStatusLabel,
   invoiceItemStatusLabel,
   invoicePaymentStatusLabel,
   invoicePeriodKey,
@@ -81,5 +84,24 @@ describe('invoices-format', () => {
     expect(canReverseInvoicePayment('OPEN', 'REVERSED')).toBe(false);
     expect(canReverseInvoicePayment('PAID', 'ACTIVE')).toBe(false);
     expect(canReverseInvoicePayment('SETTLED_BY_AGREEMENT', 'ACTIVE')).toBe(false);
+  });
+
+  it('labels official agreement statuses including CANCELLED', () => {
+    expect(invoiceAgreementStatusLabel('ACTIVE')).toBe('Ativo');
+    expect(invoiceAgreementStatusLabel('COMPLETED')).toBe('Concluído');
+    expect(invoiceAgreementStatusLabel('RENEGOTIATED')).toBe('Renegociado');
+    expect(invoiceAgreementStatusLabel('CANCELLED')).toBe('Cancelado');
+  });
+
+  it('offers new agreement only for CLOSED invoices with remaining greater than zero', () => {
+    expect(canCreateInvoiceAgreement('CLOSED', 0.01)).toBe(true);
+    expect(canCreateInvoiceAgreement('CLOSED', 0)).toBe(false);
+    expect(canCreateInvoiceAgreement('OPEN', 10)).toBe(false);
+    expect(canCreateInvoiceAgreement('PAID', 10)).toBe(false);
+    expect(canCreateInvoiceAgreement('SETTLED_BY_AGREEMENT', 10)).toBe(false);
+  });
+
+  it('formats the official additional cost percent without recalculating it', () => {
+    expect(formatAdditionalCostPercent(0.05)).toBe('5,00%');
   });
 });

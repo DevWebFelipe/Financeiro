@@ -6,15 +6,21 @@ import {
   parseInvoice,
   parseInvoiceAdjustment,
   parseInvoiceAdjustmentList,
+  parseInvoiceAgreement,
+  parseInvoiceAgreementList,
   parseInvoiceItemList,
   parseInvoiceList,
   parseInvoicePayment,
   parseInvoicePaymentList,
 } from './invoices-parse';
 import {
+  AnticipateAgreementInstallmentRequest,
   CreateInvoiceAdjustmentRequest,
+  CreateInvoiceAgreementRequest,
+  CreateInvoiceRenegotiationRequest,
   Invoice,
   InvoiceAdjustment,
+  InvoiceAgreement,
   InvoiceItem,
   InvoiceListParams,
   InvoicePayment,
@@ -158,5 +164,89 @@ export class InvoicesService {
         return parsed;
       }),
     );
+  }
+
+  listAgreements(invoiceId: string): Observable<InvoiceAgreement[]> {
+    const path = `/invoices/${encodeURIComponent(invoiceId)}/agreements`;
+    return this.http.get<unknown>(joinApiUrl(this.apiBaseUrl, path)).pipe(
+      map((body) => {
+        const parsed = parseInvoiceAgreementList(body);
+        if (parsed == null) {
+          throw new Error('Invoice agreements response did not match the expected contract.');
+        }
+        return parsed;
+      }),
+    );
+  }
+
+  createAgreement(
+    invoiceId: string,
+    request: CreateInvoiceAgreementRequest,
+  ): Observable<InvoiceAgreement> {
+    const path = `/invoices/${encodeURIComponent(invoiceId)}/agreements`;
+    return this.http
+      .post<unknown>(joinApiUrl(this.apiBaseUrl, path), request)
+      .pipe(
+        map((body) =>
+          this.requireAgreement(
+            body,
+            'Create agreement response did not match the expected contract.',
+          ),
+        ),
+      );
+  }
+
+  createRenegotiation(
+    invoiceId: string,
+    request: CreateInvoiceRenegotiationRequest,
+  ): Observable<InvoiceAgreement> {
+    const path = `/invoices/${encodeURIComponent(invoiceId)}/renegotiations`;
+    return this.http
+      .post<unknown>(joinApiUrl(this.apiBaseUrl, path), request)
+      .pipe(
+        map((body) =>
+          this.requireAgreement(
+            body,
+            'Create renegotiation response did not match the expected contract.',
+          ),
+        ),
+      );
+  }
+
+  getAgreement(agreementId: string): Observable<InvoiceAgreement> {
+    const path = `/agreements/${encodeURIComponent(agreementId)}`;
+    return this.http
+      .get<unknown>(joinApiUrl(this.apiBaseUrl, path))
+      .pipe(
+        map((body) =>
+          this.requireAgreement(body, 'Agreement response did not match the expected contract.'),
+        ),
+      );
+  }
+
+  anticipateInstallment(
+    agreementId: string,
+    installmentId: string,
+    request: AnticipateAgreementInstallmentRequest,
+  ): Observable<InvoiceAgreement> {
+    const path = `/agreements/${encodeURIComponent(agreementId)}/installments/${encodeURIComponent(installmentId)}/anticipate`;
+    return this.http
+      .post<unknown>(joinApiUrl(this.apiBaseUrl, path), request)
+      .pipe(
+        map((body) =>
+          this.requireAgreement(
+            body,
+            'Anticipate agreement installment response did not match the expected contract.',
+          ),
+        ),
+      );
+  }
+
+  private requireAgreement(body: unknown, message: string): InvoiceAgreement {
+    const parsed = parseInvoiceAgreement(body);
+    if (parsed == null) {
+      throw new Error(message);
+    }
+    return parsed;
   }
 }

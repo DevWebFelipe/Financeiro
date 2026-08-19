@@ -2,6 +2,8 @@ import {
   parseInvoice,
   parseInvoiceAdjustment,
   parseInvoiceAdjustmentList,
+  parseInvoiceAgreement,
+  parseInvoiceAgreementList,
   parseInvoiceItem,
   parseInvoiceItemList,
   parseInvoiceList,
@@ -45,6 +47,41 @@ function itemBody(overrides: Record<string, unknown> = {}): Record<string, unkno
     overdue: false,
     createdAt: '2026-08-01T12:00:00Z',
     updatedAt: '2026-08-01T12:00:00Z',
+    ...overrides,
+  };
+}
+
+function agreementBody(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: ITEM_ID,
+    creditCardId: CARD_ID,
+    sourceInvoiceId: INVOICE_ID,
+    expenseId: EXPENSE_ID,
+    status: 'ACTIVE',
+    entryAmount: 0,
+    financedAmount: 800,
+    installmentCount: 2,
+    installmentAmount: 420,
+    contractedTotal: 840,
+    additionalCost: 40,
+    additionalCostPercent: 0.05,
+    createdAt: '2026-08-20T12:00:00Z',
+    supersededByAgreementId: null,
+    installments: [
+      {
+        id: ITEM_ID,
+        expenseId: EXPENSE_ID,
+        installmentNumber: 1,
+        totalInstallments: 2,
+        amount: 420,
+        remainingAmount: 420,
+        dueDate: '2026-09-20',
+        status: 'OPEN',
+        invoiceId: null,
+        createdAt: '2026-08-20T12:00:00Z',
+        updatedAt: '2026-08-20T12:00:00Z',
+      },
+    ],
     ...overrides,
   };
 }
@@ -191,5 +228,43 @@ describe('invoices-parse', () => {
         createdAt: '2026-08-20T12:00:00Z',
       }),
     ).toBeNull();
+  });
+
+  it('parses agreements with official statuses, nullable supersededByAgreementId and installment invoiceId', () => {
+    const body = agreementBody();
+    const parsed = parseInvoiceAgreement(body);
+    expect(parsed?.status).toBe('ACTIVE');
+    expect(parsed?.entryAmount).toBe(0);
+    expect(parsed?.additionalCostPercent).toBe(0.05);
+    expect(parsed?.supersededByAgreementId).toBeNull();
+    expect(parsed?.installments[0]?.invoiceId).toBeNull();
+    expect(parsed?.installments[0]?.remainingAmount).toBe(420);
+
+    expect(parseInvoiceAgreement(agreementBody({ status: 'COMPLETED' }))?.status).toBe('COMPLETED');
+    expect(parseInvoiceAgreement(agreementBody({ status: 'CANCELLED' }))?.status).toBe('CANCELLED');
+    expect(
+      parseInvoiceAgreement(
+        agreementBody({ status: 'RENEGOTIATED', supersededByAgreementId: ITEM_ID }),
+      )?.supersededByAgreementId,
+    ).toBe(ITEM_ID);
+  });
+
+  it('parses an agreement list and rejects unknown status or missing required fields', () => {
+    expect(parseInvoiceAgreementList([agreementBody()])).toHaveLength(1);
+    expect(parseInvoiceAgreementList({ items: [] })).toBeNull();
+    expect(parseInvoiceAgreement(agreementBody({ status: 'OPEN' }))).toBeNull();
+    expect(parseInvoiceAgreement(agreementBody({ id: '' }))).toBeNull();
+    expect(parseInvoiceAgreement(agreementBody({ creditCardId: '' }))).toBeNull();
+    expect(parseInvoiceAgreement(agreementBody({ sourceInvoiceId: '' }))).toBeNull();
+    expect(parseInvoiceAgreement(agreementBody({ expenseId: '' }))).toBeNull();
+    expect(parseInvoiceAgreement(agreementBody({ entryAmount: '0' }))).toBeNull();
+    expect(parseInvoiceAgreement(agreementBody({ financedAmount: undefined }))).toBeNull();
+    expect(parseInvoiceAgreement(agreementBody({ installmentCount: 0 }))).toBeNull();
+    expect(parseInvoiceAgreement(agreementBody({ installmentAmount: undefined }))).toBeNull();
+    expect(parseInvoiceAgreement(agreementBody({ contractedTotal: undefined }))).toBeNull();
+    expect(parseInvoiceAgreement(agreementBody({ additionalCost: undefined }))).toBeNull();
+    expect(parseInvoiceAgreement(agreementBody({ additionalCostPercent: undefined }))).toBeNull();
+    expect(parseInvoiceAgreement(agreementBody({ createdAt: '' }))).toBeNull();
+    expect(parseInvoiceAgreement(agreementBody({ installments: null }))).toBeNull();
   });
 });

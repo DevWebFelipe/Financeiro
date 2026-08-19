@@ -61,6 +61,16 @@ form {
   color: var(--color-text-secondary);
 }
 
+.agreement {
+  display: grid;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.agreement-success {
+  margin-bottom: var(--space-md);
+}
+
 .detail-list {
   display: grid;
   gap: var(--space-sm);
