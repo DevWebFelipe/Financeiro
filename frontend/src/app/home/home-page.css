@@ -1,9 +1,15 @@
 :host {
   display: block;
+  min-height: 100dvh;
 }
 
 main {
-  max-width: 40rem;
-  margin: 2rem auto;
-  padding: 0 1rem;
+  width: min(100%, var(--size-measure));
+  margin-inline: auto;
+  padding: var(--space-xl) var(--space-md);
+}
+
+h1 + p {
+  margin-top: var(--space-sm);
+  color: var(--color-text-secondary);
 }

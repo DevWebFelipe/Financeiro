@@ -1036,6 +1036,29 @@ A interface deve priorizar:
 Não é necessário criar um design extremamente sofisticado na V1.
 
 
+# 96A. Identidade visual (Fase 21 — Bloco B1)
+
+Tema inicial: **claro**.
+
+Paleta base aprovada:
+
+```text
+#11161C
+#2F3B49
+#6E7F90
+#CFD8E3
+#F6F8FB
+```
+
+Fonte principal: **Inter**, armazenada localmente no frontend. Pesos: 400, 500, 600 e 700.
+
+Receitas: verdes suaves. Despesas: vermelhos suaves. Evitar saturação excessiva.
+
+Tokens visuais, reset e base styles: `frontend/src/styles/`. Não criar uma biblioteca de componentes neste bloco.
+
+Angular Material, CDK e ECharts permanecem fora do Bloco B1.
+
+
 # 97. Dashboard
 
 Dashboard deve apresentar:
