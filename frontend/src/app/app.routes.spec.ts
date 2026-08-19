@@ -55,6 +55,12 @@ describe('app routes', () => {
     expect(router.url).toBe('/login?returnUrl=%2Fdashboard');
   });
 
+  it('protects /accounts and sends unauthenticated users to login', async () => {
+    await auth.initialize();
+    await router.navigateByUrl('/accounts');
+    expect(router.url).toBe('/login?returnUrl=%2Faccounts');
+  });
+
   it('uses /dashboard as the authenticated entry from /', async () => {
     sessionStorage.setItem(AUTH_TOKEN_KEY, 'access-token');
     const pending = auth.initialize();
@@ -74,6 +80,17 @@ describe('app routes', () => {
 
     await router.navigateByUrl('/dashboard');
     expect(router.url).toBe('/dashboard');
+  });
+
+  it('allows an authenticated user to open lazy-loaded /accounts', async () => {
+    sessionStorage.setItem(AUTH_TOKEN_KEY, 'access-token');
+    const pending = auth.initialize();
+    httpTesting.expectOne(api('/users/me')).flush(user);
+    await pending;
+
+    await router.navigateByUrl('/accounts');
+    expect(router.url).toBe('/accounts');
+    expect(TestBed.inject(Title).getTitle()).toBe('Contas — Financeiro');
   });
 
   it('redirects authenticated guests away from login to the dashboard', async () => {

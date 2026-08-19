@@ -1101,7 +1101,7 @@ Desktop (`min-width: 64rem`): sidebar permanente, colapsável; header e conteúd
 
 Entrada autenticada: `/dashboard` (AuthGuard no layout pai). `/` redireciona para `/dashboard`. Login e registro permanecem públicos (`guestGuard`). Logout no Header usa `AuthService`. O usuário exibido vem de `AuthService.user()` — sem novo `GET /users/me`.
 
-Páginas futuras podem ser lazy-loaded como filhas do MainLayout.
+A primeira feature financeira filha do shell é `/accounts` (B7), lazy-loaded.
 
 
 # 96E. Dashboard funcional (Fase 21 — Bloco B5)
@@ -1127,7 +1127,28 @@ Existe neste bloco:
 
 Não existem neste bloco: `Button` (o `button` nativo já é estilizado em `base.css`), Loading/Skeleton genérico, diretivas, Dialog, Drawer, Toast, tabela genérica, `shared/services`.
 
-Ícones do shell permanecem SVG locais. Formatação de trimestre e rótulos de tipo de conta permanecem no Dashboard.
+Ícones do shell permanecem SVG locais. Formatação de trimestre permanece no Dashboard. Rótulos de tipo de conta (`BANK_ACCOUNT` / `CASH`) também existem na feature Accounts.
+
+
+# 96G. Contas (Fase 21 — Bloco B7)
+
+A página `/accounts` é lazy-loaded sob o AuthGuard do MainLayout. A navegação passa a incluir Contas somente neste bloco.
+
+Feature em `frontend/src/app/features/accounts/`: `AccountsPage` → `AccountsService` → `HttpClient`. Sem `HttpClient` na página. Sem recálculo de saldo.
+
+Contrato utilizado:
+
+- `GET /api/v1/accounts` — array, sem paginação, ativas e inativas, ordem `createdAt` ASC. Não inclui saldo corrente.
+- `GET /api/v1/accounts/{id}/balance` — `totalBalance`, `reservedAmount`, `availableBalance`. O alias legado `balance` não é exibido.
+- `POST /api/v1/accounts` — criação (`name`, `type`, `initialBalance` opcional).
+- `PUT /api/v1/accounts/{id}` — apenas `name` e `type`.
+- `POST /api/v1/accounts/{id}/deactivate` e `POST /api/v1/accounts/{id}/activate`.
+
+Após a listagem, os saldos oficiais são pedidos em paralelo (`forkJoin`). Lista vazia não dispara balance. Falha de qualquer balance é erro da página + retry. Não há endpoint agregado; não há paginação local.
+
+`PUT /accounts/{id}/initial-balance` existe no backend e permanece fora deste bloco. Sem `/accounts/:id`. Sem extrato.
+
+Estados: `loading` | `loaded` | `empty` | `error`. Empty ≠ erro. Retry refaz listagem + balances. Formulário reativo na mesma rota. `VALIDATION_ERROR.fields` vai para o controle; `BUSINESS_RULE_VIOLATION` na desativação usa mensagem contextual (não `message.includes`).
 
 
 # 97. Dashboard

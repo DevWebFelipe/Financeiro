@@ -6,4 +6,5 @@ export interface NavItem {
 
 export const APP_NAV_ITEMS: readonly NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', path: '/dashboard' },
+  { id: 'accounts', label: 'Contas', path: '/accounts' },
 ];

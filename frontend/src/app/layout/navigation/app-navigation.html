@@ -20,6 +20,14 @@
                   />
                 </svg>
               }
+              @case ('accounts') {
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M4.5 19.5h15v1.5h-15zm.75-12L12 3l6.75 4.5H5.25zM6 9h1.5v7.5H6zm3.75 0h1.5v7.5h-1.5zm3.75 0H15v7.5h-1.5zm3.75 0H18.75v7.5H16.5z"
+                  />
+                </svg>
+              }
             }
           </span>
           <span [class.visually-hidden]="collapsed()">{{ item.label }}</span>

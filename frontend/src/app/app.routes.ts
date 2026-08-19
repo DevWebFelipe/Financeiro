@@ -29,6 +29,12 @@ export const routes: Routes = [
           import('./features/dashboard/dashboard-page').then((module) => module.DashboardPage),
         title: 'Dashboard — Financeiro',
       },
+      {
+        path: 'accounts',
+        loadComponent: () =>
+          import('./features/accounts/accounts-page').then((module) => module.AccountsPage),
+        title: 'Contas — Financeiro',
+      },
       { path: '**', redirectTo: 'dashboard' },
     ],
   },

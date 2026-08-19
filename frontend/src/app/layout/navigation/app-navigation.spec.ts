@@ -13,7 +13,10 @@ describe('AppNavigation', () => {
       providers: [
         provideCoreHttp(),
         provideHttpClientTesting(),
-        provideRouter([{ path: 'dashboard', component: AppNavigation }]),
+        provideRouter([
+          { path: 'dashboard', component: AppNavigation },
+          { path: 'accounts', component: AppNavigation },
+        ]),
       ],
     }).compileComponents();
     router = TestBed.inject(Router);
@@ -26,6 +29,16 @@ describe('AppNavigation', () => {
     expect(link).not.toBeNull();
     expect(link?.textContent).toContain('Dashboard');
     expect(link?.getAttribute('href')).toBe('/dashboard');
+  });
+
+  it('renders the Accounts item now that the feature exists', async () => {
+    const fixture = TestBed.createComponent(AppNavigation);
+    await fixture.whenStable();
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>,
+    );
+    const accounts = links.find((link) => link.textContent?.includes('Contas'));
+    expect(accounts?.getAttribute('href')).toBe('/accounts');
   });
 
   it('marks the active route with aria-current', async () => {

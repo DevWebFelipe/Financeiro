@@ -1,0 +1,175 @@
+<section aria-labelledby="accounts-title" [attr.aria-busy]="status() === 'loading'">
+  <header class="page-header">
+    <div class="page-header__intro">
+      <h1 id="accounts-title">Contas</h1>
+      <p class="page-header__meta">Contas bancárias e dinheiro cadastrados nesta sessão.</p>
+    </div>
+    @if (status() === 'loaded' && accounts().length > 0) {
+      <button type="button" (click)="openCreate()">Nova conta</button>
+    }
+  </header>
+
+  @if (status() === 'loading') {
+    <p class="visually-hidden">Carregando contas.</p>
+    <div class="skeleton" aria-hidden="true">
+      <div class="skeleton__block skeleton__block--title"></div>
+      <div class="skeleton__block"></div>
+      <div class="skeleton__block"></div>
+    </div>
+  }
+
+  @if (status() === 'error') {
+    <app-error-state
+      message="Não foi possível carregar as contas."
+      retryLabel="Tentar novamente"
+      (retry)="retry()"
+    />
+  }
+
+  @if (status() === 'loaded') {
+    @if (actionError(); as message) {
+      <app-error-state [message]="message" />
+    }
+
+    @if (isEmpty()) {
+      <app-empty-state message="Nenhuma conta cadastrada.">
+        <button type="button" (click)="openCreate()">Nova conta</button>
+      </app-empty-state>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <caption class="visually-hidden">
+            Contas cadastradas
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Nome</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Situação</th>
+              <th scope="col">Saldo inicial</th>
+              <th scope="col">Saldo total</th>
+              <th scope="col">Saldo reservado</th>
+              <th scope="col">Saldo disponível</th>
+              <th scope="col">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of accounts(); track item.account.id) {
+              <tr [class.is-inactive]="!item.account.active">
+                <th scope="row" data-label="Nome">
+                  <span class="name">{{ item.account.name }}</span>
+                </th>
+                <td data-label="Tipo">{{ accountTypeLabel(item.account.type) }}</td>
+                <td data-label="Situação">
+                  <span class="status">{{ accountStatusLabel(item.account.active) }}</span>
+                </td>
+                <td class="numeric" data-label="Saldo inicial">
+                  {{ item.account.initialBalance | brlCurrency }}
+                </td>
+                <td class="numeric" data-label="Saldo total">
+                  {{ item.balance.totalBalance | brlCurrency }}
+                </td>
+                <td class="numeric" data-label="Saldo reservado">
+                  {{ item.balance.reservedAmount | brlCurrency }}
+                </td>
+                <td class="numeric" data-label="Saldo disponível">
+                  {{ item.balance.availableBalance | brlCurrency }}
+                </td>
+                <td class="actions" data-label="Ações">
+                  <div class="actions__group">
+                    <button type="button" (click)="openEdit(item)" [disabled]="submitting()">
+                      Editar
+                    </button>
+                    @if (item.account.active) {
+                      @if (canDeactivateItem(item)) {
+                        <button type="button" (click)="deactivate(item)" [disabled]="submitting()">
+                          Desativar
+                        </button>
+                      }
+                    } @else {
+                      <button type="button" (click)="activate(item)" [disabled]="submitting()">
+                        Reativar
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (formMode() !== 'closed') {
+      <section class="panel" aria-labelledby="account-form-title">
+        <h2 id="account-form-title">
+          {{ formMode() === 'create' ? 'Nova conta' : 'Editar conta' }}
+        </h2>
+
+        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          <div class="field">
+            <label for="account-name">Nome</label>
+            <input
+              id="account-name"
+              type="text"
+              formControlName="name"
+              autocomplete="off"
+              maxlength="255"
+              [attr.aria-invalid]="fieldError('name') != null"
+              [attr.aria-describedby]="fieldError('name') != null ? 'account-name-error' : null"
+            />
+            @if (fieldError('name'); as message) {
+              <p id="account-name-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="account-type">Tipo</label>
+            <select
+              id="account-type"
+              formControlName="type"
+              [attr.aria-invalid]="fieldError('type') != null"
+              [attr.aria-describedby]="fieldError('type') != null ? 'account-type-error' : null"
+            >
+              <option value="" disabled>Selecione</option>
+              @for (option of typeOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+            @if (fieldError('type'); as message) {
+              <p id="account-type-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          @if (formMode() === 'create') {
+            <div class="field">
+              <label for="account-initial-balance">Saldo inicial (opcional)</label>
+              <input
+                id="account-initial-balance"
+                type="number"
+                formControlName="initialBalance"
+                step="0.01"
+                [attr.aria-invalid]="fieldError('initialBalance') != null"
+                [attr.aria-describedby]="
+                  fieldError('initialBalance') != null ? 'account-initial-balance-error' : null
+                "
+              />
+              @if (fieldError('initialBalance'); as message) {
+                <p id="account-initial-balance-error" class="field__error">{{ message }}</p>
+              }
+            </div>
+          }
+
+          @if (formError(); as message) {
+            <app-error-state [message]="message" />
+          }
+
+          <div class="form-actions">
+            <button type="submit" [disabled]="submitting()">Salvar</button>
+            <button type="button" (click)="closeForm()" [disabled]="submitting()">Cancelar</button>
+          </div>
+        </form>
+      </section>
+    }
+  }
+</section>
