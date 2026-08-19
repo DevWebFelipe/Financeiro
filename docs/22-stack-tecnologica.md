@@ -161,6 +161,8 @@ Não adicionar outras ferramentas de qualidade sem necessidade.
 | Lint / format | ESLint + Prettier |
 | Pacotes | npm (`package-lock.json` versionado) |
 
+Angular Material, Material Icons, Apache ECharts e ESLint permanecem escolhas oficiais da V1, mas não constam atualmente em `frontend/package.json`. A interface entregue nas Fases 21–22 usa CSS próprio e o Dashboard usa barras CSS. A F23 auditará essa diferença sem instalar, remover ou atualizar dependências automaticamente.
+
 
 # 16. Angular
 
@@ -202,7 +204,7 @@ Framework oficial recomendado pelo Angular 22.x no scaffold do projeto.
 
 Priorizar: services, componentes críticos, formulários.
 
-E2E: **Playwright** poderá ser introduzido posteriormente (não obrigatório no início da V1).
+E2E: **Playwright/Chromium**, implementado na Fase 22 (`frontend/e2e/`, `frontend/playwright.config.ts`, `scripts/run-e2e.ps1`). Firefox/WebKit não estão configurados.
 
 
 # 21. Stack oficial — Banco
@@ -306,10 +308,12 @@ Backend:
 
 Frontend:
 
-- `npm run lint`
+- ESLint permanece a ferramenta oficial, mas o repositório não expõe atualmente um script `npm run lint`; a lacuna será classificada na auditoria inicial da F23, sem instalação ou alteração automática nesta consolidação
 - `npm run format` (ou equivalente)
 - `npm test`
 - `npm run build`
+
+Fase 23: dependências diretas e transitivas relevantes, Angular, Playwright e ferramentas de teste serão auditadas. Dependência não será removida ou atualizada automaticamente; upgrade relevante exige decisão própria. Estado da fase: **DECISÕES APROVADAS / CONSOLIDAÇÃO DOCUMENTAL** (`docs/28` §112).
 
 
 # 28. Dependências

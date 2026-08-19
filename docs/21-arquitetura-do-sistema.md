@@ -2177,3 +2177,61 @@ uma base fácil de evoluir.
 Somente então:
 
 adicionar funcionalidades.
+
+
+# 185. Fase 23 — Qualidade arquitetural
+
+**Estado:** **DECISÕES APROVADAS / CONSOLIDAÇÃO DOCUMENTAL**.
+
+A Fase 23 auditará a arquitetura existente sem modificá-la por antecipação. O contrato integral está em `docs/28-roadmap.md` §112.
+
+## 185.1 Frontend
+
+A organização de referência permanece:
+
+```text
+core
+shared
+layout
+features
+```
+
+Fluxo HTTP esperado:
+
+```text
+Page
+ ↓
+FeatureService
+ ↓
+HttpClient
+ ↓
+interceptors
+ ↓
+API
+```
+
+A auditoria verificará dependências invertidas, HTTP direto em componentes, imports e dependências entre features, duplicação de services/modelos, parsers, formatters e abstrações genéricas. C1–C7 e B12 serão inspecionados transversalmente, sem reabertura funcional.
+
+## 185.2 Autoridade e contratos
+
+O backend permanece a autoridade sobre contratos, regras e valores financeiros. O frontend não recalcula saldos, limites, parcelas, juros, descontos, créditos, acordos, progresso de metas, projeções ou resultados de relatórios. Formatters e agregações estritamente visuais não substituem dados oficiais da API.
+
+FeatureServices devem preservar endpoints, métodos HTTP, payloads, query params, headers, erros, tipos, parsing e retornos oficiais. Parsers rejeitam respostas incompatíveis e não corrigem silenciosamente payloads inválidos.
+
+## 185.3 Limites da correção
+
+- Corrigir somente problema real comprovado e na menor superfície necessária.
+- Não criar `BaseCrudService`, `GenericTable`, `GenericForm`, `GenericApiService`, `GenericReportComponent` ou abstração equivalente sem responsabilidade comum comprovada.
+- Não executar redesign, reescrita arquitetural, renomeação em massa, alteração de API ou otimização prematura.
+- Backend só pode mudar por bug real ou inconsistência de qualidade; endpoints e regras novas permanecem proibidos.
+- Banco e migrations não mudam na F23.
+- Dependências serão auditadas, não atualizadas automaticamente.
+- C8, CI/CD completo e deploy permanecem fora.
+
+## 185.4 Qualidade transversal
+
+A auditoria arquitetural inclui autenticação e sessão, tratamento de erros, rotas, navegação, estados de UI, duplo submit, refresh após mutation, responsividade, acessibilidade básica, performance, segurança técnica básica, scripts Windows e coerência documental.
+
+As ressalvas históricas de C1–C7, B12 e F22 serão classificadas conforme D-F23-32 como `CORRIGIR NA F23`, `ADIAR`, `INFORMATIVA` ou `ENCERRADA POR E2E`, sempre com justificativa. A existência de ressalva não autoriza correção automática.
+
+Nenhuma auditoria, correção ou resultado é declarado nesta consolidação. Próxima etapa: **F23 — AUDITORIA INICIAL / MAPA TÉCNICO**.

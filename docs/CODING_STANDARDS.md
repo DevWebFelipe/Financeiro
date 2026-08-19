@@ -769,7 +769,7 @@ Tests exist to provide confidence, not to maximize count or coverage.
 - Pure calculations (installments, rounding, invoice cycle): unit tests
 - Persistence, transactions, PostgreSQL behavior: integration tests with Testcontainers
 - HTTP contract: API tests
-- Important user journeys: few E2E tests later (Playwright)
+- Important user journeys: Playwright/Chromium E2E tests against the real stack (implemented in Phase 22)
 
 Do not use H2 as a silent substitute when PostgreSQL behavior matters.
 

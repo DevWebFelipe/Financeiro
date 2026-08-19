@@ -2685,3 +2685,67 @@ Ressalvas da auditoria (não bloqueantes; **não** corrigidas nesta consolidaç�
 - **AUD-F22-A2 — BAIXO:** a cobertura E2E dos relatórios JSON não percorre individualmente todos os tipos de relatório. A suíte cobre os principais fluxos e os contratos internos permanecem cobertos pelos testes da aplicação.
 - **AUD-F22-A3 — INFORMATIVO:** a validação visual da F22 é estrutural/funcional em desktop e mobile, não uma suíte de visual regression pixel-level com snapshots.
 - **AUD-F22-A4 — INFORMATIVO:** o helper de fechamento de fatura utilizado nos E2E prepara um cenário que, em produção, seria fechado pelo scheduler, pois o contrato atual não possui endpoint manual de fechamento. O helper permanece somente como fixture de teste e não representa uma operação disponível na aplicação.
+
+
+# 178. Fase 23 — Qualidade de testes
+
+**Estado:** **DECISÕES APROVADAS / CONSOLIDAÇÃO DOCUMENTAL**.
+
+Esta seção registra a estratégia aprovada; não declara auditoria executada, testes criados ou resultados obtidos. O contrato integral da F23 está em `docs/28-roadmap.md` §112.
+
+## 178.1 Suíte unitária
+
+A auditoria abrangerá services, parsers, formatters, pages, guards, interceptors e componentes críticos. Testes frágeis, redundantes ou ausentes serão identificados por risco; não haverá reescrita em massa apenas por estilo.
+
+Testes de contrato do frontend devem validar payloads exatos, sem campos indevidos, especialmente em créditos, ajustes, acordos, renegociações, relatórios, transferências e metas.
+
+Quando o comportamento envolver valores financeiros oficiais (`balance`, `remainingAmount`, limites, `currentAmount`, `progressPercent`, projeções e totais de relatórios), o frontend deve ser comparado à resposta da API. Não reproduzir fórmulas do backend para testar o frontend.
+
+## 178.2 E2E
+
+Playwright continua como ferramenta oficial; Chromium permanece obrigatório. Não adicionar Cypress, Selenium ou suíte paralela.
+
+A auditoria verificará:
+
+- independência, isolamento, dados únicos e cleanup;
+- estabilidade, seletores e waits;
+- ausência de sleeps arbitrários e dependência de ordem;
+- autenticação e API reais;
+- comportamento observável, sem acoplamento a classes, métodos privados ou detalhes internos do Angular.
+
+A cobertura E2E será orientada pelos riscos críticos, nesta ordem:
+
+1. autenticação;
+2. isolamento;
+3. saldo;
+4. pagamentos;
+5. transferências;
+6. cartões;
+7. faturas;
+8. acordos;
+9. metas;
+10. projeções;
+11. relatórios.
+
+Não há meta artificial de quantidade de testes ou percentual de cobertura.
+
+## 178.3 Correções e regressão
+
+Toda correção relevante exige teste adequado à camada do problema:
+
+```text
+bug de service → teste de service
+bug de parser  → teste de parser
+bug de page    → teste de page
+bug E2E        → teste E2E
+```
+
+Teste manual isolado não é suficiente. Nenhuma regra financeira será alterada para satisfazer teste; conflitos entre código, teste e documentação continuam sujeitos à governança do projeto.
+
+## 178.4 Aprovação
+
+Para aprovação da F23, unitários, E2E e builds devem passar, os contratos devem permanecer preservados e não pode haver regressão relevante conhecida. Ressalvas menores exigem registro, classificação, justificativa e caráter não bloqueante.
+
+Após as correções haverá auditoria final independente de diff, código, testes, E2E, builds, documentação, dependências, backend, migrations e escopo. Implementação não equivale a aprovação.
+
+Nenhuma suíte foi executada nesta consolidação documental. Próxima etapa: **F23 — AUDITORIA INICIAL / MAPA TÉCNICO**.

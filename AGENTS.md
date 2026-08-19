@@ -59,7 +59,7 @@ Documentação ativa:
 
 Se existirem arquivos `docs/01`–`docs/19` no repositório, considerá-los **obsoletos/históricos**. A IA NÃO deve usá-los como fonte de verdade.
 
-**DECISÃO PENDENTE DO DESENVOLVEDOR:** remover fisicamente `docs/01`–`docs/19` do repositório (ainda presentes no disco na consolidação; esta etapa não pôde alterá-los por restrição de escopo).
+Na consolidação documental da Fase 23, `docs/01`–`docs/19` não estavam presentes no repositório. A regra histórica acima permanece para impedir que eventuais cópias antigas voltem a ser tratadas como fonte oficial.
 
 ---
 
@@ -577,7 +577,7 @@ Obrigatórios para regras críticas. Backend: JUnit 5, Mockito, AssertJ, Spring 
 
 Priorizar: regras financeiras, parcelamentos, arredondamentos, faturas, pagamentos parciais, transferências, limite de cartão, isolamento, cancelamentos, estornos, autenticação/autorização.
 
-Frontend: framework oficial do Angular 22.x. E2E Playwright posteriormente.
+Frontend: framework oficial do Angular 22.x. E2E Playwright/Chromium implementado na Fase 22; estratégia e execução em `docs/27-testes.md` §160–162 e §177.
 
 Detalhes: `docs/27-testes.md`.
 
@@ -727,6 +727,12 @@ Até decisão explícita, **não** implementar Flyway, entidade, enum, CHECK, te
 **Fase 17 — Contas a receber (Parte 1 + Parte 2):** `docs/24` §19.8 / §19.9 / `docs/25` §67 / §67A / `docs/27` §40F / §40G / `docs/23` §269.6 — **`CONCLUÍDA E APROVADA`**. Decisões D73–D94 **fechadas** e **implementadas**. Migration V30; rota existente `GET /api/v1/receivables` — **não** recriar. **Não** criar tabela `receivables`. **Fase 18 — Projeções:** **`CONCLUÍDA E APROVADA`** (`docs/24` §19.10; D95–D204 **fechadas** e **implementadas**). Endpoint `GET /api/v1/projections`. **Não** criar tabela `projections`. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes). **Fase 19 — Dashboard:** **`CONCLUÍDA E APROVADA`** (`docs/24` §19.11; D282–D289). Endpoint `GET /api/v1/dashboard`. **Não** criar tabela `dashboard`. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
 
 **Fase 20 — Relatórios:** contrato `docs/24` §19.12 / API `docs/25` §76 / testes `docs/27` §40J — **`CONCLUÍDA E APROVADA`**. D-F20-01 a D-F20-16 **fechadas** e **implementadas**. Endpoints `GET /api/v1/reports/*` (7 JSON + 7 PDF). OpenPDF 3.0.5. Collection atualizada (14 requests). **Não** criar tabela `reports`. Paths `expenses-by-category` / `income-by-category` / `expenses-by-responsible` / `expenses-by-card` **SUPERADOS**. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento; não bloqueante). Suíte: **578** testes.
+
+**Fase 21 — Frontend completo:** **`CONCLUÍDA / APROVADA COM RESSALVAS`**. Blocos B1–B12 e C1–C7 implementados conforme `docs/21` §96A–§96S e `docs/28` §105. O backend permanece autoridade financeira.
+
+**Fase 22 — Integração / E2E / consolidação:** **`CONCLUÍDA / APROVADA COM RESSALVAS`**. Playwright/Chromium contra Angular, API e PostgreSQL reais; ressalvas `AUD-F22-A1` a `AUD-F22-A4` não bloqueantes. Detalhes: `docs/27` §160–§162 e §177; `docs/28` §110–§111.
+
+**Fase 23 — Qualidade:** decisões D-F23-01 a D-F23-48 aprovadas e consolidadas em `docs/28` §112. Estado: **`DECISÕES APROVADAS / CONSOLIDAÇÃO DOCUMENTAL`**. Ainda não auditada, implementada ou aprovada. Próxima etapa: **`F23 — AUDITORIA INICIAL / MAPA TÉCNICO`**. C8 permanece futura, não iniciada e fora da F23.
 
 **SUPERADO (Fase 9):** o antigo item 269.3 (rateio). Rateio proporcional ao remaining, ordenação remaining ASC, empate `due_date` ASC depois `id` ASC, residual na última, persistido como alocação. Status da fatura **não** muda por pagamento parcial. Detalhe: `docs/23` §269.3 e `docs/24` RN247.
 

@@ -1323,35 +1323,293 @@ Auditoria formal realizada (somente leitura). Ressalvas não bloqueantes (**não
 
 # 112. Fase 23 — Qualidade
 
-Objetivo:
+**Estado:** **DECISÕES APROVADAS / CONSOLIDAÇÃO DOCUMENTAL**.
 
-Revisar todo o sistema.
+A Fase 23 é a etapa de qualidade, consistência e endurecimento técnico posterior à conclusão do frontend da Fase 21 e à integração/E2E da Fase 22. Ela abrange transversalmente os blocos C1–C7 e B12 já encerrados, sem reabri-los funcionalmente. As ressalvas históricas de B12 e F22 entram como insumo para classificação durante a auditoria, não como correções automáticas.
+
+A F23 não é fase funcional. C8 permanece futura, não iniciada e fora do escopo; a F23 apenas prepara uma base técnica mais estável para seu desenvolvimento posterior.
+
+## 112.1 Objetivo e escopo
+
+Dentro do escopo:
+
+- auditoria estrutural e arquitetural;
+- testes unitários, de integração e E2E;
+- qualidade de código, contratos, parsers, formatters e formulários;
+- autenticação, sessão e segurança técnica básica;
+- dependências, scripts e documentação;
+- responsividade, acessibilidade e performance básicas;
+- correção mínima de problemas reais comprovados.
+
+Fora do escopo:
+
+- C8, novos módulos, funcionalidades, endpoints ou regras de negócio;
+- novas modalidades de relatório e modo simplificado/detalhado sem contrato backend;
+- redesign, reescrita arquitetural ou troca de Angular, Playwright ou banco;
+- migrations, alteração de banco, CI/CD completo e deploy;
+- refactors amplos, upgrades automáticos e otimizações prematuras.
+
+## 112.2 Princípios
+
+- O backend permanece autoridade sobre regras e valores financeiros; o frontend apresenta resultados oficiais e faz apenas validações de UX e cálculos estritamente visuais.
+- Corrigir a menor superfície necessária, sem reabrir fases anteriores por conveniência.
+- Não criar abstrações genéricas sem repetição significativa, comportamento comum e benefício claro.
+- E2E valida comportamento observável na cadeia navegador → API → banco → resultado, sem acoplamento a detalhes internos do Angular.
+- Testes financeiros do frontend devem comparar com contratos e respostas oficiais, não reproduzir fórmulas do backend.
+- Qualidade é avaliada por risco e resultado; não por meta artificial de quantidade de testes ou cobertura.
+- Decisão, execução e resultado de auditoria são registros distintos. Este contrato não antecipa resultados da F23.
+
+## 112.3 Decisões aprovadas
+
+### D-F23-01 — Objetivo formal da F23
+
+A F23 é uma fase de qualidade, consistência e endurecimento técnico, não uma fase funcional. Inclui auditoria estrutural, testes, E2E, qualidade de código, dependências, documentação, scripts, segurança técnica básica e correção de problemas reais encontrados. Não inclui funcionalidades financeiras, endpoints, regras financeiras, telas de negócio ou módulos funcionais novos.
+
+### D-F23-02 — Backend como autoridade
+
+O frontend não deve reproduzir regras financeiras do backend, incluindo saldos, limites, parcelas, juros, descontos, créditos, acordos, progresso de metas, projeções e resultados de relatórios. Cálculos estritamente de apresentação permanecem permitidos.
+
+### D-F23-03 — Auditoria arquitetural do frontend
+
+Auditar a organização `core` / `shared` / `layout` / `features` e a cadeia `Page → FeatureService → HttpClient → interceptors → API`. Procurar dependências invertidas, HTTP direto em componentes, imports inadequados, services ou modelos duplicados, parsers inconsistentes, formatters desnecessários, abstrações genéricas sem valor e dependências indevidas entre features.
+
+### D-F23-04 — Abstrações genéricas
+
+Não extrair abstração apenas para reduzir duplicação. A extração exige repetição significativa, comportamento realmente comum, benefício claro de manutenção e preservação da clareza. Não criar artificialmente `BaseCrudService`, `GenericTable`, `GenericForm`, `GenericApiService` ou `GenericReportComponent`.
+
+### D-F23-05 — Auditoria dos services
+
+Auditar todos os FeatureServices quanto a endpoints, métodos HTTP, payloads, query params, headers, erros, tipos, parsing, retornos e ausência de lógica financeira, com atenção especial a C1–C7, B12 e helpers da F22 que interagem com a API.
+
+### D-F23-06 — Parsers
+
+Verificar rejeição de payload inválido, obrigatoriedade, enums, preservação de `null`, casts e correspondência entre DTO real e modelo frontend. Parser não pode corrigir silenciosamente resposta inválida.
+
+### D-F23-07 — Formatters
+
+Formatters são exclusivamente de apresentação. Podem formatar moeda, datas, labels, percentuais, enums e textos; não podem alterar valores, calcular regras financeiras, inferir estados de negócio ou substituir valores oficiais da API.
+
+### D-F23-08 — Formulários
+
+Auditar validações básicas de UX, obrigatoriedade, whitespace quando aplicável, valores obviamente inválidos e mensagens coerentes. O frontend não precisa reproduzir integralmente Bean Validation; o backend continua sendo autoridade.
+
+### D-F23-09 — Tratamento de erros
+
+Auditar `400`, `401`, `403`, `404`, `409`, `422` caso exista, `500` e indisponibilidade da API. Verificar mensagens, preservação do estado da tela, retry, ausência de loops, ausência de dados fictícios e ausência de stack trace exposto.
+
+### D-F23-10 — Autenticação e sessão
+
+Auditar login, logout, expiração JWT, interceptor, guard, armazenamento do token, tratamento de `401`, redirecionamento e limpeza de sessão. O mecanismo não será alterado sem necessidade comprovada.
+
+### D-F23-11 — Segurança básica
+
+Auditar armazenamento JWT, XSS, `innerHTML`, interpolação, URLs externas, downloads, secrets, `.env`, logs e credenciais hardcoded. A F23 não é um pentest completo.
+
+### D-F23-12 — Dependências
+
+Auditar `package.json`, `package-lock.json`, dependências diretas, transitivas relevantes, Angular, Playwright e ferramentas de teste. Identificar itens não utilizados, duplicados, desnecessários e vulnerabilidades conhecidas. Não atualizar automaticamente; upgrades relevantes exigem decisão própria.
+
+### D-F23-13 — Playwright
+
+Playwright permanece a ferramenta E2E oficial, com Chromium obrigatório nesta etapa. Não adicionar Cypress, Selenium ou ferramenta paralela.
+
+### D-F23-14 — Suíte E2E
+
+Auditar independência, dados únicos, isolamento, cleanup, estabilidade, seletores, waits, ausência de sleeps arbitrários, ausência de dependência de ordem, API real e autenticação real.
+
+### D-F23-15 — Cobertura E2E
+
+Não perseguir quantidade artificial. A cobertura deve priorizar riscos críticos, nesta ordem: autenticação, isolamento, saldo, pagamentos, transferências, cartões, faturas, acordos, metas, projeções e relatórios.
+
+### D-F23-16 — E2E comportamental
+
+E2E valida comportamento observado pelo usuário na cadeia navegador → API → banco → resultado. Não depende de classes internas, métodos privados, detalhes Angular ou estrutura interna dos services.
+
+### D-F23-17 — Suíte unitária
+
+Auditar services, parsers, formatters, pages, guards, interceptors e componentes críticos. Identificar testes frágeis ou redundantes sem reescrever centenas de testes apenas por estilo.
+
+### D-F23-18 — Autoridade do backend nos testes
+
+Ao verificar valores financeiros oficiais, como `balance`, `remainingAmount`, limite, `currentAmount`, `progressPercent`, projeções e totais de relatórios, preferir comparação com a resposta da API. Não reproduzir fórmulas financeiras no frontend apenas para testá-lo.
+
+### D-F23-19 — Contratos frontend
+
+Criar ou fortalecer testes de contrato que garantam payloads exatos, sem campos adicionais indevidos. Dar atenção especial a créditos, ajustes, acordos, renegociações, relatórios, transferências e metas.
+
+### D-F23-20 — Rotas
+
+Auditar rotas públicas e protegidas, lazy loading, redirects, páginas inexistentes, navegação, refresh direto e coerência das features.
+
+### D-F23-21 — Navegação
+
+Auditar menu, ícones, labels, ordem, rotas, estado ativo, desktop e mobile. Corrigir somente inconsistências reais; pendências históricas podem ser corrigidas sem reabrir funcionalmente fases encerradas.
+
+### D-F23-22 — Responsividade
+
+Auditar desktop, tablet quando relevante e mobile, priorizando overflow, tabelas, formulários, navegação, painéis, PDFs/downloads, erros e botões inacessíveis. Não redesenhar o sistema.
+
+### D-F23-23 — Acessibilidade
+
+Realizar verificação básica de labels, inputs, botões, foco, teclado, Escape, contraste evidente, nome acessível e navegação básica por teclado. Não buscar certificação WCAG completa.
+
+### D-F23-24 — Estados de UI
+
+Auditar `loading`, `success`, `empty`, `error`, `retry`, `submitting` e `disabled`, especialmente após mutations. Nenhuma tela deve permanecer visualmente inconsistente após uma operação.
+
+### D-F23-25 — Concorrência e duplo submit
+
+Auditar duplo clique, múltiplos submits, requests e confirmações repetidas. Quando aplicável, marcar `submitting`, bloquear nova operação, executar o request e restaurar o estado em `finally`.
+
+### D-F23-26 — Refresh após mutation
+
+Após alteração, a UI deve refletir valores oficiais do backend. O refresh deve ser necessário, explícito e coerente, nunca indiscriminado.
+
+### D-F23-27 — Performance
+
+Auditar bundle, lazy loading, HTTP duplicado, loops, requests desnecessários, carregamento inicial, tabelas grandes, relatórios e PDF. Não realizar otimização prematura.
+
+### D-F23-28 — Relatórios
+
+Auditar `/reports`: parâmetros, paginação, ordenação, filtros, datas, enums, PDF, download, erros, loading, empty e mobile. Não criar tipos novos nem modo simplificado/detalhado sem contrato backend.
+
+### D-F23-29 — Projeções
+
+Auditar `/projections`: combinações de parâmetros, período, paginação, eventos, `undatedEvents`, `negative` e `overdue`. O frontend pode validar combinações simples já declaradas inválidas pelo contrato; o backend continua autoridade.
+
+### D-F23-30 — Metas
+
+Auditar `/goals`: paginação, status, contribuições, resgates, conclusão, cancelamento, valores oficiais e progresso. Não alterar regras financeiras das metas.
+
+### D-F23-31 — Cartões e faturas
+
+Realizar auditoria transversal de C1–C7 para integração, navegação, contratos, E2E e regressões. Não reabrir os blocos; corrigir apenas regressões ou bugs atuais claramente comprovados.
+
+### D-F23-32 — Pendências históricas
+
+Classificar cada pendência, com justificativa, como `CORRIGIR NA F23`, `ADIAR`, `INFORMATIVA` ou `ENCERRADA POR E2E`. A existência de uma pendência não autoriza correção automática.
+
+### D-F23-33 — Documentação
+
+Auditar `README.md`, `frontend/README.md`, `docs/21`, `docs/27`, `docs/28`, documentação de testes e roadmap para que descrevam o estado real do repositório sem se tornarem cópia do código.
+
+### D-F23-34 — Scripts
+
+Auditar `start.ps1`, `run-backend.ps1`, `run-e2e.ps1` e Docker Compose quanto a funcionamento, mensagens, pré-requisitos, caminhos, duplicações e compatibilidade Windows.
+
+### D-F23-35 — Limpeza técnica
+
+Remover somente temporários, código morto comprovado, imports inutilizados, artefatos esquecidos, scripts obsoletos e dependências comprovadamente não utilizadas. Não remover com base apenas em aparência.
+
+### D-F23-36 — Backend
+
+O backend só poderá ser alterado diante de bug real ou inconsistência que comprometa a qualidade. Não criar endpoints nem regras.
+
+### D-F23-37 — Banco
+
+Não criar migrations. O banco será usado somente para testes, validação, E2E e diagnóstico.
+
+### D-F23-38 — CI/CD
+
+Não implementar CI/CD completo, GitHub Actions, pipelines de deploy, ambientes remotos ou publicação automática. Estrutura futura pode ser preparada sem iniciar CI/CD.
+
+### D-F23-39 — Métricas
+
+Não estabelecer meta artificial, como 100% de coverage. Indicadores são testes, builds e E2E passando; ausência de regressões; contratos corretos; arquitetura consistente; ausência de bugs relevantes conhecidos; e documentação alinhada.
+
+### D-F23-40 — Critério de aprovação
+
+A F23 somente poderá ser aprovada quando a auditoria estiver concluída, problemas críticos corrigidos, unitários/E2E/builds passando, contratos preservados, backend íntegro, documentação consolidada e nenhuma regressão relevante conhecida. Ressalvas menores somente podem permanecer se registradas, classificadas, justificadas e não bloqueantes.
+
+### D-F23-41 — Metodologia
+
+Fluxo oficial:
+
+```text
+decisões
+   ↓
+consolidação documental
+   ↓
+auditoria inicial / mapa técnico
+   ↓
+implementação das correções
+   ↓
+testes
+   ↓
+auditoria final
+   ↓
+consolidação documental
+   ↓
+aprovação
+```
+
+Não implementar antes da consolidação documental.
+
+### D-F23-42 — Fora do escopo
+
+Permanecem fora: C8, módulos e regras financeiras novos, modalidades novas de relatório, modo simplificado/detalhado, CI/CD completo, deploy, redesign, migração de framework, troca de Angular, Playwright ou banco e reescrita arquitetural.
+
+### D-F23-43 — C8
+
+C8 permanece fora e não deve ser iniciada incidentalmente. A F23 apenas prepara a base técnica para seu desenvolvimento futuro.
+
+### D-F23-44 — Correção mínima
+
+Corrigir a menor superfície necessária. Evitar refactoring amplo, alteração de API, renomeações em massa, migrations e reorganizações desnecessárias.
+
+### D-F23-45 — Regra contra regressão
+
+Toda correção relevante deve possuir teste adequado à sua camada: bug de service → teste de service; parser → parser; page → page; E2E → E2E. Teste manual isolado não é suficiente.
+
+### D-F23-46 — Auditoria final independente
+
+Após a implementação haverá auditoria final independente de diff, código, testes, E2E, builds, documentação, dependências, backend, migrations e escopo. Implementação não equivale a aprovação.
+
+### D-F23-47 — Consolidação final
+
+Após a auditoria final, atualizar `docs/21`, `docs/27`, `docs/28`, `README.md` e `frontend/README.md` quando aplicável, registrando resultado, ressalvas, justificativas e próximo passo do roadmap.
+
+### D-F23-48 — Encerramento
+
+Estados finais oficiais: `APROVADA`, `APROVADA COM RESSALVAS` ou `REPROVADA / NECESSITA CORREÇÃO`. Não utilizar estados intermediários informais como “quase”, “parcialmente” ou “praticamente concluída”.
+
+## 112.4 Registro de execução e auditoria
+
+O registro de execução/auditoria deverá conter, em etapa posterior:
+
+- mapa técnico e itens auditados;
+- problemas encontrados e classificação das pendências;
+- correções e testes associados;
+- resultados de unitários, E2E, builds e verificações;
+- auditoria final independente, ressalvas e decisão de aprovação.
+
+Nenhum desses resultados foi obtido nesta consolidação. A F23 não está implementada, auditada nem aprovada.
 
 
-# 113. Revisão
+# 113. Critérios de aprovação da F23
 
-Verificar:
+Aplicam-se integralmente D-F23-39, D-F23-40, D-F23-46 e D-F23-48. A aprovação formal ocorrerá somente após execução, testes, auditoria final independente e consolidação final.
 
-- segurança;
-- performance;
-- arquitetura;
-- código duplicado;
-- validações;
-- testes;
-- documentação.
+O estado após esta etapa documental é:
+
+```text
+F23 — DECISÕES APROVADAS / CONSOLIDAÇÃO DOCUMENTAL
+```
+
+O próximo estado previsto é:
+
+```text
+F23 — AUDITORIA INICIAL / MAPA TÉCNICO
+```
 
 
-# 114. Revisão
+# 114. Relação com o roadmap
 
-Executar:
-
-lint;
-
-format;
-
-testes;
-
-build.
+- Fases 21 e 22 permanecem encerradas com suas ressalvas históricas.
+- C1–C7 e B12 serão auditados transversalmente, sem reabertura funcional.
+- As ressalvas de B12 e F22 serão classificadas conforme D-F23-32.
+- C8 permanece posterior, fora da F23 e não iniciada.
+- F24 e etapas futuras não são iniciadas pela consolidação da F23.
 
 
 # 115. Fase 24 — Documentação
@@ -1739,9 +1997,9 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9**. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 15: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**. Fase 17: **CONCLUÍDA E APROVADA**. Fase 18: **CONCLUÍDA E APROVADA**. Fase 19: **CONCLUÍDA E APROVADA**. Fase 20: **CONCLUÍDA E APROVADA**. Fase 21: **CONCLUÍDA / APROVADA COM RESSALVAS**. Fase 22: **CONCLUÍDA / APROVADA COM RESSALVAS**.
+Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9**. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 15: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**. Fase 17: **CONCLUÍDA E APROVADA**. Fase 18: **CONCLUÍDA E APROVADA**. Fase 19: **CONCLUÍDA E APROVADA**. Fase 20: **CONCLUÍDA E APROVADA**. Fase 21: **CONCLUÍDA / APROVADA COM RESSALVAS**. Fase 22: **CONCLUÍDA / APROVADA COM RESSALVAS**. Fase 23: **DECISÕES APROVADAS / CONSOLIDAÇÃO DOCUMENTAL**.
 
-**Fase 20 — Relatórios:** **CONCLUÍDA E APROVADA** (`docs/28` §101 / `docs/24` §19.12 / `docs/25` §76; D-F20-01 a D-F20-16 **implementadas**). 7 JSON + 7 PDF. OpenPDF 3.0.5. Collection atualizada (14 requests). Flyway V30; sem tabela `reports`. Testes: `ReportsApiTest`. Suíte: **578** testes. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento; não bloqueante). **Fase 21 — Frontend completo:** **CONCLUÍDA / APROVADA COM RESSALVAS**. **Fase 22 — E2E / consolidação:** **CONCLUÍDA / APROVADA COM RESSALVAS** (Playwright/Chromium; `frontend/e2e/`; `scripts/run-e2e.ps1`; auditoria formal; ressalvas **AUD-F22-A1** a **AUD-F22-A4** não bloqueantes e não corrigidas nesta consolidação). C8 permanece **não iniciada**. Próxima etapa do roadmap: **Fase 23 — Qualidade**. Bloco B1 (Design System base) **implementado**. Bloco B2 (HTTP / erros) **implementado**. Bloco B3 (autenticação) **implementado**. Bloco B4 (App Shell) **implementado**. Bloco B5 (Dashboard funcional) **implementado**. Bloco B6 (Shared UI) **implementado**. Bloco B7 (Contas) **implementado**. Bloco B8 (Categorias) **implementado**. Bloco B9 (Despesas) **implementado**. Bloco B10 (Receitas) **implementado**. Bloco B11 (Contas a pagar) **implementado**. Blocos C1–C7 **implementados** (`CONCLUÍDO / APROVADO COM RESSALVAS`). B12 **CONCLUÍDA / APROVADA COM RESSALVAS**.
+**Fase 20 — Relatórios:** **CONCLUÍDA E APROVADA** (`docs/28` §101 / `docs/24` §19.12 / `docs/25` §76; D-F20-01 a D-F20-16 **implementadas**). 7 JSON + 7 PDF. OpenPDF 3.0.5. Collection atualizada (14 requests). Flyway V30; sem tabela `reports`. Testes: `ReportsApiTest`. Suíte: **578** testes. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento; não bloqueante). **Fase 21 — Frontend completo:** **CONCLUÍDA / APROVADA COM RESSALVAS**. **Fase 22 — E2E / consolidação:** **CONCLUÍDA / APROVADA COM RESSALVAS** (Playwright/Chromium; `frontend/e2e/`; `scripts/run-e2e.ps1`; auditoria formal; ressalvas **AUD-F22-A1** a **AUD-F22-A4** não bloqueantes e não corrigidas nesta consolidação). **Fase 23 — Qualidade:** **DECISÕES APROVADAS / CONSOLIDAÇÃO DOCUMENTAL**; ainda não auditada, implementada ou aprovada. C8 permanece **não iniciada** e fora da F23. Próxima etapa do roadmap: **F23 — AUDITORIA INICIAL / MAPA TÉCNICO**. Bloco B1 (Design System base) **implementado**. Bloco B2 (HTTP / erros) **implementado**. Bloco B3 (autenticação) **implementado**. Bloco B4 (App Shell) **implementado**. Bloco B5 (Dashboard funcional) **implementado**. Bloco B6 (Shared UI) **implementado**. Bloco B7 (Contas) **implementado**. Bloco B8 (Categorias) **implementado**. Bloco B9 (Despesas) **implementado**. Bloco B10 (Receitas) **implementado**. Bloco B11 (Contas a pagar) **implementado**. Blocos C1–C7 **implementados** (`CONCLUÍDO / APROVADO COM RESSALVAS`). B12 **CONCLUÍDA / APROVADA COM RESSALVAS**.
 
 **Fase 19 — CONCLUÍDA E APROVADA.** Endpoint: `GET /api/v1/dashboard`. Sem tabela `dashboard`. D282–D289 **implementadas**. Testes: `DashboardApiTest`. Suíte: **519** testes. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
 
