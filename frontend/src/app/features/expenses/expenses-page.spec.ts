@@ -5,6 +5,8 @@ import { Account } from '../accounts/accounts.models';
 import { AccountsService } from '../accounts/accounts.service';
 import { Category } from '../categories/categories.models';
 import { CategoriesService } from '../categories/categories.service';
+import { CreditCard } from '../credit-cards/credit-cards.models';
+import { CreditCardsService } from '../credit-cards/credit-cards.service';
 import { Expense, ExpenseInstallment, ExpensePage } from './expenses.models';
 import { ExpensesPage } from './expenses-page';
 import { ExpensesService } from './expenses.service';
@@ -14,6 +16,9 @@ const EXPENSE_ID = '01900000-0000-7000-8000-000000000010';
 const CATEGORY_ID = '01900000-0000-7000-8000-000000000002';
 const ACCOUNT_ID = '01900000-0000-7000-8000-000000000003';
 const INSTALLMENT_ID = '01900000-0000-7000-8000-000000000011';
+const CARD_ID = '01900000-0000-7000-8000-000000000040';
+const CARD_ID_INACTIVE = '01900000-0000-7000-8000-000000000041';
+const CARD_ID_NO_DIGITS = '01900000-0000-7000-8000-000000000042';
 
 function expense(overrides: Partial<Expense> = {}): Expense {
   return {
@@ -85,6 +90,22 @@ const account = (): Account => ({
   updatedAt: '2026-08-14T12:00:00Z',
 });
 
+function creditCard(overrides: Partial<CreditCard> = {}): CreditCard {
+  return {
+    id: CARD_ID,
+    name: 'Nubank',
+    holderName: 'Ederson',
+    lastFourDigits: '1234',
+    creditLimit: 5000,
+    closingDay: 10,
+    dueDay: 20,
+    active: true,
+    createdAt: '2026-08-13T12:00:00Z',
+    updatedAt: '2026-08-13T12:00:00Z',
+    ...overrides,
+  };
+}
+
 const loadError: ApiError = {
   timestamp: '2026-08-19T15:00:00Z',
   status: 500,
@@ -105,6 +126,7 @@ describe('ExpensesPage', () => {
   let listInstallments: ReturnType<typeof vi.fn>;
   let listCategories: ReturnType<typeof vi.fn>;
   let listAccounts: ReturnType<typeof vi.fn>;
+  let listCreditCards: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     list = vi.fn();
@@ -118,6 +140,24 @@ describe('ExpensesPage', () => {
     listInstallments = vi.fn();
     listCategories = vi.fn().mockReturnValue(of([category()]));
     listAccounts = vi.fn().mockReturnValue(of([account()]));
+    listCreditCards = vi.fn().mockReturnValue(
+      of([
+        creditCard(),
+        creditCard({
+          id: CARD_ID_INACTIVE,
+          name: 'Inter',
+          holderName: 'Giulia',
+          lastFourDigits: '9999',
+          active: false,
+        }),
+        creditCard({
+          id: CARD_ID_NO_DIGITS,
+          name: 'C6',
+          holderName: 'Elisiane',
+          lastFourDigits: null,
+        }),
+      ]),
+    );
 
     await TestBed.configureTestingModule({
       imports: [ExpensesPage],
@@ -143,6 +183,10 @@ describe('ExpensesPage', () => {
         {
           provide: AccountsService,
           useValue: { list: listAccounts },
+        },
+        {
+          provide: CreditCardsService,
+          useValue: { list: listCreditCards },
         },
       ],
     }).compileComponents();
@@ -250,8 +294,10 @@ describe('ExpensesPage', () => {
         description: 'Farmácia',
         totalAmount: 80,
         paymentMethod: 'ACCOUNT',
+        accountId: ACCOUNT_ID,
       }),
     );
+    expect(create.mock.calls[0]?.[0]).not.toHaveProperty('creditCardId');
     expect(list).toHaveBeenCalledTimes(2);
   });
 
@@ -549,6 +595,281 @@ describe('ExpensesPage', () => {
 
     expect(fixture.nativeElement.querySelector('#expense-cancel-title')).toBeNull();
     expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it('hides the card field and omits creditCardId for ACCOUNT and NONE', async () => {
+    list.mockReturnValue(of(page([])));
+    create.mockReturnValue(of(expense({ paymentMethod: 'NONE', accountId: null })));
+    const fixture = TestBed.createComponent(ExpensesPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.componentInstance.openCreate();
+    fixture.detectChanges();
+    fixture.componentInstance.expenseForm.patchValue({
+      categoryId: CATEGORY_ID,
+      description: 'Farmácia',
+      totalAmount: 80,
+      expenseDate: '2026-08-01',
+      dueDate: '2026-08-15',
+      paymentMethod: 'ACCOUNT',
+      accountId: ACCOUNT_ID,
+      responsibleType: 'MINE',
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#expense-credit-card')).toBeNull();
+
+    fixture.componentInstance.expenseForm.patchValue({ paymentMethod: 'NONE', accountId: '' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#expense-credit-card')).toBeNull();
+
+    await fixture.componentInstance.submitExpenseForm();
+    expect(create.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ paymentMethod: 'NONE' }));
+    expect(create.mock.calls[0]?.[0]).not.toHaveProperty('creditCardId');
+    expect(create.mock.calls[0]?.[0]).not.toHaveProperty('accountId');
+  });
+
+  it('shows active cards for CREDIT_CARD and sends creditCardId', async () => {
+    list.mockReturnValue(of(page([])));
+    create.mockReturnValue(
+      of(expense({ paymentMethod: 'CREDIT_CARD', accountId: null, creditCardId: CARD_ID })),
+    );
+    const fixture = TestBed.createComponent(ExpensesPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.componentInstance.openCreate();
+    fixture.detectChanges();
+    fixture.componentInstance.expenseForm.patchValue({
+      categoryId: CATEGORY_ID,
+      description: 'Farmácia',
+      totalAmount: 80,
+      expenseDate: '2026-08-01',
+      dueDate: '2026-08-15',
+      paymentMethod: 'CREDIT_CARD',
+      responsibleType: 'MINE',
+    });
+    fixture.detectChanges();
+
+    const select = fixture.nativeElement.querySelector('#expense-credit-card') as HTMLSelectElement;
+    expect(select).not.toBeNull();
+    const options = Array.from(select.querySelectorAll('option')).map(
+      (option) => option.textContent ?? '',
+    );
+    expect(options.join(' ')).toContain('Nubank — Ederson •••• 1234');
+    const withoutDigits = options.find((option) => option.includes('C6'));
+    expect(withoutDigits).toContain('C6 — Elisiane');
+    expect(withoutDigits).not.toContain('••••');
+    expect(options.join(' ')).not.toContain('Inter');
+    expect(options.join(' ')).not.toContain('9999');
+
+    fixture.componentInstance.expenseForm.patchValue({ creditCardId: CARD_ID });
+    await fixture.componentInstance.submitExpenseForm();
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paymentMethod: 'CREDIT_CARD',
+        creditCardId: CARD_ID,
+      }),
+    );
+    expect(create.mock.calls[0]?.[0]).not.toHaveProperty('accountId');
+  });
+
+  it('does not submit CREDIT_CARD without a selected card', async () => {
+    list.mockReturnValue(of(page([])));
+    const fixture = TestBed.createComponent(ExpensesPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.componentInstance.openCreate();
+    fixture.componentInstance.expenseForm.patchValue({
+      categoryId: CATEGORY_ID,
+      description: 'Farmácia',
+      totalAmount: 80,
+      expenseDate: '2026-08-01',
+      dueDate: '2026-08-15',
+      paymentMethod: 'CREDIT_CARD',
+      responsibleType: 'MINE',
+    });
+    await fixture.componentInstance.submitExpenseForm();
+    fixture.detectChanges();
+
+    expect(create).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.expenseFieldError('creditCardId')).toBe('Campo obrigatório.');
+  });
+
+  it('clears creditCardId and validators when switching from CREDIT_CARD to ACCOUNT or NONE', async () => {
+    list.mockReturnValue(of(page([])));
+    create.mockReturnValue(of(expense()));
+    const fixture = TestBed.createComponent(ExpensesPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.componentInstance.openCreate();
+    fixture.componentInstance.expenseForm.patchValue({
+      categoryId: CATEGORY_ID,
+      description: 'Farmácia',
+      totalAmount: 80,
+      expenseDate: '2026-08-01',
+      dueDate: '2026-08-15',
+      paymentMethod: 'CREDIT_CARD',
+      creditCardId: CARD_ID,
+      responsibleType: 'MINE',
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#expense-credit-card')).not.toBeNull();
+    expect(fixture.componentInstance.expenseForm.controls.creditCardId.value).toBe(CARD_ID);
+
+    fixture.componentInstance.expenseForm.patchValue({
+      paymentMethod: 'ACCOUNT',
+      accountId: ACCOUNT_ID,
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#expense-credit-card')).toBeNull();
+    expect(fixture.componentInstance.expenseForm.controls.creditCardId.value).toBe('');
+    expect(fixture.componentInstance.expenseForm.controls.creditCardId.validator).toBeNull();
+
+    fixture.componentInstance.expenseForm.patchValue({
+      paymentMethod: 'CREDIT_CARD',
+      creditCardId: CARD_ID,
+    });
+    fixture.componentInstance.expenseForm.patchValue({ paymentMethod: 'NONE' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#expense-credit-card')).toBeNull();
+    expect(fixture.componentInstance.expenseForm.controls.creditCardId.value).toBe('');
+
+    await fixture.componentInstance.submitExpenseForm();
+    expect(create.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ paymentMethod: 'NONE' }));
+    expect(create.mock.calls[0]?.[0]).not.toHaveProperty('creditCardId');
+  });
+
+  it('shows an explicit error when credit cards fail to load and still allows ACCOUNT create', async () => {
+    list.mockReturnValue(of(page([])));
+    listCreditCards.mockReturnValue(throwError(() => loadError));
+    create.mockReturnValue(of(expense()));
+    const fixture = TestBed.createComponent(ExpensesPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.status()).toBe('loaded');
+    fixture.componentInstance.openCreate();
+    fixture.componentInstance.expenseForm.patchValue({
+      categoryId: CATEGORY_ID,
+      description: 'Farmácia',
+      totalAmount: 80,
+      expenseDate: '2026-08-01',
+      dueDate: '2026-08-15',
+      paymentMethod: 'CREDIT_CARD',
+      responsibleType: 'MINE',
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Não foi possível carregar os cartões.');
+
+    await fixture.componentInstance.submitExpenseForm();
+    expect(create).not.toHaveBeenCalled();
+
+    fixture.componentInstance.expenseForm.patchValue({
+      paymentMethod: 'ACCOUNT',
+      accountId: ACCOUNT_ID,
+    });
+    await fixture.componentInstance.submitExpenseForm();
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ paymentMethod: 'ACCOUNT' }));
+  });
+
+  it('retries the credit-card catalog without failing ACCOUNT/NONE', async () => {
+    list.mockReturnValue(of(page([])));
+    listCreditCards
+      .mockReturnValueOnce(throwError(() => loadError))
+      .mockReturnValueOnce(of([creditCard()]));
+    const fixture = TestBed.createComponent(ExpensesPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.componentInstance.openCreate();
+    fixture.componentInstance.expenseForm.patchValue({ paymentMethod: 'CREDIT_CARD' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Não foi possível carregar os cartões.');
+
+    fixture.componentInstance.retryCreditCards();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(listCreditCards).toHaveBeenCalledTimes(2);
+    expect(fixture.nativeElement.querySelector('#expense-credit-card')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Nubank — Ederson •••• 1234');
+  });
+
+  it('treats an empty active-card catalog as empty, not as a technical error', async () => {
+    list.mockReturnValue(of(page([])));
+    listCreditCards.mockReturnValue(
+      of([creditCard({ id: CARD_ID_INACTIVE, active: false, name: 'Inter' })]),
+    );
+    const fixture = TestBed.createComponent(ExpensesPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.componentInstance.openCreate();
+    fixture.componentInstance.expenseForm.patchValue({
+      categoryId: CATEGORY_ID,
+      description: 'Farmácia',
+      totalAmount: 80,
+      expenseDate: '2026-08-01',
+      dueDate: '2026-08-15',
+      paymentMethod: 'CREDIT_CARD',
+      responsibleType: 'MINE',
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Nenhum cartão ativo disponível.');
+    expect(fixture.nativeElement.querySelector('#expense-credit-card')).toBeNull();
+    await fixture.componentInstance.submitExpenseForm();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('keeps CREDIT_CARD expenses non-editable', async () => {
+    const cardExpense = expense({
+      paymentMethod: 'CREDIT_CARD',
+      status: 'OPEN',
+      creditCardId: CARD_ID,
+    });
+    list.mockReturnValue(of(page([cardExpense])));
+    const fixture = TestBed.createComponent(ExpensesPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.canEditItem(cardExpense)).toBe(false);
+    fixture.componentInstance.openEdit(cardExpense);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#expense-form-title')).toBeNull();
+  });
+
+  it('shows historical CREDIT_CARD expenses in detail including an inactive card', async () => {
+    const historical = expense({
+      paymentMethod: 'CREDIT_CARD',
+      creditCardId: CARD_ID_INACTIVE,
+      accountId: null,
+    });
+    list.mockReturnValue(of(page([historical])));
+    get.mockReturnValue(of(historical));
+    listInstallments.mockReturnValue(of([installment()]));
+    const fixture = TestBed.createComponent(ExpensesPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Mercado');
+    expect(fixture.nativeElement.textContent).toContain('Cartão');
+
+    await fixture.componentInstance.openDetail(historical);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Detalhes da despesa');
+    expect(fixture.nativeElement.textContent).toContain('Inter — Giulia •••• 9999');
   });
 });
 

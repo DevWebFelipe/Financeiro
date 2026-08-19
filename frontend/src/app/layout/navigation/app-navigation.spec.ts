@@ -16,6 +16,8 @@ describe('AppNavigation', () => {
         provideRouter([
           { path: 'dashboard', component: AppNavigation },
           { path: 'accounts', component: AppNavigation },
+          { path: 'credit-cards', component: AppNavigation },
+          { path: 'invoices', component: AppNavigation },
           { path: 'categories', component: AppNavigation },
           { path: 'expenses', component: AppNavigation },
           { path: 'incomes', component: AppNavigation },
@@ -43,6 +45,26 @@ describe('AppNavigation', () => {
     );
     const accounts = links.find((link) => link.textContent?.includes('Contas'));
     expect(accounts?.getAttribute('href')).toBe('/accounts');
+  });
+
+  it('renders the Credit Cards item now that the feature exists', async () => {
+    const fixture = TestBed.createComponent(AppNavigation);
+    await fixture.whenStable();
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>,
+    );
+    const cards = links.find((link) => link.textContent?.includes('Cartões'));
+    expect(cards?.getAttribute('href')).toBe('/credit-cards');
+  });
+
+  it('renders the Invoices item now that the feature exists', async () => {
+    const fixture = TestBed.createComponent(AppNavigation);
+    await fixture.whenStable();
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>,
+    );
+    const invoices = links.find((link) => link.textContent?.includes('Faturas'));
+    expect(invoices?.getAttribute('href')).toBe('/invoices');
   });
 
   it('renders the Categories item now that the feature exists', async () => {

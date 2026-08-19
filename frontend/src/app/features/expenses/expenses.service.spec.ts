@@ -154,6 +154,36 @@ describe('ExpensesService', () => {
     await expect(pending).resolves.toMatchObject({ description: 'Mercado' });
   });
 
+  it('creates a CREDIT_CARD expense with creditCardId and without accountId', async () => {
+    const body = {
+      categoryId: '01900000-0000-7000-8000-000000000002',
+      description: 'Farmácia',
+      totalAmount: 80,
+      expenseDate: '2026-08-01',
+      dueDate: '2026-08-15',
+      paymentMethod: 'CREDIT_CARD' as const,
+      creditCardId: '01900000-0000-7000-8000-000000000040',
+      responsibleType: 'MINE' as const,
+    };
+    const pending = firstValueFrom(service.create(body));
+    const request = httpTesting.expectOne(api('/expenses'));
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(body);
+    expect(request.request.body).not.toHaveProperty('accountId');
+    request.flush(
+      expenseBody({
+        paymentMethod: 'CREDIT_CARD',
+        accountId: null,
+        creditCardId: body.creditCardId,
+      }),
+      { status: 201, statusText: 'Created' },
+    );
+    await expect(pending).resolves.toMatchObject({
+      paymentMethod: 'CREDIT_CARD',
+      creditCardId: body.creditCardId,
+    });
+  });
+
   it('updates expense with PUT /expenses/{id}', async () => {
     const body = {
       categoryId: '01900000-0000-7000-8000-000000000002',

@@ -54,7 +54,6 @@
             @for (option of paymentMethodOptions; track option.value) {
               <option [value]="option.value">{{ option.label }}</option>
             }
-            <option value="CREDIT_CARD">Cartão</option>
           </select>
         </div>
         <div class="field field--compact">
@@ -238,6 +237,12 @@
                 <dt>Conta</dt>
                 <dd>{{ accountName(expense.accountId) }}</dd>
               </div>
+              @if (expense.creditCardId) {
+                <div>
+                  <dt>Cartão</dt>
+                  <dd>{{ creditCardName(expense.creditCardId) }}</dd>
+                </div>
+              }
               <div>
                 <dt>Valor total</dt>
                 <dd>{{ expense.totalAmount | brlCurrency }}</dd>
@@ -471,6 +476,42 @@
               </select>
               @if (expenseFieldError('accountId'); as message) {
                 <p id="expense-account-error" class="field__error">{{ message }}</p>
+              }
+            </div>
+          }
+
+          @if (showCreditCardField()) {
+            <div class="field">
+              <label for="expense-credit-card">Cartão</label>
+              @if (creditCardsError()) {
+                <app-error-state
+                  message="Não foi possível carregar os cartões."
+                  retryLabel="Tentar novamente"
+                  (retry)="retryCreditCards()"
+                />
+              } @else if (creditCardsLoading()) {
+                <p class="field__hint">Carregando cartões.</p>
+              } @else if (activeCreditCards().length === 0) {
+                <p id="expense-credit-card-empty" class="field__hint">
+                  Nenhum cartão ativo disponível.
+                </p>
+              } @else {
+                <select
+                  id="expense-credit-card"
+                  formControlName="creditCardId"
+                  [attr.aria-invalid]="expenseFieldError('creditCardId') != null"
+                  [attr.aria-describedby]="
+                    expenseFieldError('creditCardId') != null ? 'expense-credit-card-error' : null
+                  "
+                >
+                  <option value="" disabled>Selecione</option>
+                  @for (card of activeCreditCards(); track card.id) {
+                    <option [value]="card.id">{{ creditCardOptionLabel(card) }}</option>
+                  }
+                </select>
+                @if (expenseFieldError('creditCardId'); as message) {
+                  <p id="expense-credit-card-error" class="field__error">{{ message }}</p>
+                }
               }
             </div>
           }

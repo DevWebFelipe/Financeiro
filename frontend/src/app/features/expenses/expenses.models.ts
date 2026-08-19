@@ -2,7 +2,7 @@ export type ExpenseStatus = 'OPEN' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED' | '
 
 export type PaymentMethod = 'ACCOUNT' | 'CREDIT_CARD' | 'NONE';
 
-export type WritablePaymentMethod = 'ACCOUNT' | 'NONE';
+export type WritablePaymentMethod = 'ACCOUNT' | 'CREDIT_CARD' | 'NONE';
 
 export type ResponsibleType = 'MINE' | 'GIULIA' | 'EDERSON' | 'ELISIANE' | 'OTHER';
 
@@ -76,6 +76,7 @@ export interface CreateExpenseRequest {
   readonly barcode?: string;
   readonly notes?: string;
   readonly installmentCount?: number;
+  readonly creditCardId?: string;
 }
 
 export interface UpdateExpenseRequest {
@@ -118,6 +119,7 @@ export const EXPENSE_STATUS_OPTIONS: readonly { value: ExpenseStatus; label: str
 
 export const PAYMENT_METHOD_OPTIONS: readonly { value: PaymentMethod; label: string }[] = [
   { value: 'ACCOUNT', label: 'Conta' },
+  { value: 'CREDIT_CARD', label: 'Cartão' },
   { value: 'NONE', label: 'Sem conta' },
 ];
 

@@ -61,6 +61,18 @@ describe('app routes', () => {
     expect(router.url).toBe('/login?returnUrl=%2Faccounts');
   });
 
+  it('protects /credit-cards and sends unauthenticated users to login', async () => {
+    await auth.initialize();
+    await router.navigateByUrl('/credit-cards');
+    expect(router.url).toBe('/login?returnUrl=%2Fcredit-cards');
+  });
+
+  it('protects /invoices and sends unauthenticated users to login', async () => {
+    await auth.initialize();
+    await router.navigateByUrl('/invoices');
+    expect(router.url).toBe('/login?returnUrl=%2Finvoices');
+  });
+
   it('protects /categories and sends unauthenticated users to login', async () => {
     await auth.initialize();
     await router.navigateByUrl('/categories');
@@ -115,6 +127,28 @@ describe('app routes', () => {
     await router.navigateByUrl('/accounts');
     expect(router.url).toBe('/accounts');
     expect(TestBed.inject(Title).getTitle()).toBe('Contas — Financeiro');
+  });
+
+  it('allows an authenticated user to open lazy-loaded /credit-cards', async () => {
+    sessionStorage.setItem(AUTH_TOKEN_KEY, 'access-token');
+    const pending = auth.initialize();
+    httpTesting.expectOne(api('/users/me')).flush(user);
+    await pending;
+
+    await router.navigateByUrl('/credit-cards');
+    expect(router.url).toBe('/credit-cards');
+    expect(TestBed.inject(Title).getTitle()).toBe('Cartões — Financeiro');
+  });
+
+  it('allows an authenticated user to open lazy-loaded /invoices', async () => {
+    sessionStorage.setItem(AUTH_TOKEN_KEY, 'access-token');
+    const pending = auth.initialize();
+    httpTesting.expectOne(api('/users/me')).flush(user);
+    await pending;
+
+    await router.navigateByUrl('/invoices');
+    expect(router.url).toBe('/invoices');
+    expect(TestBed.inject(Title).getTitle()).toBe('Faturas — Financeiro');
   });
 
   it('allows an authenticated user to open lazy-loaded /categories', async () => {

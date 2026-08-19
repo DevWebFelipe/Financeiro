@@ -11,6 +11,9 @@ import { AccountsService } from '../accounts/accounts.service';
 import { Account } from '../accounts/accounts.models';
 import { CategoriesService } from '../categories/categories.service';
 import { Category } from '../categories/categories.models';
+import { formatLastFourDigits } from '../credit-cards/credit-cards-format';
+import { CreditCard } from '../credit-cards/credit-cards.models';
+import { CreditCardsService } from '../credit-cards/credit-cards.service';
 import {
   canCancelExpense,
   canEditExpense,
@@ -60,15 +63,19 @@ export class ExpensesPage {
   private readonly expensesService = inject(ExpensesService);
   private readonly categoriesService = inject(CategoriesService);
   private readonly accountsService = inject(AccountsService);
+  private readonly creditCardsService = inject(CreditCardsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
   private readonly reload = new Subject<void>();
   private readonly reloadCatalogs = new Subject<void>();
+  private readonly reloadCreditCards = new Subject<void>();
 
   readonly status = signal<'loading' | 'loaded' | 'error'>('loading');
   readonly pageData = signal<ExpensePage | null>(null);
   readonly error = signal<ApiError | null>(null);
   readonly catalogsError = signal(false);
+  readonly creditCardsError = signal(false);
+  readonly creditCardsLoading = signal(false);
   readonly formMode = signal<FormMode>('closed');
   readonly panelMode = signal<PanelMode>('closed');
   readonly selectedExpense = signal<Expense | null>(null);
@@ -82,6 +89,7 @@ export class ExpensesPage {
 
   readonly categories = signal<Category[]>([]);
   readonly accounts = signal<Account[]>([]);
+  readonly creditCards = signal<CreditCard[]>([]);
 
   readonly pageIndex = signal(0);
   readonly statusFilter = signal<ExpenseStatusFilter>('');
@@ -122,6 +130,7 @@ export class ExpensesPage {
   });
 
   readonly activeAccounts = computed(() => this.accounts().filter((account) => account.active));
+  readonly activeCreditCards = computed(() => this.creditCards().filter((card) => card.active));
 
   readonly expenseForm = this.formBuilder.nonNullable.group({
     categoryId: ['', Validators.required],
@@ -137,6 +146,7 @@ export class ExpensesPage {
       Validators.required,
     ),
     accountId: [''],
+    creditCardId: [''],
     responsibleType: this.formBuilder.nonNullable.control<ResponsibleType | ''>(
       '',
       Validators.required,
@@ -190,6 +200,33 @@ export class ExpensesPage {
         this.accounts.set(accounts);
       });
 
+    this.reloadCreditCards
+      .pipe(
+        startWith(undefined),
+        switchMap(() => {
+          this.creditCardsLoading.set(true);
+          this.creditCardsError.set(false);
+          return this.creditCardsService.list().pipe(
+            catchError(() => {
+              this.creditCards.set([]);
+              this.creditCardsError.set(true);
+              this.creditCardsLoading.set(false);
+              return EMPTY;
+            }),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((cards) => {
+        this.creditCards.set(cards);
+        this.creditCardsLoading.set(false);
+        this.creditCardsError.set(false);
+      });
+
+    this.expenseForm.controls.paymentMethod.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((method) => this.syncPaymentMethodFields(method));
+
     this.reload
       .pipe(
         startWith(undefined),
@@ -238,7 +275,12 @@ export class ExpensesPage {
 
   retry(): void {
     this.reloadCatalogs.next();
+    this.reloadCreditCards.next();
     this.reload.next();
+  }
+
+  retryCreditCards(): void {
+    this.reloadCreditCards.next();
   }
 
   goToPage(page: number): void {
@@ -302,6 +344,20 @@ export class ExpensesPage {
     return this.accounts().find((item) => item.id === accountId)?.name ?? '—';
   }
 
+  creditCardName(creditCardId: string | null): string {
+    if (creditCardId == null) {
+      return '—';
+    }
+    const card = this.creditCards().find((item) => item.id === creditCardId);
+    return card == null ? '—' : this.creditCardOptionLabel(card);
+  }
+
+  creditCardOptionLabel(card: CreditCard): string {
+    const digits = formatLastFourDigits(card.lastFourDigits);
+    const base = `${card.name} — ${card.holderName}`;
+    return digits == null ? base : `${base} ${digits}`;
+  }
+
   statusLabel(status: Expense['status']): string {
     return expenseStatusLabel(status);
   }
@@ -356,6 +412,7 @@ export class ExpensesPage {
       dueDate: expense.dueDate,
       paymentMethod: writableMethod ?? '',
       accountId: expense.accountId ?? '',
+      creditCardId: '',
       responsibleType: expense.responsibleType,
       responsibleName: expense.responsibleName ?? '',
       barcode: expense.barcode ?? '',
@@ -487,6 +544,22 @@ export class ExpensesPage {
       return;
     }
 
+    if (raw.paymentMethod === 'CREDIT_CARD') {
+      if (this.creditCardsError() || this.creditCardsLoading()) {
+        this.formError.set('Não foi possível carregar os cartões.');
+        return;
+      }
+      if (this.activeCreditCards().length === 0) {
+        this.formError.set('Nenhum cartão ativo disponível.');
+        return;
+      }
+      if (raw.creditCardId === '') {
+        this.expenseForm.controls.creditCardId.markAsTouched();
+        this.expenseForm.controls.creditCardId.setErrors({ required: true });
+        return;
+      }
+    }
+
     if (raw.responsibleType === 'OTHER' && raw.responsibleName.trim() === '') {
       this.expenseForm.controls.responsibleName.markAsTouched();
       this.expenseForm.controls.responsibleName.setErrors({ required: true });
@@ -505,7 +578,12 @@ export class ExpensesPage {
       dueDate: raw.dueDate,
       paymentMethod: raw.paymentMethod,
       responsibleType: raw.responsibleType,
-      ...(raw.accountId !== '' ? { accountId: raw.accountId } : {}),
+      ...(raw.paymentMethod === 'ACCOUNT' && raw.accountId !== ''
+        ? { accountId: raw.accountId }
+        : {}),
+      ...(raw.paymentMethod === 'CREDIT_CARD' && raw.creditCardId !== ''
+        ? { creditCardId: raw.creditCardId }
+        : {}),
       ...(raw.responsibleName.trim() !== '' ? { responsibleName: raw.responsibleName.trim() } : {}),
       ...(raw.barcode.trim() !== '' ? { barcode: raw.barcode.trim() } : {}),
       ...(raw.notes.trim() !== '' ? { notes: raw.notes.trim() } : {}),
@@ -662,6 +740,7 @@ export class ExpensesPage {
       | 'dueDate'
       | 'paymentMethod'
       | 'accountId'
+      | 'creditCardId'
       | 'responsibleType'
       | 'responsibleName'
       | 'installmentCount',
@@ -681,6 +760,10 @@ export class ExpensesPage {
 
   showAccountField(): boolean {
     return this.expenseForm.controls.paymentMethod.value === 'ACCOUNT';
+  }
+
+  showCreditCardField(): boolean {
+    return this.expenseForm.controls.paymentMethod.value === 'CREDIT_CARD';
   }
 
   showResponsibleNameField(): boolean {
@@ -746,6 +829,7 @@ export class ExpensesPage {
       dueDate: '',
       paymentMethod: '',
       accountId: '',
+      creditCardId: '',
       responsibleType: '',
       responsibleName: '',
       barcode: '',
@@ -853,5 +937,19 @@ export class ExpensesPage {
 
   private toWritablePaymentMethod(method: PaymentMethod): WritablePaymentMethod | null {
     return method === 'ACCOUNT' || method === 'NONE' ? method : null;
+  }
+
+  private syncPaymentMethodFields(method: WritablePaymentMethod | ''): void {
+    if (method !== 'ACCOUNT') {
+      this.expenseForm.controls.accountId.setValue('', { emitEvent: false });
+      this.expenseForm.controls.accountId.setErrors(null);
+    }
+    if (method === 'CREDIT_CARD') {
+      this.expenseForm.controls.creditCardId.setValidators(Validators.required);
+    } else {
+      this.expenseForm.controls.creditCardId.setValue('', { emitEvent: false });
+      this.expenseForm.controls.creditCardId.clearValidators();
+    }
+    this.expenseForm.controls.creditCardId.updateValueAndValidity({ emitEvent: false });
   }
 }

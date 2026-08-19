@@ -1,0 +1,351 @@
+<section aria-labelledby="credit-cards-title" [attr.aria-busy]="status() === 'loading'">
+  <header class="page-header">
+    <div class="page-header__intro">
+      <h1 id="credit-cards-title">Cartões</h1>
+      <p class="page-header__meta">Cartões de crédito cadastrados nesta sessão.</p>
+    </div>
+    @if (status() === 'loaded' && (cards().length > 0 || hasFilters())) {
+      <button type="button" (click)="openCreate()">Novo cartão</button>
+    }
+  </header>
+
+  @if (status() === 'loading') {
+    <p class="visually-hidden">Carregando cartões.</p>
+    <div class="skeleton" aria-hidden="true">
+      <div class="skeleton__block skeleton__block--title"></div>
+      <div class="skeleton__block"></div>
+      <div class="skeleton__block"></div>
+    </div>
+  }
+
+  @if (status() === 'error') {
+    <app-error-state
+      message="Não foi possível carregar os cartões."
+      retryLabel="Tentar novamente"
+      (retry)="retry()"
+    />
+  }
+
+  @if (status() === 'loaded') {
+    @if (actionError(); as message) {
+      <app-error-state [message]="message" />
+    }
+
+    <section class="filters" aria-labelledby="credit-card-filters-title">
+      <h2 id="credit-card-filters-title" class="filters__title">Filtros</h2>
+      <div class="filters__controls">
+        <div class="field field--compact">
+          <label for="filter-holder-name">Titular</label>
+          <input
+            id="filter-holder-name"
+            type="search"
+            [value]="holderNameFilter()"
+            (change)="onHolderNameFilterChange($any($event.target).value)"
+          />
+        </div>
+        @if (hasFilters()) {
+          <button type="button" (click)="clearHolderNameFilter()">Limpar filtro</button>
+        }
+      </div>
+    </section>
+
+    @if (isEmpty()) {
+      <app-empty-state [message]="emptyMessage()">
+        <button type="button" (click)="openCreate()">Novo cartão</button>
+      </app-empty-state>
+    } @else {
+      <ul class="card-grid">
+        @for (item of cards(); track item.card.id) {
+          <li>
+            <article class="card" [class.is-inactive]="!item.card.active">
+              <header class="card__header">
+                <h2 class="card__title">{{ item.card.name }}</h2>
+                <p class="card__status">{{ statusLabel(item.card.active) }}</p>
+              </header>
+              <dl class="card__meta">
+                <div>
+                  <dt>Titular</dt>
+                  <dd>{{ item.card.holderName }}</dd>
+                </div>
+                @if (lastFourLabel(item.card.lastFourDigits); as digits) {
+                  <div>
+                    <dt>Últimos dígitos</dt>
+                    <dd>{{ digits }}</dd>
+                  </div>
+                }
+                <div>
+                  <dt>Limite total</dt>
+                  <dd class="numeric">{{ item.limit.creditLimit | brlCurrency }}</dd>
+                </div>
+                <div>
+                  <dt>Limite utilizado</dt>
+                  <dd class="numeric">{{ item.limit.usedLimit | brlCurrency }}</dd>
+                </div>
+                <div>
+                  <dt>Limite disponível</dt>
+                  <dd class="numeric">{{ item.limit.availableLimit | brlCurrency }}</dd>
+                </div>
+              </dl>
+              <div class="actions__group">
+                <button type="button" (click)="openDetail(item)" [disabled]="submitting()">
+                  Detalhes
+                </button>
+                <button type="button" (click)="openEdit(item)" [disabled]="submitting()">
+                  Editar
+                </button>
+                @if (item.card.active) {
+                  <button
+                    type="button"
+                    (click)="openDeactivateConfirm(item)"
+                    [disabled]="submitting()"
+                  >
+                    Desativar
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    (click)="openActivateConfirm(item)"
+                    [disabled]="submitting()"
+                  >
+                    Ativar
+                  </button>
+                }
+              </div>
+            </article>
+          </li>
+        }
+      </ul>
+    }
+
+    @if (panelMode() === 'detail' && selectedCard(); as card) {
+      <section class="panel" aria-labelledby="credit-card-detail-title">
+        <h2 id="credit-card-detail-title">Detalhes do cartão</h2>
+
+        @if (detailLoading()) {
+          <p class="visually-hidden">Carregando detalhes.</p>
+          <div class="skeleton" aria-hidden="true">
+            <div class="skeleton__block"></div>
+          </div>
+        } @else if (detailError(); as message) {
+          <app-error-state [message]="message" />
+          <div class="form-actions">
+            <button type="button" (click)="closeDetail()">Fechar</button>
+          </div>
+        } @else {
+          <dl class="detail-list">
+            <div>
+              <dt>Nome</dt>
+              <dd>{{ card.name }}</dd>
+            </div>
+            <div>
+              <dt>Titular</dt>
+              <dd>{{ card.holderName }}</dd>
+            </div>
+            @if (lastFourLabel(card.lastFourDigits); as digits) {
+              <div>
+                <dt>Últimos dígitos</dt>
+                <dd>{{ digits }}</dd>
+              </div>
+            }
+            <div>
+              <dt>Dia de fechamento</dt>
+              <dd>{{ card.closingDay }}</dd>
+            </div>
+            <div>
+              <dt>Dia de vencimento</dt>
+              <dd>{{ card.dueDay }}</dd>
+            </div>
+            <div>
+              <dt>Situação</dt>
+              <dd>{{ statusLabel(card.active) }}</dd>
+            </div>
+            @if (selectedLimit(); as limit) {
+              <div>
+                <dt>Limite total</dt>
+                <dd class="numeric">{{ limit.creditLimit | brlCurrency }}</dd>
+              </div>
+              <div>
+                <dt>Limite utilizado</dt>
+                <dd class="numeric">{{ limit.usedLimit | brlCurrency }}</dd>
+              </div>
+              <div>
+                <dt>Limite disponível</dt>
+                <dd class="numeric">{{ limit.availableLimit | brlCurrency }}</dd>
+              </div>
+            }
+          </dl>
+
+          <div class="form-actions">
+            <button type="button" (click)="closeDetail()">Fechar</button>
+          </div>
+        }
+      </section>
+    }
+
+    @if (panelMode() === 'deactivate-confirm' && pendingCard(); as item) {
+      <section class="panel panel--confirm" aria-labelledby="credit-card-deactivate-title">
+        <h2 id="credit-card-deactivate-title">Desativar cartão</h2>
+        <p>
+          Deseja desativar o cartão <strong>{{ item.card.name }}</strong
+          >?
+        </p>
+        @if (formError(); as message) {
+          <app-error-state [message]="message" />
+        }
+        <div class="form-actions">
+          <button type="button" (click)="confirmDeactivate()" [disabled]="submitting()">
+            Confirmar desativação
+          </button>
+          <button type="button" (click)="closeConfirm()" [disabled]="submitting()">Voltar</button>
+        </div>
+      </section>
+    }
+
+    @if (panelMode() === 'activate-confirm' && pendingCard(); as item) {
+      <section class="panel panel--confirm" aria-labelledby="credit-card-activate-title">
+        <h2 id="credit-card-activate-title">Ativar cartão</h2>
+        <p>
+          Deseja ativar o cartão <strong>{{ item.card.name }}</strong
+          >?
+        </p>
+        @if (formError(); as message) {
+          <app-error-state [message]="message" />
+        }
+        <div class="form-actions">
+          <button type="button" (click)="confirmActivate()" [disabled]="submitting()">
+            Confirmar ativação
+          </button>
+          <button type="button" (click)="closeConfirm()" [disabled]="submitting()">Voltar</button>
+        </div>
+      </section>
+    }
+
+    @if (formMode() !== 'closed') {
+      <section class="panel" aria-labelledby="credit-card-form-title">
+        <h2 id="credit-card-form-title">
+          {{ formMode() === 'create' ? 'Novo cartão' : 'Editar cartão' }}
+        </h2>
+
+        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          <div class="field">
+            <label for="credit-card-name">Nome</label>
+            <input
+              id="credit-card-name"
+              type="text"
+              formControlName="name"
+              autocomplete="off"
+              maxlength="255"
+              [attr.aria-invalid]="fieldError('name') != null"
+              [attr.aria-describedby]="fieldError('name') != null ? 'credit-card-name-error' : null"
+            />
+            @if (fieldError('name'); as message) {
+              <p id="credit-card-name-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="credit-card-holder-name">Titular</label>
+            <input
+              id="credit-card-holder-name"
+              type="text"
+              formControlName="holderName"
+              autocomplete="off"
+              maxlength="255"
+              [attr.aria-invalid]="fieldError('holderName') != null"
+              [attr.aria-describedby]="
+                fieldError('holderName') != null ? 'credit-card-holder-name-error' : null
+              "
+            />
+            @if (fieldError('holderName'); as message) {
+              <p id="credit-card-holder-name-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="credit-card-last-four">Últimos 4 dígitos (opcional)</label>
+            <input
+              id="credit-card-last-four"
+              type="text"
+              formControlName="lastFourDigits"
+              inputmode="numeric"
+              autocomplete="off"
+              maxlength="4"
+              [attr.aria-invalid]="fieldError('lastFourDigits') != null"
+              [attr.aria-describedby]="
+                fieldError('lastFourDigits') != null ? 'credit-card-last-four-error' : null
+              "
+            />
+            @if (fieldError('lastFourDigits'); as message) {
+              <p id="credit-card-last-four-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="credit-card-limit">Limite</label>
+            <input
+              id="credit-card-limit"
+              type="number"
+              formControlName="creditLimit"
+              step="0.01"
+              min="0.01"
+              [attr.aria-invalid]="fieldError('creditLimit') != null"
+              [attr.aria-describedby]="
+                fieldError('creditLimit') != null ? 'credit-card-limit-error' : null
+              "
+            />
+            @if (fieldError('creditLimit'); as message) {
+              <p id="credit-card-limit-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="credit-card-closing-day">Dia de fechamento</label>
+            <input
+              id="credit-card-closing-day"
+              type="number"
+              formControlName="closingDay"
+              min="1"
+              max="31"
+              step="1"
+              [attr.aria-invalid]="fieldError('closingDay') != null"
+              [attr.aria-describedby]="
+                fieldError('closingDay') != null ? 'credit-card-closing-day-error' : null
+              "
+            />
+            @if (fieldError('closingDay'); as message) {
+              <p id="credit-card-closing-day-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="credit-card-due-day">Dia de vencimento</label>
+            <input
+              id="credit-card-due-day"
+              type="number"
+              formControlName="dueDay"
+              min="1"
+              max="31"
+              step="1"
+              [attr.aria-invalid]="fieldError('dueDay') != null"
+              [attr.aria-describedby]="
+                fieldError('dueDay') != null ? 'credit-card-due-day-error' : null
+              "
+            />
+            @if (fieldError('dueDay'); as message) {
+              <p id="credit-card-due-day-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          @if (formError(); as message) {
+            <app-error-state [message]="message" />
+          }
+
+          <div class="form-actions">
+            <button type="submit" [disabled]="submitting()">Salvar</button>
+            <button type="button" (click)="closeForm()" [disabled]="submitting()">Cancelar</button>
+          </div>
+        </form>
+      </section>
+    }
+  }
+</section>

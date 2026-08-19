@@ -1,0 +1,622 @@
+<section
+  aria-labelledby="invoices-title"
+  [attr.aria-busy]="
+    cardsStatus() === 'loading' ||
+    invoicesStatus() === 'loading' ||
+    detailLoading() ||
+    itemsLoading()
+      ? true
+      : null
+  "
+>
+  <header class="page-header">
+    <div class="page-header__intro">
+      <h1 id="invoices-title">Faturas</h1>
+      <p class="page-header__meta">
+        Consulta de faturas por cartão, pagamento e ajustes da fatura. Os valores exibidos são os
+        oficiais da API. Créditos e acordos ficam fora desta tela.
+      </p>
+    </div>
+  </header>
+
+  @if (cardsStatus() === 'loading') {
+    <p class="visually-hidden">Carregando cartões.</p>
+    <div class="skeleton" aria-hidden="true">
+      <div class="skeleton__block skeleton__block--title"></div>
+      <div class="skeleton__block"></div>
+    </div>
+  }
+
+  @if (cardsStatus() === 'error') {
+    <app-error-state
+      message="Não foi possível carregar os cartões."
+      retryLabel="Tentar novamente"
+      (retry)="retryCards()"
+    />
+  }
+
+  @if (isCardsEmpty()) {
+    <app-empty-state message="Nenhum cartão cadastrado." />
+  }
+
+  @if (showInvoiceFilters()) {
+    <section class="filters" aria-labelledby="invoice-filters-title">
+      <h2 id="invoice-filters-title" class="filters__title">Filtros</h2>
+      <div class="filters__controls">
+        <div class="field field--compact">
+          <label for="filter-card">Cartão</label>
+          <select
+            id="filter-card"
+            [value]="selectedCardId()"
+            (change)="onCardFilterChange($any($event.target).value)"
+          >
+            <option value="">Selecione um cartão</option>
+            @for (card of cards(); track card.id) {
+              <option [value]="card.id">{{ cardLabel(card) }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-year">Ano</label>
+          <input
+            id="filter-year"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            step="1"
+            [value]="yearFilter()"
+            (change)="onYearFilterChange($any($event.target).value)"
+          />
+        </div>
+        <div class="field field--compact">
+          <label for="filter-month">Mês</label>
+          <select
+            id="filter-month"
+            [value]="monthFilter()"
+            (change)="onMonthFilterChange($any($event.target).value)"
+          >
+            <option value="">Todos</option>
+            @for (option of monthOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-status">Situação</label>
+          <select
+            id="filter-status"
+            [value]="statusFilter()"
+            (change)="onStatusFilterChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (option of statusOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </section>
+
+    @if (invoicesStatus() === 'idle') {
+      <app-empty-state message="Selecione um cartão para consultar as faturas." />
+    }
+
+    @if (invoicesStatus() === 'loading') {
+      <p class="visually-hidden">Carregando faturas.</p>
+      <div class="skeleton" aria-hidden="true">
+        <div class="skeleton__block skeleton__block--title"></div>
+        <div class="skeleton__block"></div>
+        <div class="skeleton__block"></div>
+      </div>
+    }
+
+    @if (invoicesStatus() === 'error') {
+      <app-error-state
+        message="Não foi possível carregar as faturas."
+        retryLabel="Tentar novamente"
+        (retry)="retryInvoices()"
+      />
+    }
+
+    @if (isInvoicesEmpty()) {
+      <app-empty-state
+        [message]="
+          yearFilter() !== '' || monthFilter() !== '' || statusFilter() !== ''
+            ? 'Nenhuma fatura corresponde aos filtros selecionados.'
+            : 'Nenhuma fatura encontrada para este cartão.'
+        "
+      />
+    }
+
+    @if (invoicesStatus() === 'loaded' && invoices().length > 0) {
+      <div class="table-wrap">
+        <table>
+          <caption class="visually-hidden">
+            Faturas do cartão selecionado
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Cartão</th>
+              <th scope="col">Competência</th>
+              <th scope="col">Fechamento</th>
+              <th scope="col">Vencimento</th>
+              <th scope="col">Situação</th>
+              <th scope="col">Total</th>
+              <th scope="col">Pago</th>
+              <th scope="col">Restante</th>
+              <th scope="col">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (invoice of invoices(); track invoice.id) {
+              <tr>
+                <th scope="row" data-label="Cartão">{{ cardName(invoice.creditCardId) }}</th>
+                <td data-label="Competência">
+                  {{ periodKey(invoice.referenceYear, invoice.referenceMonth) | yearMonth }}
+                </td>
+                <td data-label="Fechamento">{{ invoice.closingDate | isoDate }}</td>
+                <td data-label="Vencimento">{{ invoice.dueDate | isoDate }}</td>
+                <td data-label="Situação">
+                  <span class="status" [attr.data-status]="invoice.status">{{
+                    statusLabel(invoice.status)
+                  }}</span>
+                </td>
+                <td data-label="Total">{{ invoice.totalAmount | brlCurrency }}</td>
+                <td data-label="Pago">{{ invoice.paidAmount | brlCurrency }}</td>
+                <td data-label="Restante">{{ invoice.remainingAmount | brlCurrency }}</td>
+                <td class="actions" data-label="Ações">
+                  <button type="button" (click)="openDetail(invoice)">Detalhes</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  @if (selectedInvoice(); as invoice) {
+    <section class="panel" aria-labelledby="invoice-detail-title">
+      <h2 id="invoice-detail-title">Detalhes da fatura</h2>
+
+      @if (detailLoading()) {
+        <p class="visually-hidden">Carregando detalhes da fatura.</p>
+        <div class="skeleton" aria-hidden="true">
+          <div class="skeleton__block"></div>
+        </div>
+      }
+
+      @if (detailError(); as message) {
+        <app-error-state [message]="message" />
+      }
+
+      @if (!detailLoading() && detailError() == null) {
+        <dl class="detail-list">
+          <div>
+            <dt>Cartão</dt>
+            <dd>{{ cardName(invoice.creditCardId) }}</dd>
+          </div>
+          <div>
+            <dt>Competência</dt>
+            <dd>{{ periodKey(invoice.referenceYear, invoice.referenceMonth) | yearMonth }}</dd>
+          </div>
+          <div>
+            <dt>Fechamento</dt>
+            <dd>{{ invoice.closingDate | isoDate }}</dd>
+          </div>
+          <div>
+            <dt>Vencimento</dt>
+            <dd>{{ invoice.dueDate | isoDate }}</dd>
+          </div>
+          <div>
+            <dt>Situação</dt>
+            <dd>
+              <span class="status" [attr.data-status]="invoice.status">{{
+                statusLabel(invoice.status)
+              }}</span>
+            </dd>
+          </div>
+          <div>
+            <dt>Total</dt>
+            <dd>{{ invoice.totalAmount | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Pago</dt>
+            <dd>{{ invoice.paidAmount | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Restante</dt>
+            <dd>{{ invoice.remainingAmount | brlCurrency }}</dd>
+          </div>
+        </dl>
+
+        <h3 id="invoice-items-title">Parcelas desta fatura</h3>
+        <p class="panel__meta">
+          Cada linha é uma parcela vinculada ao ciclo. Uma despesa parcelada pode aparecer em
+          faturas diferentes.
+        </p>
+
+        @if (itemsLoading()) {
+          <p class="visually-hidden">Carregando parcelas da fatura.</p>
+          <div class="skeleton" aria-hidden="true">
+            <div class="skeleton__block"></div>
+          </div>
+        }
+
+        @if (itemsError(); as message) {
+          <app-error-state
+            [message]="message"
+            retryLabel="Tentar novamente"
+            (retry)="retryItems()"
+          />
+        }
+
+        @if (!itemsLoading() && itemsError() == null && items().length === 0) {
+          <app-empty-state message="Nenhuma parcela vinculada a esta fatura." />
+        }
+
+        @if (!itemsLoading() && itemsError() == null && items().length > 0) {
+          <div class="table-wrap">
+            <table>
+              <caption class="visually-hidden">
+                Parcelas da fatura
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Parcela</th>
+                  <th scope="col">Valor</th>
+                  <th scope="col">Restante</th>
+                  <th scope="col">Vencimento</th>
+                  <th scope="col">Situação</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of items(); track item.id) {
+                  <tr>
+                    <th scope="row" data-label="Parcela">
+                      {{ item.installmentNumber }}/{{ item.totalInstallments }}
+                    </th>
+                    <td data-label="Valor">{{ item.amount | brlCurrency }}</td>
+                    <td data-label="Restante">{{ item.remainingAmount | brlCurrency }}</td>
+                    <td data-label="Vencimento">{{ item.dueDate | isoDate }}</td>
+                    <td data-label="Situação">
+                      {{ itemStatusLabel(item.status) }}
+                      @if (item.overdue) {
+                        <span class="badge">Vencida</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <h3 id="invoice-payments-title">Pagamentos da fatura</h3>
+        <p class="panel__meta">Histórico de pagamentos desta fatura. Não é uma despesa nova.</p>
+
+        @if (paymentsStatus() === 'loading') {
+          <p class="visually-hidden">Carregando pagamentos da fatura.</p>
+          <div class="skeleton" aria-hidden="true">
+            <div class="skeleton__block"></div>
+          </div>
+        }
+
+        @if (paymentsStatus() === 'error') {
+          <app-error-state
+            [message]="paymentsError() ?? 'Não foi possível carregar os pagamentos da fatura.'"
+            retryLabel="Tentar novamente"
+            (retry)="retryPayments()"
+          />
+        }
+
+        @if (isPaymentsEmpty()) {
+          <app-empty-state message="Nenhum pagamento registrado nesta fatura." />
+        }
+
+        @if (paymentsStatus() === 'loaded' && payments().length > 0) {
+          <div class="table-wrap">
+            <table>
+              <caption class="visually-hidden">
+                Pagamentos da fatura
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Conta</th>
+                  <th scope="col">Valor</th>
+                  <th scope="col">Data</th>
+                  <th scope="col">Observação</th>
+                  <th scope="col">Situação</th>
+                  <th scope="col">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (payment of payments(); track payment.id) {
+                  <tr>
+                    <th scope="row" data-label="Conta">{{ accountName(payment.accountId) }}</th>
+                    <td data-label="Valor">{{ payment.amount | brlCurrency }}</td>
+                    <td data-label="Data">{{ payment.paymentDate | isoDate }}</td>
+                    <td data-label="Observação">{{ payment.notes ? payment.notes : '—' }}</td>
+                    <td data-label="Situação">{{ paymentStatusLabel(payment.status) }}</td>
+                    <td class="actions" data-label="Ações">
+                      @if (canReversePayment(invoice.status, payment.status)) {
+                        <button
+                          type="button"
+                          (click)="openReverseConfirm(payment)"
+                          [disabled]="submitting()"
+                        >
+                          Estornar
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        @if (canPay(invoice.status)) {
+          <h3 id="invoice-pay-title">Registrar pagamento</h3>
+          <p class="panel__meta">
+            Restante oficial: {{ invoice.remainingAmount | brlCurrency }}. Informe um valor parcial
+            ou o restante.
+          </p>
+
+          @if (accountsStatus() === 'error') {
+            <app-error-state
+              message="Não foi possível carregar as contas."
+              retryLabel="Tentar novamente"
+              (retry)="retryAccounts()"
+            />
+          } @else {
+            <form [formGroup]="payForm" (ngSubmit)="submitPay()" novalidate>
+              @if (payError(); as message) {
+                <app-error-state [message]="message" />
+              }
+              <div class="field">
+                <label for="invoice-pay-account">Conta</label>
+                <select
+                  id="invoice-pay-account"
+                  formControlName="accountId"
+                  [attr.aria-invalid]="payFieldError('accountId') != null"
+                  [attr.aria-describedby]="
+                    payFieldError('accountId') != null ? 'invoice-pay-account-error' : null
+                  "
+                >
+                  <option value="">Selecione</option>
+                  @for (account of activeAccounts(); track account.id) {
+                    <option [value]="account.id">{{ account.name }}</option>
+                  }
+                </select>
+                @if (payFieldError('accountId'); as message) {
+                  <p id="invoice-pay-account-error" class="field__error">{{ message }}</p>
+                }
+              </div>
+              <div class="field">
+                <label for="invoice-pay-amount">Valor</label>
+                <input
+                  id="invoice-pay-amount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  formControlName="amount"
+                  [attr.aria-invalid]="payFieldError('amount') != null"
+                  [attr.aria-describedby]="
+                    payFieldError('amount') != null ? 'invoice-pay-amount-error' : null
+                  "
+                />
+                @if (payFieldError('amount'); as message) {
+                  <p id="invoice-pay-amount-error" class="field__error">{{ message }}</p>
+                }
+              </div>
+              <div class="field">
+                <label for="invoice-pay-date">Data do pagamento</label>
+                <input
+                  id="invoice-pay-date"
+                  type="date"
+                  formControlName="paymentDate"
+                  [attr.aria-invalid]="payFieldError('paymentDate') != null"
+                  [attr.aria-describedby]="
+                    payFieldError('paymentDate') != null ? 'invoice-pay-date-error' : null
+                  "
+                />
+                @if (payFieldError('paymentDate'); as message) {
+                  <p id="invoice-pay-date-error" class="field__error">{{ message }}</p>
+                }
+              </div>
+              <div class="field">
+                <label for="invoice-pay-notes">Observação</label>
+                <input id="invoice-pay-notes" type="text" formControlName="notes" />
+              </div>
+              <div class="form-actions">
+                <button type="submit" [disabled]="submitting()">Pagar</button>
+              </div>
+            </form>
+          }
+        }
+
+        @if (paymentPendingReverse(); as payment) {
+          <section class="panel panel--confirm" aria-labelledby="invoice-reverse-title">
+            <h2 id="invoice-reverse-title">Estornar pagamento</h2>
+            <p>
+              Deseja estornar o pagamento de {{ payment.amount | brlCurrency }} em
+              {{ payment.paymentDate | isoDate }}? Esta ação não pode ser desfeita.
+            </p>
+            @if (reverseError(); as message) {
+              <app-error-state [message]="message" />
+            }
+            <div class="form-actions">
+              <button type="button" (click)="confirmReverse()" [disabled]="submitting()">
+                Confirmar estorno
+              </button>
+              <button type="button" (click)="closeReverseConfirm()" [disabled]="submitting()">
+                Voltar
+              </button>
+            </div>
+          </section>
+        }
+
+        <h3 id="invoice-adjustments-title">Ajustes da fatura</h3>
+        <p class="panel__meta">Histórico de descontos e acréscimos desta fatura.</p>
+
+        @if (adjustmentsStatus() === 'loading') {
+          <p class="visually-hidden">Carregando ajustes da fatura.</p>
+          <div class="skeleton" aria-hidden="true">
+            <div class="skeleton__block"></div>
+          </div>
+        }
+
+        @if (adjustmentsStatus() === 'error') {
+          <app-error-state
+            [message]="adjustmentsError() ?? 'Não foi possível carregar os ajustes da fatura.'"
+            retryLabel="Tentar novamente"
+            (retry)="retryAdjustments()"
+          />
+        }
+
+        @if (isAdjustmentsEmpty()) {
+          <app-empty-state message="Nenhum ajuste registrado." />
+        }
+
+        @if (adjustmentsStatus() === 'loaded' && adjustments().length > 0) {
+          <div class="table-wrap">
+            <table>
+              <caption class="visually-hidden">
+                Ajustes da fatura
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Tipo</th>
+                  <th scope="col">Valor</th>
+                  <th scope="col">Motivo</th>
+                  <th scope="col">Situação</th>
+                  <th scope="col">Data</th>
+                  <th scope="col">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (adjustment of adjustments(); track adjustment.id) {
+                  <tr>
+                    <th scope="row" data-label="Tipo">
+                      {{ adjustmentTypeLabel(adjustment.type) }}
+                    </th>
+                    <td data-label="Valor">{{ adjustment.amount | brlCurrency }}</td>
+                    <td data-label="Motivo">{{ adjustment.reason }}</td>
+                    <td data-label="Situação">{{ adjustmentStatusLabel(adjustment.status) }}</td>
+                    <td data-label="Data">{{ instantDate(adjustment.createdAt) }}</td>
+                    <td class="actions" data-label="Ações">
+                      @if (canReverseAdjustment(invoice.status, adjustment.status)) {
+                        <button
+                          type="button"
+                          (click)="openAdjustReverseConfirm(adjustment)"
+                          [disabled]="submitting()"
+                        >
+                          Reverter
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        @if (canAdjust(invoice.status)) {
+          <h3 id="invoice-adjust-title">Registrar ajuste</h3>
+          <p class="panel__meta">
+            Informe tipo, valor e motivo. O valor não é preenchido automaticamente.
+          </p>
+          <form [formGroup]="adjustForm" (ngSubmit)="submitAdjust()" novalidate>
+            @if (adjustError(); as message) {
+              <app-error-state [message]="message" />
+            }
+            <div class="field">
+              <label for="invoice-adjust-type">Tipo</label>
+              <select
+                id="invoice-adjust-type"
+                formControlName="type"
+                [attr.aria-invalid]="adjustFieldError('type') != null"
+                [attr.aria-describedby]="
+                  adjustFieldError('type') != null ? 'invoice-adjust-type-error' : null
+                "
+              >
+                @for (option of adjustmentTypeOptions; track option.value) {
+                  @if (
+                    option.value !== 'SURCHARGE' || canCreateSurcharge(invoice.remainingAmount)
+                  ) {
+                    <option [value]="option.value">{{ option.label }}</option>
+                  }
+                }
+              </select>
+              @if (adjustFieldError('type'); as message) {
+                <p id="invoice-adjust-type-error" class="field__error">{{ message }}</p>
+              }
+            </div>
+            <div class="field">
+              <label for="invoice-adjust-amount">Valor</label>
+              <input
+                id="invoice-adjust-amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                formControlName="amount"
+                [attr.aria-invalid]="adjustFieldError('amount') != null"
+                [attr.aria-describedby]="
+                  adjustFieldError('amount') != null ? 'invoice-adjust-amount-error' : null
+                "
+              />
+              @if (adjustFieldError('amount'); as message) {
+                <p id="invoice-adjust-amount-error" class="field__error">{{ message }}</p>
+              }
+            </div>
+            <div class="field">
+              <label for="invoice-adjust-reason">Motivo</label>
+              <input
+                id="invoice-adjust-reason"
+                type="text"
+                formControlName="reason"
+                [attr.aria-invalid]="adjustFieldError('reason') != null"
+                [attr.aria-describedby]="
+                  adjustFieldError('reason') != null ? 'invoice-adjust-reason-error' : null
+                "
+              />
+              @if (adjustFieldError('reason'); as message) {
+                <p id="invoice-adjust-reason-error" class="field__error">{{ message }}</p>
+              }
+            </div>
+            <div class="form-actions">
+              <button type="submit" [disabled]="submitting()">Registrar ajuste</button>
+            </div>
+          </form>
+        }
+
+        @if (adjustmentPendingReverse(); as adjustment) {
+          <section class="panel panel--confirm" aria-labelledby="invoice-adjust-reverse-title">
+            <h2 id="invoice-adjust-reverse-title">Reverter ajuste</h2>
+            <p>
+              Deseja reverter o {{ adjustmentTypeLabel(adjustment.type).toLowerCase() }} de
+              {{ adjustment.amount | brlCurrency }}? Esta ação não pode ser desfeita.
+            </p>
+            @if (adjustReverseError(); as message) {
+              <app-error-state [message]="message" />
+            }
+            <div class="form-actions">
+              <button type="button" (click)="confirmAdjustReverse()" [disabled]="submitting()">
+                Confirmar reversão
+              </button>
+              <button type="button" (click)="closeAdjustReverseConfirm()" [disabled]="submitting()">
+                Voltar
+              </button>
+            </div>
+          </section>
+        }
+      }
+
+      <div class="form-actions">
+        <button type="button" (click)="closeDetail()">Fechar</button>
+      </div>
+    </section>
+  }
+</section>

@@ -1189,7 +1189,7 @@ Contrato utilizado:
 - `POST /api/v1/expenses/{id}/cancel` — somente `OPEN`.
 - `POST /api/v1/expenses/{id}/refund` — `PARTIALLY_PAID`/`PAID`; corpo vazio para `ACCOUNT`/`NONE`; `settlement` para `CREDIT_CARD`.
 
-Fora deste bloco na UI: criação `CREDIT_CARD` (sem feature de cartões no frontend), adjustments, reverse de payment, rota dedicada `/expenses/:id`.
+Fora deste bloco na UI original: adjustments, reverse de payment, rota dedicada `/expenses/:id`. Criação `CREDIT_CARD` passou a existir no bloco C2 (`docs/21` §96M).
 
 Estados: `loading` | `loaded` | `empty` | `error`. Paginação server-side. Filtros disparam nova listagem. Detalhe, pagamento, cancelamento e estorno em painéis na mesma rota. `VALIDATION_ERROR.fields` nos controles; regras por `error.code`.
 
@@ -1234,6 +1234,79 @@ Não existem `GET /payables/{id}` nem escritas. Sem painel de pagamento nesta vi
 
 Estados: `loading` | `loaded` | `empty` | `error`. Empty sem ação de criação. Paginação server-side.
 
+
+# 96L. Cartões (Fase 21 — Bloco C1)
+
+A página `/credit-cards` é lazy-loaded sob o AuthGuard do MainLayout. A navegação passa a incluir Cartões neste bloco. Sem rota `/credit-cards/:id`.
+
+Feature em `frontend/src/app/features/credit-cards/`: `CreditCardsPage` → `CreditCardsService` → `HttpClient`. Listagem em cards visuais (não tabela e não mockup de plástico). Detalhe, criação e edição em painel na mesma rota. Sem faturas, compras, créditos ou pagamentos de fatura.
+
+Contrato utilizado:
+
+- `GET /api/v1/credit-cards` — array (sem paginação). Filtro oficial `holderName` (omitido quando vazio). Sem filtro client-side.
+- `GET /api/v1/credit-cards/{id}`
+- `POST /api/v1/credit-cards`
+- `PUT /api/v1/credit-cards/{id}`
+- `POST /api/v1/credit-cards/{id}/deactivate`
+- `POST /api/v1/credit-cards/{id}/activate`
+- `GET /api/v1/credit-cards/{id}/limit` — `creditLimit`, `usedLimit`, `availableLimit` oficiais; a UI não recalcula. `availableLimit` pode ser negativo.
+
+`lastFourDigits` é opcional. Visualização `•••• 1234` somente quando houver valor. Sem PAN, CVC ou validade. Ativar/desativar exigem confirmação; cartões inativos permanecem na listagem.
+
+Estados: `loading` | `loaded` | `empty` | `error`. Escape fecha confirmação, depois formulário, depois detalhe; não dispara ação financeira.
+
+
+# 96M. Integração Cartões ↔ Despesas (Fase 21 — Bloco C2)
+
+A página `/expenses` passa a criar despesas `CREDIT_CARD`. `ExpensesPage` consome `CreditCardsService.list()` (`GET /api/v1/credit-cards`, sem query). O contrato não possui filtro `active`; a UI oferece somente cartões com `active === true`. Falha do catálogo de cartões é explícita e não mascara `of([])`; não derruba os fluxos `ACCOUNT`/`NONE`. Cartão inativo permanece visível no histórico/detalhe quando o `creditCardId` já existir.
+
+Payload de criação `CREDIT_CARD`: `paymentMethod`, `creditCardId` e demais campos cadastrais oficiais; sem `accountId`. `ACCOUNT`/`NONE` não enviam `creditCardId`. Edição de despesa `CREDIT_CARD` continua bloqueada (`canEditExpense`). Sem faturas, créditos ou compras como feature.
+
+# 96N. Faturas (Fase 21 — Bloco C3)
+
+A página `/invoices` é lazy-loaded sob o AuthGuard do MainLayout. A navegação inclui Faturas ao lado de Cartões. Sem rota `/invoices/:id` e sem `/credit-cards/:id/invoices` como rota de UI.
+
+Feature em `frontend/src/app/features/invoices/`: `InvoicesPage` → `InvoicesService` → `HttpClient`. O catálogo de cartões reutiliza `CreditCardsService.list()` (ativos e inativos, consulta histórica). Não há `CatalogService`. C1 permanece em `/credit-cards`.
+
+Contrato utilizado:
+
+- `GET /api/v1/credit-cards/{cardId}/invoices` — array (sem paginação). Filtros oficiais `year`, `month` e `status`. Cartão é obrigatório para consultar; a UI não dispara N+1 em todos os cartões.
+- `GET /api/v1/invoices/{id}`
+- `GET /api/v1/invoices/{id}/items` — parcelas (`expense_installments`) do ciclo, não a despesa inteira.
+
+`totalAmount`, `paidAmount` e `remainingAmount` são os oficiais da API; a UI não recalcula. Status de fatura apresentados: `SCHEDULED`, `OPEN`, `CLOSED`, `PAID` e `SETTLED_BY_AGREEMENT` (este último só como leitura; sem UI de acordo). Sem `PARTIALLY_PAID` de fatura. Sem lógica de atraso derivada de datas na fatura. O campo `overdue` do item é apresentado quando a API o envia.
+
+Fora deste bloco: pagamentos, ajustes, créditos, acordos, fechamento manual, PDF e C4.
+
+Estados: cartões e faturas com `loading` / `loaded` / `empty` / `error` distintos; idle até selecionar cartão. Escape fecha o painel de detalhe.
+
+# 96O. Pagamento de faturas (Fase 21 — Bloco C4)
+
+A página `/invoices` passa a registrar e estornar pagamentos da fatura no painel de detalhe. Sem rota `/invoices/:id`. Sem ajustes, créditos, acordos, renegociação ou fechamento manual.
+
+`InvoicesPage` → `InvoicesService` (`listPayments`, `createPayment`, `reversePayment`) → `HttpClient`. Contas via `AccountsService.list()` (sem recálculo de saldo). Data padrão do formulário: dia civil `America/Sao_Paulo` (`todayIsoDate`).
+
+Contrato utilizado:
+
+- `GET /api/v1/invoices/{id}/payments` — array de `InvoicePaymentResponse`
+- `POST /api/v1/invoices/{id}/payments` — `accountId`, `amount` (`0 < amount <= remainingAmount`), `paymentDate`, `notes` opcional (omitido quando vazio)
+- `POST /api/v1/invoices/{invoiceId}/payments/{paymentId}/reverse` — não DELETE
+
+Pagamento permitido em `OPEN` e `CLOSED`. Proibido em `SCHEDULED`, `PAID` e `SETTLED_BY_AGREEMENT`. Estorno somente pagamento `ACTIVE` e fatura não terminal. Após pagar/estornar: recarregar fatura, pagamentos e itens; painel permanece aberto; valores oficiais da API. `OPEN` com `remainingAmount = 0` não vira `PAID` no frontend.
+
+# 96P. Ajustes de fatura (Fase 21 — Bloco C5)
+
+A página `/invoices` registra, lista e reverte ajustes da fatura no mesmo painel de detalhe. Sem rota `/invoices/:id/adjustments`. Sem créditos, acordos, renegociação ou fechamento manual. Sem C6/C7/B12.
+
+`InvoicesPage` → `InvoicesService` (`listAdjustments`, `createAdjustment`, `reverseAdjustment`) → `HttpClient`.
+
+Contrato utilizado:
+
+- `GET /api/v1/invoices/{id}/adjustments` — array de `InvoiceAdjustmentResponse`
+- `POST /api/v1/invoices/{id}/adjustments` — `type` (`DISCOUNT` / `SURCHARGE`), `amount` (`> 0`), `reason` obrigatório
+- `POST /api/v1/invoices/{invoiceId}/adjustments/{adjustmentId}/reverse` — não DELETE
+
+Tipos e status oficiais do backend. `SURCHARGE` bloqueado na UI quando `remainingAmount <= 0`. Ajustes permitidos enquanto a fatura não é `PAID` nem `SETTLED_BY_AGREEMENT`. Após criar/reverter: recarregar fatura, ajustes e itens (parcelas atualizadas pelo backend); **não** recarregar pagamentos; painel permanece aberto; valores oficiais da API. Sem cálculo local de remaining/status.
 
 # 97. Dashboard
 

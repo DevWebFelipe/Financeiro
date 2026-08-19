@@ -36,6 +36,20 @@ export const routes: Routes = [
         title: 'Contas — Financeiro',
       },
       {
+        path: 'credit-cards',
+        loadComponent: () =>
+          import('./features/credit-cards/credit-cards-page').then(
+            (module) => module.CreditCardsPage,
+          ),
+        title: 'Cartões — Financeiro',
+      },
+      {
+        path: 'invoices',
+        loadComponent: () =>
+          import('./features/invoices/invoices-page').then((module) => module.InvoicesPage),
+        title: 'Faturas — Financeiro',
+      },
+      {
         path: 'categories',
         loadComponent: () =>
           import('./features/categories/categories-page').then((module) => module.CategoriesPage),
