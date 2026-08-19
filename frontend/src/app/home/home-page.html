@@ -1,8 +1,0 @@
-<main>
-  <h1>Financial Control</h1>
-  <p>Aplicação inicial em execução.</p>
-  @if (auth.user(); as user) {
-    <p>{{ user.name }}</p>
-  }
-  <button type="button" (click)="auth.logout()">Sair</button>
-</main>

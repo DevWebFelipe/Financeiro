@@ -1,0 +1,24 @@
+<header class="header">
+  <button
+    #menuButton
+    type="button"
+    class="header__menu"
+    [attr.aria-expanded]="mobileNavOpen()"
+    aria-controls="mobile-nav"
+    (click)="menuToggle.emit()"
+  >
+    <span class="visually-hidden">{{ mobileNavOpen() ? 'Fechar menu' : 'Abrir menu' }}</span>
+    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <path fill="currentColor" d="M4 6.75h16v1.5H4zm0 4.5h16v1.5H4zm0 4.5h16v1.5H4z" />
+    </svg>
+  </button>
+
+  <a routerLink="/dashboard" class="header__brand">Financeiro</a>
+
+  <div class="header__session">
+    @if (auth.user(); as user) {
+      <span class="header__user">{{ user.name }}</span>
+    }
+    <button type="button" class="header__logout" (click)="onLogout()">Sair</button>
+  </div>
+</header>

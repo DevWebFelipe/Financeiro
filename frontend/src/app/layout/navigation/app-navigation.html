@@ -1,0 +1,30 @@
+<nav [attr.id]="navId()" aria-label="Principal">
+  <ul>
+    @for (item of items; track item.path) {
+      <li>
+        <a
+          [routerLink]="item.path"
+          routerLinkActive="is-active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          ariaCurrentWhenActive="page"
+          [attr.title]="collapsed() ? item.label : null"
+          (click)="onNavigate()"
+        >
+          <span class="nav-icon" aria-hidden="true">
+            @switch (item.id) {
+              @case ('dashboard') {
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M3.75 3.75h7.5v7.5h-7.5zm9 0h7.5v4.5h-7.5zm0 6h7.5v10.5h-7.5zm-9 3h7.5v7.5h-7.5z"
+                  />
+                </svg>
+              }
+            }
+          </span>
+          <span [class.visually-hidden]="collapsed()">{{ item.label }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+</nav>

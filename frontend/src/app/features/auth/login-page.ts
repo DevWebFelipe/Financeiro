@@ -48,6 +48,6 @@ export class LoginPage {
   }
 
   private returnUrl(): string {
-    return toSafeInternalUrl(this.route.snapshot.queryParamMap.get('returnUrl')) ?? '/';
+    return toSafeInternalUrl(this.route.snapshot.queryParamMap.get('returnUrl')) ?? '/dashboard';
   }
 }

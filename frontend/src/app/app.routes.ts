@@ -2,11 +2,34 @@ import { Routes } from '@angular/router';
 import { authGuard, guestGuard } from './core/auth/auth.guard';
 import { LoginPage } from './features/auth/login-page';
 import { RegisterPage } from './features/auth/register-page';
-import { HomePage } from './home/home-page';
+import { MainLayout } from './layout/main-layout/main-layout';
 
 export const routes: Routes = [
-  { path: 'login', component: LoginPage, canActivate: [guestGuard] },
-  { path: 'register', component: RegisterPage, canActivate: [guestGuard] },
-  { path: '', component: HomePage, canActivate: [authGuard] },
-  { path: '**', redirectTo: '' },
+  {
+    path: 'login',
+    component: LoginPage,
+    canActivate: [guestGuard],
+    title: 'Entrar — Financeiro',
+  },
+  {
+    path: 'register',
+    component: RegisterPage,
+    canActivate: [guestGuard],
+    title: 'Criar conta — Financeiro',
+  },
+  {
+    path: '',
+    component: MainLayout,
+    canActivate: [authGuard],
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./features/dashboard/dashboard-page').then((module) => module.DashboardPage),
+        title: 'Dashboard — Financeiro',
+      },
+      { path: '**', redirectTo: 'dashboard' },
+    ],
+  },
 ];

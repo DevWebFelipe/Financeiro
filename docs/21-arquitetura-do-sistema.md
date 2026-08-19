@@ -1084,6 +1084,26 @@ Interceptor `Authorization: Bearer` quando há token. AuthGuard aguarda `loading
 Registro (`POST /auth/register`) **não** cria sessão. Login (`POST /auth/login`) armazena `accessToken` e busca `/users/me`. Logout é local.
 
 
+# 96D. App Shell (Fase 21 — Bloco B4)
+
+Casca autenticada em `frontend/src/app/layout/` (`main-layout`, `header`, `navigation`). O Dashboard placeholder fica em `frontend/src/app/features/dashboard/`.
+
+MainLayout:
+
+- Header;
+- Sidebar desktop colapsável;
+- Drawer mobile de navegação (exceção estrutural do shell; não é o Drawer genérico de filtros/detalhes);
+- `RouterOutlet`.
+
+Estado visual local (signals): `sidebarCollapsed`, `mobileNavigationOpen`. Sem persistência. Sem store global. Sem Material/CDK.
+
+Desktop (`min-width: 64rem`): sidebar permanente, colapsável; header e conteúdo à direita. Mobile: sidebar sai do fluxo; o Header abre o Drawer; o conteúdo ocupa a largura disponível. O Drawer fecha por rota, Escape, botão Fechar ou backdrop; o foco entra no Drawer ao abrir e volta ao botão de menu ao fechar.
+
+Entrada autenticada: `/dashboard` (AuthGuard no layout pai). `/` redireciona para `/dashboard`. Login e registro permanecem públicos (`guestGuard`). Logout no Header usa `AuthService`. O usuário exibido vem de `AuthService.user()` — sem novo `GET /users/me`.
+
+O Dashboard deste bloco é placeholder de rota, sem KPIs, gráficos ou chamadas financeiras. Páginas futuras podem ser lazy-loaded como filhas do MainLayout.
+
+
 # 97. Dashboard
 
 Dashboard deve apresentar:

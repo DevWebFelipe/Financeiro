@@ -1,0 +1,76 @@
+<div
+  class="shell"
+  [class.shell--collapsed]="sidebarCollapsed()"
+  [class.shell--drawer-open]="mobileNavigationOpen()"
+>
+  <a class="skip-link" href="#main-content" (click)="skipToContent($event)"> Ir para o conteúdo </a>
+
+  <div class="shell__frame">
+    <aside class="shell__sidebar" aria-label="Navegação">
+      <div class="shell__sidebar-top">
+        <button
+          type="button"
+          class="shell__collapse"
+          [attr.aria-expanded]="!sidebarCollapsed()"
+          aria-controls="desktop-nav"
+          (click)="toggleSidebar()"
+        >
+          <span class="visually-hidden">
+            {{ sidebarCollapsed() ? 'Expandir menu' : 'Recolher menu' }}
+          </span>
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            @if (sidebarCollapsed()) {
+              <path fill="currentColor" d="M9.5 6.5 15 12l-5.5 5.5-1.06-1.06L12.88 12 8.44 7.56z" />
+            } @else {
+              <path fill="currentColor" d="M14.5 6.5 8 12l6.5 5.5 1.06-1.06L10.12 12l5.44-4.44z" />
+            }
+          </svg>
+        </button>
+      </div>
+      <app-navigation navId="desktop-nav" [collapsed]="sidebarCollapsed()" />
+    </aside>
+
+    <app-header [mobileNavOpen]="mobileNavigationOpen()" (menuToggle)="toggleMobileNavigation()" />
+
+    <main
+      #mainContent
+      id="main-content"
+      class="shell__main"
+      tabindex="-1"
+      [attr.inert]="mobileNavigationOpen() ? '' : null"
+    >
+      <router-outlet />
+    </main>
+  </div>
+
+  <div
+    class="shell__backdrop"
+    [class.is-visible]="mobileNavigationOpen()"
+    (click)="closeMobileNavigation()"
+  ></div>
+
+  <div
+    #drawer
+    id="mobile-nav"
+    class="shell__drawer"
+    [class.is-open]="mobileNavigationOpen()"
+    [attr.inert]="mobileNavigationOpen() ? null : ''"
+    [attr.role]="mobileNavigationOpen() ? 'dialog' : null"
+    [attr.aria-modal]="mobileNavigationOpen() ? 'true' : null"
+    [attr.aria-labelledby]="mobileNavigationOpen() ? 'mobile-nav-title' : null"
+    [attr.aria-hidden]="mobileNavigationOpen() ? null : true"
+  >
+    <div class="shell__drawer-head">
+      <h2 id="mobile-nav-title">Menu</h2>
+      <button
+        #drawerClose
+        type="button"
+        class="shell__drawer-close"
+        (click)="closeMobileNavigation()"
+      >
+        Fechar
+      </button>
+    </div>
+    <app-navigation (navigated)="closeMobileNavigation()" />
+  </div>
+</div>

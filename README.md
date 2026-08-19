@@ -450,7 +450,7 @@ cd backend
 
 ### Frontend
 
-O scaffold Angular da Fase 1 existe em `frontend/`. A UI de autenticação **não** foi implementada na Fase 3.
+O frontend Angular está em `frontend/`. A casca autenticada (MainLayout, Header, Sidebar/Drawer) usa `/dashboard` como entrada. Login e registro são públicos.
 
 ### Estrutura
 
@@ -515,7 +515,7 @@ Coleção Postman para testes manuais: `postman/Financial Control API.postman_co
 
 ## Status
 
-**Fase atual:** Fase 21 — Frontend completo (Bloco B3 — Autenticação e sessão — implementado)
+**Fase atual:** Fase 21 — Frontend completo (Bloco B4 — App Shell, layout e navegação — implementado)
 
 **Fase anterior:** Fase 20 — Relatórios — **CONCLUÍDA E APROVADA** (auditoria final **APROVADA COM RESSALVAS**)
 

@@ -1,0 +1,8 @@
+:host {
+  display: block;
+}
+
+h1 + p {
+  margin-top: var(--space-sm);
+  color: var(--color-text-secondary);
+}
