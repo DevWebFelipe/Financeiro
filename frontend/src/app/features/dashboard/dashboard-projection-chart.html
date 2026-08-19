@@ -17,7 +17,7 @@
             [style.--bar-size]="barPercent(month.totalExpense) + '%'"
           ></span>
         </div>
-        <span class="bars__label">{{ formatYearMonth(month.period) }}</span>
+        <span class="bars__label">{{ month.period | yearMonth }}</span>
       </div>
     }
   </div>
@@ -39,10 +39,10 @@
       <tbody>
         @for (month of months(); track month.period) {
           <tr>
-            <th scope="row">{{ formatYearMonth(month.period) }}</th>
-            <td>{{ formatBrl(month.totalIncome) }}</td>
-            <td>{{ formatBrl(month.totalExpense) }}</td>
-            <td>{{ formatBrl(month.closingBalance) }}</td>
+            <th scope="row">{{ month.period | yearMonth }}</th>
+            <td>{{ month.totalIncome | brlCurrency }}</td>
+            <td>{{ month.totalExpense | brlCurrency }}</td>
+            <td>{{ month.closingBalance | brlCurrency }}</td>
             <td>
               {{ month.negative ? 'Saldo projetado negativo' : 'Saldo projetado não negativo' }}
             </td>

@@ -13,7 +13,7 @@
     <input id="password" type="password" formControlName="password" autocomplete="new-password" />
 
     @if (error(); as apiError) {
-      <p role="alert">{{ apiError.message }}</p>
+      <app-error-state [message]="apiError.message" />
     }
 
     <button type="submit" [disabled]="submitting()">Cadastrar</button>

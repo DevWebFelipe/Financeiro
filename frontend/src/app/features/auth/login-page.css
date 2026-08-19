@@ -20,7 +20,3 @@ form {
   gap: var(--space-sm);
   margin-top: var(--space-lg);
 }
-
-[role='alert'] {
-  color: var(--color-error);
-}

@@ -7,8 +7,7 @@
 }
 
 .page-header__meta,
-.hint,
-.empty {
+.hint {
   margin-top: var(--space-sm);
   color: var(--color-text-secondary);
 }
@@ -134,15 +133,9 @@
   color: var(--color-text-secondary);
 }
 
-.banner {
-  display: grid;
-  gap: var(--space-md);
-  justify-items: start;
+app-error-state,
+app-empty-state {
   margin-bottom: var(--space-xl);
-}
-
-.banner--error {
-  color: var(--color-error);
 }
 
 .skeleton {

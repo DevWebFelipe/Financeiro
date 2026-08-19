@@ -1,12 +1,13 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { ApiError, isApiError } from '../../core/errors/api-error';
 import { AuthService } from '../../core/auth/auth.service';
+import { ApiError, isApiError } from '../../core/errors/api-error';
+import { ErrorState } from '../../shared/components/error-state/error-state';
 
 @Component({
   selector: 'app-register-page',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, ErrorState],
   templateUrl: './register-page.html',
   styleUrl: './register-page.css',
 })

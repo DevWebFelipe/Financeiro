@@ -1,0 +1,14 @@
+:host {
+  display: block;
+}
+
+.error-state {
+  display: grid;
+  gap: var(--space-md);
+  justify-items: start;
+}
+
+p {
+  margin: 0;
+  color: var(--color-error);
+}

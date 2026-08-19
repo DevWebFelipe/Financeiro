@@ -1,9 +1,11 @@
 import { Component, computed, input } from '@angular/core';
-import { formatBrl, formatYearMonth } from './dashboard-format';
+import { BrlCurrencyPipe } from '../../shared/pipes/brl-currency.pipe';
+import { YearMonthPipe } from '../../shared/pipes/year-month.pipe';
 import { DashboardProjectionMonth } from './dashboard.models';
 
 @Component({
   selector: 'app-dashboard-projection-chart',
+  imports: [BrlCurrencyPipe, YearMonthPipe],
   templateUrl: './dashboard-projection-chart.html',
   styleUrl: './dashboard-projection-chart.css',
 })
@@ -17,9 +19,6 @@ export class DashboardProjectionChart {
     }
     return max;
   });
-
-  readonly formatBrl = formatBrl;
-  readonly formatYearMonth = formatYearMonth;
 
   barPercent(value: number): number {
     const scale = this.scale();

@@ -2,14 +2,18 @@ import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY, startWith, Subject, switchMap } from 'rxjs';
 import { ApiError, isApiError } from '../../core/errors/api-error';
-import { accountTypeLabel, formatBrl, formatIsoDate, formatQuarter } from './dashboard-format';
+import { EmptyState } from '../../shared/components/empty-state/empty-state';
+import { ErrorState } from '../../shared/components/error-state/error-state';
+import { BrlCurrencyPipe } from '../../shared/pipes/brl-currency.pipe';
+import { IsoDatePipe } from '../../shared/pipes/iso-date.pipe';
+import { accountTypeLabel, formatQuarter } from './dashboard-format';
 import { DashboardProjectionChart } from './dashboard-projection-chart';
 import { DashboardResponse } from './dashboard.models';
 import { DashboardService } from './dashboard.service';
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [DashboardProjectionChart],
+  imports: [DashboardProjectionChart, EmptyState, ErrorState, BrlCurrencyPipe, IsoDatePipe],
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.css',
 })
@@ -29,8 +33,6 @@ export class DashboardPage {
     return snapshot != null && snapshot.accounts.length === 0 && snapshot.creditCards.length === 0;
   });
 
-  readonly formatBrl = formatBrl;
-  readonly formatIsoDate = formatIsoDate;
   readonly formatQuarter = formatQuarter;
   readonly accountTypeLabel = accountTypeLabel;
 

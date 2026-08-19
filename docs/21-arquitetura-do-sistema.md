@@ -1115,6 +1115,21 @@ A série mensal vem de `projection.months` do próprio dashboard (sem `events`).
 Não somar `payables` com `projection.summary.projectedExpense`. `usedLimit` não é tratado como caixa.
 
 
+# 96F. Shared UI (Fase 21 — Bloco B6)
+
+`frontend/src/app/shared/` concentra UI genuinamente reutilizável. Não é um depósito nem um design system paralelo.
+
+Existe neste bloco:
+
+- `ErrorState` — mensagem amigável + retry opcional; a feature decide o texto; não interpreta `ApiError`;
+- `EmptyState` — ausência de dados, distinta de erro; ação opcional via conteúdo projetado;
+- pipes de apresentação: `brlCurrency`, `isoDate` (DATE `YYYY-MM-DD` sem timezone de instante), `yearMonth` (`YYYY-MM`).
+
+Não existem neste bloco: `Button` (o `button` nativo já é estilizado em `base.css`), Loading/Skeleton genérico, diretivas, Dialog, Drawer, Toast, tabela genérica, `shared/services`.
+
+Ícones do shell permanecem SVG locais. Formatação de trimestre e rótulos de tipo de conta permanecem no Dashboard.
+
+
 # 97. Dashboard
 
 Dashboard deve apresentar:
