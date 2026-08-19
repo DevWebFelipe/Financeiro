@@ -35,6 +35,18 @@ export const routes: Routes = [
           import('./features/accounts/accounts-page').then((module) => module.AccountsPage),
         title: 'Contas — Financeiro',
       },
+      {
+        path: 'categories',
+        loadComponent: () =>
+          import('./features/categories/categories-page').then((module) => module.CategoriesPage),
+        title: 'Categorias — Financeiro',
+      },
+      {
+        path: 'expenses',
+        loadComponent: () =>
+          import('./features/expenses/expenses-page').then((module) => module.ExpensesPage),
+        title: 'Despesas — Financeiro',
+      },
       { path: '**', redirectTo: 'dashboard' },
     ],
   },

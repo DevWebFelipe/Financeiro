@@ -1,0 +1,742 @@
+<section aria-labelledby="expenses-title" [attr.aria-busy]="status() === 'loading'">
+  <header class="page-header">
+    <div class="page-header__intro">
+      <h1 id="expenses-title">Despesas</h1>
+      <p class="page-header__meta">Contas a pagar registradas nesta sessão.</p>
+    </div>
+    @if (status() === 'loaded' && (expenses().length > 0 || hasFilters())) {
+      <button type="button" (click)="openCreate()">Nova despesa</button>
+    }
+  </header>
+
+  @if (status() === 'loading') {
+    <p class="visually-hidden">Carregando despesas.</p>
+    <div class="skeleton" aria-hidden="true">
+      <div class="skeleton__block skeleton__block--title"></div>
+      <div class="skeleton__block"></div>
+      <div class="skeleton__block"></div>
+    </div>
+  }
+
+  @if (status() === 'error') {
+    <app-error-state
+      message="Não foi possível carregar as despesas."
+      retryLabel="Tentar novamente"
+      (retry)="retry()"
+    />
+  }
+
+  @if (status() === 'loaded') {
+    @if (actionError(); as message) {
+      <app-error-state [message]="message" />
+    }
+
+    <section class="filters" aria-labelledby="expense-filters-title">
+      <h2 id="expense-filters-title" class="filters__title">Filtros</h2>
+      <div class="filters__controls">
+        <div class="field field--compact">
+          <label for="filter-status">Status</label>
+          <select
+            id="filter-status"
+            [value]="statusFilter()"
+            (change)="onStatusFilterChange($any($event.target).value)"
+          >
+            <option value="">Todos</option>
+            @for (option of statusOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-payment-method">Forma de pagamento</label>
+          <select
+            id="filter-payment-method"
+            [value]="paymentMethodFilter()"
+            (change)="onPaymentMethodFilterChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (option of paymentMethodOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+            <option value="CREDIT_CARD">Cartão</option>
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-responsible">Responsável</label>
+          <select
+            id="filter-responsible"
+            [value]="responsibleFilter()"
+            (change)="onResponsibleFilterChange($any($event.target).value)"
+          >
+            <option value="">Todos</option>
+            @for (option of responsibleOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-category">Categoria</label>
+          <select
+            id="filter-category"
+            [value]="categoryFilter()"
+            (change)="onCategoryFilterChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (category of categories(); track category.id) {
+              <option [value]="category.id">{{ category.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-account">Conta</label>
+          <select
+            id="filter-account"
+            [value]="accountFilter()"
+            (change)="onAccountFilterChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (account of accounts(); track account.id) {
+              <option [value]="account.id">{{ account.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-start-date">Vencimento de</label>
+          <input
+            id="filter-start-date"
+            type="date"
+            [value]="startDateFilter()"
+            (change)="onStartDateFilterChange($any($event.target).value)"
+          />
+        </div>
+        <div class="field field--compact">
+          <label for="filter-end-date">Vencimento até</label>
+          <input
+            id="filter-end-date"
+            type="date"
+            [value]="endDateFilter()"
+            (change)="onEndDateFilterChange($any($event.target).value)"
+          />
+        </div>
+      </div>
+    </section>
+
+    @if (isEmpty()) {
+      <app-empty-state
+        [message]="
+          hasFilters()
+            ? 'Nenhuma despesa corresponde aos filtros selecionados.'
+            : 'Nenhuma despesa cadastrada.'
+        "
+      >
+        <button type="button" (click)="openCreate()">Nova despesa</button>
+      </app-empty-state>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <caption class="visually-hidden">
+            Despesas cadastradas
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Descrição</th>
+              <th scope="col">Categoria</th>
+              <th scope="col">Valor</th>
+              <th scope="col">Vencimento</th>
+              <th scope="col">Status</th>
+              <th scope="col">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (expense of expenses(); track expense.id) {
+              <tr [class.is-overdue]="isOverdue(expense)">
+                <th scope="row" data-label="Descrição">
+                  <span class="name">{{ expense.description }}</span>
+                  @if (isOverdue(expense)) {
+                    <span class="badge badge--overdue">Vencida</span>
+                  }
+                </th>
+                <td data-label="Categoria">{{ categoryName(expense.categoryId) }}</td>
+                <td data-label="Valor">{{ expense.totalAmount | brlCurrency }}</td>
+                <td data-label="Vencimento">{{ expense.dueDate | isoDate }}</td>
+                <td data-label="Status">
+                  <span class="status">{{ statusLabel(expense.status) }}</span>
+                </td>
+                <td class="actions" data-label="Ações">
+                  <div class="actions__group">
+                    <button type="button" (click)="openDetail(expense)" [disabled]="submitting()">
+                      Detalhes
+                    </button>
+                    @if (canEditItem(expense)) {
+                      <button type="button" (click)="openEdit(expense)" [disabled]="submitting()">
+                        Editar
+                      </button>
+                    }
+                    @if (canPayItem(expense)) {
+                      <button type="button" (click)="openPay(expense)" [disabled]="submitting()">
+                        Pagar
+                      </button>
+                    }
+                    @if (canCancelItem(expense)) {
+                      <button
+                        type="button"
+                        (click)="openCancelConfirm(expense)"
+                        [disabled]="submitting()"
+                      >
+                        Cancelar
+                      </button>
+                    }
+                    @if (canRefundItem(expense)) {
+                      <button type="button" (click)="openRefund(expense)" [disabled]="submitting()">
+                        Estornar
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalPages() > 1) {
+        <nav class="pagination" aria-label="Paginação de despesas">
+          <p class="pagination__meta">
+            Página {{ pageIndex() + 1 }} de {{ totalPages() }} — {{ totalItems() }} despesas
+          </p>
+          <div class="pagination__controls">
+            <button type="button" (click)="goToPage(pageIndex() - 1)" [disabled]="!canGoPrev()">
+              Anterior
+            </button>
+            <button type="button" (click)="goToPage(pageIndex() + 1)" [disabled]="!canGoNext()">
+              Próxima
+            </button>
+          </div>
+        </nav>
+      }
+    }
+
+    @if (panelMode() === 'detail' && selectedExpense(); as expense) {
+      <section class="panel" aria-labelledby="expense-detail-title">
+        <h2 id="expense-detail-title">Detalhes da despesa</h2>
+
+        @if (detailLoading()) {
+          <p class="visually-hidden">Carregando detalhes.</p>
+          <div class="skeleton" aria-hidden="true">
+            <div class="skeleton__block"></div>
+          </div>
+        } @else {
+          @if (detailError(); as message) {
+            <app-error-state [message]="message" />
+          } @else {
+            <dl class="detail-list">
+              <div>
+                <dt>Descrição</dt>
+                <dd>{{ expense.description }}</dd>
+              </div>
+              <div>
+                <dt>Categoria</dt>
+                <dd>{{ categoryName(expense.categoryId) }}</dd>
+              </div>
+              <div>
+                <dt>Conta</dt>
+                <dd>{{ accountName(expense.accountId) }}</dd>
+              </div>
+              <div>
+                <dt>Valor total</dt>
+                <dd>{{ expense.totalAmount | brlCurrency }}</dd>
+              </div>
+              <div>
+                <dt>Data da despesa</dt>
+                <dd>{{ expense.expenseDate | isoDate }}</dd>
+              </div>
+              <div>
+                <dt>Vencimento</dt>
+                <dd>{{ expense.dueDate | isoDate }}</dd>
+              </div>
+              <div>
+                <dt>Forma de pagamento</dt>
+                <dd>{{ methodLabel(expense.paymentMethod) }}</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>{{ statusLabel(expense.status) }}</dd>
+              </div>
+              <div>
+                <dt>Responsável</dt>
+                <dd>
+                  {{ responsibleLabel(expense.responsibleType) }}
+                  @if (expense.responsibleName) {
+                    — {{ expense.responsibleName }}
+                  }
+                </dd>
+              </div>
+              @if (expense.notes) {
+                <div>
+                  <dt>Observações</dt>
+                  <dd>{{ expense.notes }}</dd>
+                </div>
+              }
+            </dl>
+
+            @if (installments().length > 0) {
+              <h3>Parcelas</h3>
+              <div class="table-wrap">
+                <table>
+                  <caption class="visually-hidden">
+                    Parcelas da despesa
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Parcela</th>
+                      <th scope="col">Valor</th>
+                      <th scope="col">Restante</th>
+                      <th scope="col">Vencimento</th>
+                      <th scope="col">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (installment of installments(); track installment.id) {
+                      <tr>
+                        <td data-label="Parcela">
+                          {{ installment.installmentNumber }}/{{ installment.totalInstallments }}
+                        </td>
+                        <td data-label="Valor">{{ installment.amount | brlCurrency }}</td>
+                        <td data-label="Restante">
+                          {{ installment.remainingAmount | brlCurrency }}
+                        </td>
+                        <td data-label="Vencimento">{{ installment.dueDate | isoDate }}</td>
+                        <td data-label="Status">{{ statusLabel(installment.status) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          }
+
+          <div class="form-actions">
+            <button type="button" (click)="closeDetail()">Fechar</button>
+          </div>
+        }
+      </section>
+    }
+
+    @if (panelMode() === 'cancel-confirm' && selectedExpense(); as expense) {
+      <section class="panel panel--confirm" aria-labelledby="expense-cancel-title">
+        <h2 id="expense-cancel-title">Cancelar despesa</h2>
+        <p>
+          Deseja cancelar a despesa <strong>{{ expense.description }}</strong
+          >? Esta ação não pode ser desfeita.
+        </p>
+        @if (formError(); as message) {
+          <app-error-state [message]="message" />
+        }
+        <div class="form-actions">
+          <button type="button" (click)="confirmCancel()" [disabled]="submitting()">
+            Confirmar cancelamento
+          </button>
+          <button type="button" (click)="closeCancelConfirm()" [disabled]="submitting()">
+            Voltar
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (formMode() === 'create' || formMode() === 'edit') {
+      <section class="panel" aria-labelledby="expense-form-title">
+        <h2 id="expense-form-title">
+          {{ formMode() === 'create' ? 'Nova despesa' : 'Editar despesa' }}
+        </h2>
+
+        <form [formGroup]="expenseForm" (ngSubmit)="submitExpenseForm()" novalidate>
+          <div class="field">
+            <label for="expense-category">Categoria</label>
+            <select
+              id="expense-category"
+              formControlName="categoryId"
+              [attr.aria-invalid]="expenseFieldError('categoryId') != null"
+              [attr.aria-describedby]="
+                expenseFieldError('categoryId') != null ? 'expense-category-error' : null
+              "
+            >
+              <option value="" disabled>Selecione</option>
+              @for (category of categories(); track category.id) {
+                <option [value]="category.id">{{ category.name }}</option>
+              }
+            </select>
+            @if (expenseFieldError('categoryId'); as message) {
+              <p id="expense-category-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="expense-description">Descrição</label>
+            <input
+              id="expense-description"
+              type="text"
+              formControlName="description"
+              maxlength="255"
+              [attr.aria-invalid]="expenseFieldError('description') != null"
+              [attr.aria-describedby]="
+                expenseFieldError('description') != null ? 'expense-description-error' : null
+              "
+            />
+            @if (expenseFieldError('description'); as message) {
+              <p id="expense-description-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="expense-total">Valor total</label>
+            <input
+              id="expense-total"
+              type="number"
+              step="0.01"
+              min="0.01"
+              formControlName="totalAmount"
+              [attr.aria-invalid]="expenseFieldError('totalAmount') != null"
+              [attr.aria-describedby]="
+                expenseFieldError('totalAmount') != null ? 'expense-total-error' : null
+              "
+            />
+            @if (expenseFieldError('totalAmount'); as message) {
+              <p id="expense-total-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="expense-date">Data da despesa</label>
+            <input
+              id="expense-date"
+              type="date"
+              formControlName="expenseDate"
+              [attr.aria-invalid]="expenseFieldError('expenseDate') != null"
+              [attr.aria-describedby]="
+                expenseFieldError('expenseDate') != null ? 'expense-date-error' : null
+              "
+            />
+            @if (expenseFieldError('expenseDate'); as message) {
+              <p id="expense-date-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="expense-due-date">Vencimento</label>
+            <input
+              id="expense-due-date"
+              type="date"
+              formControlName="dueDate"
+              [attr.aria-invalid]="expenseFieldError('dueDate') != null"
+              [attr.aria-describedby]="
+                expenseFieldError('dueDate') != null ? 'expense-due-date-error' : null
+              "
+            />
+            @if (expenseFieldError('dueDate'); as message) {
+              <p id="expense-due-date-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="expense-payment-method">Forma de pagamento</label>
+            <select
+              id="expense-payment-method"
+              formControlName="paymentMethod"
+              [attr.aria-invalid]="expenseFieldError('paymentMethod') != null"
+              [attr.aria-describedby]="
+                expenseFieldError('paymentMethod') != null ? 'expense-payment-method-error' : null
+              "
+            >
+              <option value="" disabled>Selecione</option>
+              @for (option of paymentMethodOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+            @if (expenseFieldError('paymentMethod'); as message) {
+              <p id="expense-payment-method-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          @if (showAccountField()) {
+            <div class="field">
+              <label for="expense-account">Conta</label>
+              <select
+                id="expense-account"
+                formControlName="accountId"
+                [attr.aria-invalid]="expenseFieldError('accountId') != null"
+                [attr.aria-describedby]="
+                  expenseFieldError('accountId') != null ? 'expense-account-error' : null
+                "
+              >
+                <option value="" disabled>Selecione</option>
+                @for (account of activeAccounts(); track account.id) {
+                  <option [value]="account.id">{{ account.name }}</option>
+                }
+              </select>
+              @if (expenseFieldError('accountId'); as message) {
+                <p id="expense-account-error" class="field__error">{{ message }}</p>
+              }
+            </div>
+          }
+
+          <div class="field">
+            <label for="expense-responsible">Responsável</label>
+            <select
+              id="expense-responsible"
+              formControlName="responsibleType"
+              [attr.aria-invalid]="expenseFieldError('responsibleType') != null"
+              [attr.aria-describedby]="
+                expenseFieldError('responsibleType') != null ? 'expense-responsible-error' : null
+              "
+            >
+              <option value="" disabled>Selecione</option>
+              @for (option of responsibleOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+            @if (expenseFieldError('responsibleType'); as message) {
+              <p id="expense-responsible-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          @if (showResponsibleNameField()) {
+            <div class="field">
+              <label for="expense-responsible-name">Nome do responsável</label>
+              <input
+                id="expense-responsible-name"
+                type="text"
+                formControlName="responsibleName"
+                [attr.aria-invalid]="expenseFieldError('responsibleName') != null"
+                [attr.aria-describedby]="
+                  expenseFieldError('responsibleName') != null
+                    ? 'expense-responsible-name-error'
+                    : null
+                "
+              />
+              @if (expenseFieldError('responsibleName'); as message) {
+                <p id="expense-responsible-name-error" class="field__error">{{ message }}</p>
+              }
+            </div>
+          }
+
+          @if (showInstallmentCountField()) {
+            <div class="field">
+              <label for="expense-installment-count">Quantidade de parcelas</label>
+              <input
+                id="expense-installment-count"
+                type="number"
+                min="1"
+                step="1"
+                formControlName="installmentCount"
+                [attr.aria-describedby]="'expense-installment-count-hint'"
+              />
+              <p id="expense-installment-count-hint" class="field__hint">
+                Deixe em branco para parcela única.
+              </p>
+              @if (expenseFieldError('installmentCount'); as message) {
+                <p class="field__error">{{ message }}</p>
+              }
+            </div>
+          }
+
+          <div class="field">
+            <label for="expense-barcode">Código de barras</label>
+            <input id="expense-barcode" type="text" formControlName="barcode" />
+          </div>
+
+          <div class="field">
+            <label for="expense-notes">Observações</label>
+            <textarea id="expense-notes" rows="3" formControlName="notes"></textarea>
+          </div>
+
+          @if (formError(); as message) {
+            <app-error-state [message]="message" />
+          }
+
+          <div class="form-actions">
+            <button type="submit" [disabled]="submitting()">Salvar</button>
+            <button type="button" (click)="closeForm()" [disabled]="submitting()">Cancelar</button>
+          </div>
+        </form>
+      </section>
+    }
+
+    @if (formMode() === 'pay' && selectedExpense(); as expense) {
+      <section class="panel" aria-labelledby="expense-pay-title">
+        <h2 id="expense-pay-title">Pagar despesa</h2>
+        <p class="panel__meta">{{ expense.description }}</p>
+
+        <form [formGroup]="payForm" (ngSubmit)="submitPay()" novalidate>
+          @if (showPayInstallmentField()) {
+            <div class="field">
+              <label for="pay-installment">Parcela</label>
+              <select
+                id="pay-installment"
+                formControlName="installmentId"
+                [attr.aria-invalid]="payFieldError('installmentId') != null"
+                [attr.aria-describedby]="
+                  payFieldError('installmentId') != null ? 'pay-installment-error' : null
+                "
+              >
+                <option value="" disabled>Selecione</option>
+                @for (installment of installments(); track installment.id) {
+                  @if (canPayInstallmentItem(installment, expense)) {
+                    <option [value]="installment.id">
+                      {{ installment.installmentNumber }}/{{ installment.totalInstallments }} —
+                      restante {{ installment.remainingAmount | brlCurrency }}
+                    </option>
+                  }
+                }
+              </select>
+              @if (payFieldError('installmentId'); as message) {
+                <p id="pay-installment-error" class="field__error">{{ message }}</p>
+              }
+            </div>
+          }
+
+          <div class="field">
+            <label for="pay-account">Conta</label>
+            <select
+              id="pay-account"
+              formControlName="accountId"
+              [attr.aria-invalid]="payFieldError('accountId') != null"
+              [attr.aria-describedby]="
+                payFieldError('accountId') != null ? 'pay-account-error' : null
+              "
+            >
+              <option value="" disabled>Selecione</option>
+              @for (account of activeAccounts(); track account.id) {
+                <option [value]="account.id">{{ account.name }}</option>
+              }
+            </select>
+            @if (payFieldError('accountId'); as message) {
+              <p id="pay-account-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="pay-amount">Valor</label>
+            <input
+              id="pay-amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              formControlName="amount"
+              [attr.aria-invalid]="payFieldError('amount') != null"
+              [attr.aria-describedby]="payFieldError('amount') != null ? 'pay-amount-error' : null"
+            />
+            @if (payFieldError('amount'); as message) {
+              <p id="pay-amount-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="pay-date">Data do pagamento</label>
+            <input
+              id="pay-date"
+              type="date"
+              formControlName="paymentDate"
+              [attr.aria-invalid]="payFieldError('paymentDate') != null"
+              [attr.aria-describedby]="
+                payFieldError('paymentDate') != null ? 'pay-date-error' : null
+              "
+            />
+            @if (payFieldError('paymentDate'); as message) {
+              <p id="pay-date-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="pay-notes">Observações</label>
+            <textarea id="pay-notes" rows="2" formControlName="notes"></textarea>
+          </div>
+
+          @if (formError(); as message) {
+            <app-error-state [message]="message" />
+          }
+
+          <div class="form-actions">
+            <button type="submit" [disabled]="submitting()">Confirmar pagamento</button>
+            <button type="button" (click)="closeForm()" [disabled]="submitting()">Cancelar</button>
+          </div>
+        </form>
+      </section>
+    }
+
+    @if (formMode() === 'refund' && selectedExpense(); as expense) {
+      <section class="panel" aria-labelledby="expense-refund-title">
+        <h2 id="expense-refund-title">Estornar despesa</h2>
+        <p class="panel__meta">
+          {{ expense.description }} — {{ expense.totalAmount | brlCurrency }}
+        </p>
+
+        @if (showRefundSettlementFields()) {
+          <form [formGroup]="refundForm" (ngSubmit)="submitRefund()" novalidate>
+            <div class="field">
+              <label for="refund-settlement">Forma de estorno</label>
+              <select
+                id="refund-settlement"
+                formControlName="settlement"
+                [attr.aria-invalid]="refundFieldError('settlement') != null"
+                [attr.aria-describedby]="
+                  refundFieldError('settlement') != null ? 'refund-settlement-error' : null
+                "
+              >
+                <option value="" disabled>Selecione</option>
+                <option value="CARD_CREDIT">Crédito no cartão</option>
+                <option value="ACCOUNT">Devolução em conta</option>
+              </select>
+              @if (refundFieldError('settlement'); as message) {
+                <p id="refund-settlement-error" class="field__error">{{ message }}</p>
+              }
+            </div>
+
+            @if (refundForm.controls.settlement.value === 'ACCOUNT') {
+              <div class="field">
+                <label for="refund-account">Conta</label>
+                <select
+                  id="refund-account"
+                  formControlName="accountId"
+                  [attr.aria-invalid]="refundFieldError('accountId') != null"
+                  [attr.aria-describedby]="
+                    refundFieldError('accountId') != null ? 'refund-account-error' : null
+                  "
+                >
+                  <option value="" disabled>Selecione</option>
+                  @for (account of activeAccounts(); track account.id) {
+                    <option [value]="account.id">{{ account.name }}</option>
+                  }
+                </select>
+                @if (refundFieldError('accountId'); as message) {
+                  <p id="refund-account-error" class="field__error">{{ message }}</p>
+                }
+              </div>
+            }
+
+            @if (formError(); as message) {
+              <app-error-state [message]="message" />
+            }
+
+            <div class="form-actions">
+              <button type="submit" [disabled]="submitting()">Confirmar estorno</button>
+              <button type="button" (click)="closeForm()" [disabled]="submitting()">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        } @else {
+          <p>O valor pago será estornado conforme as regras do backend.</p>
+          @if (formError(); as message) {
+            <app-error-state [message]="message" />
+          }
+          <div class="form-actions">
+            <button type="button" (click)="submitRefund()" [disabled]="submitting()">
+              Confirmar estorno
+            </button>
+            <button type="button" (click)="closeForm()" [disabled]="submitting()">Cancelar</button>
+          </div>
+        }
+      </section>
+    }
+  }
+</section>

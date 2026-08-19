@@ -1151,6 +1151,49 @@ Após a listagem, os saldos oficiais são pedidos em paralelo (`forkJoin`). List
 Estados: `loading` | `loaded` | `empty` | `error`. Empty ≠ erro. Retry refaz listagem + balances. Formulário reativo na mesma rota. `VALIDATION_ERROR.fields` vai para o controle; `BUSINESS_RULE_VIOLATION` na desativação usa mensagem contextual (não `message.includes`).
 
 
+# 96H. Categorias (Fase 21 — Bloco B8)
+
+A página `/categories` é lazy-loaded sob o AuthGuard do MainLayout. A navegação passa a incluir Categorias neste bloco.
+
+Feature em `frontend/src/app/features/categories/`: `CategoriesPage` → `CategoriesService` → `HttpClient`. Sem recálculo de dados; sem campos inventados.
+
+Contrato utilizado:
+
+- `GET /api/v1/categories` — array, sem paginação, ordem `createdAt` ASC. Query opcionais oficiais: `type` (`INCOME` \| `EXPENSE`), `active` (`true` \| `false`).
+- `POST /api/v1/categories` — criação (`name`, `type`).
+- `PUT /api/v1/categories/{id}` — apenas `name` e `type`.
+- `POST /api/v1/categories/{id}/deactivate` — desativação lógica idempotente.
+
+Não existem no backend: `GET /categories/{id}`, `POST .../activate`, `DELETE`. Sem reativação na UI.
+
+Filtros da tela disparam nova listagem com os query params oficiais (não filtragem client-side). Duplicidade `name + type` → **409** `CONFLICT`. Sem `/categories/:id`.
+
+Estados: `loading` | `loaded` | `empty` | `error`. Formulário reativo na mesma rota. Inativas permanecem visíveis; botão Desativar só para ativas.
+
+
+# 96I. Despesas (Fase 21 — Bloco B9)
+
+A página `/expenses` é lazy-loaded sob o AuthGuard do MainLayout. A navegação passa a incluir Despesas neste bloco.
+
+Feature em `frontend/src/app/features/expenses/`: `ExpensesPage` → `ExpensesService` → `HttpClient`. Apoio cadastral: `CategoriesService` (categorias `EXPENSE` ativas) e `AccountsService` (nomes de contas). Sem recálculo financeiro; sem campos inventados.
+
+Contrato utilizado:
+
+- `GET /api/v1/expenses` — paginação oficial (`items`, `page`, `size`, `totalItems`, `totalPages`; default `page=0`, `size=20`). Filtros opcionais: `startDate`, `endDate`, `status`, `categoryId`, `accountId`, `responsibleType`, `paymentMethod`. Período usa `due_date` das parcelas.
+- `GET /api/v1/expenses/{id}` — detalhe (painel na mesma rota).
+- `POST /api/v1/expenses` — criação (`OPEN`; sem payment).
+- `PUT /api/v1/expenses/{id}` — somente `OPEN`.
+- `GET /api/v1/expenses/{id}/installments` — parcelas oficiais.
+- `POST /api/v1/expenses/{id}/pay` — pagamento 1/1 (`ACCOUNT`/`NONE`).
+- `POST /api/v1/expenses/{expenseId}/installments/{installmentId}/payments` — pagamento N>1.
+- `POST /api/v1/expenses/{id}/cancel` — somente `OPEN`.
+- `POST /api/v1/expenses/{id}/refund` — `PARTIALLY_PAID`/`PAID`; corpo vazio para `ACCOUNT`/`NONE`; `settlement` para `CREDIT_CARD`.
+
+Fora deste bloco na UI: criação `CREDIT_CARD` (sem feature de cartões no frontend), adjustments, reverse de payment, rota dedicada `/expenses/:id`.
+
+Estados: `loading` | `loaded` | `empty` | `error`. Paginação server-side. Filtros disparam nova listagem. Detalhe, pagamento, cancelamento e estorno em painéis na mesma rota. `VALIDATION_ERROR.fields` nos controles; regras por `error.code`.
+
+
 # 97. Dashboard
 
 Dashboard deve apresentar:

@@ -28,6 +28,22 @@
                   />
                 </svg>
               }
+              @case ('categories') {
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M4.5 5.25h15v1.5h-15zm0 4.5h15v1.5h-15zm0 4.5h15v1.5h-15zm0 4.5h15v1.5h-15z"
+                  />
+                </svg>
+              }
+              @case ('expenses') {
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M4.5 6.75A2.25 2.25 0 0 1 6.75 4.5h10.5A2.25 2.25 0 0 1 19.5 6.75v10.5A2.25 2.25 0 0 1 17.25 19.5H6.75A2.25 2.25 0 0 1 4.5 17.25V6.75zm3 2.25v1.5h9v-1.5h-9zm0 3v1.5h9v-1.5h-9zm0 3v1.5h6v-1.5h-6z"
+                  />
+                </svg>
+              }
             }
           </span>
           <span [class.visually-hidden]="collapsed()">{{ item.label }}</span>

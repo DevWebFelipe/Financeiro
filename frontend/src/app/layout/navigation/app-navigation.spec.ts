@@ -16,6 +16,8 @@ describe('AppNavigation', () => {
         provideRouter([
           { path: 'dashboard', component: AppNavigation },
           { path: 'accounts', component: AppNavigation },
+          { path: 'categories', component: AppNavigation },
+          { path: 'expenses', component: AppNavigation },
         ]),
       ],
     }).compileComponents();
@@ -39,6 +41,26 @@ describe('AppNavigation', () => {
     );
     const accounts = links.find((link) => link.textContent?.includes('Contas'));
     expect(accounts?.getAttribute('href')).toBe('/accounts');
+  });
+
+  it('renders the Categories item now that the feature exists', async () => {
+    const fixture = TestBed.createComponent(AppNavigation);
+    await fixture.whenStable();
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>,
+    );
+    const categories = links.find((link) => link.textContent?.includes('Categorias'));
+    expect(categories?.getAttribute('href')).toBe('/categories');
+  });
+
+  it('renders the Expenses item now that the feature exists', async () => {
+    const fixture = TestBed.createComponent(AppNavigation);
+    await fixture.whenStable();
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>,
+    );
+    const expenses = links.find((link) => link.textContent?.includes('Despesas'));
+    expect(expenses?.getAttribute('href')).toBe('/expenses');
   });
 
   it('marks the active route with aria-current', async () => {

@@ -1,0 +1,177 @@
+<section aria-labelledby="categories-title" [attr.aria-busy]="status() === 'loading'">
+  <header class="page-header">
+    <div class="page-header__intro">
+      <h1 id="categories-title">Categorias</h1>
+      <p class="page-header__meta">
+        Classificação de receitas e despesas cadastradas nesta sessão.
+      </p>
+    </div>
+    @if (status() === 'loaded' && (categories().length > 0 || hasFilters())) {
+      <button type="button" (click)="openCreate()">Nova categoria</button>
+    }
+  </header>
+
+  @if (status() === 'loading') {
+    <p class="visually-hidden">Carregando categorias.</p>
+    <div class="skeleton" aria-hidden="true">
+      <div class="skeleton__block skeleton__block--title"></div>
+      <div class="skeleton__block"></div>
+      <div class="skeleton__block"></div>
+    </div>
+  }
+
+  @if (status() === 'error') {
+    <app-error-state
+      message="Não foi possível carregar as categorias."
+      retryLabel="Tentar novamente"
+      (retry)="retry()"
+    />
+  }
+
+  @if (status() === 'loaded') {
+    @if (actionError(); as message) {
+      <app-error-state [message]="message" />
+    }
+
+    <section class="filters" aria-labelledby="category-filters-title">
+      <h2 id="category-filters-title" class="filters__title">Filtros</h2>
+      <div class="filters__controls">
+        <div class="field field--compact">
+          <label for="filter-type">Tipo</label>
+          <select
+            id="filter-type"
+            [value]="typeFilter()"
+            (change)="onTypeFilterChange($any($event.target).value)"
+          >
+            <option value="">Todos</option>
+            @for (option of typeOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-active">Situação</label>
+          <select
+            id="filter-active"
+            [value]="activeFilter()"
+            (change)="onActiveFilterChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            <option value="true">Ativas</option>
+            <option value="false">Inativas</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    @if (isEmpty()) {
+      <app-empty-state
+        [message]="
+          hasFilters()
+            ? 'Nenhuma categoria corresponde aos filtros selecionados.'
+            : 'Nenhuma categoria cadastrada.'
+        "
+      >
+        <button type="button" (click)="openCreate()">Nova categoria</button>
+      </app-empty-state>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <caption class="visually-hidden">
+            Categorias cadastradas
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Nome</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Situação</th>
+              <th scope="col">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (category of categories(); track category.id) {
+              <tr [class.is-inactive]="!category.active">
+                <th scope="row" data-label="Nome">
+                  <span class="name">{{ category.name }}</span>
+                </th>
+                <td data-label="Tipo">{{ categoryTypeLabel(category.type) }}</td>
+                <td data-label="Situação">
+                  <span class="status">{{ categoryStatusLabel(category.active) }}</span>
+                </td>
+                <td class="actions" data-label="Ações">
+                  <div class="actions__group">
+                    <button type="button" (click)="openEdit(category)" [disabled]="submitting()">
+                      Editar
+                    </button>
+                    @if (category.active) {
+                      <button
+                        type="button"
+                        (click)="deactivate(category)"
+                        [disabled]="submitting()"
+                      >
+                        Desativar
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (formMode() !== 'closed') {
+      <section class="panel" aria-labelledby="category-form-title">
+        <h2 id="category-form-title">
+          {{ formMode() === 'create' ? 'Nova categoria' : 'Editar categoria' }}
+        </h2>
+
+        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          <div class="field">
+            <label for="category-name">Nome</label>
+            <input
+              id="category-name"
+              type="text"
+              formControlName="name"
+              autocomplete="off"
+              maxlength="255"
+              [attr.aria-invalid]="fieldError('name') != null"
+              [attr.aria-describedby]="fieldError('name') != null ? 'category-name-error' : null"
+            />
+            @if (fieldError('name'); as message) {
+              <p id="category-name-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="category-type">Tipo</label>
+            <select
+              id="category-type"
+              formControlName="type"
+              [attr.aria-invalid]="fieldError('type') != null"
+              [attr.aria-describedby]="fieldError('type') != null ? 'category-type-error' : null"
+            >
+              <option value="" disabled>Selecione</option>
+              @for (option of typeOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+            @if (fieldError('type'); as message) {
+              <p id="category-type-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          @if (formError(); as message) {
+            <app-error-state [message]="message" />
+          }
+
+          <div class="form-actions">
+            <button type="submit" [disabled]="submitting()">Salvar</button>
+            <button type="button" (click)="closeForm()" [disabled]="submitting()">Cancelar</button>
+          </div>
+        </form>
+      </section>
+    }
+  }
+</section>

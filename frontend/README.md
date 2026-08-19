@@ -22,7 +22,7 @@ The API base URL is centralized in `src/app/core/config/`. Development uses `htt
 
 Authentication lives in `src/app/core/auth/`. The JWT is stored only in `sessionStorage`. Login is `/login`; registration is `/register` and does not auto-login.
 
-The authenticated shell lives in `src/app/layout/`. After login, the app opens `/dashboard` inside MainLayout (header, collapsible desktop sidebar, mobile navigation drawer). The Dashboard page consumes `GET /api/v1/dashboard` and does not recalculate balances. Accounts (`/accounts`) consume `GET /api/v1/accounts` plus official `GET /api/v1/accounts/{id}/balance`; the client does not recompute balances. Shared UI lives in `src/app/shared/` (`ErrorState`, `EmptyState`, and presentation pipes for BRL and domain dates). Do not put feature domain, HTTP, or Auth there.
+The authenticated shell lives in `src/app/layout/`. After login, the app opens `/dashboard` inside MainLayout (header, collapsible desktop sidebar, mobile navigation drawer). The Dashboard page consumes `GET /api/v1/dashboard` and does not recalculate balances. Accounts (`/accounts`) consume `GET /api/v1/accounts` plus official `GET /api/v1/accounts/{id}/balance`; the client does not recompute balances. Categories (`/categories`) consume `GET /api/v1/categories` with optional official filters `type` and `active`. Expenses (`/expenses`) consume paginated `GET /api/v1/expenses` with official filters and financial actions (pay, cancel, refund) per backend contract; creation supports `ACCOUNT`/`NONE` only (no credit-card feature yet). Shared UI lives in `src/app/shared/` (`ErrorState`, `EmptyState`, and presentation pipes for BRL and domain dates). Do not put feature domain, HTTP, or Auth there.
 
 ## Code scaffolding
 

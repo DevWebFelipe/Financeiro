@@ -450,7 +450,7 @@ cd backend
 
 ### Frontend
 
-O frontend Angular está em `frontend/`. A casca autenticada (MainLayout, Header, Sidebar/Drawer) usa `/dashboard` como entrada. O Dashboard consome `GET /api/v1/dashboard`. Contas ficam em `/accounts` (saldos oficiais via `GET /accounts/{id}/balance`). Login e registro são públicos.
+O frontend Angular está em `frontend/`. A casca autenticada (MainLayout, Header, Sidebar/Drawer) usa `/dashboard` como entrada. O Dashboard consome `GET /api/v1/dashboard`. Contas ficam em `/accounts` (saldos oficiais via `GET /accounts/{id}/balance`). Categorias ficam em `/categories` (`GET /categories` com filtros opcionais `type` e `active`). Despesas ficam em `/expenses` (`GET /expenses` paginado com filtros oficiais). Login e registro são públicos.
 
 ### Estrutura
 
@@ -515,7 +515,7 @@ Coleção Postman para testes manuais: `postman/Financial Control API.postman_co
 
 ## Status
 
-**Fase atual:** Fase 21 — Frontend completo (Bloco B7 — Contas — implementado)
+**Fase atual:** Fase 21 — Frontend completo (Bloco B9 — Despesas — implementado)
 
 **Fase anterior:** Fase 20 — Relatórios — **CONCLUÍDA E APROVADA** (auditoria final **APROVADA COM RESSALVAS**)
 
