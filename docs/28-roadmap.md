@@ -1194,7 +1194,7 @@ Objetivo:
 
 Integrar todas as funcionalidades ao Angular.
 
-Status: **em andamento**.
+Status: **CONCLUÍDA / APROVADA COM RESSALVAS**.
 
 Bloco B1 — Design System base — **implementado** (Inter local, tokens visuais, reset/base, foco acessível, `prefers-reduced-motion`, responsividade estrutural). Sem componentes de layout ou features neste bloco.
 
