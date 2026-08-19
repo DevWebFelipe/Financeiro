@@ -1,0 +1,323 @@
+<section aria-labelledby="transfers-title" [attr.aria-busy]="status() === 'loading'">
+  <header class="page-header">
+    <div class="page-header__intro">
+      <h1 id="transfers-title">Transferências</h1>
+      <p class="page-header__meta">Movimentações entre contas bancárias nesta sessão.</p>
+    </div>
+    @if (status() === 'loaded' && (transfers().length > 0 || hasFilters())) {
+      <button type="button" (click)="openCreate()">Nova transferência</button>
+    }
+  </header>
+
+  @if (status() === 'loading') {
+    <p class="visually-hidden">Carregando transferências.</p>
+    <div class="skeleton" aria-hidden="true">
+      <div class="skeleton__block skeleton__block--title"></div>
+      <div class="skeleton__block"></div>
+      <div class="skeleton__block"></div>
+    </div>
+  }
+
+  @if (status() === 'error') {
+    <app-error-state
+      message="Não foi possível carregar as transferências."
+      retryLabel="Tentar novamente"
+      (retry)="retry()"
+    />
+  }
+
+  @if (status() === 'loaded') {
+    @if (actionError(); as message) {
+      <app-error-state [message]="message" />
+    }
+
+    <section class="filters" aria-labelledby="transfer-filters-title">
+      <h2 id="transfer-filters-title" class="filters__title">Filtros</h2>
+      <div class="filters__controls">
+        <div class="field field--compact">
+          <label for="filter-account">Conta</label>
+          <select
+            id="filter-account"
+            [value]="accountFilter()"
+            (change)="onAccountFilterChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (account of accounts(); track account.id) {
+              <option [value]="account.id">{{ account.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-start-date">Data de</label>
+          <input
+            id="filter-start-date"
+            type="date"
+            [value]="startDateFilter()"
+            (change)="onStartDateFilterChange($any($event.target).value)"
+          />
+        </div>
+        <div class="field field--compact">
+          <label for="filter-end-date">Data até</label>
+          <input
+            id="filter-end-date"
+            type="date"
+            [value]="endDateFilter()"
+            (change)="onEndDateFilterChange($any($event.target).value)"
+          />
+        </div>
+      </div>
+    </section>
+
+    @if (isEmpty()) {
+      <app-empty-state
+        [message]="
+          hasFilters()
+            ? 'Nenhuma transferência corresponde aos filtros selecionados.'
+            : 'Nenhuma transferência cadastrada.'
+        "
+      >
+        <button type="button" (click)="openCreate()">Nova transferência</button>
+      </app-empty-state>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <caption class="visually-hidden">
+            Transferências cadastradas
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Data</th>
+              <th scope="col">Origem</th>
+              <th scope="col">Destino</th>
+              <th scope="col">Valor</th>
+              <th scope="col">Status</th>
+              <th scope="col">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (transfer of transfers(); track transfer.id) {
+              <tr>
+                <th scope="row" data-label="Data">{{ transfer.transferDate | isoDate }}</th>
+                <td data-label="Origem">{{ accountName(transfer.sourceAccountId) }}</td>
+                <td data-label="Destino">{{ accountName(transfer.destinationAccountId) }}</td>
+                <td data-label="Valor">{{ transfer.amount | brlCurrency }}</td>
+                <td data-label="Status">
+                  <span class="status">{{ statusLabel(transfer.status) }}</span>
+                </td>
+                <td class="actions" data-label="Ações">
+                  <div class="actions__group">
+                    <button type="button" (click)="openDetail(transfer)" [disabled]="submitting()">
+                      Detalhes
+                    </button>
+                    @if (canReverseItem(transfer)) {
+                      <button
+                        type="button"
+                        (click)="openReverseConfirm(transfer)"
+                        [disabled]="submitting()"
+                      >
+                        Estornar
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (panelMode() === 'detail' && selectedTransfer(); as transfer) {
+      <section class="panel" aria-labelledby="transfer-detail-title">
+        <h2 id="transfer-detail-title">Detalhes da transferência</h2>
+
+        @if (detailLoading()) {
+          <p class="visually-hidden">Carregando detalhes.</p>
+          <div class="skeleton" aria-hidden="true">
+            <div class="skeleton__block"></div>
+          </div>
+        } @else {
+          @if (detailError(); as message) {
+            <app-error-state [message]="message" />
+          } @else {
+            <dl class="detail-list">
+              <div>
+                <dt>Origem</dt>
+                <dd>{{ accountName(transfer.sourceAccountId) }}</dd>
+              </div>
+              <div>
+                <dt>Destino</dt>
+                <dd>{{ accountName(transfer.destinationAccountId) }}</dd>
+              </div>
+              <div>
+                <dt>Valor</dt>
+                <dd>{{ transfer.amount | brlCurrency }}</dd>
+              </div>
+              <div>
+                <dt>Data</dt>
+                <dd>{{ transfer.transferDate | isoDate }}</dd>
+              </div>
+              @if (transfer.description) {
+                <div>
+                  <dt>Descrição</dt>
+                  <dd>{{ transfer.description }}</dd>
+                </div>
+              }
+              <div>
+                <dt>Status</dt>
+                <dd>{{ statusLabel(transfer.status) }}</dd>
+              </div>
+            </dl>
+
+            @if (canReverseItem(transfer)) {
+              <div class="form-actions">
+                <button
+                  type="button"
+                  (click)="openReverseConfirm(transfer)"
+                  [disabled]="submitting()"
+                >
+                  Estornar
+                </button>
+                <button type="button" (click)="closeDetail()">Fechar</button>
+              </div>
+            } @else {
+              <div class="form-actions">
+                <button type="button" (click)="closeDetail()">Fechar</button>
+              </div>
+            }
+          }
+        }
+      </section>
+    }
+
+    @if (panelMode() === 'reverse-confirm' && selectedTransfer(); as transfer) {
+      <section class="panel panel--confirm" aria-labelledby="transfer-reverse-title">
+        <h2 id="transfer-reverse-title">Estornar transferência</h2>
+        <p>
+          Deseja estornar a transferência de {{ transfer.amount | brlCurrency }} de
+          {{ accountName(transfer.sourceAccountId) }} para
+          {{ accountName(transfer.destinationAccountId) }}?
+        </p>
+        @if (formError(); as message) {
+          <app-error-state [message]="message" />
+        }
+        <div class="form-actions">
+          <button type="button" (click)="confirmReverse()" [disabled]="submitting()">
+            Confirmar estorno
+          </button>
+          <button type="button" (click)="closeReverseConfirm()" [disabled]="submitting()">
+            Voltar
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (formMode() === 'create') {
+      <section class="panel" aria-labelledby="transfer-form-title">
+        <h2 id="transfer-form-title">Nova transferência</h2>
+
+        <form [formGroup]="transferForm" (ngSubmit)="submitTransferForm()" novalidate>
+          <div class="field">
+            <label for="transfer-source">Conta de origem</label>
+            <select
+              id="transfer-source"
+              formControlName="sourceAccountId"
+              [attr.aria-invalid]="fieldError('sourceAccountId') != null"
+              [attr.aria-describedby]="
+                fieldError('sourceAccountId') != null ? 'transfer-source-error' : null
+              "
+            >
+              <option value="" disabled>Selecione</option>
+              @for (account of accounts(); track account.id) {
+                <option [value]="account.id">{{ account.name }}</option>
+              }
+            </select>
+            @if (fieldError('sourceAccountId'); as message) {
+              <p id="transfer-source-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="transfer-destination">Conta de destino</label>
+            <select
+              id="transfer-destination"
+              formControlName="destinationAccountId"
+              [attr.aria-invalid]="fieldError('destinationAccountId') != null"
+              [attr.aria-describedby]="
+                fieldError('destinationAccountId') != null ? 'transfer-destination-error' : null
+              "
+            >
+              <option value="" disabled>Selecione</option>
+              @for (account of accounts(); track account.id) {
+                <option [value]="account.id">{{ account.name }}</option>
+              }
+            </select>
+            @if (fieldError('destinationAccountId'); as message) {
+              <p id="transfer-destination-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="transfer-amount">Valor</label>
+            <input
+              id="transfer-amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              formControlName="amount"
+              [attr.aria-invalid]="fieldError('amount') != null"
+              [attr.aria-describedby]="
+                fieldError('amount') != null ? 'transfer-amount-error' : null
+              "
+            />
+            @if (fieldError('amount'); as message) {
+              <p id="transfer-amount-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="transfer-date">Data</label>
+            <input
+              id="transfer-date"
+              type="date"
+              formControlName="transferDate"
+              [attr.aria-invalid]="fieldError('transferDate') != null"
+              [attr.aria-describedby]="
+                fieldError('transferDate') != null ? 'transfer-date-error' : null
+              "
+            />
+            @if (fieldError('transferDate'); as message) {
+              <p id="transfer-date-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="transfer-description">Descrição</label>
+            <input
+              id="transfer-description"
+              type="text"
+              formControlName="description"
+              maxlength="255"
+              [attr.aria-invalid]="fieldError('description') != null"
+              [attr.aria-describedby]="
+                fieldError('description') != null ? 'transfer-description-error' : null
+              "
+            />
+            @if (fieldError('description'); as message) {
+              <p id="transfer-description-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          @if (formError(); as message) {
+            <app-error-state [message]="message" />
+          }
+
+          <div class="form-actions">
+            <button type="submit" [disabled]="submitting()">Salvar</button>
+            <button type="button" (click)="closeForm()" [disabled]="submitting()">Cancelar</button>
+          </div>
+        </form>
+      </section>
+    }
+  }
+</section>

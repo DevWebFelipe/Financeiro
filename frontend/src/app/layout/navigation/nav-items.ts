@@ -13,4 +13,8 @@ export const APP_NAV_ITEMS: readonly NavItem[] = [
   { id: 'expenses', label: 'Despesas', path: '/expenses' },
   { id: 'incomes', label: 'Receitas', path: '/incomes' },
   { id: 'payables', label: 'Contas a pagar', path: '/payables' },
+  { id: 'transfers', label: 'Transferências', path: '/transfers' },
+  { id: 'goals', label: 'Metas', path: '/goals' },
+  { id: 'projections', label: 'Projeções', path: '/projections' },
+  { id: 'reports', label: 'Relatórios', path: '/reports' },
 ];

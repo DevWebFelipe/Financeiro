@@ -1,0 +1,538 @@
+<section aria-labelledby="goals-title" [attr.aria-busy]="status() === 'loading'">
+  <header class="page-header">
+    <div class="page-header__intro">
+      <h1 id="goals-title">Metas</h1>
+      <p class="page-header__meta">Reservas vinculadas a uma conta nesta sessão.</p>
+    </div>
+    @if (status() === 'loaded' && (goals().length > 0 || hasFilters())) {
+      <button type="button" (click)="openCreate()">Nova meta</button>
+    }
+  </header>
+
+  @if (status() === 'loading') {
+    <p class="visually-hidden">Carregando metas.</p>
+    <div class="skeleton" aria-hidden="true">
+      <div class="skeleton__block skeleton__block--title"></div>
+      <div class="skeleton__block"></div>
+      <div class="skeleton__block"></div>
+    </div>
+  }
+
+  @if (status() === 'error') {
+    <app-error-state
+      message="Não foi possível carregar as metas."
+      retryLabel="Tentar novamente"
+      (retry)="retry()"
+    />
+  }
+
+  @if (status() === 'loaded') {
+    @if (actionError(); as message) {
+      <app-error-state [message]="message" />
+    }
+
+    <section class="filters" aria-labelledby="goal-filters-title">
+      <h2 id="goal-filters-title" class="filters__title">Filtros</h2>
+      <div class="filters__controls">
+        <div class="field field--compact">
+          <label for="filter-status">Status</label>
+          <select
+            id="filter-status"
+            [value]="statusFilter()"
+            (change)="onStatusFilterChange($any($event.target).value)"
+          >
+            <option value="">Todos</option>
+            @for (option of statusOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </section>
+
+    @if (isEmpty()) {
+      <app-empty-state
+        [message]="
+          hasFilters()
+            ? 'Nenhuma meta corresponde aos filtros selecionados.'
+            : 'Nenhuma meta cadastrada.'
+        "
+      >
+        <button type="button" (click)="openCreate()">Nova meta</button>
+      </app-empty-state>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <caption class="visually-hidden">
+            Metas cadastradas
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Nome</th>
+              <th scope="col">Conta</th>
+              <th scope="col">Valor alvo</th>
+              <th scope="col">Valor atual</th>
+              <th scope="col">Progresso</th>
+              <th scope="col">Data alvo</th>
+              <th scope="col">Status</th>
+              <th scope="col">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (goal of goals(); track goal.id) {
+              <tr>
+                <th scope="row" data-label="Nome">
+                  <span class="name">{{ goal.name }}</span>
+                </th>
+                <td data-label="Conta">{{ accountName(goal.accountId) }}</td>
+                <td data-label="Valor alvo">{{ goal.targetAmount | brlCurrency }}</td>
+                <td data-label="Valor atual">{{ goal.currentAmount | brlCurrency }}</td>
+                <td data-label="Progresso">{{ progressLabel(goal.progressPercent) }}</td>
+                <td data-label="Data alvo">
+                  @if (goal.targetDate) {
+                    {{ goal.targetDate | isoDate }}
+                  } @else {
+                    —
+                  }
+                </td>
+                <td data-label="Status">
+                  <span class="status">{{ statusLabel(goal.status) }}</span>
+                </td>
+                <td class="actions" data-label="Ações">
+                  <div class="actions__group">
+                    <button type="button" (click)="openDetail(goal)" [disabled]="submitting()">
+                      Detalhes
+                    </button>
+                    @if (canEditItem(goal)) {
+                      <button type="button" (click)="openEdit(goal)" [disabled]="submitting()">
+                        Editar
+                      </button>
+                    }
+                    @if (canContributeItem(goal)) {
+                      <button
+                        type="button"
+                        (click)="openContribute(goal)"
+                        [disabled]="submitting()"
+                      >
+                        Contribuir
+                      </button>
+                    }
+                    @if (canRedeemItem(goal)) {
+                      <button type="button" (click)="openRedeem(goal)" [disabled]="submitting()">
+                        Resgatar
+                      </button>
+                    }
+                    @if (canCompleteItem(goal)) {
+                      <button
+                        type="button"
+                        (click)="openCompleteConfirm(goal)"
+                        [disabled]="submitting()"
+                      >
+                        Concluir
+                      </button>
+                    }
+                    @if (canCancelItem(goal)) {
+                      <button
+                        type="button"
+                        (click)="openCancelConfirm(goal)"
+                        [disabled]="submitting()"
+                      >
+                        Cancelar
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalPages() > 1) {
+        <nav class="pagination" aria-label="Paginação de metas">
+          <p class="pagination__meta">
+            Página {{ pageIndex() + 1 }} de {{ totalPages() }} — {{ totalItems() }} metas
+          </p>
+          <div class="pagination__controls">
+            <button type="button" (click)="goToPage(pageIndex() - 1)" [disabled]="!canGoPrev()">
+              Anterior
+            </button>
+            <button type="button" (click)="goToPage(pageIndex() + 1)" [disabled]="!canGoNext()">
+              Próxima
+            </button>
+          </div>
+        </nav>
+      }
+    }
+
+    @if (panelMode() === 'detail' && selectedGoal(); as goal) {
+      <section class="panel" aria-labelledby="goal-detail-title">
+        <h2 id="goal-detail-title">Detalhes da meta</h2>
+
+        @if (detailLoading()) {
+          <p class="visually-hidden">Carregando detalhes.</p>
+          <div class="skeleton" aria-hidden="true">
+            <div class="skeleton__block"></div>
+          </div>
+        }
+
+        @if (detailError(); as message) {
+          <app-error-state [message]="message" />
+        }
+
+        <dl class="detail-list">
+          <div>
+            <dt>Nome</dt>
+            <dd>{{ goal.name }}</dd>
+          </div>
+          <div>
+            <dt>Conta</dt>
+            <dd>{{ accountName(goal.accountId) }}</dd>
+          </div>
+          @if (goal.description) {
+            <div>
+              <dt>Descrição</dt>
+              <dd>{{ goal.description }}</dd>
+            </div>
+          }
+          <div>
+            <dt>Valor alvo</dt>
+            <dd>{{ goal.targetAmount | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Valor atual</dt>
+            <dd>{{ goal.currentAmount | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Progresso</dt>
+            <dd>{{ progressLabel(goal.progressPercent) }}</dd>
+          </div>
+          <div>
+            <dt>Data alvo</dt>
+            <dd>
+              @if (goal.targetDate) {
+                {{ goal.targetDate | isoDate }}
+              } @else {
+                —
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd>{{ statusLabel(goal.status) }}</dd>
+          </div>
+        </dl>
+
+        @if (historyError(); as message) {
+          <app-error-state
+            [message]="message"
+            retryLabel="Tentar novamente"
+            (retry)="retryHistories()"
+          />
+        }
+
+        <h3>Contribuições</h3>
+        @if (contributions().length === 0) {
+          <p class="panel__meta">Nenhuma contribuição nesta meta.</p>
+        } @else {
+          <div class="table-wrap">
+            <table>
+              <caption class="visually-hidden">
+                Contribuições da meta
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Valor</th>
+                  <th scope="col">Data</th>
+                  <th scope="col">Observações</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of contributions(); track item.id) {
+                  <tr>
+                    <td data-label="Valor">{{ item.amount | brlCurrency }}</td>
+                    <td data-label="Data">{{ item.contributionDate | isoDate }}</td>
+                    <td data-label="Observações">{{ item.notes ?? '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <h3>Resgates</h3>
+        @if (redemptions().length === 0) {
+          <p class="panel__meta">Nenhum resgate nesta meta.</p>
+        } @else {
+          <div class="table-wrap">
+            <table>
+              <caption class="visually-hidden">
+                Resgates da meta
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Valor</th>
+                  <th scope="col">Data</th>
+                  <th scope="col">Observações</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of redemptions(); track item.id) {
+                  <tr>
+                    <td data-label="Valor">{{ item.amount | brlCurrency }}</td>
+                    <td data-label="Data">{{ item.redemptionDate | isoDate }}</td>
+                    <td data-label="Observações">{{ item.notes ?? '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <div class="form-actions">
+          <button type="button" (click)="closeDetail()">Fechar</button>
+        </div>
+      </section>
+    }
+
+    @if (panelMode() === 'complete-confirm' && selectedGoal(); as goal) {
+      <section class="panel panel--confirm" aria-labelledby="goal-complete-title">
+        <h2 id="goal-complete-title">Concluir meta</h2>
+        <p>
+          Deseja concluir a meta <strong>{{ goal.name }}</strong
+          >? Esta ação não pode ser desfeita.
+        </p>
+        @if (formError(); as message) {
+          <app-error-state [message]="message" />
+        }
+        <div class="form-actions">
+          <button type="button" (click)="confirmComplete()" [disabled]="submitting()">
+            Confirmar conclusão
+          </button>
+          <button type="button" (click)="closeCompleteConfirm()" [disabled]="submitting()">
+            Voltar
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (panelMode() === 'cancel-confirm' && selectedGoal(); as goal) {
+      <section class="panel panel--confirm" aria-labelledby="goal-cancel-title">
+        <h2 id="goal-cancel-title">Cancelar meta</h2>
+        <p>
+          Deseja cancelar a meta <strong>{{ goal.name }}</strong
+          >? Esta ação não pode ser desfeita.
+        </p>
+        @if (formError(); as message) {
+          <app-error-state [message]="message" />
+        }
+        <div class="form-actions">
+          <button type="button" (click)="confirmCancel()" [disabled]="submitting()">
+            Confirmar cancelamento
+          </button>
+          <button type="button" (click)="closeCancelConfirm()" [disabled]="submitting()">
+            Voltar
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (formMode() === 'create' || formMode() === 'edit') {
+      <section class="panel" aria-labelledby="goal-form-title">
+        <h2 id="goal-form-title">
+          {{ formMode() === 'create' ? 'Nova meta' : 'Editar meta' }}
+        </h2>
+
+        <form [formGroup]="goalForm" (ngSubmit)="submitGoalForm()" novalidate>
+          @if (formMode() === 'create') {
+            <div class="field">
+              <label for="goal-account">Conta</label>
+              <select
+                id="goal-account"
+                formControlName="accountId"
+                [attr.aria-invalid]="goalFieldError('accountId') != null"
+                [attr.aria-describedby]="
+                  goalFieldError('accountId') != null ? 'goal-account-error' : null
+                "
+              >
+                <option value="" disabled>Selecione</option>
+                @for (account of activeAccounts(); track account.id) {
+                  <option [value]="account.id">{{ account.name }}</option>
+                }
+              </select>
+              @if (goalFieldError('accountId'); as message) {
+                <p id="goal-account-error" class="field__error">{{ message }}</p>
+              }
+            </div>
+          }
+
+          <div class="field">
+            <label for="goal-name">Nome</label>
+            <input
+              id="goal-name"
+              type="text"
+              formControlName="name"
+              maxlength="255"
+              [attr.aria-invalid]="goalFieldError('name') != null"
+              [attr.aria-describedby]="goalFieldError('name') != null ? 'goal-name-error' : null"
+            />
+            @if (goalFieldError('name'); as message) {
+              <p id="goal-name-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="goal-description">Descrição</label>
+            <textarea id="goal-description" rows="3" formControlName="description"></textarea>
+          </div>
+
+          <div class="field">
+            <label for="goal-target-amount">Valor alvo</label>
+            <input
+              id="goal-target-amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              formControlName="targetAmount"
+              [attr.aria-invalid]="goalFieldError('targetAmount') != null"
+              [attr.aria-describedby]="
+                goalFieldError('targetAmount') != null ? 'goal-target-amount-error' : null
+              "
+            />
+            @if (goalFieldError('targetAmount'); as message) {
+              <p id="goal-target-amount-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="goal-target-date">Data alvo</label>
+            <input id="goal-target-date" type="date" formControlName="targetDate" />
+          </div>
+
+          @if (formError(); as message) {
+            <app-error-state [message]="message" />
+          }
+
+          <div class="form-actions">
+            <button type="submit" [disabled]="submitting()">Salvar</button>
+            <button type="button" (click)="closeForm()" [disabled]="submitting()">Cancelar</button>
+          </div>
+        </form>
+      </section>
+    }
+
+    @if (formMode() === 'contribute' && selectedGoal(); as goal) {
+      <section class="panel" aria-labelledby="goal-contribute-title">
+        <h2 id="goal-contribute-title">Contribuir para a meta</h2>
+        <p class="panel__meta">{{ goal.name }} — {{ goal.currentAmount | brlCurrency }}</p>
+
+        <form [formGroup]="movementForm" (ngSubmit)="submitContribute()" novalidate>
+          <div class="field">
+            <label for="contribute-amount">Valor</label>
+            <input
+              id="contribute-amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              formControlName="amount"
+              [attr.aria-invalid]="movementFieldError('amount') != null"
+              [attr.aria-describedby]="
+                movementFieldError('amount') != null ? 'contribute-amount-error' : null
+              "
+            />
+            @if (movementFieldError('amount'); as message) {
+              <p id="contribute-amount-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="contribute-date">Data da contribuição</label>
+            <input
+              id="contribute-date"
+              type="date"
+              formControlName="date"
+              [attr.aria-invalid]="movementFieldError('date') != null"
+              [attr.aria-describedby]="
+                movementFieldError('date') != null ? 'contribute-date-error' : null
+              "
+            />
+            @if (movementFieldError('date'); as message) {
+              <p id="contribute-date-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="contribute-notes">Observações</label>
+            <textarea id="contribute-notes" rows="3" formControlName="notes"></textarea>
+          </div>
+
+          @if (formError(); as message) {
+            <app-error-state [message]="message" />
+          }
+
+          <div class="form-actions">
+            <button type="submit" [disabled]="submitting()">Confirmar contribuição</button>
+            <button type="button" (click)="closeForm()" [disabled]="submitting()">Cancelar</button>
+          </div>
+        </form>
+      </section>
+    }
+
+    @if (formMode() === 'redeem' && selectedGoal(); as goal) {
+      <section class="panel" aria-labelledby="goal-redeem-title">
+        <h2 id="goal-redeem-title">Resgatar da meta</h2>
+        <p class="panel__meta">{{ goal.name }} — {{ goal.currentAmount | brlCurrency }}</p>
+
+        <form [formGroup]="movementForm" (ngSubmit)="submitRedeem()" novalidate>
+          <div class="field">
+            <label for="redeem-amount">Valor</label>
+            <input
+              id="redeem-amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              formControlName="amount"
+              [attr.aria-invalid]="movementFieldError('amount') != null"
+              [attr.aria-describedby]="
+                movementFieldError('amount') != null ? 'redeem-amount-error' : null
+              "
+            />
+            @if (movementFieldError('amount'); as message) {
+              <p id="redeem-amount-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="redeem-date">Data do resgate</label>
+            <input
+              id="redeem-date"
+              type="date"
+              formControlName="date"
+              [attr.aria-invalid]="movementFieldError('date') != null"
+              [attr.aria-describedby]="
+                movementFieldError('date') != null ? 'redeem-date-error' : null
+              "
+            />
+            @if (movementFieldError('date'); as message) {
+              <p id="redeem-date-error" class="field__error">{{ message }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label for="redeem-notes">Observações</label>
+            <textarea id="redeem-notes" rows="3" formControlName="notes"></textarea>
+          </div>
+
+          @if (formError(); as message) {
+            <app-error-state [message]="message" />
+          }
+
+          <div class="form-actions">
+            <button type="submit" [disabled]="submitting()">Confirmar resgate</button>
+            <button type="button" (click)="closeForm()" [disabled]="submitting()">Cancelar</button>
+          </div>
+        </form>
+      </section>
+    }
+  }
+</section>

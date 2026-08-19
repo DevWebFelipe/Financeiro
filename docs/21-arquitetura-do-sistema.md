@@ -1351,6 +1351,28 @@ Ressalvas da auditoria (não bloqueantes):
 - **AUD-C7-A2 — BAIXO:** a estratégia de refresh após mutations é abrangente e poderá ser otimizada futuramente caso seja necessário.
 - **AUD-C7-A3 — INFORMATIVO:** o backend permanece como autoridade financeira; o frontend não deve expandir as validações locais para reproduzir regras financeiras do backend.
 
+# 96S. Transferências, metas, projeções e relatórios (Fase 21 — Bloco B12)
+
+**Status:** **IMPLEMENTADA / AGUARDANDO AUDITORIA**. Não aprovada.
+
+Quatro features lazy-loaded sob o AuthGuard do MainLayout, cada uma com serviço próprio (`Page → FeatureService → HttpClient`). Sem serviços globais extras. `AccountsService` reutilizado para seleção/nomes de conta. C1–C7 não foram reabertas.
+
+## Transferências (`/transfers`)
+
+`TransfersPage` → `TransfersService`. Lista em array (`GET /api/v1/transfers`) com filtros oficiais `startDate`, `endDate`, `accountId` — sem paginação, sort, search ou status. Detalhe `GET /transfers/{id}`. Criação `POST /transfers` somente `sourceAccountId`, `destinationAccountId`, `amount`, `transferDate` e `description` opcional (trim; vazio omitido). Reversão `POST /transfers/{id}/reverse` sem body, com confirmação. Status oficiais `ACTIVE` / `REVERSED`. A UI não calcula saldo nem elegibilidade financeira.
+
+## Metas (`/goals`)
+
+Feature `financial-goals/`. Lista paginada `GET /api/v1/financial-goals` (`status`, `page`, `size`; default 0/20; ordenação do backend). Detalhe `GET /financial-goals/{id}`. Criação `POST` (`accountId`, `name`, `description`, `targetAmount`, `targetDate`). Edição `PUT` sem `accountId`. Contribuições e resgates com POST/GET oficiais. Conclusão e cancelamento com confirmação. `currentAmount` e `progressPercent` são oficiais; o frontend não os recalcula.
+
+## Projeções (`/projections`)
+
+Somente leitura. `GET /api/v1/projections` com parâmetros oficiais `startDate`, `endDate`, `year`, `month`, `months`, `accountId`, `page`, `size`. A UI mapeia modos de período amigáveis para combinações válidas (não mistura intervalo com year/month/months). Summary, meses (`negative` oficial), trimestres, eventos paginados e `undatedEvents` (sem data artificial) vêm da API. Sem recálculo.
+
+## Relatórios (`/reports`)
+
+Uma rota e um seletor de tipo. Contratos específicos por relatório (não um DTO genérico): despesas, receitas, categorias, responsáveis, cartões, fluxo de caixa e fatura. PDF via `GET .../pdf` (`application/pdf`, download do arquivo oficial; sem geração no browser). Filtros, sort e paginação somente onde o backend admite. `dateType` obrigatório em receitas/categorias; em responsáveis, omitido quando `nature=EXPENSE`. Não existe distinção simplificado/detalhado no contrato atual.
+
 # 97. Dashboard
 
 Dashboard deve apresentar:

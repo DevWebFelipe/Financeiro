@@ -450,7 +450,7 @@ cd backend
 
 ### Frontend
 
-O frontend Angular está em `frontend/`. A casca autenticada (MainLayout, Header, Sidebar/Drawer) usa `/dashboard` como entrada. O Dashboard consome `GET /api/v1/dashboard`. Contas ficam em `/accounts` (saldos oficiais via `GET /accounts/{id}/balance`). Cartões ficam em `/credit-cards` (limites oficiais via `GET /credit-cards/{id}/limit`; créditos oficiais via `GET /credit-cards/{id}/credits`; filtro `holderName`). Faturas ficam em `/invoices` (consulta por cartão via `GET /credit-cards/{cardId}/invoices`; detalhe, parcelas, pagamento, ajustes e acordos oficiais da fatura). Categorias ficam em `/categories` (`GET /categories` com filtros opcionais `type` e `active`). Despesas ficam em `/expenses` (`GET /expenses` paginado com filtros oficiais; criação `ACCOUNT`, `NONE` e `CREDIT_CARD`). Receitas ficam em `/incomes` (`GET /incomes` paginado com filtros oficiais; recebimento via `POST /incomes/{id}/receipts`). Contas a pagar ficam em `/payables` (`GET /payables`, visão derivada). Login e registro são públicos.
+O frontend Angular está em `frontend/`. A casca autenticada (MainLayout, Header, Sidebar/Drawer) usa `/dashboard` como entrada. O Dashboard consome `GET /api/v1/dashboard`. Contas ficam em `/accounts` (saldos oficiais via `GET /accounts/{id}/balance`). Cartões ficam em `/credit-cards` (limites oficiais via `GET /credit-cards/{id}/limit`; créditos oficiais via `GET /credit-cards/{id}/credits`; filtro `holderName`). Faturas ficam em `/invoices` (consulta por cartão via `GET /credit-cards/{cardId}/invoices`; detalhe, parcelas, pagamento, ajustes e acordos oficiais da fatura). Categorias ficam em `/categories` (`GET /categories` com filtros opcionais `type` e `active`). Despesas ficam em `/expenses` (`GET /expenses` paginado com filtros oficiais; criação `ACCOUNT`, `NONE` e `CREDIT_CARD`). Receitas ficam em `/incomes` (`GET /incomes` paginado com filtros oficiais; recebimento via `POST /incomes/{id}/receipts`). Contas a pagar ficam em `/payables` (`GET /payables`, visão derivada). Transferências ficam em `/transfers` (`GET /transfers` em array; criação e reversão oficiais). Metas ficam em `/goals` (`GET /financial-goals` paginado). Projeções ficam em `/projections` (`GET /projections`, somente leitura). Relatórios ficam em `/reports` (JSON e PDF oficiais `GET /reports/*`). Login e registro são públicos.
 
 ### Estrutura
 
@@ -515,7 +515,7 @@ Coleção Postman para testes manuais: `postman/Financial Control API.postman_co
 
 ## Status
 
-**Fase atual:** Fase 21 — Frontend completo (Bloco C7 — Acordos / Renegociação — **CONCLUÍDA / APROVADA COM RESSALVAS**)
+**Fase atual:** Fase 21 — Frontend completo (Bloco B12 — Transferências + Metas + Projeções + Relatórios — **IMPLEMENTADA / AGUARDANDO AUDITORIA**)
 
 **Fase anterior:** Fase 20 — Relatórios — **CONCLUÍDA E APROVADA** (auditoria final **APROVADA COM RESSALVAS**)
 

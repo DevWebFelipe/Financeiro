@@ -73,6 +73,34 @@ export const routes: Routes = [
           import('./features/payables/payables-page').then((module) => module.PayablesPage),
         title: 'Contas a pagar — Financeiro',
       },
+      {
+        path: 'transfers',
+        loadComponent: () =>
+          import('./features/transfers/transfers-page').then((module) => module.TransfersPage),
+        title: 'Transferências — Financeiro',
+      },
+      {
+        path: 'goals',
+        loadComponent: () =>
+          import('./features/financial-goals/financial-goals-page').then(
+            (module) => module.FinancialGoalsPage,
+          ),
+        title: 'Metas — Financeiro',
+      },
+      {
+        path: 'projections',
+        loadComponent: () =>
+          import('./features/projections/projections-page').then(
+            (module) => module.ProjectionsPage,
+          ),
+        title: 'Projeções — Financeiro',
+      },
+      {
+        path: 'reports',
+        loadComponent: () =>
+          import('./features/reports/reports-page').then((module) => module.ReportsPage),
+        title: 'Relatórios — Financeiro',
+      },
       { path: '**', redirectTo: 'dashboard' },
     ],
   },

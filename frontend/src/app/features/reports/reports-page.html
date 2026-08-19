@@ -1,0 +1,869 @@
+<section aria-labelledby="reports-title" [attr.aria-busy]="status() === 'loading'">
+  <header class="page-header">
+    <div class="page-header__intro">
+      <h1 id="reports-title">Relatórios</h1>
+      <p class="page-header__meta">Consulta os relatórios oficiais da API, com download em PDF.</p>
+    </div>
+  </header>
+
+  <section class="filters" aria-labelledby="report-filters-title">
+    <h2 id="report-filters-title" class="filters__title">Consulta</h2>
+    <div class="filters__controls">
+      <div class="field field--compact">
+        <label for="report-type">Tipo de relatório</label>
+        <select
+          id="report-type"
+          [value]="reportType()"
+          (change)="onReportTypeChange($any($event.target).value)"
+        >
+          @for (option of reportTypeOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      @if (usesPeriod()) {
+        <div class="field field--compact">
+          <label for="filter-start-date">Início</label>
+          <input
+            id="filter-start-date"
+            type="date"
+            [value]="startDate()"
+            (change)="onStartDateChange($any($event.target).value)"
+          />
+        </div>
+        <div class="field field--compact">
+          <label for="filter-end-date">Fim</label>
+          <input
+            id="filter-end-date"
+            type="date"
+            [value]="endDate()"
+            (change)="onEndDateChange($any($event.target).value)"
+          />
+        </div>
+      }
+
+      @if (reportType() === 'expenses') {
+        <div class="field field--compact">
+          <label for="filter-expense-status">Situação</label>
+          <select
+            id="filter-expense-status"
+            [value]="expenseStatus()"
+            (change)="onExpenseStatusChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (option of expenseStatusOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-category">Categoria</label>
+          <select
+            id="filter-category"
+            [value]="categoryId()"
+            (change)="onCategoryIdChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (category of categories(); track category.id) {
+              <option [value]="category.id">{{ category.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-account">Conta</label>
+          <select
+            id="filter-account"
+            [value]="accountId()"
+            (change)="onAccountIdChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (account of accounts(); track account.id) {
+              <option [value]="account.id">{{ account.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-card">Cartão</label>
+          <select
+            id="filter-card"
+            [value]="creditCardId()"
+            (change)="onCreditCardIdChange($any($event.target).value)"
+          >
+            <option value="">Todos</option>
+            @for (card of creditCards(); track card.id) {
+              <option [value]="card.id">{{ card.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-payment-method">Forma de pagamento</label>
+          <select
+            id="filter-payment-method"
+            [value]="paymentMethod()"
+            (change)="onPaymentMethodChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (option of paymentMethodOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      @if (reportType() === 'incomes') {
+        <div class="field field--compact">
+          <label for="filter-income-status">Situação</label>
+          <select
+            id="filter-income-status"
+            [value]="incomeStatus()"
+            (change)="onIncomeStatusChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (option of incomeStatusOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-income-category">Categoria</label>
+          <select
+            id="filter-income-category"
+            [value]="categoryId()"
+            (change)="onCategoryIdChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (category of categories(); track category.id) {
+              <option [value]="category.id">{{ category.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-income-account">Conta</label>
+          <select
+            id="filter-income-account"
+            [value]="accountId()"
+            (change)="onAccountIdChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (account of accounts(); track account.id) {
+              <option [value]="account.id">{{ account.name }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      @if (reportType() === 'cards' || reportType() === 'cash-flow') {
+        @if (reportType() === 'cards') {
+          <div class="field field--compact">
+            <label for="filter-card-only">Cartão</label>
+            <select
+              id="filter-card-only"
+              [value]="creditCardId()"
+              (change)="onCreditCardIdChange($any($event.target).value)"
+            >
+              <option value="">Todos</option>
+              @for (card of creditCards(); track card.id) {
+                <option [value]="card.id">{{ card.name }}</option>
+              }
+            </select>
+          </div>
+        }
+        @if (reportType() === 'cash-flow') {
+          <div class="field field--compact">
+            <label for="filter-flow-type">Tipo de fluxo</label>
+            <select
+              id="filter-flow-type"
+              [value]="flowType()"
+              (change)="onFlowTypeChange($any($event.target).value)"
+            >
+              @for (option of flowTypeOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="field field--compact">
+            <label for="filter-cash-account">Conta</label>
+            <select
+              id="filter-cash-account"
+              [value]="accountId()"
+              (change)="onAccountIdChange($any($event.target).value)"
+            >
+              <option value="">Consolidado</option>
+              @for (account of accounts(); track account.id) {
+                <option [value]="account.id">{{ account.name }}</option>
+              }
+            </select>
+          </div>
+        }
+      }
+
+      @if (reportType() === 'responsibles') {
+        <div class="field field--compact">
+          <label for="filter-nature">Natureza</label>
+          <select
+            id="filter-nature"
+            [value]="nature()"
+            (change)="onNatureChange($any($event.target).value)"
+          >
+            @for (option of natureOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      @if (usesDateType()) {
+        <div class="field field--compact">
+          <label for="filter-date-type">Tipo de data</label>
+          <select
+            id="filter-date-type"
+            [value]="dateType()"
+            (change)="onDateTypeChange($any($event.target).value)"
+          >
+            @for (option of dateTypeOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      @if (
+        reportType() === 'expenses' || reportType() === 'incomes' || reportType() === 'invoices'
+      ) {
+        <div class="field field--compact">
+          <label for="filter-responsible">Responsável</label>
+          <select
+            id="filter-responsible"
+            [value]="responsibleType()"
+            (change)="onResponsibleTypeChange($any($event.target).value)"
+          >
+            <option value="">Todos</option>
+            @for (option of responsibleOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-responsible-name">Nome do responsável</label>
+          <input
+            id="filter-responsible-name"
+            type="text"
+            [value]="responsibleName()"
+            (change)="onResponsibleNameChange($any($event.target).value)"
+          />
+        </div>
+      }
+
+      @if (reportType() === 'invoices') {
+        <div class="field field--compact">
+          <label for="filter-invoice-id">Identificador da fatura</label>
+          <input
+            id="filter-invoice-id"
+            type="text"
+            [value]="invoiceId()"
+            (change)="onInvoiceIdChange($any($event.target).value)"
+          />
+        </div>
+      }
+
+      @if (reportType() !== 'invoices') {
+        <div class="field field--compact">
+          <label for="filter-sort">Ordenar por</label>
+          <select
+            id="filter-sort"
+            [value]="sortField()"
+            (change)="onSortFieldChange($any($event.target).value)"
+          >
+            <option value="">Padrão da API</option>
+            @switch (reportType()) {
+              @case ('expenses') {
+                @for (option of expenseSortOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              }
+              @case ('incomes') {
+                @for (option of incomeSortOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              }
+              @case ('categories') {
+                @for (option of categorySortOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              }
+              @case ('responsibles') {
+                @for (option of responsibleSortOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              }
+              @case ('cards') {
+                @for (option of cardSortOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              }
+              @case ('cash-flow') {
+                @for (option of cashFlowSortOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              }
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-direction">Direção</label>
+          <select
+            id="filter-direction"
+            [value]="sortDirection()"
+            (change)="onSortDirectionChange($any($event.target).value)"
+          >
+            <option value="asc">Crescente</option>
+            <option value="desc">Decrescente</option>
+          </select>
+        </div>
+      }
+    </div>
+
+    <div class="form-actions">
+      <button type="button" (click)="consult()">Consultar</button>
+      <button type="button" (click)="downloadPdf()">Baixar PDF</button>
+    </div>
+    @if (pdfError(); as pdfFailure) {
+      <p class="panel__meta" role="status">Não foi possível baixar o PDF.</p>
+    }
+  </section>
+
+  @if (status() === 'loading') {
+    <p class="visually-hidden">Carregando relatório.</p>
+    <div class="skeleton" aria-hidden="true">
+      <div class="skeleton__block skeleton__block--title"></div>
+      <div class="skeleton__block"></div>
+      <div class="skeleton__block"></div>
+    </div>
+  }
+
+  @if (status() === 'error') {
+    <app-error-state
+      message="Não foi possível carregar o relatório."
+      retryLabel="Tentar novamente"
+      (retry)="retry()"
+    />
+  }
+
+  @if (status() === 'loaded') {
+    @if (isEmpty()) {
+      <app-empty-state message="Nenhum resultado para os filtros selecionados." />
+    }
+
+    @if (expenseReport(); as report) {
+      <p class="page-header__meta">
+        Período {{ report.period.startDate | isoDate }} a {{ report.period.endDate | isoDate }}.
+      </p>
+      <section class="totals" aria-labelledby="expense-summary-title">
+        <h2 id="expense-summary-title" class="visually-hidden">Resumo de despesas</h2>
+        <dl>
+          <div>
+            <dt>Original</dt>
+            <dd>{{ report.summary.periodOriginal | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Desconto</dt>
+            <dd>{{ report.summary.periodDiscount | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Acréscimo</dt>
+            <dd>{{ report.summary.periodSurcharge | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Obrigação</dt>
+            <dd>{{ report.summary.periodObligation | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Pago</dt>
+            <dd>{{ report.summary.periodPaid | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Restante</dt>
+            <dd>{{ report.summary.periodRemaining | brlCurrency }}</dd>
+          </div>
+        </dl>
+      </section>
+      @if (report.items.length > 0) {
+        <div class="table-wrap">
+          <table>
+            <caption class="visually-hidden">
+              Despesas do período
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Descrição</th>
+                <th scope="col">Situação</th>
+                <th scope="col">Origem</th>
+                <th scope="col">Obrigação</th>
+                <th scope="col">Restante</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of report.items; track item.id) {
+                <tr>
+                  <th scope="row" data-label="Descrição">{{ item.description }}</th>
+                  <td data-label="Situação">{{ expenseStatusLabel(item.status) }}</td>
+                  <td data-label="Origem">{{ originLabel(item.origin) }}</td>
+                  <td data-label="Obrigação">{{ item.periodObligation | brlCurrency }}</td>
+                  <td data-label="Restante">{{ item.periodRemaining | brlCurrency }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+
+    @if (incomeReport(); as report) {
+      <p class="page-header__meta">
+        Período {{ report.period.startDate | isoDate }} a {{ report.period.endDate | isoDate }}.
+        {{ dateTypeLabel(report.dateType) }}.
+      </p>
+      <section class="totals" aria-labelledby="income-summary-title">
+        <h2 id="income-summary-title" class="visually-hidden">Resumo de receitas</h2>
+        <dl>
+          @if (report.summary.amount != null) {
+            <div>
+              <dt>Valor</dt>
+              <dd>{{ report.summary.amount | brlCurrency }}</dd>
+            </div>
+          }
+          @if (report.summary.accruedAmount != null) {
+            <div>
+              <dt>Acréscimos</dt>
+              <dd>{{ report.summary.accruedAmount | brlCurrency }}</dd>
+            </div>
+          }
+          @if (report.summary.receivedAmount != null) {
+            <div>
+              <dt>Recebido</dt>
+              <dd>{{ report.summary.receivedAmount | brlCurrency }}</dd>
+            </div>
+          }
+          @if (report.summary.remainingAmount != null) {
+            <div>
+              <dt>Restante</dt>
+              <dd>{{ report.summary.remainingAmount | brlCurrency }}</dd>
+            </div>
+          }
+          @if (report.summary.periodReceivedAmount != null) {
+            <div>
+              <dt>Recebido no período</dt>
+              <dd>{{ report.summary.periodReceivedAmount | brlCurrency }}</dd>
+            </div>
+          }
+        </dl>
+      </section>
+      @if (report.items.length > 0) {
+        <div class="table-wrap">
+          <table>
+            <caption class="visually-hidden">
+              Receitas do período
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Descrição</th>
+                <th scope="col">Situação</th>
+                <th scope="col">Valor</th>
+                <th scope="col">Recebido</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of report.items; track item.id) {
+                <tr>
+                  <th scope="row" data-label="Descrição">{{ item.description }}</th>
+                  <td data-label="Situação">{{ incomeStatusLabel(item.status) }}</td>
+                  <td data-label="Valor">{{ item.amount | brlCurrency }}</td>
+                  <td data-label="Recebido">{{ item.receivedAmount | brlCurrency }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+
+    @if (categoryReport(); as report) {
+      <p class="page-header__meta">
+        Período {{ report.period.startDate | isoDate }} a {{ report.period.endDate | isoDate }}.
+      </p>
+      <section class="totals" aria-labelledby="category-summary-title">
+        <h2 id="category-summary-title" class="filters__title">Resumo</h2>
+        <dl>
+          <div>
+            <dt>Obrigação de despesas</dt>
+            <dd>{{ report.summary.expense.periodObligation | brlCurrency }}</dd>
+          </div>
+          @if (report.summary.income.amount != null) {
+            <div>
+              <dt>Receitas</dt>
+              <dd>{{ report.summary.income.amount | brlCurrency }}</dd>
+            </div>
+          }
+          @if (report.summary.income.periodReceivedAmount != null) {
+            <div>
+              <dt>Recebido no período</dt>
+              <dd>{{ report.summary.income.periodReceivedAmount | brlCurrency }}</dd>
+            </div>
+          }
+        </dl>
+      </section>
+      @if (report.items.length > 0) {
+        <div class="table-wrap">
+          <table>
+            <caption class="visually-hidden">
+              Categorias do período
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Categoria</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of report.items; track item.categoryId) {
+                <tr>
+                  <th scope="row" data-label="Categoria">{{ item.name }}</th>
+                  <td data-label="Tipo">{{ categoryTypeLabel(item.type) }}</td>
+                  <td data-label="Valor">
+                    @if (item.periodObligation != null) {
+                      {{ item.periodObligation | brlCurrency }}
+                    } @else if (item.periodReceivedAmount != null) {
+                      {{ item.periodReceivedAmount | brlCurrency }}
+                    } @else if (item.amount != null) {
+                      {{ item.amount | brlCurrency }}
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+
+    @if (responsibleReport(); as report) {
+      <p class="page-header__meta">
+        Período {{ report.period.startDate | isoDate }} a {{ report.period.endDate | isoDate }}.
+        {{ natureLabel(report.nature) }}.
+      </p>
+      @if (report.items.length > 0) {
+        <div class="table-wrap">
+          <table>
+            <caption class="visually-hidden">
+              Responsáveis do período
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Responsável</th>
+                <th scope="col">Despesas</th>
+                <th scope="col">Receitas</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of report.items; track item.key) {
+                <tr>
+                  <th scope="row" data-label="Responsável">
+                    {{ responsibleTypeLabel(item.responsibleType) }}
+                    @if (item.responsibleName) {
+                      — {{ item.responsibleName }}
+                    }
+                  </th>
+                  <td data-label="Despesas">
+                    @if (item.expense; as expense) {
+                      {{ expense.periodObligation | brlCurrency }}
+                    } @else {
+                      —
+                    }
+                  </td>
+                  <td data-label="Receitas">
+                    @if (item.income?.amount != null) {
+                      {{ item.income!.amount | brlCurrency }}
+                    } @else if (item.income?.periodReceivedAmount != null) {
+                      {{ item.income!.periodReceivedAmount | brlCurrency }}
+                    } @else {
+                      —
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+
+    @if (cardReport(); as report) {
+      <p class="page-header__meta">
+        Período {{ report.period.startDate | isoDate }} a {{ report.period.endDate | isoDate }}.
+      </p>
+      <section class="totals" aria-labelledby="card-summary-title">
+        <h2 id="card-summary-title" class="visually-hidden">Resumo de cartões</h2>
+        <dl>
+          <div>
+            <dt>Compras</dt>
+            <dd>{{ report.summary.purchaseAmount | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Faturas</dt>
+            <dd>{{ report.summary.invoiceAmount | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Pagamentos</dt>
+            <dd>{{ report.summary.paidAmount | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Créditos</dt>
+            <dd>{{ report.summary.creditAmount | brlCurrency }}</dd>
+          </div>
+        </dl>
+      </section>
+      @if (report.items.length > 0) {
+        <div class="table-wrap">
+          <table>
+            <caption class="visually-hidden">
+              Cartões do período
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Cartão</th>
+                <th scope="col">Titular</th>
+                <th scope="col">Compras</th>
+                <th scope="col">Faturas</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of report.items; track item.creditCardId) {
+                <tr>
+                  <th scope="row" data-label="Cartão">{{ item.name }}</th>
+                  <td data-label="Titular">{{ item.holderName }}</td>
+                  <td data-label="Compras">{{ item.summary.purchaseAmount | brlCurrency }}</td>
+                  <td data-label="Faturas">{{ item.summary.invoiceAmount | brlCurrency }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+
+    @if (cashFlowReport(); as report) {
+      <p class="page-header__meta">
+        Período {{ report.period.startDate | isoDate }} a {{ report.period.endDate | isoDate }}.
+      </p>
+      @if (report.historical; as historical) {
+        <section class="totals" aria-labelledby="historical-title">
+          <h2 id="historical-title" class="filters__title">Histórico</h2>
+          <dl>
+            @if (historical.openingBalance != null) {
+              <div>
+                <dt>Saldo inicial</dt>
+                <dd>{{ historical.openingBalance | brlCurrency }}</dd>
+              </div>
+            }
+            @if (historical.closingBalance != null) {
+              <div>
+                <dt>Saldo final</dt>
+                <dd>{{ historical.closingBalance | brlCurrency }}</dd>
+              </div>
+            }
+            <div>
+              <dt>Entradas</dt>
+              <dd>{{ historical.summary.totalIn | brlCurrency }}</dd>
+            </div>
+            <div>
+              <dt>Saídas</dt>
+              <dd>{{ historical.summary.totalOut | brlCurrency }}</dd>
+            </div>
+            <div>
+              <dt>Líquido</dt>
+              <dd>{{ historical.summary.net | brlCurrency }}</dd>
+            </div>
+          </dl>
+        </section>
+        @if (historical.items.length > 0) {
+          <div class="table-wrap">
+            <table>
+              <caption class="visually-hidden">
+                Movimentos históricos
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Data</th>
+                  <th scope="col">Tipo</th>
+                  <th scope="col">Descrição</th>
+                  <th scope="col">Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of historical.items; track item.id) {
+                  <tr>
+                    <th scope="row" data-label="Data">{{ item.date | isoDate }}</th>
+                    <td data-label="Tipo">{{ cashFlowTypeLabel(item.type) }}</td>
+                    <td data-label="Descrição">{{ item.description }}</td>
+                    <td data-label="Valor">{{ item.amount | brlCurrency }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+
+      @if (projectedEmpty()) {
+        <p class="panel__meta">Não há projeção para o período informado.</p>
+      }
+      @if (projected(); as projectedBlock) {
+        <section class="panel" aria-labelledby="projected-title">
+          <h2 id="projected-title">Projeção</h2>
+          <dl class="detail-list">
+            <div>
+              <dt>Entradas projetadas</dt>
+              <dd>{{ projectedBlock.summary.projectedIncome | brlCurrency }}</dd>
+            </div>
+            <div>
+              <dt>Saídas projetadas</dt>
+              <dd>{{ projectedBlock.summary.projectedExpense | brlCurrency }}</dd>
+            </div>
+            <div>
+              <dt>Saldo projetado ao final</dt>
+              <dd>{{ projectedBlock.summary.projectedFinalBalance | brlCurrency }}</dd>
+            </div>
+          </dl>
+          @if (projectedBlock.months.length > 0) {
+            <div class="table-wrap">
+              <table>
+                <caption class="visually-hidden">
+                  Meses projetados
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Mês</th>
+                    <th scope="col">Entradas</th>
+                    <th scope="col">Saídas</th>
+                    <th scope="col">Saldo final</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (month of projectedBlock.months; track month.period) {
+                    <tr>
+                      <th scope="row" data-label="Mês">{{ month.period | yearMonth }}</th>
+                      <td data-label="Entradas">{{ month.totalIncome | brlCurrency }}</td>
+                      <td data-label="Saídas">{{ month.totalExpense | brlCurrency }}</td>
+                      <td data-label="Saldo final">{{ month.closingBalance | brlCurrency }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+          @if (projectedBlock.quarters.length > 0) {
+            <ul>
+              @for (quarter of projectedBlock.quarters; track quarter.period) {
+                <li>
+                  {{ formatQuarter(quarter.period) }}: entradas
+                  {{ quarter.totalIncome | brlCurrency }}, saídas
+                  {{ quarter.totalExpense | brlCurrency }}.
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      }
+    }
+
+    @if (invoiceReport(); as report) {
+      <section class="panel" aria-labelledby="invoice-report-title">
+        <h2 id="invoice-report-title">Fatura</h2>
+        <dl class="detail-list">
+          <div>
+            <dt>Cartão</dt>
+            <dd>{{ report.card.name }} — {{ report.card.holderName }}</dd>
+          </div>
+          <div>
+            <dt>Situação</dt>
+            <dd>{{ invoiceStatusLabel(report.invoice.status) }}</dd>
+          </div>
+          <div>
+            <dt>Fechamento</dt>
+            <dd>{{ report.invoice.closingDate | isoDate }}</dd>
+          </div>
+          <div>
+            <dt>Vencimento</dt>
+            <dd>{{ report.invoice.dueDate | isoDate }}</dd>
+          </div>
+          <div>
+            <dt>Total</dt>
+            <dd>{{ report.invoice.totalAmount | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Pago</dt>
+            <dd>{{ report.invoice.paidAmount | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Restante</dt>
+            <dd>{{ report.invoice.remainingAmount | brlCurrency }}</dd>
+          </div>
+        </dl>
+        @if (report.purchases.length > 0) {
+          <div class="table-wrap">
+            <table>
+              <caption class="visually-hidden">
+                Compras da fatura
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Descrição</th>
+                  <th scope="col">Categoria</th>
+                  <th scope="col">Original</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (
+                  item of report.purchases;
+                  track item.expenseId + '-' + item.installmentNumber
+                ) {
+                  <tr>
+                    <th scope="row" data-label="Descrição">{{ item.description }}</th>
+                    <td data-label="Categoria">{{ item.categoryName }}</td>
+                    <td data-label="Original">{{ item.original | brlCurrency }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        @if (report.allocations.length > 0) {
+          <h3>Rateio</h3>
+          <ul>
+            @for (item of report.allocations; track item.id) {
+              <li>{{ allocationTypeLabel(item.type) }} — {{ item.amount | brlCurrency }}</li>
+            }
+          </ul>
+        }
+      </section>
+    }
+
+    @if (usesPagination() && totalPages() > 1) {
+      <nav class="pagination" aria-label="Paginação do relatório">
+        <p class="pagination__meta">
+          Página {{ pageIndex() + 1 }} de {{ totalPages() }} — {{ totalItems() }} itens
+        </p>
+        <div class="pagination__controls">
+          <button type="button" (click)="goToPage(pageIndex() - 1)" [disabled]="!canGoPrev()">
+            Anterior
+          </button>
+          <button type="button" (click)="goToPage(pageIndex() + 1)" [disabled]="!canGoNext()">
+            Próxima
+          </button>
+        </div>
+      </nav>
+    }
+  }
+</section>

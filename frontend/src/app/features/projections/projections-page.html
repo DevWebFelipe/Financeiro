@@ -1,0 +1,338 @@
+<section aria-labelledby="projections-title" [attr.aria-busy]="status() === 'loading'">
+  <header class="page-header">
+    <div class="page-header__intro">
+      <h1 id="projections-title">Projeções</h1>
+      <p class="page-header__meta">
+        Fluxo de caixa projetado a partir do saldo atual. Valores oficiais da API.
+        @if (data(); as projection) {
+          Horizonte de {{ projection.startDate | isoDate }} a {{ projection.endDate | isoDate }}.
+        }
+      </p>
+    </div>
+  </header>
+
+  @if (status() === 'loading') {
+    <p class="visually-hidden">Carregando projeções.</p>
+    <div class="skeleton" aria-hidden="true">
+      <div class="skeleton__block skeleton__block--title"></div>
+      <div class="skeleton__block"></div>
+      <div class="skeleton__block"></div>
+    </div>
+  }
+
+  @if (status() === 'error') {
+    <app-error-state
+      message="Não foi possível carregar as projeções."
+      retryLabel="Tentar novamente"
+      (retry)="retry()"
+    />
+  }
+
+  <section class="filters" aria-labelledby="projection-filters-title">
+    <h2 id="projection-filters-title" class="filters__title">Período e conta</h2>
+    <div class="filters__controls">
+      <div class="field field--compact">
+        <label for="filter-period-mode">Modo de período</label>
+        <select
+          id="filter-period-mode"
+          [value]="periodMode()"
+          (change)="onPeriodModeChange($any($event.target).value)"
+        >
+          @for (option of periodModeOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+      <div class="field field--compact">
+        <label for="filter-account">Conta</label>
+        <select
+          id="filter-account"
+          [value]="accountFilter()"
+          (change)="onAccountFilterChange($any($event.target).value)"
+        >
+          <option value="">Todas (consolidado)</option>
+          @for (account of accounts(); track account.id) {
+            <option [value]="account.id">{{ account.name }}</option>
+          }
+        </select>
+      </div>
+      @if (periodMode() === 'range') {
+        <div class="field field--compact">
+          <label for="filter-start-date">Data inicial</label>
+          <input
+            id="filter-start-date"
+            type="date"
+            [value]="startDateFilter()"
+            (change)="onStartDateFilterChange($any($event.target).value)"
+          />
+        </div>
+        <div class="field field--compact">
+          <label for="filter-end-date">Data final</label>
+          <input
+            id="filter-end-date"
+            type="date"
+            [value]="endDateFilter()"
+            (change)="onEndDateFilterChange($any($event.target).value)"
+          />
+        </div>
+      }
+      @if (periodMode() === 'yearMonth') {
+        <div class="field field--compact">
+          <label for="filter-year-month">Mês e ano</label>
+          <input
+            id="filter-year-month"
+            type="month"
+            [value]="yearMonthFilter()"
+            (change)="onYearMonthFilterChange($any($event.target).value)"
+          />
+        </div>
+      }
+      @if (periodMode() === 'yearMonth' || periodMode() === 'fromToday') {
+        <div class="field field--compact">
+          <label for="filter-months">Quantidade de meses</label>
+          <select
+            id="filter-months"
+            [value]="monthsCount()"
+            (change)="onMonthsCountChange($any($event.target).value)"
+          >
+            @if (periodMode() === 'yearMonth') {
+              <option value="">1 (padrão)</option>
+            }
+            @for (count of monthsCountOptions; track count) {
+              <option [value]="count">{{ count }}</option>
+            }
+          </select>
+        </div>
+      }
+    </div>
+    @if (periodHint(); as hint) {
+      <p class="filters__hint">{{ hint }}</p>
+    }
+  </section>
+
+  @if (status() === 'loaded' && data(); as projection) {
+    @if (isEmpty()) {
+      <app-empty-state
+        [message]="
+          hasFilters()
+            ? 'Nenhum evento projetado corresponde aos filtros selecionados.'
+            : 'Nenhum evento projetado no horizonte.'
+        "
+      />
+    }
+
+    @if (summary(); as summary) {
+      <section class="totals" aria-labelledby="projection-summary-title">
+        <h2 id="projection-summary-title">Resumo</h2>
+        <dl>
+          <div>
+            <dt>Saldo atual</dt>
+            <dd>{{ summary.currentBalance | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Entradas projetadas</dt>
+            <dd class="is-income">{{ summary.projectedIncome | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Saídas projetadas</dt>
+            <dd class="is-expense">{{ summary.projectedExpense | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Fluxo líquido</dt>
+            <dd>{{ summary.projectedNetCashFlow | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Saldo projetado final</dt>
+            <dd>{{ summary.projectedFinalBalance | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Menor saldo projetado</dt>
+            <dd>
+              {{ summary.minimumProjectedBalance | brlCurrency }} em
+              {{ summary.minimumProjectedBalanceDate | isoDate }}
+            </dd>
+          </div>
+          <div>
+            <dt>Reservado em metas</dt>
+            <dd>{{ summary.reservedAmount | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Disponível projetado</dt>
+            <dd>{{ summary.availableProjectedBalance | brlCurrency }}</dd>
+          </div>
+        </dl>
+      </section>
+    }
+
+    @if (months().length > 0) {
+      <section class="panel" aria-labelledby="projection-months-title">
+        <h2 id="projection-months-title">Meses</h2>
+        <div class="table-wrap">
+          <table>
+            <caption class="visually-hidden">
+              Série mensal oficial
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Período</th>
+                <th scope="col">Abertura</th>
+                <th scope="col">Entradas</th>
+                <th scope="col">Saídas</th>
+                <th scope="col">Líquido</th>
+                <th scope="col">Fechamento</th>
+                <th scope="col">Menor saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (month of months(); track month.period) {
+                <tr>
+                  <th scope="row" data-label="Período">
+                    <span>{{ month.period | yearMonth }}</span>
+                    @if (month.negative) {
+                      <span class="badge">Negativo</span>
+                    }
+                  </th>
+                  <td data-label="Abertura">{{ month.openingBalance | brlCurrency }}</td>
+                  <td data-label="Entradas">{{ month.totalIncome | brlCurrency }}</td>
+                  <td data-label="Saídas">{{ month.totalExpense | brlCurrency }}</td>
+                  <td data-label="Líquido">{{ month.netCashFlow | brlCurrency }}</td>
+                  <td data-label="Fechamento">{{ month.closingBalance | brlCurrency }}</td>
+                  <td data-label="Menor saldo">
+                    {{ month.minimumProjectedBalance | brlCurrency }} em
+                    {{ month.minimumProjectedBalanceDate | isoDate }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+
+    @if (quarters().length > 0) {
+      <section class="panel" aria-labelledby="projection-quarters-title">
+        <h2 id="projection-quarters-title">Trimestres</h2>
+        <ul class="quarters">
+          @for (quarter of quarters(); track quarter.period) {
+            <li>
+              {{ formatQuarter(quarter.period) }}: entradas {{ quarter.totalIncome | brlCurrency }},
+              saídas {{ quarter.totalExpense | brlCurrency }}, líquido
+              {{ quarter.netCashFlow | brlCurrency }}.
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    <section class="panel" aria-labelledby="projection-events-title">
+      <h2 id="projection-events-title">Eventos</h2>
+      @if (eventsEmpty()) {
+        <app-empty-state
+          [message]="
+            hasFilters()
+              ? 'Nenhum evento datado corresponde aos filtros selecionados.'
+              : 'Nenhum evento datado no horizonte.'
+          "
+        />
+      } @else {
+        <div class="table-wrap">
+          <table>
+            <caption class="visually-hidden">
+              Eventos projetados datados
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Data</th>
+                <th scope="col">Descrição</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Direção</th>
+                <th scope="col">Valor</th>
+                <th scope="col">Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (event of events(); track eventKey(event, $index)) {
+                <tr>
+                  <th scope="row" data-label="Data">
+                    {{ event.date ? (event.date | isoDate) : undatedDateLabel }}
+                    @if (event.overdue) {
+                      <span class="badge">{{ overdueLabel(true) }}</span>
+                    }
+                  </th>
+                  <td data-label="Descrição">
+                    <span class="name">{{ event.description }}</span>
+                  </td>
+                  <td data-label="Tipo">{{ eventTypeLabel(event.type) }}</td>
+                  <td data-label="Direção">{{ directionLabel(event.direction) }}</td>
+                  <td
+                    data-label="Valor"
+                    [class.is-income]="event.direction === 'IN'"
+                    [class.is-expense]="event.direction === 'OUT'"
+                  >
+                    {{ event.amount | brlCurrency }}
+                  </td>
+                  <td data-label="Situação">{{ assignmentLabel(event.accountAssignment) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (totalPages() > 1) {
+          <nav class="pagination" aria-label="Paginação de eventos da projeção">
+            <p class="pagination__meta">
+              Página {{ pageIndex() + 1 }} de {{ totalPages() }} — {{ totalItems() }} eventos
+            </p>
+            <div class="pagination__controls">
+              <button type="button" (click)="goToPage(pageIndex() - 1)" [disabled]="!canGoPrev()">
+                Anterior
+              </button>
+              <button type="button" (click)="goToPage(pageIndex() + 1)" [disabled]="!canGoNext()">
+                Próxima
+              </button>
+            </div>
+          </nav>
+        }
+      }
+    </section>
+
+    @if (undatedEvents().length > 0) {
+      <section class="panel" aria-labelledby="projection-undated-title">
+        <h2 id="projection-undated-title">Eventos sem data</h2>
+        <p class="panel__meta">Não entram em um mês e não alteram o saldo projetado final.</p>
+        <div class="table-wrap">
+          <table>
+            <caption class="visually-hidden">
+              Eventos projetados sem data
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Data</th>
+                <th scope="col">Descrição</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Direção</th>
+                <th scope="col">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (event of undatedEvents(); track eventKey(event, $index)) {
+                <tr>
+                  <th scope="row" data-label="Data">{{ undatedDateLabel }}</th>
+                  <td data-label="Descrição">
+                    <span class="name">{{ event.description }}</span>
+                    @if (event.overdue) {
+                      <span class="badge">{{ overdueLabel(true) }}</span>
+                    }
+                  </td>
+                  <td data-label="Tipo">{{ eventTypeLabel(event.type) }}</td>
+                  <td data-label="Direção">{{ directionLabel(event.direction) }}</td>
+                  <td data-label="Valor">{{ event.amount | brlCurrency }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+  }
+</section>

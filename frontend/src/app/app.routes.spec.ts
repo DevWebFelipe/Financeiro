@@ -97,6 +97,30 @@ describe('app routes', () => {
     expect(router.url).toBe('/login?returnUrl=%2Fpayables');
   });
 
+  it('protects /transfers and sends unauthenticated users to login', async () => {
+    await auth.initialize();
+    await router.navigateByUrl('/transfers');
+    expect(router.url).toBe('/login?returnUrl=%2Ftransfers');
+  });
+
+  it('protects /goals and sends unauthenticated users to login', async () => {
+    await auth.initialize();
+    await router.navigateByUrl('/goals');
+    expect(router.url).toBe('/login?returnUrl=%2Fgoals');
+  });
+
+  it('protects /projections and sends unauthenticated users to login', async () => {
+    await auth.initialize();
+    await router.navigateByUrl('/projections');
+    expect(router.url).toBe('/login?returnUrl=%2Fprojections');
+  });
+
+  it('protects /reports and sends unauthenticated users to login', async () => {
+    await auth.initialize();
+    await router.navigateByUrl('/reports');
+    expect(router.url).toBe('/login?returnUrl=%2Freports');
+  });
+
   it('uses /dashboard as the authenticated entry from /', async () => {
     sessionStorage.setItem(AUTH_TOKEN_KEY, 'access-token');
     const pending = auth.initialize();
@@ -193,6 +217,50 @@ describe('app routes', () => {
     await router.navigateByUrl('/payables');
     expect(router.url).toBe('/payables');
     expect(TestBed.inject(Title).getTitle()).toBe('Contas a pagar — Financeiro');
+  });
+
+  it('allows an authenticated user to open lazy-loaded /transfers', async () => {
+    sessionStorage.setItem(AUTH_TOKEN_KEY, 'access-token');
+    const pending = auth.initialize();
+    httpTesting.expectOne(api('/users/me')).flush(user);
+    await pending;
+
+    await router.navigateByUrl('/transfers');
+    expect(router.url).toBe('/transfers');
+    expect(TestBed.inject(Title).getTitle()).toBe('Transferências — Financeiro');
+  });
+
+  it('allows an authenticated user to open lazy-loaded /goals', async () => {
+    sessionStorage.setItem(AUTH_TOKEN_KEY, 'access-token');
+    const pending = auth.initialize();
+    httpTesting.expectOne(api('/users/me')).flush(user);
+    await pending;
+
+    await router.navigateByUrl('/goals');
+    expect(router.url).toBe('/goals');
+    expect(TestBed.inject(Title).getTitle()).toBe('Metas — Financeiro');
+  });
+
+  it('allows an authenticated user to open lazy-loaded /projections', async () => {
+    sessionStorage.setItem(AUTH_TOKEN_KEY, 'access-token');
+    const pending = auth.initialize();
+    httpTesting.expectOne(api('/users/me')).flush(user);
+    await pending;
+
+    await router.navigateByUrl('/projections');
+    expect(router.url).toBe('/projections');
+    expect(TestBed.inject(Title).getTitle()).toBe('Projeções — Financeiro');
+  });
+
+  it('allows an authenticated user to open lazy-loaded /reports', async () => {
+    sessionStorage.setItem(AUTH_TOKEN_KEY, 'access-token');
+    const pending = auth.initialize();
+    httpTesting.expectOne(api('/users/me')).flush(user);
+    await pending;
+
+    await router.navigateByUrl('/reports');
+    expect(router.url).toBe('/reports');
+    expect(TestBed.inject(Title).getTitle()).toBe('Relatórios — Financeiro');
   });
 
   it('redirects authenticated guests away from login to the dashboard', async () => {

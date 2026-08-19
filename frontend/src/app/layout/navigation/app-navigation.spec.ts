@@ -22,6 +22,10 @@ describe('AppNavigation', () => {
           { path: 'expenses', component: AppNavigation },
           { path: 'incomes', component: AppNavigation },
           { path: 'payables', component: AppNavigation },
+          { path: 'transfers', component: AppNavigation },
+          { path: 'goals', component: AppNavigation },
+          { path: 'projections', component: AppNavigation },
+          { path: 'reports', component: AppNavigation },
         ]),
       ],
     }).compileComponents();
@@ -105,6 +109,46 @@ describe('AppNavigation', () => {
     );
     const payables = links.find((link) => link.textContent?.includes('Contas a pagar'));
     expect(payables?.getAttribute('href')).toBe('/payables');
+  });
+
+  it('renders the Transfers item now that the feature exists', async () => {
+    const fixture = TestBed.createComponent(AppNavigation);
+    await fixture.whenStable();
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>,
+    );
+    const transfers = links.find((link) => link.textContent?.includes('Transferências'));
+    expect(transfers?.getAttribute('href')).toBe('/transfers');
+  });
+
+  it('renders the Goals item now that the feature exists', async () => {
+    const fixture = TestBed.createComponent(AppNavigation);
+    await fixture.whenStable();
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>,
+    );
+    const goals = links.find((link) => link.textContent?.includes('Metas'));
+    expect(goals?.getAttribute('href')).toBe('/goals');
+  });
+
+  it('renders the Projections item now that the feature exists', async () => {
+    const fixture = TestBed.createComponent(AppNavigation);
+    await fixture.whenStable();
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>,
+    );
+    const projections = links.find((link) => link.textContent?.includes('Projeções'));
+    expect(projections?.getAttribute('href')).toBe('/projections');
+  });
+
+  it('renders the Reports item now that the feature exists', async () => {
+    const fixture = TestBed.createComponent(AppNavigation);
+    await fixture.whenStable();
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>,
+    );
+    const reports = links.find((link) => link.textContent?.includes('Relatórios'));
+    expect(reports?.getAttribute('href')).toBe('/reports');
   });
 
   it('marks the active route with aria-current', async () => {
