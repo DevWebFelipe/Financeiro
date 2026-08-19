@@ -1,10 +1,15 @@
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { provideCoreHttp } from '../core/http/provide-core-http';
 import { HomePage } from './home-page';
 
 describe('HomePage', () => {
   beforeEach(async () => {
+    sessionStorage.clear();
     await TestBed.configureTestingModule({
       imports: [HomePage],
+      providers: [provideCoreHttp(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
   });
 

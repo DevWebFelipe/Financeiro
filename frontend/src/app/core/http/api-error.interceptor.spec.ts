@@ -24,21 +24,18 @@ describe('core HTTP infrastructure', () => {
   let http: HttpClient;
   let httpTesting: HttpTestingController;
   let navigate: ReturnType<typeof vi.fn>;
-  let sessionGetItem: ReturnType<typeof vi.spyOn>;
-  let sessionSetItem: ReturnType<typeof vi.spyOn>;
   let sessionRemoveItem: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    sessionStorage.clear();
     navigate = vi.fn();
-    sessionGetItem = vi.spyOn(sessionStorage, 'getItem');
-    sessionSetItem = vi.spyOn(sessionStorage, 'setItem');
     sessionRemoveItem = vi.spyOn(sessionStorage, 'removeItem');
 
     TestBed.configureTestingModule({
       providers: [
         provideCoreHttp(),
         provideHttpClientTesting(),
-        { provide: Router, useValue: { navigate } },
+        { provide: Router, useValue: { navigate, url: '/' } },
       ],
     });
 
@@ -48,9 +45,8 @@ describe('core HTTP infrastructure', () => {
 
   afterEach(() => {
     httpTesting.verify();
-    sessionGetItem.mockRestore();
-    sessionSetItem.mockRestore();
     sessionRemoveItem.mockRestore();
+    sessionStorage.clear();
   });
 
   it('provides the centralized API base URL', () => {
@@ -81,7 +77,7 @@ describe('core HTTP infrastructure', () => {
     expect(expectApiError(captured)).toEqual(body);
   });
 
-  it('forwards 401 without logout, navigation or sessionStorage', () => {
+  it('propagates a 401 ApiError to the caller', () => {
     const body: ApiError = {
       timestamp: '2026-08-12T14:00:00Z',
       status: 401,
@@ -104,10 +100,6 @@ describe('core HTTP infrastructure', () => {
     const apiError = expectApiError(captured);
     expect(apiError.status).toBe(401);
     expect(apiError.code).toBe('UNAUTHORIZED');
-    expect(navigate).not.toHaveBeenCalled();
-    expect(sessionGetItem).not.toHaveBeenCalled();
-    expect(sessionSetItem).not.toHaveBeenCalled();
-    expect(sessionRemoveItem).not.toHaveBeenCalled();
   });
 
   it('forwards 403 without treating it as session termination', () => {
@@ -132,8 +124,6 @@ describe('core HTTP infrastructure', () => {
     expect(apiError.status).toBe(403);
     expect(apiError.code).not.toBe('UNAUTHORIZED');
     expect(navigate).not.toHaveBeenCalled();
-    expect(sessionGetItem).not.toHaveBeenCalled();
-    expect(sessionSetItem).not.toHaveBeenCalled();
     expect(sessionRemoveItem).not.toHaveBeenCalled();
   });
 
@@ -154,6 +144,7 @@ describe('core HTTP infrastructure', () => {
     expect(apiError.status).toBe(0);
     expect(apiError.code).toBe(HttpClientErrorCode.Transport);
     expect(navigate).not.toHaveBeenCalled();
+    expect(sessionRemoveItem).not.toHaveBeenCalled();
   });
 
   it('lets successful responses pass through', () => {

@@ -9,11 +9,18 @@ main {
   padding: var(--space-xl) var(--space-md);
 }
 
-h1 + p {
+h1 + p,
+form + p {
   margin-top: var(--space-sm);
   color: var(--color-text-secondary);
 }
 
-button {
+form {
+  display: grid;
+  gap: var(--space-sm);
   margin-top: var(--space-lg);
+}
+
+[role='alert'] {
+  color: var(--color-error);
 }

@@ -20,6 +20,8 @@ Visual tokens, Inter (local), reset and base styles live in `src/styles/` and ar
 
 The API base URL is centralized in `src/app/core/config/`. Development uses `http://localhost:8080/api/v1`. Production uses `/api/v1`. HTTP errors are normalized to `ApiError` in `src/app/core/errors/`.
 
+Authentication lives in `src/app/core/auth/`. The JWT is stored only in `sessionStorage`. Login is `/login`; registration is `/register` and does not auto-login.
+
 ## Code scaffolding
 
 Angular CLI includes powerful code scaffolding tools. To generate a new component, run:

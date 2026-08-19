@@ -1070,7 +1070,18 @@ HttpClient e interceptors funcionais: `frontend/src/app/core/http/`. Sem wrapper
 
 Contrato de erro: `ApiError` alinhado a `docs/25-api.md`. Normalização segura: `frontend/src/app/core/errors/`. Códigos internos de transporte (`HTTP_TRANSPORT_ERROR`, `HTTP_UNPARSEABLE_RESPONSE`) não são códigos semânticos do backend.
 
-401 é identificado e **propagado**. Encerrar sessão e redirecionar para login pertencem ao B3. 403 **não** encerra sessão.
+401 é identificado, a sessão é invalidada de forma idempotente e a navegação vai para `/login`. 403, 5xx e erros de rede **não** encerram sessão.
+
+
+# 96C. Autenticação e sessão (Fase 21 — Bloco B3)
+
+Sessão em `frontend/src/app/core/auth/`. JWT somente em `sessionStorage` (`fc.auth.accessToken`), encapsulado. Sem `localStorage`, sem parser JWT, sem refresh token.
+
+Estados: `loading` | `authenticated` | `unauthenticated`. Inicialização (`provideAppInitializer`): sem token → `unauthenticated`; com token → `GET /users/me`; 200 → `authenticated`; 401 → limpa sessão; 5xx/rede → **não** apaga o token.
+
+Interceptor `Authorization: Bearer` quando há token. AuthGuard aguarda `loading`, permite `authenticated`, redireciona `unauthenticated` para `/login` com `returnUrl` interno (sem open redirect).
+
+Registro (`POST /auth/register`) **não** cria sessão. Login (`POST /auth/login`) armazena `accessToken` e busca `/users/me`. Logout é local.
 
 
 # 97. Dashboard
