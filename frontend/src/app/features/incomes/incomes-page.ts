@@ -44,19 +44,12 @@ import {
   UpdateIncomeRequest,
 } from './incomes.models';
 import { IncomesService } from './incomes.service';
+import { todayIsoDate } from './today-iso-date';
 
 type FormMode = 'closed' | 'create' | 'edit' | 'receive';
 type PanelMode = 'closed' | 'detail' | 'cancel-confirm' | 'reverse-confirm';
 
 const PAGE_SIZE = 20;
-
-function todayIsoDate(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 @Component({
   selector: 'app-incomes-page',

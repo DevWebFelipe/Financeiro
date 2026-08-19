@@ -8,6 +8,7 @@ import { CategoriesService } from '../categories/categories.service';
 import { Income, IncomeMovement, IncomeMovementPage, IncomePage } from './incomes.models';
 import { IncomesPage } from './incomes-page';
 import { IncomesService } from './incomes.service';
+import { todayIsoDate } from './today-iso-date';
 
 const INCOME_ID = '01900000-0000-7000-8000-000000000020';
 const CATEGORY_ID = '01900000-0000-7000-8000-000000000002';
@@ -304,6 +305,18 @@ describe('IncomesPage', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.formError()).toContain('não é permitida');
+  });
+
+  it('defaults receipt date to the America/Sao_Paulo civil date', async () => {
+    list.mockReturnValue(of(page()));
+    const fixture = TestBed.createComponent(IncomesPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.componentInstance.openReceive(income());
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.receiveForm.controls.date.value).toBe(todayIsoDate());
   });
 
   it('hides receive and edit actions for cancelled incomes', async () => {

@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, HostListener, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, EMPTY, firstValueFrom, forkJoin, startWith, Subject, switchMap } from 'rxjs';
@@ -43,19 +43,12 @@ import {
   WritablePaymentMethod,
 } from './expenses.models';
 import { ExpensesService } from './expenses.service';
+import { todayIsoDate } from './today-iso-date';
 
 type FormMode = 'closed' | 'create' | 'edit' | 'pay' | 'refund';
 type PanelMode = 'closed' | 'detail' | 'cancel-confirm';
 
 const PAGE_SIZE = 20;
-
-function todayIsoDate(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 @Component({
   selector: 'app-expenses-page',
@@ -70,10 +63,12 @@ export class ExpensesPage {
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
   private readonly reload = new Subject<void>();
+  private readonly reloadCatalogs = new Subject<void>();
 
   readonly status = signal<'loading' | 'loaded' | 'error'>('loading');
   readonly pageData = signal<ExpensePage | null>(null);
   readonly error = signal<ApiError | null>(null);
+  readonly catalogsError = signal(false);
   readonly formMode = signal<FormMode>('closed');
   readonly panelMode = signal<PanelMode>('closed');
   readonly selectedExpense = signal<Expense | null>(null);
@@ -105,6 +100,11 @@ export class ExpensesPage {
   readonly totalItems = computed(() => this.pageData()?.totalItems ?? 0);
   readonly totalPages = computed(() => this.pageData()?.totalPages ?? 0);
   readonly isEmpty = computed(() => this.status() === 'loaded' && this.expenses().length === 0);
+  readonly errorMessage = computed(() =>
+    this.catalogsError()
+      ? 'Não foi possível carregar as categorias e contas.'
+      : 'Não foi possível carregar as despesas.',
+  );
   readonly hasFilters = computed(
     () =>
       this.statusFilter() !== '' ||
@@ -164,16 +164,30 @@ export class ExpensesPage {
   });
 
   constructor() {
-    forkJoin({
-      categories: this.categoriesService.list({ type: 'EXPENSE', active: true }),
-      accounts: this.accountsService.list(),
-    })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: ({ categories, accounts }) => {
-          this.categories.set(categories);
-          this.accounts.set(accounts);
-        },
+    this.reloadCatalogs
+      .pipe(
+        startWith(undefined),
+        switchMap(() => {
+          this.catalogsError.set(false);
+          return forkJoin({
+            categories: this.categoriesService.list({ type: 'EXPENSE', active: true }),
+            accounts: this.accountsService.list(),
+          }).pipe(
+            catchError((loadError: unknown) => {
+              this.categories.set([]);
+              this.accounts.set([]);
+              this.catalogsError.set(true);
+              this.error.set(isApiError(loadError) ? loadError : null);
+              this.status.set('error');
+              return EMPTY;
+            }),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(({ categories, accounts }) => {
+        this.categories.set(categories);
+        this.accounts.set(accounts);
       });
 
     this.reload
@@ -196,11 +210,34 @@ export class ExpensesPage {
       )
       .subscribe((page) => {
         this.pageData.set(page);
+        if (this.catalogsError()) {
+          this.status.set('error');
+          return;
+        }
         this.status.set('loaded');
       });
   }
 
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.submitting()) {
+      return;
+    }
+    if (this.panelMode() === 'cancel-confirm') {
+      this.closeCancelConfirm();
+      return;
+    }
+    if (this.formMode() !== 'closed') {
+      this.closeForm();
+      return;
+    }
+    if (this.panelMode() === 'detail') {
+      this.closeDetail();
+    }
+  }
+
   retry(): void {
+    this.reloadCatalogs.next();
     this.reload.next();
   }
 

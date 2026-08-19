@@ -54,7 +54,7 @@ export function responsibleTypeLabel(type: ResponsibleType): string {
 }
 
 export function canEditExpense(expense: Expense): boolean {
-  return expense.status === 'OPEN';
+  return expense.status === 'OPEN' && expense.paymentMethod !== 'CREDIT_CARD';
 }
 
 export function canCancelExpense(expense: Expense): boolean {

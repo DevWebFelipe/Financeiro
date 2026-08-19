@@ -19,11 +19,7 @@
   }
 
   @if (status() === 'error') {
-    <app-error-state
-      message="Não foi possível carregar as despesas."
-      retryLabel="Tentar novamente"
-      (retry)="retry()"
-    />
+    <app-error-state [message]="errorMessage()" retryLabel="Tentar novamente" (retry)="retry()" />
   }
 
   @if (status() === 'loaded') {
