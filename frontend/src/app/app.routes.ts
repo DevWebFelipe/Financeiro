@@ -53,6 +53,12 @@ export const routes: Routes = [
           import('./features/incomes/incomes-page').then((module) => module.IncomesPage),
         title: 'Receitas — Financeiro',
       },
+      {
+        path: 'payables',
+        loadComponent: () =>
+          import('./features/payables/payables-page').then((module) => module.PayablesPage),
+        title: 'Contas a pagar — Financeiro',
+      },
       { path: '**', redirectTo: 'dashboard' },
     ],
   },

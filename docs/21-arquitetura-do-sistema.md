@@ -1216,6 +1216,25 @@ Contrato utilizado:
 Estados: `loading` | `loaded` | `empty` | `error`. Paginação server-side. Filtros disparam nova listagem. Detalhe, recebimento, cancelamento e estorno em painéis na mesma rota. `VALIDATION_ERROR.fields` nos controles; regras por `error.code`.
 
 
+# 96K. Contas a pagar (Fase 21 — Bloco B11)
+
+A página `/payables` é lazy-loaded sob o AuthGuard do MainLayout. A navegação passa a incluir Contas a pagar neste bloco.
+
+Feature em `frontend/src/app/features/payables/`: `PayablesPage` → `PayablesService` → `HttpClient`. Apoio: `CategoriesService` (categorias `EXPENSE` para nomes) e `AccountsService` (nomes de conta). Visão de leitura; sem CRUD; sem recálculo de remaining/overdue.
+
+Contrato utilizado:
+
+- `GET /api/v1/payables` — único endpoint. Paginação oficial (`items`, `page`, `size`, `totalItems`, `totalPages`; default `page=0`, `size=20`). Totais oficiais do universo filtrado: `totalRemaining`, `totalOriginal`, `totalPaid`.
+- Linha: `INSTALLMENT` (parcela ACCOUNT/NONE com remaining > 0) ou `INVOICE` (fatura SCHEDULED/OPEN/CLOSED com remaining > 0).
+- Filtros oficiais usados na UI: `startDate`, `endDate`, `year`+`month`, `includeWithoutDueDate`, `status`, `overdue`, `withoutCreditCard`, `categoryId`, `responsibleType`, `search`, `sort`, `direction`.
+- `overdue` exibido a partir do booleano oficial (não comparado com a data do navegador).
+- Período usa `due_date` da linha.
+
+Não existem `GET /payables/{id}` nem escritas. Sem painel de pagamento nesta visão (ações financeiras permanecem em `/expenses` e, no futuro, faturas). Filtro `creditCardId` omitido na UI até existir feature de cartões. Sem rota `/payables/:id`. Detalhe usa os dados da listagem.
+
+Estados: `loading` | `loaded` | `empty` | `error`. Empty sem ação de criação. Paginação server-side.
+
+
 # 97. Dashboard
 
 Dashboard deve apresentar:

@@ -79,6 +79,12 @@ describe('app routes', () => {
     expect(router.url).toBe('/login?returnUrl=%2Fincomes');
   });
 
+  it('protects /payables and sends unauthenticated users to login', async () => {
+    await auth.initialize();
+    await router.navigateByUrl('/payables');
+    expect(router.url).toBe('/login?returnUrl=%2Fpayables');
+  });
+
   it('uses /dashboard as the authenticated entry from /', async () => {
     sessionStorage.setItem(AUTH_TOKEN_KEY, 'access-token');
     const pending = auth.initialize();
@@ -142,6 +148,17 @@ describe('app routes', () => {
     await router.navigateByUrl('/incomes');
     expect(router.url).toBe('/incomes');
     expect(TestBed.inject(Title).getTitle()).toBe('Receitas — Financeiro');
+  });
+
+  it('allows an authenticated user to open lazy-loaded /payables', async () => {
+    sessionStorage.setItem(AUTH_TOKEN_KEY, 'access-token');
+    const pending = auth.initialize();
+    httpTesting.expectOne(api('/users/me')).flush(user);
+    await pending;
+
+    await router.navigateByUrl('/payables');
+    expect(router.url).toBe('/payables');
+    expect(TestBed.inject(Title).getTitle()).toBe('Contas a pagar — Financeiro');
   });
 
   it('redirects authenticated guests away from login to the dashboard', async () => {

@@ -1,0 +1,325 @@
+<section aria-labelledby="payables-title" [attr.aria-busy]="status() === 'loading'">
+  <header class="page-header">
+    <div class="page-header__intro">
+      <h1 id="payables-title">Contas a pagar</h1>
+      <p class="page-header__meta">
+        Obrigações em aberto: parcelas de despesa e faturas de cartão.
+      </p>
+    </div>
+  </header>
+
+  @if (status() === 'loading') {
+    <p class="visually-hidden">Carregando contas a pagar.</p>
+    <div class="skeleton" aria-hidden="true">
+      <div class="skeleton__block skeleton__block--title"></div>
+      <div class="skeleton__block"></div>
+      <div class="skeleton__block"></div>
+    </div>
+  }
+
+  @if (status() === 'error') {
+    <app-error-state
+      message="Não foi possível carregar as contas a pagar."
+      retryLabel="Tentar novamente"
+      (retry)="retry()"
+    />
+  }
+
+  @if (status() === 'loaded') {
+    <section class="filters" aria-labelledby="payable-filters-title">
+      <h2 id="payable-filters-title" class="filters__title">Filtros</h2>
+      <div class="filters__controls">
+        <div class="field field--compact">
+          <label for="filter-status">Situação</label>
+          <select
+            id="filter-status"
+            [value]="statusFilter()"
+            (change)="onStatusFilterChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (option of statusOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-overdue">Vencimento</label>
+          <select
+            id="filter-overdue"
+            [value]="overdueFilter()"
+            (change)="onOverdueFilterChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            <option value="true">Vencidas</option>
+            <option value="false">No prazo</option>
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-category">Categoria</label>
+          <select
+            id="filter-category"
+            [value]="categoryFilter()"
+            (change)="onCategoryFilterChange($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (category of categories(); track category.id) {
+              <option [value]="category.id">{{ category.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-responsible">Responsável</label>
+          <select
+            id="filter-responsible"
+            [value]="responsibleFilter()"
+            (change)="onResponsibleFilterChange($any($event.target).value)"
+          >
+            <option value="">Todos</option>
+            @for (option of responsibleOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-start-date">Vencimento de</label>
+          <input
+            id="filter-start-date"
+            type="date"
+            [value]="startDateFilter()"
+            (change)="onStartDateFilterChange($any($event.target).value)"
+          />
+        </div>
+        <div class="field field--compact">
+          <label for="filter-end-date">Vencimento até</label>
+          <input
+            id="filter-end-date"
+            type="date"
+            [value]="endDateFilter()"
+            (change)="onEndDateFilterChange($any($event.target).value)"
+          />
+        </div>
+        <div class="field field--compact">
+          <label for="filter-year-month">Mês selecionado</label>
+          <input
+            id="filter-year-month"
+            type="month"
+            [value]="yearMonthFilter()"
+            (change)="onYearMonthFilterChange($any($event.target).value)"
+          />
+        </div>
+        <div class="field field--compact">
+          <label for="filter-search">Busca</label>
+          <input
+            id="filter-search"
+            type="search"
+            [value]="searchFilter()"
+            (change)="onSearchFilterChange($any($event.target).value)"
+          />
+        </div>
+        <div class="field field--compact">
+          <label for="filter-sort">Ordenar por</label>
+          <select
+            id="filter-sort"
+            [value]="sortField()"
+            (change)="onSortFieldChange($any($event.target).value)"
+          >
+            <option value="">Vencimento (padrão)</option>
+            @for (option of sortOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field field--compact">
+          <label for="filter-direction">Direção</label>
+          <select
+            id="filter-direction"
+            [value]="sortDirection()"
+            (change)="onSortDirectionChange($any($event.target).value)"
+          >
+            <option value="asc">Crescente</option>
+            <option value="desc">Decrescente</option>
+          </select>
+        </div>
+      </div>
+      <div class="filters__checks">
+        <label class="check">
+          <input
+            type="checkbox"
+            [checked]="withoutCreditCard()"
+            (change)="onWithoutCreditCardChange($any($event.target).checked)"
+          />
+          Somente parcelas (sem faturas)
+        </label>
+        @if (hasPeriodFilter()) {
+          <label class="check">
+            <input
+              type="checkbox"
+              [checked]="includeWithoutDueDate()"
+              (change)="onIncludeWithoutDueDateChange($any($event.target).checked)"
+            />
+            Incluir sem data de vencimento
+          </label>
+        }
+      </div>
+    </section>
+
+    @if (showTotals()) {
+      <section class="totals" aria-labelledby="payable-totals-title">
+        <h2 id="payable-totals-title" class="visually-hidden">Totais do filtro</h2>
+        <dl>
+          <div>
+            <dt>Original</dt>
+            <dd>{{ totalOriginal()! | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Pago</dt>
+            <dd>{{ totalPaid()! | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Restante</dt>
+            <dd>{{ totalRemaining()! | brlCurrency }}</dd>
+          </div>
+        </dl>
+      </section>
+    }
+
+    @if (isEmpty()) {
+      <app-empty-state
+        [message]="
+          hasFilters()
+            ? 'Nenhuma conta a pagar corresponde aos filtros selecionados.'
+            : 'Nenhuma conta a pagar em aberto.'
+        "
+      />
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <caption class="visually-hidden">
+            Contas a pagar
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Nome</th>
+              <th scope="col">Origem</th>
+              <th scope="col">Vencimento</th>
+              <th scope="col">Restante</th>
+              <th scope="col">Situação</th>
+              <th scope="col">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of items(); track itemKey(item)) {
+              <tr>
+                <th scope="row" data-label="Nome">
+                  <span class="name">{{ item.name }}</span>
+                  @if (item.overdue) {
+                    <span class="badge">Vencida</span>
+                  }
+                </th>
+                <td data-label="Origem">{{ typeLabel(item.type) }}</td>
+                <td data-label="Vencimento">
+                  {{ item.dueDate ? (item.dueDate | isoDate) : '—' }}
+                </td>
+                <td data-label="Restante">{{ item.remainingAmount | brlCurrency }}</td>
+                <td data-label="Situação">
+                  <span class="status">{{ statusLabel(item.status) }}</span>
+                </td>
+                <td class="actions" data-label="Ações">
+                  <button type="button" (click)="openDetail(item)">Detalhes</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalPages() > 1) {
+        <nav class="pagination" aria-label="Paginação de contas a pagar">
+          <p class="pagination__meta">
+            Página {{ pageIndex() + 1 }} de {{ totalPages() }} — {{ totalItems() }} obrigações
+          </p>
+          <div class="pagination__controls">
+            <button type="button" (click)="goToPage(pageIndex() - 1)" [disabled]="!canGoPrev()">
+              Anterior
+            </button>
+            <button type="button" (click)="goToPage(pageIndex() + 1)" [disabled]="!canGoNext()">
+              Próxima
+            </button>
+          </div>
+        </nav>
+      }
+    }
+
+    @if (selectedItem(); as item) {
+      <section class="panel" aria-labelledby="payable-detail-title">
+        <h2 id="payable-detail-title">Detalhes da obrigação</h2>
+        <dl class="detail-list">
+          <div>
+            <dt>Nome</dt>
+            <dd>{{ item.name }}</dd>
+          </div>
+          <div>
+            <dt>Origem</dt>
+            <dd>{{ originLabel(item) }}</dd>
+          </div>
+          <div>
+            <dt>Situação</dt>
+            <dd>
+              {{ statusLabel(item.status) }}
+              @if (item.overdue) {
+                — Vencida
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Vencimento</dt>
+            <dd>{{ item.dueDate ? (item.dueDate | isoDate) : '—' }}</dd>
+          </div>
+          <div>
+            <dt>Data da origem</dt>
+            <dd>{{ item.purchaseDate ? (item.purchaseDate | isoDate) : '—' }}</dd>
+          </div>
+          <div>
+            <dt>Valor original</dt>
+            <dd>{{ item.originalAmount | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Valor pago</dt>
+            <dd>{{ item.paidAmount | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Restante</dt>
+            <dd>{{ item.remainingAmount | brlCurrency }}</dd>
+          </div>
+          <div>
+            <dt>Forma de pagamento</dt>
+            <dd>{{ methodLabel(item.paymentMethod) }}</dd>
+          </div>
+          <div>
+            <dt>Categoria</dt>
+            <dd>{{ categoryName(item.categoryId) }}</dd>
+          </div>
+          <div>
+            <dt>Conta</dt>
+            <dd>{{ accountName(item.accountId) }}</dd>
+          </div>
+          <div>
+            <dt>Responsável</dt>
+            <dd>
+              {{ responsibleLabel(item.responsibleType) }}
+              @if (item.responsibleName) {
+                — {{ item.responsibleName }}
+              }
+            </dd>
+          </div>
+        </dl>
+        <p class="panel__meta">
+          Pagamentos e cancelamentos são feitos na origem da obrigação, não nesta visão.
+        </p>
+        <div class="form-actions">
+          <button type="button" (click)="closeDetail()">Fechar</button>
+        </div>
+      </section>
+    }
+  }
+</section>
