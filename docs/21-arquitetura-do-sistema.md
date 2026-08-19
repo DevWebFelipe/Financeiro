@@ -1640,8 +1640,7 @@ fluxos financeiros importantes.
 
 Não são obrigatórios para toda a aplicação na V1.
 
-
-Podem ser adicionados posteriormente.
+A Fase 22 introduziu Playwright (Chromium) para os fluxos principais. Status: **IMPLEMENTADA / AGUARDANDO AUDITORIA**. Os testes E2E não substituem unitários/API e não duplicam fórmulas financeiras. Detalhe: `docs/27-testes.md` §160–162 e §177.
 
 
 # 125. Cobertura

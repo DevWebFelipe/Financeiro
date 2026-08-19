@@ -58,13 +58,27 @@ ng test
 
 ## Running end-to-end tests
 
-For end-to-end (e2e) testing, run:
+E2E uses Playwright (Chromium only). The suite lives in `e2e/` and talks to the real backend — not mocks.
 
-```bash
-ng e2e
+Prerequisites: PostgreSQL (Docker Compose) and the Spring Boot API must be up (`GET http://localhost:8080/api/v1/health` → `{ "status": "UP" }`).
+
+From the repository root:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\run-e2e.ps1
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+From `frontend/`, with the stack already running:
+
+```bash
+npx ng e2e
+# or
+npx playwright test
+```
+
+HTML report: `frontend/playwright-report/`. Firefox/WebKit are not configured. CI/CD is out of Phase 22 scope.
+
+Phase 22 status: **IMPLEMENTADA / AGUARDANDO AUDITORIA**.
 
 ## Additional Resources
 

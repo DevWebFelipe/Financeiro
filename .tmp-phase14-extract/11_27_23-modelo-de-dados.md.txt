@@ -1,6 +1,0 @@
-PATH: d:\Financeiro\docs\23-modelo-de-dados.md
-
-NEW:
-| transfers | `(source_account_id, user_id)` | accounts |
-| transfers | `(destination_account_id, user_id)` | accounts |
-| account_balance_adjustments (nome previsto Fase 14) | `(account_id, user_id)` | accounts |

@@ -1,4 +1,0 @@
-PATH: d:\Financeiro\AGENTS.md
-
-NEW:
-- Pacotes de domínio no plural, alinhados ao modelo real: `accounts`, `expenses`, `incomes`, `transfers`, `balance_adjustments`, `payments`, `credit_cards`, `credit_card_invoices`, `financial_goals`

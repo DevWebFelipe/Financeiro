@@ -8,7 +8,7 @@ Backend: JUnit 5, Mockito, AssertJ, Spring Boot Test, Testcontainers (PostgreSQL
 
 Frontend: framework oficial do Angular 22.x.
 
-E2E: Playwright posteriormente.
+E2E: Playwright (Chromium) — Fase 22 **IMPLEMENTADA / AGUARDANDO AUDITORIA**. Sem Cypress. Sem CI/CD nesta fase.
 
 PDF: OpenPDF. Gráficos: Apache ECharts.
 
@@ -2522,26 +2522,42 @@ Não é necessário testar cada detalhe visual.
 
 # 160. E2E
 
-Testes end-to-end podem cobrir os principais fluxos.
+A Fase 22 introduziu Playwright no frontend (`frontend/e2e/`, `npx ng e2e` / `npx playwright test`).
+
+Os testes E2E validam fluxos no navegador contra backend e PostgreSQL reais. Não substituem testes unitários nem de API.
 
 
-# 161. Fluxos E2E prioritários
+# 161. Fluxos E2E implementados (F22)
 
-1. Login.
-2. Criar conta.
-3. Criar categoria.
-4. Criar receita.
-5. Criar despesa.
-6. Criar compra parcelada.
-7. Consultar fatura.
-8. Pagar fatura.
-9. Realizar transferência.
-10. Consultar projeção.
+1. Registro, login, rota protegida, sessão, logout e novo login.
+2. Isolamento multiusuário (UI + `GET` direto de recurso alheio → 404).
+3. Conta → receita → recebimento → despesa → pagamento → saldo oficial.
+4. Transferência entre contas `BANK_ACCOUNT` e reversão.
+5. Cartão → compra → fatura → ajuste → crédito (aplicação automática) → pagamento → limite oficial.
+6. Fatura `CLOSED` → acordo → parcelas → antecipação/quitação.
+7. Meta → contribuição → resgate (`currentAmount` / `progressPercent` oficiais).
+8. Dashboard e projeções após movimentações reais.
+9. Relatórios representativos (despesas, receitas, fluxo de caixa, fatura) e PDF real.
+10. Validação visual desktop (1366×768) e mobile (390×844).
+
+Não há dezenas de combinações de filtro; a cobertura paramétrica permanece nos testes de API.
 
 
-# 162. E2E
+# 162. E2E — execução
 
-Não implementar dezenas de fluxos E2E inicialmente.
+Pré-requisito: PostgreSQL (Docker Compose) e backend no ar (`GET /api/v1/health` → `UP`).
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\run-e2e.ps1
+```
+
+Ou, com o stack já iniciado, em `frontend/`: `npx ng e2e` / `npx playwright test`.
+
+Browser obrigatório: Chromium. Firefox/WebKit opcionais, não configurados. Retries: 0.
+
+Usuários e dados são criados pelo próprio teste (e-mails `@example.test`). Não há JWT fixo nem bypass de guard/interceptor.
+
+Fechamento de fatura: não existe `POST /invoices/{id}/close`. O helper de acordo simula o scheduler oficial (`closeDueInvoices`) via SQL somente quando `closingDate` ≤ hoje em `America/Sao_Paulo`.
 
 
 # 163. Estratégia
@@ -2649,3 +2665,16 @@ Os testes são parte do produto.
 
 
 Não são uma etapa opcional posterior.
+
+
+# 177. Fase 22 — E2E Playwright
+
+**Status:** IMPLEMENTADA / AGUARDANDO AUDITORIA. **Não** aprovada nesta etapa.
+
+Ferramenta: `@playwright/test` + `playwright-ng-schematics` (integração recomendada pelo Angular CLI para `ng e2e`).
+
+Suíte de referência desta implementação: **11** testes Chromium, **11** aprovados, **0** falhos, **0** ignorados; duração aproximada **1,7 min**. Relatório HTML em `frontend/playwright-report/`.
+
+A suíte unitária do frontend permanece **584** testes (Vitest). Builds `ng build` e `ng build --configuration development` continuam passando.
+
+Pendências oficiais de negócio (`payments.type`; §269.2.7) e ressalvas C3–C7/B12 **não** foram reabertas. C8 não foi implementado.

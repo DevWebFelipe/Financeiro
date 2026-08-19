@@ -1,4 +1,0 @@
-PATH: d:\Financeiro\docs\24-regras-de-negocio.md
-
-NEW:
-A Fase 8 **emenda** esta fórmula (RN240): o subtraendo restringe-se a payments **`ACTIVE`**. Payments **`REVERSED`** não entram. Adjustments de parcela não entram. Refund continua excluindo os payments da despesa `REFUNDED`. A **Fase 14** inclui transferências `ACTIVE` e acertos de saldo `ACTIVE` (`BALANCE_ADJUSTMENT` / RN204) — ver §19.5 e RN240 emendada. Não persistir `current_balance`.

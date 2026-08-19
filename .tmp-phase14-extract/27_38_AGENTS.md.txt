@@ -1,4 +1,0 @@
-PATH: d:\Financeiro\AGENTS.md
-
-NEW:
-Não utilizar `DELETE` HTTP como operação padrão para dados financeiros. Preferir ações explícitas (`POST /expenses/{id}/pay`, `POST /expenses/{id}/cancel`, `POST /expenses/{id}/refund`, `POST /incomes/{id}/receive`, `POST /incomes/{id}/reverse`, `POST /incomes/{id}/cancel`, `POST /payments/{id}/reverse`, `POST .../adjustments/{id}/reverse`, na Fase 9 endpoints de fatura/crédito, e na Fase 14 `POST /transfers/{id}/reverse` e reverse de acerto de saldos — contrato §19.5). `DELETE` só pode existir para recurso não financeiro com regra explícita. Cartão com histórico financeiro **não** se exclui (inativar).

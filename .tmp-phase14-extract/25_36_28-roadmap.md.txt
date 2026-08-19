@@ -1,4 +1,0 @@
-PATH: d:\Financeiro\docs\28-roadmap.md
-
-NEW:
-A documentação oficial da Fase 6 foi refinada antes da implementação: cancelamento inutiliza a duplicata (`EXPECTED` → `CANCELLED`); estorno desfaz o recebimento e mantém a duplicata ativa (`RECEIVED` → `EXPECTED`; limpa `account_id` e `received_date`; pode deixar saldo negativo); responsável fora desta fase (`responsible_type` nullable); saldo derivado; acerto de saldos como conceito futuro (hoje: Fase 14 §19.5 — contrato consolidado / implementação pendente).

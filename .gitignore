@@ -143,3 +143,7 @@ reports/generated/
 
 secrets/
 credentials/
+# Playwright E2E (Fase 22)
+playwright-report/
+blob-report/
+playwright/.cache/
