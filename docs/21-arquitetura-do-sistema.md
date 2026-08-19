@@ -1640,7 +1640,20 @@ fluxos financeiros importantes.
 
 Não são obrigatórios para toda a aplicação na V1.
 
-A Fase 22 introduziu Playwright (Chromium) para os fluxos principais. Status: **IMPLEMENTADA / AGUARDANDO AUDITORIA**. Os testes E2E não substituem unitários/API e não duplicam fórmulas financeiras. Detalhe: `docs/27-testes.md` §160–162 e §177.
+A Fase 22 introduziu Playwright (Chromium) para os fluxos principais. **Status:** **CONCLUÍDA / APROVADA COM RESSALVAS**. Auditoria formal realizada (somente leitura). Backend e migrations **não** foram alterados. C8 **não** foi implementada.
+
+Infraestrutura: `@playwright/test` + `playwright-ng-schematics` em `frontend/e2e/`; `npx ng e2e` / `npx playwright test`; `scripts/run-e2e.ps1`. Cadeia real: browser → Angular → JWT → Spring → PostgreSQL. Sem mock do backend nos fluxos principais. Sem Cypress. Sem CI/CD nesta fase.
+
+Escopo E2E exercitado: autenticação real (registro, login, sessão, logout); isolamento multiusuário; conta → receita/recebimento → despesa/pagamento → saldo; transferência e reversão; cartão → compra → fatura → ajuste → crédito → pagamento → limite; acordo/antecipação; metas; dashboard e projeções; relatórios JSON representativos e PDF real; validação visual estrutural desktop (1366×768) e mobile (390×844).
+
+Os testes E2E não substituem unitários/API. O backend permanece a autoridade financeira. Detalhe: `docs/27-testes.md` §160–162 e §177.
+
+Ressalvas da auditoria (não bloqueantes; **não** corrigidas nesta consolidação):
+
+- **AUD-F22-A1 — INFORMATIVO:** o teste E2E do fluxo financeiro core possui uma asserção simples baseada em receita - despesa. O valor oficial utilizado pela aplicação continua vindo da API. A orientação permanece: testes futuros devem preferir comparar UI com valores oficiais da API em vez de reproduzir fórmulas financeiras.
+- **AUD-F22-A2 — BAIXO:** a cobertura E2E dos relatórios JSON não percorre individualmente todos os tipos de relatório. A suíte cobre os principais fluxos e os contratos internos permanecem cobertos pelos testes da aplicação.
+- **AUD-F22-A3 — INFORMATIVO:** a validação visual da F22 é estrutural/funcional em desktop e mobile, não uma suíte de visual regression pixel-level com snapshots.
+- **AUD-F22-A4 — INFORMATIVO:** o helper de fechamento de fatura utilizado nos E2E prepara um cenário que, em produção, seria fechado pelo scheduler, pois o contrato atual não possui endpoint manual de fechamento. O helper permanece somente como fixture de teste e não representa uma operação disponível na aplicação.
 
 
 # 125. Cobertura

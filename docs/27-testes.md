@@ -8,7 +8,7 @@ Backend: JUnit 5, Mockito, AssertJ, Spring Boot Test, Testcontainers (PostgreSQL
 
 Frontend: framework oficial do Angular 22.x.
 
-E2E: Playwright (Chromium) — Fase 22 **IMPLEMENTADA / AGUARDANDO AUDITORIA**. Sem Cypress. Sem CI/CD nesta fase.
+E2E: Playwright (Chromium) — Fase 22 **CONCLUÍDA / APROVADA COM RESSALVAS**. Sem Cypress. Sem CI/CD nesta fase.
 
 PDF: OpenPDF. Gráficos: Apache ECharts.
 
@@ -2522,9 +2522,9 @@ Não é necessário testar cada detalhe visual.
 
 # 160. E2E
 
-A Fase 22 introduziu Playwright no frontend (`frontend/e2e/`, `npx ng e2e` / `npx playwright test`).
+A Fase 22 introduziu Playwright no frontend (`frontend/e2e/`, `npx ng e2e` / `npx playwright test`). **Status:** **CONCLUÍDA / APROVADA COM RESSALVAS**.
 
-Os testes E2E validam fluxos no navegador contra backend e PostgreSQL reais. Não substituem testes unitários nem de API.
+Os testes E2E validam fluxos no navegador contra backend Spring e PostgreSQL reais (Angular + JWT + API). Autenticação real: sem JWT fixo, sem bypass de guard/interceptor. Isolamento multiusuário exercitado. Não substituem testes unitários nem de API.
 
 
 # 161. Fluxos E2E implementados (F22)
@@ -2669,12 +2669,19 @@ Não são uma etapa opcional posterior.
 
 # 177. Fase 22 — E2E Playwright
 
-**Status:** IMPLEMENTADA / AGUARDANDO AUDITORIA. **Não** aprovada nesta etapa.
+**Status:** CONCLUÍDA / APROVADA COM RESSALVAS. Auditoria formal realizada (somente leitura).
 
-Ferramenta: `@playwright/test` + `playwright-ng-schematics` (integração recomendada pelo Angular CLI para `ng e2e`).
+Ferramenta: `@playwright/test` + `playwright-ng-schematics` (integração recomendada pelo Angular CLI para `ng e2e`). Chromium obrigatório. Firefox/WebKit não configurados. Stack real: PostgreSQL + backend Spring + frontend Angular.
 
-Suíte de referência desta implementação: **11** testes Chromium, **11** aprovados, **0** falhos, **0** ignorados; duração aproximada **1,7 min**. Relatório HTML em `frontend/playwright-report/`.
+Suíte de referência auditada: **11** testes Chromium, **11** aprovados, **0** falhos, **0** ignorados. Relatório HTML em `frontend/playwright-report/`.
 
-A suíte unitária do frontend permanece **584** testes (Vitest). Builds `ng build` e `ng build --configuration development` continuam passando.
+A suíte unitária do frontend permanece **60** arquivos / **584** testes (Vitest). Builds `ng build` e `ng build --configuration development` passaram.
 
-Pendências oficiais de negócio (`payments.type`; §269.2.7) e ressalvas C3–C7/B12 **não** foram reabertas. C8 não foi implementado.
+Backend e migrations **não** foram alterados. Pendências oficiais de negócio (`payments.type`; §269.2.7) e ressalvas C3–C7/B12 **não** foram reabertas. C8 **não** foi implementada.
+
+Ressalvas da auditoria (não bloqueantes; **não** corrigidas nesta consolidação):
+
+- **AUD-F22-A1 — INFORMATIVO:** o teste E2E do fluxo financeiro core possui uma asserção simples baseada em receita - despesa. O valor oficial utilizado pela aplicação continua vindo da API. A orientação permanece: testes futuros devem preferir comparar UI com valores oficiais da API em vez de reproduzir fórmulas financeiras.
+- **AUD-F22-A2 — BAIXO:** a cobertura E2E dos relatórios JSON não percorre individualmente todos os tipos de relatório. A suíte cobre os principais fluxos e os contratos internos permanecem cobertos pelos testes da aplicação.
+- **AUD-F22-A3 — INFORMATIVO:** a validação visual da F22 é estrutural/funcional em desktop e mobile, não uma suíte de visual regression pixel-level com snapshots.
+- **AUD-F22-A4 — INFORMATIVO:** o helper de fechamento de fatura utilizado nos E2E prepara um cenário que, em produção, seria fechado pelo scheduler, pois o contrato atual não possui endpoint manual de fechamento. O helper permanece somente como fixture de teste e não representa uma operação disponível na aplicação.

@@ -516,7 +516,7 @@ Coleção Postman para testes manuais: `postman/Financial Control API.postman_co
 
 ## Status
 
-**Fase atual:** Fase 22 — Integração, E2E, validação visual e consolidação — **IMPLEMENTADA / AGUARDANDO AUDITORIA**
+**Fase atual:** Fase 22 — Integração, E2E, validação visual e consolidação — **CONCLUÍDA / APROVADA COM RESSALVAS**
 
 **Fase anterior:** Fase 21 — Frontend completo (Bloco B12 — Transferências + Metas + Projeções + Relatórios — **CONCLUÍDA / APROVADA COM RESSALVAS**)
 
@@ -541,10 +541,10 @@ Fase 18 — Projeções — CONCLUÍDA E APROVADA
 Fase 19 — Dashboard — CONCLUÍDA E APROVADA
 Fase 20 — Relatórios — CONCLUÍDA E APROVADA
 Fase 21 — Frontend completo — CONCLUÍDA / APROVADA COM RESSALVAS
-Fase 22 — Integração / E2E / consolidação — IMPLEMENTADA / AGUARDANDO AUDITORIA
+Fase 22 — Integração / E2E / consolidação — CONCLUÍDA / APROVADA COM RESSALVAS
 ```
 
-Estado atual do backend (Fases 1–9 + 13 + 14 + 15 + 16 + 17 + 18 + 19 + 20): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, OpenPDF **3.0.5**, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas (movimentações V30), despesas, parcelamento (Fase 8), cartões/faturas (Fase 9), Agreements (Fase 13), transferências e Acerto de Saldos (Fase 14), metas financeiras (Fase 15), contas a pagar (Fase 16), contas a receber (Fase 17), projeções (Fase 18), dashboard (Fase 19), relatórios JSON/PDF (Fase 20). Frontend Angular 22 (Fase 21). E2E Playwright/Chromium (Fase 22 — **IMPLEMENTADA / AGUARDANDO AUDITORIA**).
+Estado atual do backend (Fases 1–9 + 13 + 14 + 15 + 16 + 17 + 18 + 19 + 20): Spring Boot **4.1.0**, Java **25**, Maven Wrapper, PostgreSQL **18**, Flyway, Spring Security, JWT Access Token HS256, Argon2id, Jakarta Bean Validation, Testcontainers, OpenAPI/Swagger, OpenPDF **3.0.5**, fluxo Controller → Service → Repository, domínio de contas, categorias, receitas (movimentações V30), despesas, parcelamento (Fase 8), cartões/faturas (Fase 9), Agreements (Fase 13), transferências e Acerto de Saldos (Fase 14), metas financeiras (Fase 15), contas a pagar (Fase 16), contas a receber (Fase 17), projeções (Fase 18), dashboard (Fase 19), relatórios JSON/PDF (Fase 20). Frontend Angular 22 (Fase 21). E2E Playwright/Chromium (Fase 22 — **CONCLUÍDA / APROVADA COM RESSALVAS**; ressalvas **AUD-F22-A1** a **AUD-F22-A4**, não bloqueantes). C8 não iniciada.
 
 Fases 0–20 implementadas. **Fase 20 — Relatórios:** **CONCLUÍDA E APROVADA** (`docs/24` §19.12 / `docs/25` §76; D-F20-01 a D-F20-16). 7 endpoints JSON + 7 PDF. OpenPDF 3.0.5. Collection com 14 requests. Flyway V30; **não** criar tabela `reports`. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida nesta etapa; sem bloqueio funcional). Suíte: **578** testes. **Fase 19 — Dashboard:** **CONCLUÍDA E APROVADA** (`docs/24` §19.11; D282–D289). Endpoint `GET /api/v1/dashboard`. **Não** criar tabela `dashboard`. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes). **Fase 18 — Projeções:** **CONCLUÍDA E APROVADA** (`docs/24` §19.10; D95–D204). Endpoint `GET /api/v1/projections`. **Não** criar tabela `projections`. D73–D94 implementadas; **não** recriar `GET /api/v1/receivables`; **não** criar tabela `receivables`. Não implementar Refresh Token, `payments.type`, frontend financeiro, auditoria genérica, extrato `/statement` nem `POST /invoices/{id}/close` sem autorização.
 

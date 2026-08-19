@@ -1292,19 +1292,19 @@ Não duplicar regras financeiras críticas.
 
 # 110. Fase 22 — Testes E2E / integração e consolidação
 
-**Status:** IMPLEMENTADA / AGUARDANDO AUDITORIA.
+**Status:** CONCLUÍDA / APROVADA COM RESSALVAS.
 
 Objetivo:
 
 Validar os principais fluxos através da aplicação completa (browser → Angular → JWT → API → PostgreSQL). Não é fase de novo domínio financeiro.
 
-Implementado: Playwright (Chromium) em `frontend/e2e/`; autenticação real; dados E2E controlados; isolamento; fluxo core; transferência; cartão/fatura/crédito/pagamento; acordo; metas; dashboard/projeções; relatórios JSON + PDF; validação visual desktop/mobile.
+Implementado e auditado: Playwright (Chromium) em `frontend/e2e/`; autenticação real; dados E2E controlados; isolamento; fluxo core; transferência; cartão/fatura/crédito/pagamento; acordo; metas; dashboard/projeções; relatórios JSON + PDF; validação visual desktop/mobile.
 
-Fora desta fase: C8, CI/CD, Cypress, alteração de regras financeiras, migrations, redesign.
+Backend e migrations **não** foram alterados. Fora desta fase: C8, CI/CD, Cypress, alteração de regras financeiras, redesign. C8 permanece **não iniciada**.
 
 Higiene: `docs/01`–`docs/19` já não estavam no disco. A pasta temporária `.tmp-phase14-extract/` (cópias da Fase 14) foi removida; a documentação oficial permanece em `docs/`.
 
-A aprovação formal será auditoria somente leitura. **Não** declarar F22 aprovada nesta implementação.
+Auditoria formal realizada (somente leitura). Ressalvas não bloqueantes (**não** corrigidas nesta consolidação): **AUD-F22-A1** (INFORMATIVO — asserção simples receita − despesa no fluxo core; a UI continua usando o valor oficial da API); **AUD-F22-A2** (BAIXO — E2E de relatórios JSON não percorre todos os tipos; contratos internos cobertos pelos testes da aplicação); **AUD-F22-A3** (INFORMATIVO — validação visual estrutural/funcional, sem visual regression pixel-level); **AUD-F22-A4** (INFORMATIVO — helper de fechamento de fatura é fixture de teste do scheduler; não existe endpoint manual de close).
 
 
 # 111. Fluxos prioritários (cobertos na F22)
@@ -1739,9 +1739,9 @@ Somente após a V1 estar estável avaliar novas funcionalidades.
 
 # 164. Próxima etapa
 
-Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9**. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 15: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**. Fase 17: **CONCLUÍDA E APROVADA**. Fase 18: **CONCLUÍDA E APROVADA**. Fase 19: **CONCLUÍDA E APROVADA**. Fase 20: **CONCLUÍDA E APROVADA**. Fase 21: **CONCLUÍDA / APROVADA COM RESSALVAS**. Fase 22: **IMPLEMENTADA / AGUARDANDO AUDITORIA**.
+Fases 0 a 9: **CONCLUÍDAS E APROVADAS**. Fases 10–12: **ABSORVIDAS NA FASE 9**. Fase 13: **CONCLUÍDA E APROVADA**. Fase 14: **CONCLUÍDA E APROVADA**. Fase 15: **CONCLUÍDA E APROVADA**. Fase 16: **CONCLUÍDA E APROVADA**. Fase 17: **CONCLUÍDA E APROVADA**. Fase 18: **CONCLUÍDA E APROVADA**. Fase 19: **CONCLUÍDA E APROVADA**. Fase 20: **CONCLUÍDA E APROVADA**. Fase 21: **CONCLUÍDA / APROVADA COM RESSALVAS**. Fase 22: **CONCLUÍDA / APROVADA COM RESSALVAS**.
 
-**Fase 20 — Relatórios:** **CONCLUÍDA E APROVADA** (`docs/28` §101 / `docs/24` §19.12 / `docs/25` §76; D-F20-01 a D-F20-16 **implementadas**). 7 JSON + 7 PDF. OpenPDF 3.0.5. Collection atualizada (14 requests). Flyway V30; sem tabela `reports`. Testes: `ReportsApiTest`. Suíte: **578** testes. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento; não bloqueante). **Fase 21 — Frontend completo:** **CONCLUÍDA / APROVADA COM RESSALVAS**. **Fase 22 — E2E / consolidação:** **IMPLEMENTADA / AGUARDANDO AUDITORIA** (Playwright/Chromium; `frontend/e2e/`; `scripts/run-e2e.ps1`). Próxima etapa do roadmap após auditoria da F22: **Fase 23 — Qualidade**. Bloco B1 (Design System base) **implementado**. Bloco B2 (HTTP / erros) **implementado**. Bloco B3 (autenticação) **implementado**. Bloco B4 (App Shell) **implementado**. Bloco B5 (Dashboard funcional) **implementado**. Bloco B6 (Shared UI) **implementado**. Bloco B7 (Contas) **implementado**. Bloco B8 (Categorias) **implementado**. Bloco B9 (Despesas) **implementado**. Bloco B10 (Receitas) **implementado**. Bloco B11 (Contas a pagar) **implementado**. Blocos C1–C7 **implementados** (`CONCLUÍDO / APROVADO COM RESSALVAS`). B12 **CONCLUÍDA / APROVADA COM RESSALVAS**.
+**Fase 20 — Relatórios:** **CONCLUÍDA E APROVADA** (`docs/28` §101 / `docs/24` §19.12 / `docs/25` §76; D-F20-01 a D-F20-16 **implementadas**). 7 JSON + 7 PDF. OpenPDF 3.0.5. Collection atualizada (14 requests). Flyway V30; sem tabela `reports`. Testes: `ReportsApiTest`. Suíte: **578** testes. Auditoria final: **APROVADA COM RESSALVAS** (ressalva exclusivamente documental/status, corrigida na etapa de fechamento; não bloqueante). **Fase 21 — Frontend completo:** **CONCLUÍDA / APROVADA COM RESSALVAS**. **Fase 22 — E2E / consolidação:** **CONCLUÍDA / APROVADA COM RESSALVAS** (Playwright/Chromium; `frontend/e2e/`; `scripts/run-e2e.ps1`; auditoria formal; ressalvas **AUD-F22-A1** a **AUD-F22-A4** não bloqueantes e não corrigidas nesta consolidação). C8 permanece **não iniciada**. Próxima etapa do roadmap: **Fase 23 — Qualidade**. Bloco B1 (Design System base) **implementado**. Bloco B2 (HTTP / erros) **implementado**. Bloco B3 (autenticação) **implementado**. Bloco B4 (App Shell) **implementado**. Bloco B5 (Dashboard funcional) **implementado**. Bloco B6 (Shared UI) **implementado**. Bloco B7 (Contas) **implementado**. Bloco B8 (Categorias) **implementado**. Bloco B9 (Despesas) **implementado**. Bloco B10 (Receitas) **implementado**. Bloco B11 (Contas a pagar) **implementado**. Blocos C1–C7 **implementados** (`CONCLUÍDO / APROVADO COM RESSALVAS`). B12 **CONCLUÍDA / APROVADA COM RESSALVAS**.
 
 **Fase 19 — CONCLUÍDA E APROVADA.** Endpoint: `GET /api/v1/dashboard`. Sem tabela `dashboard`. D282–D289 **implementadas**. Testes: `DashboardApiTest`. Suíte: **519** testes. Auditoria final: **APROVADA COM RESSALVAS** (não bloqueantes).
 

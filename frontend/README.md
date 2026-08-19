@@ -78,7 +78,7 @@ npx playwright test
 
 HTML report: `frontend/playwright-report/`. Firefox/WebKit are not configured. CI/CD is out of Phase 22 scope.
 
-Phase 22 status: **IMPLEMENTADA / AGUARDANDO AUDITORIA**.
+Phase 22 status: **CONCLUÍDA / APROVADA COM RESSALVAS**. Reservations **AUD-F22-A1** to **AUD-F22-A4** are non-blocking and were not corrected in the documentation wrap-up.
 
 ## Additional Resources
 
