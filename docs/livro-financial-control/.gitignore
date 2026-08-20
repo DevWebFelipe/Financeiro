@@ -1,0 +1,8 @@
+# The repository ignores generic build/ and dist/ folders. This book is a
+# documented exception because its generator and validated deliverables are
+# part of the requested artifact.
+!build/
+!build/**
+!dist/
+!dist/**
+

@@ -1,0 +1,1037 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Financial Control — Livro técnico</title><style>:root {
+  --ink: #172033;
+  --muted: #5a6475;
+  --line: #cfd5df;
+  --soft: #f3f5f8;
+  --accent: #244a73;
+  --paper: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #d9dde4;
+  color: var(--ink);
+  font-family: "Segoe UI", "Inter", Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.21;
+}
+
+body {
+  counter-reset: figure table;
+}
+
+#book {
+  width: 210mm;
+  margin: 0 auto;
+}
+
+.page {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  margin: 8mm auto;
+  overflow: hidden;
+  background: var(--paper);
+  break-after: page;
+  page-break-after: always;
+  box-shadow: 0 1mm 4mm rgb(0 0 0 / 18%);
+}
+
+.page-body {
+  position: absolute;
+  top: 18mm;
+  right: 20mm;
+  bottom: 17mm;
+  left: 20mm;
+  overflow: hidden;
+}
+
+.page.odd .page-body {
+  left: 22mm;
+  right: 18mm;
+}
+
+.page.even .page-body {
+  left: 18mm;
+  right: 22mm;
+}
+
+.running-header {
+  position: absolute;
+  top: 7mm;
+  right: 18mm;
+  left: 18mm;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 8.5pt;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.even .running-header {
+  text-align: left;
+}
+
+.odd .running-header {
+  text-align: right;
+}
+
+.page-footer {
+  position: absolute;
+  right: 18mm;
+  bottom: 6.5mm;
+  left: 18mm;
+  color: var(--muted);
+  font-size: 8.5pt;
+  line-height: 1;
+  text-align: center;
+}
+
+.cover {
+  color: #fff;
+  background:
+    linear-gradient(145deg, rgb(18 43 69 / 96%), rgb(35 76 111 / 94%)),
+    #17304a;
+}
+
+.cover::before {
+  position: absolute;
+  inset: 16mm;
+  border: 0.35mm solid rgb(255 255 255 / 45%);
+  content: "";
+}
+
+.cover-content {
+  position: absolute;
+  top: 73mm;
+  right: 26mm;
+  left: 26mm;
+}
+
+.cover-kicker {
+  margin: 0 0 8mm;
+  font-size: 10pt;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.cover h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 34pt;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+
+.cover-subtitle {
+  max-width: 135mm;
+  margin: 9mm 0 0;
+  color: rgb(255 255 255 / 86%);
+  font-size: 15pt;
+  line-height: 1.3;
+}
+
+.cover-meta {
+  position: absolute;
+  right: 26mm;
+  bottom: 28mm;
+  left: 26mm;
+  display: flex;
+  justify-content: space-between;
+  color: rgb(255 255 255 / 78%);
+  font-size: 9pt;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: #142f4b;
+  font-weight: 700;
+  page-break-after: avoid;
+  break-after: avoid;
+}
+
+h1 {
+  margin: 0 0 6mm;
+  font-size: 23pt;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+}
+
+h1.part-title {
+  margin-bottom: 3mm;
+  color: var(--accent);
+  font-size: 10pt;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+h2 {
+  margin: 6mm 0 2.5mm;
+  padding-bottom: 1.2mm;
+  border-bottom: 0.25mm solid var(--line);
+  font-size: 16pt;
+  line-height: 1.12;
+}
+
+h3 {
+  margin: 4.5mm 0 1.8mm;
+  font-size: 13pt;
+  line-height: 1.15;
+}
+
+h4 {
+  margin: 3.5mm 0 1.5mm;
+  font-size: 11.5pt;
+}
+
+p {
+  margin: 0 0 2.7mm;
+  orphans: 3;
+  widows: 3;
+}
+
+ul,
+ol {
+  margin: 1.5mm 0 3mm 5.5mm;
+  padding-left: 4.5mm;
+}
+
+li {
+  margin: 0 0 1.1mm;
+}
+
+blockquote {
+  margin: 3.5mm 0;
+  padding: 3mm 4mm;
+  border-left: 1.2mm solid var(--accent);
+  background: var(--soft);
+}
+
+blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+pre {
+  margin: 3mm 0 4mm;
+  padding: 3.2mm;
+  overflow: hidden;
+  border: 0.25mm solid #c8ced7;
+  border-radius: 1.2mm;
+  background: #f7f8fa;
+  color: #172033;
+  font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+  font-size: 8.6pt;
+  line-height: 1.25;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+code {
+  padding: 0.15em 0.3em;
+  border-radius: 0.6mm;
+  background: #eef1f5;
+  font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+pre code {
+  padding: 0;
+  background: transparent;
+  font-size: inherit;
+  overflow-wrap: inherit;
+}
+
+table {
+  width: 100%;
+  margin: 3mm 0 4mm;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 8.8pt;
+  line-height: 1.18;
+}
+
+th,
+td {
+  padding: 1.8mm 2mm;
+  border: 0.25mm solid #c9ced7;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+th {
+  background: #e9edf2;
+  color: #173654;
+  font-weight: 700;
+  text-align: left;
+}
+
+tbody tr:nth-child(even) {
+  background: #f8f9fb;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.toc-title,
+.index-title {
+  margin-bottom: 8mm;
+}
+
+.toc-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4mm;
+  align-items: end;
+  margin: 0 0 2.2mm;
+  line-height: 1.15;
+}
+
+.toc-row::after {
+  position: absolute;
+  z-index: 0;
+  right: 10mm;
+  left: 0;
+  margin-top: 0.9em;
+  border-bottom: 0.25mm dotted #aeb6c1;
+  content: "";
+}
+
+.toc-label,
+.toc-page {
+  position: relative;
+  z-index: 1;
+  background: #fff;
+}
+
+.toc-label {
+  padding-right: 2mm;
+}
+
+.toc-page {
+  min-width: 8mm;
+  padding-left: 2mm;
+  text-align: right;
+}
+
+.toc-level-2 {
+  margin-left: 7mm;
+  color: #364358;
+  font-size: 9.5pt;
+}
+
+.index-grid {
+  column-count: 2;
+  column-gap: 9mm;
+}
+
+.index-entry {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2mm;
+  margin: 0 0 1.5mm;
+  break-inside: avoid;
+  font-size: 9pt;
+}
+
+.index-pages {
+  color: var(--muted);
+}
+
+.glossary-entry {
+  margin-bottom: 2.5mm;
+}
+
+.glossary-entry dt {
+  color: #173654;
+  font-weight: 700;
+}
+
+.glossary-entry dd {
+  margin: 0.6mm 0 0;
+}
+
+.book-note {
+  padding: 3mm 4mm;
+  border: 0.25mm solid var(--line);
+  background: #fafbfc;
+  color: #364358;
+  font-size: 9pt;
+}
+
+@media print {
+  html,
+  body {
+    width: 210mm;
+    background: #fff;
+  }
+
+  #book {
+    width: 210mm;
+  }
+
+  .page {
+    margin: 0;
+    box-shadow: none;
+  }
+
+  @page {
+    size: A4;
+    margin: 0;
+  }
+}
+
+</style></head><body>
+<div id="book"></div><div id="source" aria-hidden="true"><section class="chapter-source" data-file="05-backend-spring.md"><h1 class="part-title" data-heading-key="heading-1">PARTE VI — Backend Java e Spring</h1>
+<h1 data-heading-key="heading-2">Capítulo 5 — Anatomia do backend</h1>
+<p>O backend do Financial Control é um monólito modular Java que expõe uma API REST sob <code>/api/v1</code>. Em agosto de 2026, a auditoria encontrou 270 arquivos Java de produção, 19 Controllers, 18 Services, 27 Repositories, 27 Entities e 112 DTOs. A execução da suíte terminou com 578 testes aprovados.</p>
+<p>Ele é a autoridade das regras financeiras. Angular apresenta valores e melhora a experiência de preenchimento; saldos, remaining, limites, rateios e transições são decididos no backend.</p>
+<h2 data-heading-key="heading-3">5.1 Estrutura e stack efetivamente usadas</h2>
+<pre data-language="text"><code>backend/
+├─ pom.xml
+├─ mvnw.cmd
+└─ src/
+   ├─ main/
+   │  ├─ java/br/com/financialcontrol/
+   │  │  ├─ accounts/
+   │  │  ├─ expenses/
+   │  │  ├─ incomes/
+   │  │  ├─ credit_cards/
+   │  │  ├─ credit_card_invoices/
+   │  │  ├─ ...demais domínios
+   │  │  ├─ config/
+   │  │  └─ security/
+   │  └─ resources/
+   │     ├─ application.yml
+   │     └─ db/migration/
+   └─ test/</code></pre>
+<table><thead><tr><th>Tecnologia</th><th>Uso real</th></tr></thead><tbody><tr><td>Java 25</td><td>linguagem e runtime</td></tr><tr><td>Spring Boot 4.1.0</td><td>configuração e composição da aplicação</td></tr><tr><td>Spring Web MVC</td><td>Controllers, JSON e HTTP</td></tr><tr><td>Spring Security</td><td>filtro stateless, JWT e Argon2</td></tr><tr><td>Spring Data JPA/Hibernate</td><td>persistência</td></tr><tr><td>Jakarta Validation</td><td>validação de requests</td></tr><tr><td>Flyway</td><td>criação e evolução do schema</td></tr><tr><td>Nimbus JOSE JWT</td><td>assinatura e leitura HS256</td></tr><tr><td>BouncyCastle</td><td>suporte ao Argon2id</td></tr><tr><td>springdoc-openapi</td><td>OpenAPI e Swagger UI</td></tr><tr><td>OpenPDF 3.0.5</td><td>relatórios PDF</td></tr><tr><td>JUnit/Testcontainers</td><td>testes com PostgreSQL real</td></tr><tr><td>Spotless</td><td>Google Java Format no <code>verify</code></td></tr></tbody></table>
+<p>Não há H2, MapStruct, camada DAO adicional, UseCase por CRUD ou arquitetura hexagonal artificial.</p>
+<h2 data-heading-key="heading-4">5.2 Configuração do Spring Boot</h2>
+<p>O <code>application.yml</code> define:</p>
+<pre data-language="yaml"><code>spring:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:30}</code></pre>
+<p><code>open-in-view: false</code> evita consultas lazy acidentais durante a serialização. <code>ddl-auto: validate</code> mantém o Flyway como única autoridade estrutural. <code>JWT_SECRET</code> não possui valor padrão: a aplicação falha cedo quando o segredo não está configurado.</p>
+<p><code>JacksonConfig</code> ativa <code>FAIL_ON_UNKNOWN_PROPERTIES</code>. Um campo JSON desconhecido em request não é ignorado silenciosamente; produz erro 400.</p>
+<h2 data-heading-key="heading-5">5.3 Fluxo Controller → Service → Repository</h2>
+<pre data-language="text"><code>requisição HTTP
+      ↓
+Controller
+  traduz HTTP, @Valid e principal autenticado
+      ↓
+Service
+  regras, ownership, transação e orquestração
+      ↓
+Repository
+  consultas e persistência JPA
+      ↓
+PostgreSQL</code></pre>
+<p>Nenhum Controller auditado acessa Repository diretamente.</p>
+<h3 data-heading-key="heading-6">Controller</h3>
+<p>O Controller conhece:</p>
+<ul><li>URL e verbo;</li><li>path variables e query parameters;</li><li>request/response DTO;</li><li>status HTTP;</li><li><code>AuthenticatedUser</code>;</li><li>Service do módulo.</li></ul>
+<p>Exemplo representativo:</p>
+<pre data-language="java"><code>@PostMapping
+@ResponseStatus(HttpStatus.CREATED)
+public TransferResponse create(
+    @AuthenticationPrincipal AuthenticatedUser user,
+    @Valid @RequestBody CreateTransferRequest request) {
+  return transferService.create(user, request);
+}</code></pre>
+<p>Ele não calcula saldo e não decide se a transferência é válida.</p>
+<h3 data-heading-key="heading-7">Service</h3>
+<p>O Service concentra invariantes. Em uma transferência, ele valida:</p>
+<ol><li>origem diferente do destino;</li><li>data não futura;</li><li>ownership e atividade das contas;</li><li>tipo <code>BANK_ACCOUNT</code>;</li><li>saldo disponível;</li><li>ordem de locks;</li><li>persistência atômica.</li></ol>
+<h3 data-heading-key="heading-8">Repository</h3>
+<p>Repositories são interfaces exigidas pelo Spring Data:</p>
+<pre data-language="java"><code>@Lock(LockModeType.PESSIMISTIC_WRITE)
+@Query(&quot;&quot;&quot;
+    SELECT a FROM Account a
+    WHERE a.id = :id AND a.userId = :userId
+    &quot;&quot;&quot;)
+Optional&lt;Account&gt; findByIdAndUserIdForUpdate(UUID id, UUID userId);</code></pre>
+<p>Não existe DAO sobre o Repository.</p>
+<h2 data-heading-key="heading-9">5.4 DTOs e fronteira HTTP</h2>
+<p>Entities nunca são serializadas como contrato público. Requests e responses são records ou classes específicas do endpoint.</p>
+<pre data-language="java"><code>public record CreateTransferRequest(
+    @NotNull UUID sourceAccountId,
+    @NotNull UUID destinationAccountId,
+    @NotNull
+        @DecimalMin(&quot;0.01&quot;)
+        @Digits(integer = 17, fraction = 2)
+        BigDecimal amount,
+    @NotNull LocalDate transferDate,
+    String description) {}</code></pre>
+<p>Bean Validation verifica formato e limites estruturais. O Service verifica regras que dependem do estado persistido.</p>
+<blockquote><p><strong>CONCEITO — DTO não é Entity reduzida</strong>  DTO é contrato da fronteira. Ele protege o cliente contra alterações internas, impede mass assignment e permite que a API exponha derivados sem criar colunas.</p></blockquote>
+<p>Paginação usa o envelope:</p>
+<pre data-language="json"><code>{
+  &quot;items&quot;: [],
+  &quot;page&quot;: 0,
+  &quot;size&quot;: 20,
+  &quot;totalItems&quot;: 0,
+  &quot;totalPages&quot;: 0
+}</code></pre>
+<p>O projeto não expõe diretamente <code>Page</code> do Spring Data.</p>
+<h2 data-heading-key="heading-10">5.5 Entities e JPA</h2>
+<p>Padrões observados:</p>
+<ul><li><code>@Table</code> alinhado ao nome plural da migration;</li><li>ID UUID v7 atribuído pela aplicação;</li><li><code>user_id</code> em dados financeiros;</li><li><code>BigDecimal</code> com precisão 19 e escala 2;</li><li>enum como <code>EnumType.STRING</code>;</li><li><code>Instant</code> para instantes e <code>LocalDate</code> para calendário financeiro.</li></ul>
+<p>Valores derivados não são propriedades persistidas. <code>AccountService</code> calcula saldo; <code>InstallmentBalanceService</code> calcula obrigação e remaining; Services de cartão calculam limites.</p>
+<h2 data-heading-key="heading-11">5.6 Ownership</h2>
+<p>O usuário vem do JWT:</p>
+<pre data-language="java"><code>@AuthenticationPrincipal AuthenticatedUser authenticatedUser</code></pre>
+<p>O Service consulta sempre pelo par:</p>
+<pre data-language="java"><code>repository.findByIdAndUserId(id, authenticatedUser.userId())</code></pre>
+<p>O body não escolhe o proprietário. Recurso alheio retorna 404, evitando revelar sua existência. O banco reforça o isolamento com FKs compostas.</p>
+<h2 data-heading-key="heading-12">5.7 Transações, locks e concorrência</h2>
+<p>Services de escrita usam <code>@Transactional</code>; leituras usam <code>@Transactional(readOnly = true)</code> quando apropriado.</p>
+<p>Operações críticas usam <code>PESSIMISTIC_WRITE</code>. Transferências travam as duas contas em ordem determinística de UUID:</p>
+<pre data-language="java"><code>if (sourceId.compareTo(destinationId) &lt; 0) {
+  first = lock(sourceId);
+  second = lock(destinationId);
+} else {
+  first = lock(destinationId);
+  second = lock(sourceId);
+}</code></pre>
+<p>Essa ordem reduz deadlocks. Testes de concorrência cobrem transferências, pagamentos de fatura e metas.</p>
+<h2 data-heading-key="heading-13">5.8 Tratamento centralizado de erros</h2>
+<p>O envelope real é:</p>
+<pre data-language="java"><code>public record ApiError(
+    Instant timestamp,
+    int status,
+    String code,
+    String message,
+    String path,
+    Map&lt;String, String&gt; fields) {}</code></pre>
+<table><thead><tr><th>Exceção</th><th>HTTP</th><th>Código</th></tr></thead><tbody><tr><td>validação</td><td>400</td><td><code>VALIDATION_ERROR</code></td></tr><tr><td>regra de negócio</td><td>400</td><td><code>BUSINESS_RULE_VIOLATION</code></td></tr><tr><td>não encontrado</td><td>404</td><td><code>NOT_FOUND</code></td></tr><tr><td>não autenticado</td><td>401</td><td><code>UNAUTHORIZED</code></td></tr><tr><td>conflito</td><td>409</td><td><code>CONFLICT</code></td></tr><tr><td>inesperado</td><td>500</td><td><code>INTERNAL_ERROR</code></td></tr></tbody></table>
+<p>O projeto não usa RFC 7807.</p>
+<h3 data-heading-key="heading-14">Divergência: subcódigos não existem no JSON</h3>
+<p>Constantes como <code>SETTLEMENT_NOT_ALLOWED</code> e <code>SURCHARGE_REQUIRES_REMAINING</code> identificam regras no código e na documentação, mas a resposta contém somente:</p>
+<pre data-language="json"><code>{
+  &quot;code&quot;: &quot;BUSINESS_RULE_VIOLATION&quot;,
+  &quot;message&quot;: &quot;Mensagem da regra em português.&quot;
+}</code></pre>
+<p>Não há campo <code>rule</code> ou <code>subCode</code>. Clientes não devem supor que o nome da constante é transmitido.</p>
+<h2 data-heading-key="heading-15">5.9 Segurança do backend</h2>
+<pre data-language="text"><code>POST /auth/login
+  ↓
+AuthService verifica Argon2id
+  ↓
+JwtService cria token HS256, sub = UUID
+  ↓
+Authorization: Bearer ...
+  ↓
+JwtAuthenticationFilter
+  ↓
+AuthenticatedUser no SecurityContext</code></pre>
+<p><code>SecurityConfig</code> usa sessão stateless, desativa CSRF para a API Bearer e configura CORS. São públicos health, registro, login e documentação OpenAPI. Os demais endpoints <code>/api/v1/**</code> exigem autenticação.</p>
+<p>O token expira em 30 minutos por padrão. Não há refresh token, logout de servidor, OAuth, MFA ou roles na V1.</p>
+<p>Senhas usam <code>Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8()</code>. <code>AuthService</code> compara um hash dummy quando o login não encontra usuário, reduzindo diferenças de tempo que poderiam revelar e-mails cadastrados.</p>
+<h2 data-heading-key="heading-16">5.10 OpenAPI e Swagger</h2>
+<p>Controllers usam <code>@Tag</code>, <code>@Operation</code>, <code>@ApiResponses</code> e <code>@SecurityRequirement</code>. Em desenvolvimento:</p>
+<ul><li>OpenAPI: <code>http://localhost:8080/v3/api-docs</code>;</li><li>Swagger UI: <code>http://localhost:8080/swagger-ui.html</code>.</li></ul>
+<p>As anotações ajudam descoberta, mas <code>docs/25-api.md</code> continua sendo o contrato detalhado de negócio.</p>
+<h2 data-heading-key="heading-17">5.11 Scheduler de faturas</h2>
+<p><code>InvoiceClosingScheduler</code> executa:</p>
+<pre data-language="java"><code>@Scheduled(cron = &quot;0 5 * * * *&quot;, zone = &quot;America/Sao_Paulo&quot;)
+public void closeDueInvoices() {
+  creditCardInvoiceService.closeDueInvoices();
+}</code></pre>
+<p>O fechamento é idempotente e automático. Não existe endpoint normal para o usuário fechar fatura manualmente.</p>
+<h2 data-heading-key="heading-18">5.12 Testes do backend</h2>
+<p>A suíte auditada executou 578 testes sem falhas.</p>
+<table><thead><tr><th>Categoria</th><th>Exemplos</th></tr></thead><tbody><tr><td>API</td><td><code>ExpenseApiTest</code>, <code>Phase14ApiTest</code>, <code>ReportsApiTest</code></td></tr><tr><td>domínio puro</td><td><code>InvoiceAllocationCalculatorTest</code></td></tr><tr><td>schema</td><td><code>SchemaContractTest</code></td></tr><tr><td>ownership</td><td><code>OwnershipAndPersistenceTest</code></td></tr><tr><td>segurança</td><td><code>JwtServiceTest</code>, <code>Argon2PasswordEncoderTest</code></td></tr><tr><td>concorrência</td><td><code>TransferConcurrencyTest</code></td></tr></tbody></table>
+<p>Testcontainers sobe <code>postgres:18-alpine</code>. Isso testa SQL, migrations e constraints do banco oficial, evitando a falsa compatibilidade que um banco em memória poderia introduzir.</p>
+<h3 data-heading-key="heading-19">Lacunas pontuais de cobertura</h3>
+<ul><li>refund ACCOUNT/NONE com <code>settlement</code> é bloqueado no código, mas não possui</li></ul>
+<p>teste dedicado encontrado;</p>
+<ul><li>o bloqueio de edição de parcela já em fatura não tem teste dedicado;</li><li>a tabela legada <code>credit_card_invoice_installments</code> ainda é exigida por teste</li></ul>
+<p>de schema, embora não participe dos Services.</p>
+<h2 data-heading-key="heading-20">5.13 Como adicionar uma funcionalidade</h2>
+<ol><li>Registrar requisito e regras nos documentos oficiais.</li><li>Parar se modelo, cálculo, status ou ownership não estiverem decididos.</li><li>Criar migration somente após a decisão.</li><li>Mapear Entity e Repository.</li><li>Criar DTOs de request e response.</li><li>Implementar Service transacional com ownership.</li><li>Criar Controller fino.</li><li>Documentar OpenAPI e contrato em <code>docs/25</code>.</li><li>Testar regra, persistência, HTTP, segurança e concorrência quando aplicável.</li><li>Executar <code>mvnw.cmd test</code> e <code>mvnw.cmd verify</code>.</li></ol>
+<blockquote><p><strong>NÃO FAÇA</strong>  Não crie UseCase para cada verbo CRUD, interface e <code>Impl</code> para toda classe, mapper automático sem necessidade, nem aceite <code>userId</code> do cliente.</p></blockquote>
+<h2 data-heading-key="heading-21">5.14 Anatomia resumida: transferência</h2>
+<h3 data-heading-key="heading-22">HTTP</h3>
+<pre data-language="text"><code>POST /api/v1/transfers</code></pre>
+<h3 data-heading-key="heading-23">Fluxo</h3>
+<pre data-language="text"><code>TransferController
+  → TransferService
+      → lock das contas em ordem UUID
+      → valida BANK_ACCOUNT e saldo disponível
+      → TransferRepository.save(ACTIVE)
+      → trava saldo inicial das duas contas</code></pre>
+<p>O registro não grava saldos. <code>AccountService</code> inclui transferências ACTIVE ao calcular saldo. A reversão muda o status para REVERSED e preserva histórico.</p>
+<h3 data-heading-key="heading-24">Por que essa feature é didática</h3>
+<p>Ela atravessa todas as decisões centrais:</p>
+<ul><li>DTO e <code>@Valid</code>;</li><li>identidade vinda do JWT;</li><li>ownership;</li><li>Service transacional;</li><li>duas linhas com lock;</li><li>valor monetário BigDecimal;</li><li>fato persistido e saldo derivado;</li><li>ação de negócio por POST, sem DELETE;</li><li>teste de efeito no saldo e teste de concorrência.</li></ul>
+<h2 data-heading-key="heading-25">5.15 Pendências que não podem ser preenchidas por suposição</h2>
+<table><thead><tr><th>Tema</th><th>Estado</th></tr></thead><tbody><tr><td>valores de <code>payments.type</code></td><td><strong>PENDENTE</strong></td></tr><tr><td>edição cadastral de parcela já em fatura</td><td><strong>PENDENTE/deferida</strong></td></tr><tr><td>refresh token</td><td><strong>não implementado por decisão de escopo</strong></td></tr><tr><td>extrato unificado</td><td><strong>planejado fora do escopo atual</strong></td></tr><tr><td>remoção da tabela V13 superada</td><td><strong>requer migration e decisão explícita</strong></td></tr></tbody></table></section>
+<section class="chapter-source" data-file="09-banco-flyway.md"><h1 class="part-title" data-heading-key="heading-26">PARTE VIII — Persistência e evolução do banco</h1>
+<h1 data-heading-key="heading-27">Capítulo 9 — PostgreSQL, modelo físico e Flyway</h1>
+<p>Este capítulo descreve o estado físico encontrado no repositório em agosto de</p>
+<ol><li>O modelo é controlado por trinta migrations Flyway, de V1 a V30, e contém</li></ol>
+<p>27 tabelas. As visões de contas a pagar, contas a receber, projeções, dashboard e relatórios não possuem tabelas próprias.</p>
+<blockquote><p><strong>ARQUITETURA — Uma única fonte para o schema</strong>  O Flyway cria e evolui o banco. O Hibernate usa <code>spring.jpa.hibernate.ddl-auto=validate</code>: ele verifica o mapeamento, mas não cria nem corrige tabelas. Isso impede que o comportamento do banco varie conforme a inicialização da aplicação.</p></blockquote>
+<h2 data-heading-key="heading-28">9.1 PostgreSQL no Financial Control</h2>
+<p>O banco oficial é PostgreSQL 18. No desenvolvimento, o Compose usa a imagem <code>postgres:18-alpine</code>. A escolha aparece simultaneamente em <code>docker-compose.yml</code>, no contrato de ambiente e nos testes Testcontainers.</p>
+<p>As correspondências principais são:</p>
+<table><thead><tr><th>Conceito</th><th>PostgreSQL</th><th>Java</th></tr></thead><tbody><tr><td>Identificador</td><td><code>UUID</code></td><td><code>UUID</code></td></tr><tr><td>Dinheiro</td><td><code>NUMERIC(19,2)</code></td><td><code>BigDecimal</code></td></tr><tr><td>Instante absoluto</td><td><code>TIMESTAMPTZ</code></td><td><code>Instant</code></td></tr><tr><td>Data financeira</td><td><code>DATE</code></td><td><code>LocalDate</code></td></tr><tr><td>Estado booleano</td><td><code>BOOLEAN</code>, coluna <code>active</code></td><td><code>boolean</code>, propriedade <code>isActive</code></td></tr></tbody></table>
+<h3 data-heading-key="heading-29">UUID v7</h3>
+<p>Os identificadores normais são gerados na aplicação por <code>br.com.financialcontrol.UuidV7</code>. As entidades não usam <code>@GeneratedValue</code>, e as colunas não têm <code>DEFAULT</code> gerador. O projeto evita duas autoridades concorrentes para IDs.</p>
+<p>A V30 usa <code>uuidv7()</code> do PostgreSQL somente durante o backfill histórico de <code>income_movements</code>. Isso não muda a política das operações normais.</p>
+<h3 data-heading-key="heading-30">Valores monetários</h3>
+<p>Dinheiro nunca usa <code>float</code> ou <code>double</code>. O banco fixa duas casas decimais e os Services normalizam valores com <code>RoundingMode.HALF_UP</code>.</p>
+<p>Exemplo de parcelamento de R$ 100,00 em três partes:</p>
+<pre data-language="text"><code>base = 100,00 / 3, arredondado para baixo = 33,33
+primeira parcela = 100,00 - (33,33 × 2) = 33,34
+demais parcelas = 33,33
+soma = 100,00</code></pre>
+<p>O residual fica na primeira parcela. Há uma divergência importante para valores muito pequenos, documentada em 9.11.</p>
+<h3 data-heading-key="heading-31">Datas e timezone</h3>
+<p><code>Instant</code> representa eventos absolutos e é persistido em UTC. <code>LocalDate</code> representa vencimentos, datas de compra, recebimento e pagamento. As regras de calendário usam <code>America/Sao_Paulo</code>; não dependem do timezone do navegador.</p>
+<h2 data-heading-key="heading-32">9.2 Como o Flyway evolui o schema</h2>
+<p>As migrations ficam em:</p>
+<pre data-language="text"><code>backend/src/main/resources/db/migration/</code></pre>
+<p>Elas são aplicadas em ordem numérica. Uma migration executada não é reescrita: mudanças posteriores usam uma nova versão.</p>
+<table><thead><tr><th>Versão</th><th>Marco principal</th></tr></thead><tbody><tr><td>V1</td><td><code>users</code></td></tr><tr><td>V2–V5</td><td>contas, categorias, cartões e metas</td></tr><tr><td>V6</td><td>receitas</td></tr><tr><td>V7</td><td>faturas no modelo inicial</td></tr><tr><td>V8–V10</td><td>despesas, parcelas e pagamentos</td></tr><tr><td>V11–V14</td><td>transferências, pagamentos de fatura, tabela posteriormente superada e contribuições</td></tr><tr><td>V15–V16</td><td>unicidade de categorias e responsável nullable em receitas</td></tr><tr><td>V17</td><td>status de payment e ajustes de parcela</td></tr><tr><td>V18–V25</td><td>cartões/faturas da Fase 9 e status <code>SETTLED_BY_AGREEMENT</code></td></tr><tr><td>V26–V27</td><td>Agreements, settlements e alocações</td></tr><tr><td>V28</td><td>transferências, acertos e trava de saldo inicial</td></tr><tr><td>V29</td><td>vínculo de meta à conta e resgates</td></tr><tr><td>V30</td><td>movimentações de receita e backfill</td></tr></tbody></table>
+<h3 data-heading-key="heading-33">Evolução de status sem apagar história</h3>
+<p>A V7 criou o primeiro CHECK de fatura. A V19 substituiu esse CHECK pelo conjunto <code>SCHEDULED</code>, <code>OPEN</code>, <code>CLOSED</code> e <code>PAID</code>; a V25 adicionou <code>SETTLED_BY_AGREEMENT</code>. A migration antiga permanece como registro da evolução, mas o contrato efetivo é o CHECK final.</p>
+<h3 data-heading-key="heading-34">Valores derivados não viram colunas</h3>
+<p>O schema não persiste:</p>
+<ul><li>saldo atual, reservado ou disponível da conta;</li><li>total pago ou remaining da parcela;</li><li>totais de fatura;</li><li>limite usado e disponível do cartão;</li><li>valor acumulado e percentual de meta;</li><li>resultados de payables, receivables, projections, dashboard ou reports.</li></ul>
+<p>Persistir esses valores criaria uma segunda fonte sujeita a dessincronização. Fatos — pagamentos, alocações, créditos e movimentos — são persistidos; totais são calculados.</p>
+<h2 data-heading-key="heading-35">9.3 Inventário das 27 tabelas</h2>
+<h3 data-heading-key="heading-36">Cadastro e identidade</h3>
+<ul><li><code>users</code></li><li><code>accounts</code></li><li><code>categories</code></li><li><code>credit_cards</code></li></ul>
+<h3 data-heading-key="heading-37">Receitas</h3>
+<ul><li><code>incomes</code></li><li><code>income_movements</code></li></ul>
+<h3 data-heading-key="heading-38">Despesas</h3>
+<ul><li><code>expenses</code></li><li><code>expense_installments</code></li><li><code>expense_installment_adjustments</code></li><li><code>payments</code></li></ul>
+<h3 data-heading-key="heading-39">Cartões, faturas e créditos</h3>
+<ul><li><code>credit_card_invoices</code></li><li><code>credit_card_invoice_payments</code></li><li><code>credit_card_invoice_payment_allocations</code></li><li><code>credit_card_credits</code></li><li><code>credit_card_credit_applications</code></li><li><code>credit_card_invoice_adjustments</code></li><li><code>credit_card_invoice_adjustment_allocations</code></li><li><code>card_purchase_account_refunds</code></li><li><code>credit_card_invoice_installments</code> — tabela legada, sem uso operacional atual</li></ul>
+<h3 data-heading-key="heading-40">Agreements</h3>
+<ul><li><code>credit_card_invoice_agreements</code></li><li><code>credit_card_invoice_agreement_settlements</code></li><li><code>credit_card_invoice_agreement_settlement_allocations</code></li></ul>
+<h3 data-heading-key="heading-41">Movimentação entre contas</h3>
+<ul><li><code>transfers</code></li><li><code>account_balance_adjustments</code></li></ul>
+<h3 data-heading-key="heading-42">Metas</h3>
+<ul><li><code>financial_goals</code></li><li><code>goal_contributions</code></li><li><code>goal_redemptions</code></li></ul>
+<h2 data-heading-key="heading-43">9.4 Relacionamentos principais</h2>
+<pre data-language="text"><code>users
+ ├─ accounts
+ ├─ categories
+ ├─ credit_cards ─ credit_card_invoices
+ ├─ incomes ─ income_movements ─ accounts
+ ├─ expenses ─ expense_installments
+ │                         ├─ payments ─ accounts
+ │                         └─ credit_card_invoices
+ ├─ transfers ─ accounts (origem e destino)
+ └─ financial_goals ─ accounts
+                      ├─ goal_contributions
+                      └─ goal_redemptions</code></pre>
+<p>Uma despesa parcelada pertence à tabela <code>expenses</code>, mas cada parcela é um fato em <code>expense_installments</code>. Em compras no cartão, a parcela — e não a despesa — aponta para a fatura. Assim, uma compra em dez vezes pode atravessar dez ciclos.</p>
+<h2 data-heading-key="heading-44">9.5 Constraints e índices</h2>
+<p>O banco protege invariantes que não devem depender somente da aplicação.</p>
+<table><thead><tr><th>Tipo</th><th>Exemplos</th></tr></thead><tbody><tr><td>Chave primária</td><td><code>id</code> UUID</td></tr><tr><td>Unicidade de ownership</td><td><code>UNIQUE (id, user_id)</code></td></tr><tr><td>CHECK de status</td><td>despesas, receitas, faturas, payments, movements</td></tr><tr><td>CHECK de alvo</td><td>coerência entre <code>payment_method</code>, conta e cartão</td></tr><tr><td>Unicidade de parcela</td><td><code>(expense_id, installment_number)</code></td></tr><tr><td>Uma fatura aberta</td><td>índice parcial único por cartão</td></tr><tr><td>Categoria sem duplicata lógica</td><td>índice por usuário, tipo e <code>lower(name)</code></td></tr></tbody></table>
+<p>Índices de <code>user_id</code>, datas e FKs sustentam as consultas multiusuário. Índice não substitui regra de ownership: ele melhora busca; a FK composta preserva integridade.</p>
+<h2 data-heading-key="heading-45">9.6 Ownership em duas camadas</h2>
+<p>O Service sempre consulta com o <code>userId</code> extraído do principal autenticado:</p>
+<pre data-language="java"><code>accountRepository.findByIdAndUserId(accountId, authenticatedUser.userId())</code></pre>
+<p>O banco repete a proteção em relacionamentos:</p>
+<pre data-language="sql"><code>FOREIGN KEY (expense_id, user_id)
+    REFERENCES expenses (id, user_id)</code></pre>
+<p>Isso impede que uma falha futura no Service grave uma parcela do usuário A em uma despesa do usuário B.</p>
+<blockquote><p><strong>SEGURANÇA — Por que retornar 404</strong>  Consultas por <code>(id, user_id)</code> tratam um recurso alheio como inexistente. Além de isolar dados, isso evita confirmar a existência de IDs pertencentes a outro usuário.</p></blockquote>
+<p>O JPA normalmente mapeia a coluna de relação simples. A FK composta permanece no Flyway. Essa separação mantém o mapeamento legível sem enfraquecer o modelo físico.</p>
+<h2 data-heading-key="heading-46">9.7 Entities e enums</h2>
+<p>Há 27 classes <code>@Entity</code>, uma para cada tabela. Não existem entidades JPA para payables, receivables, projections, dashboard e reports, porque esses recursos são visões calculadas.</p>
+<p>Enums Java acompanham os CHECKs do banco:</p>
+<ul><li>conta: <code>BANK_ACCOUNT</code>, <code>CASH</code>;</li><li>receita: <code>EXPECTED</code>, <code>RECEIVED</code>, <code>CANCELLED</code>;</li><li>despesa: <code>OPEN</code>, <code>PARTIALLY_PAID</code>, <code>PAID</code>, <code>CANCELLED</code>, <code>REFUNDED</code>;</li><li>payment: <code>ACTIVE</code>, <code>REVERSED</code>;</li><li>fatura: <code>SCHEDULED</code>, <code>OPEN</code>, <code>CLOSED</code>, <code>PAID</code>,</li></ul>
+<p><code>SETTLED_BY_AGREEMENT</code>;</p>
+<ul><li>meta: <code>ACTIVE</code>, <code>COMPLETED</code>, <code>CANCELLED</code>.</li></ul>
+<p>Duas exceções são intencionais:</p>
+<ol><li><code>payments.type</code> continua <code>String</code>, sem enum ou CHECK, porque seus valores</li></ol>
+<p>oficiais permanecem pendentes;</p>
+<ol><li><code>credit_card_invoice_installments.status</code> pertence ao modelo superado e não</li></ol>
+<p>ganhou novo contrato.</p>
+<h2 data-heading-key="heading-47">9.8 Visões derivadas</h2>
+<table><thead><tr><th>Recurso</th><th>Implementação</th><th>Tabela própria</th></tr></thead><tbody><tr><td>Payables</td><td><code>PayablesService</code></td><td>não</td></tr><tr><td>Receivables</td><td><code>ReceivablesService</code></td><td>não</td></tr><tr><td>Projections</td><td><code>ProjectionService</code></td><td>não</td></tr><tr><td>Dashboard</td><td><code>DashboardService</code></td><td>não</td></tr><tr><td>Reports</td><td><code>ReportsService</code></td><td>não</td></tr></tbody></table>
+<p>Uma linha de payable pode representar parcela ACCOUNT/NONE ou fatura com remaining positivo. Receivables deriva receitas e movimentações. Projeções combinam saldo atual e eventos futuros. Dashboard agrega serviços existentes. Reports calcula visões e, quando solicitado, produz PDF com OpenPDF.</p>
+<h2 data-heading-key="heading-48">9.9 Testes do contrato físico</h2>
+<p>Os testes usam PostgreSQL real em Testcontainers.</p>
+<table><thead><tr><th>Teste</th><th>O que protege</th></tr></thead><tbody><tr><td><code>SchemaContractTest</code></td><td>tabelas, CHECKs e ausência de colunas derivadas</td></tr><tr><td><code>OwnershipAndPersistenceTest</code></td><td>FKs compostas e isolamento</td></tr><tr><td><code>Phase8PersistenceContractTest</code></td><td>schema de parcelas, payments e adjustments</td></tr><tr><td><code>V30IncomeMovementsBackfillTest</code></td><td>migração e backfill de movimentos</td></tr></tbody></table>
+<p>O <code>SchemaContractTest</code> passou durante a auditoria. Isso comprova alinhamento com o contrato que o próprio teste expressa; não prova que toda regra documental esteja correta. A seção seguinte mostra por quê.</p>
+<h2 data-heading-key="heading-49">9.10 Como criar uma nova migration</h2>
+<ol><li>Confirmar que a regra de negócio está decidida.</li><li>Escolher a próxima versão; nunca renomear ou editar uma migration aplicada.</li><li>Criar tabela ou <code>ALTER TABLE</code> com tipos, nulabilidade e constraints.</li><li>Incluir <code>user_id</code> e ownership composto quando o dado for financeiro.</li><li>Não persistir um valor definido como derivado.</li><li>Atualizar a Entity de forma compatível.</li><li>Criar teste de schema e teste de integração do comportamento.</li><li>Executar <code>.\mvnw.cmd test</code> e <code>.\mvnw.cmd verify</code>.</li></ol>
+<blockquote><p><strong>NÃO FAÇA</strong>  Não use <code>ddl-auto=update</code>, não adicione <code>DEFAULT</code> gerador de UUID, não remova FK composta para simplificar JPA e não crie tabela para uma visão calculada.</p></blockquote>
+<h2 data-heading-key="heading-50">9.11 Divergências encontradas na auditoria</h2>
+<p>Estas divergências pertencem ao estado auditado. Não foram corrigidas durante a criação do livro.</p>
+<h3 data-heading-key="heading-51">INC-01 — Parcela de R$ 0,00</h3>
+<p><strong>PENDENTE — severidade alta.</strong></p>
+<p>A documentação e <code>ExpenseService.splitInstallmentAmounts</code> permitem parcelas zero quando inevitáveis. O teste <code>ExpenseFinancialPhase8Test.shouldSplitVerySmallTotalAcrossInstallmentsWithoutLosingCents</code> confirma:</p>
+<pre data-language="text"><code>R$ 0,01 em 3× → 0,01; 0,00; 0,00</code></pre>
+<p>Porém, a V9 contém:</p>
+<pre data-language="sql"><code>CONSTRAINT ck_expense_installments_amount CHECK (amount &gt; 0)</code></pre>
+<p>Persistir esse exemplo falharia. O teste cobre o algoritmo, não o INSERT.</p>
+<h3 data-heading-key="heading-52">INC-02 — Motivo do ajuste de parcela</h3>
+<p><strong>PENDENTE — severidade média.</strong></p>
+<p>RN232 e <code>ExpenseService</code> exigem <code>reason</code>. Na V23, porém, a coluna de ajuste de parcela é nullable e o CHECK aceita <code>NULL</code>. Ajuste de fatura, na mesma migration, usa <code>NOT NULL</code>.</p>
+<h3 data-heading-key="heading-53">INC-03 — Cabeçalho legado de receita</h3>
+<p><strong>DECIDIDO como legado; exposição ainda pendente de harmonização.</strong></p>
+<p>Novos RECEIPTs são gravados em <code>income_movements</code> e não preenchem <code>incomes.account_id</code> ou <code>received_date</code>. Algumas respostas ainda leem esses campos do cabeçalho, podendo retornar nulos apesar de existir RECEIPT ativo.</p>
+<h3 data-heading-key="heading-54">INC-04 — Filtro de <code>/incomes</code> por conta</h3>
+<p><strong>PENDENTE.</strong></p>
+<p><code>IncomeRepository.searchByUser</code> filtra a conta do cabeçalho legado. <code>searchReceivables</code> usa corretamente <code>EXISTS</code> em RECEIPT ativo. Os dois recursos podem responder de modo diferente para receitas criadas após a V30.</p>
+<h3 data-heading-key="heading-55">INC-05 — Tabela superada ainda presente</h3>
+<p><strong>Dívida conhecida.</strong></p>
+<p><code>credit_card_invoice_installments</code> foi superada por Agreement + settlement + despesa CREDIT_CARD. Tabela, Entity e Repository permanecem; Services não a usam. Sua remoção exigiria migration e decisão sobre histórico.</p>
+<h3 data-heading-key="heading-56">INC-06 — Lista documental de FKs incompleta</h3>
+<p><strong>PENDENTE documental.</strong></p>
+<p><code>docs/23</code> §265 não enumera várias FKs introduzidas nas fases 9–17, embora elas existam nas migrations e sejam protegidas por testes.</p>
+<h3 data-heading-key="heading-57">INC-07 — Backfill da V29</h3>
+<p><strong>PENDENTE para bases legadas.</strong></p>
+<p>A V29 obtém <code>financial_goals.account_id</code> de contribuições anteriores e depois aplica <code>NOT NULL</code>. Uma meta histórica sem contribuição não teria conta para o backfill. Novas metas não sofrem esse problema porque a criação exige conta.</p>
+<h3 data-heading-key="heading-58">INC-08 — Bloqueios oficiais respeitados</h3>
+<p><strong>PENDENTE por governança, sem defeito de implementação conhecido.</strong></p>
+<ul><li><code>payments.type</code>: coluna sem valores oficiais, enum ou CHECK;</li><li>edição cadastral de parcela já vinculada a fatura: decisão deferida.</li></ul>
+<p>Esses pontos não devem receber implementação provisória.</p></section></div>
+<div id="staging" aria-hidden="true"></div>
+<script id="heading-data" type="application/json">[{"key":"heading-1","level":1,"title":"PARTE VI — Backend Java e Spring","file":"05-backend-spring.md"},{"key":"heading-2","level":1,"title":"Capítulo 5 — Anatomia do backend","file":"05-backend-spring.md"},{"key":"heading-3","level":2,"title":"5.1 Estrutura e stack efetivamente usadas","file":"05-backend-spring.md"},{"key":"heading-4","level":2,"title":"5.2 Configuração do Spring Boot","file":"05-backend-spring.md"},{"key":"heading-5","level":2,"title":"5.3 Fluxo Controller → Service → Repository","file":"05-backend-spring.md"},{"key":"heading-6","level":3,"title":"Controller","file":"05-backend-spring.md"},{"key":"heading-7","level":3,"title":"Service","file":"05-backend-spring.md"},{"key":"heading-8","level":3,"title":"Repository","file":"05-backend-spring.md"},{"key":"heading-9","level":2,"title":"5.4 DTOs e fronteira HTTP","file":"05-backend-spring.md"},{"key":"heading-10","level":2,"title":"5.5 Entities e JPA","file":"05-backend-spring.md"},{"key":"heading-11","level":2,"title":"5.6 Ownership","file":"05-backend-spring.md"},{"key":"heading-12","level":2,"title":"5.7 Transações, locks e concorrência","file":"05-backend-spring.md"},{"key":"heading-13","level":2,"title":"5.8 Tratamento centralizado de erros","file":"05-backend-spring.md"},{"key":"heading-14","level":3,"title":"Divergência: subcódigos não existem no JSON","file":"05-backend-spring.md"},{"key":"heading-15","level":2,"title":"5.9 Segurança do backend","file":"05-backend-spring.md"},{"key":"heading-16","level":2,"title":"5.10 OpenAPI e Swagger","file":"05-backend-spring.md"},{"key":"heading-17","level":2,"title":"5.11 Scheduler de faturas","file":"05-backend-spring.md"},{"key":"heading-18","level":2,"title":"5.12 Testes do backend","file":"05-backend-spring.md"},{"key":"heading-19","level":3,"title":"Lacunas pontuais de cobertura","file":"05-backend-spring.md"},{"key":"heading-20","level":2,"title":"5.13 Como adicionar uma funcionalidade","file":"05-backend-spring.md"},{"key":"heading-21","level":2,"title":"5.14 Anatomia resumida: transferência","file":"05-backend-spring.md"},{"key":"heading-22","level":3,"title":"HTTP","file":"05-backend-spring.md"},{"key":"heading-23","level":3,"title":"Fluxo","file":"05-backend-spring.md"},{"key":"heading-24","level":3,"title":"Por que essa feature é didática","file":"05-backend-spring.md"},{"key":"heading-25","level":2,"title":"5.15 Pendências que não podem ser preenchidas por suposição","file":"05-backend-spring.md"},{"key":"heading-26","level":1,"title":"PARTE VIII — Persistência e evolução do banco","file":"09-banco-flyway.md"},{"key":"heading-27","level":1,"title":"Capítulo 9 — PostgreSQL, modelo físico e Flyway","file":"09-banco-flyway.md"},{"key":"heading-28","level":2,"title":"9.1 PostgreSQL no Financial Control","file":"09-banco-flyway.md"},{"key":"heading-29","level":3,"title":"UUID v7","file":"09-banco-flyway.md"},{"key":"heading-30","level":3,"title":"Valores monetários","file":"09-banco-flyway.md"},{"key":"heading-31","level":3,"title":"Datas e timezone","file":"09-banco-flyway.md"},{"key":"heading-32","level":2,"title":"9.2 Como o Flyway evolui o schema","file":"09-banco-flyway.md"},{"key":"heading-33","level":3,"title":"Evolução de status sem apagar história","file":"09-banco-flyway.md"},{"key":"heading-34","level":3,"title":"Valores derivados não viram colunas","file":"09-banco-flyway.md"},{"key":"heading-35","level":2,"title":"9.3 Inventário das 27 tabelas","file":"09-banco-flyway.md"},{"key":"heading-36","level":3,"title":"Cadastro e identidade","file":"09-banco-flyway.md"},{"key":"heading-37","level":3,"title":"Receitas","file":"09-banco-flyway.md"},{"key":"heading-38","level":3,"title":"Despesas","file":"09-banco-flyway.md"},{"key":"heading-39","level":3,"title":"Cartões, faturas e créditos","file":"09-banco-flyway.md"},{"key":"heading-40","level":3,"title":"Agreements","file":"09-banco-flyway.md"},{"key":"heading-41","level":3,"title":"Movimentação entre contas","file":"09-banco-flyway.md"},{"key":"heading-42","level":3,"title":"Metas","file":"09-banco-flyway.md"},{"key":"heading-43","level":2,"title":"9.4 Relacionamentos principais","file":"09-banco-flyway.md"},{"key":"heading-44","level":2,"title":"9.5 Constraints e índices","file":"09-banco-flyway.md"},{"key":"heading-45","level":2,"title":"9.6 Ownership em duas camadas","file":"09-banco-flyway.md"},{"key":"heading-46","level":2,"title":"9.7 Entities e enums","file":"09-banco-flyway.md"},{"key":"heading-47","level":2,"title":"9.8 Visões derivadas","file":"09-banco-flyway.md"},{"key":"heading-48","level":2,"title":"9.9 Testes do contrato físico","file":"09-banco-flyway.md"},{"key":"heading-49","level":2,"title":"9.10 Como criar uma nova migration","file":"09-banco-flyway.md"},{"key":"heading-50","level":2,"title":"9.11 Divergências encontradas na auditoria","file":"09-banco-flyway.md"},{"key":"heading-51","level":3,"title":"INC-01 — Parcela de R$ 0,00","file":"09-banco-flyway.md"},{"key":"heading-52","level":3,"title":"INC-02 — Motivo do ajuste de parcela","file":"09-banco-flyway.md"},{"key":"heading-53","level":3,"title":"INC-03 — Cabeçalho legado de receita","file":"09-banco-flyway.md"},{"key":"heading-54","level":3,"title":"INC-04 — Filtro de `/incomes` por conta","file":"09-banco-flyway.md"},{"key":"heading-55","level":3,"title":"INC-05 — Tabela superada ainda presente","file":"09-banco-flyway.md"},{"key":"heading-56","level":3,"title":"INC-06 — Lista documental de FKs incompleta","file":"09-banco-flyway.md"},{"key":"heading-57","level":3,"title":"INC-07 — Backfill da V29","file":"09-banco-flyway.md"},{"key":"heading-58","level":3,"title":"INC-08 — Bloqueios oficiais respeitados","file":"09-banco-flyway.md"}]</script><script>
+(() => {
+  const source = document.querySelector('#source');
+  const staging = document.querySelector('#staging');
+  const book = document.querySelector('#book');
+  const headings = JSON.parse(document.querySelector('#heading-data').textContent);
+  const glossary = [["API","Fronteira HTTP REST exposta em /api/v1."],["Controller","Camada que traduz HTTP e delega ao Service."],["DTO","Contrato de entrada ou saída separado da Entity."],["Entity","Classe JPA mapeada para uma tabela."],["Flyway","Ferramenta de migrations versionadas."],["Hibernate","ORM usado pelo Spring Data JPA."],["JWT","Access token HS256 usado na autenticação stateless."],["Migration","Alteração versionada e imutável do schema."],["Ownership","Isolamento por usuário na aplicação e no banco."],["PostgreSQL","Banco relacional oficial do projeto."],["Repository","Interface Spring Data de persistência."],["Service","Camada de regras e transações."],["Testcontainers","PostgreSQL real executado em testes."],["UUID v7","Identificador temporal gerado pela aplicação."]];
+  const make = (html) => {
+    const template = document.createElement('template');
+    template.innerHTML = html.trim();
+    return template.content.firstElementChild;
+  };
+  const createPage = (kind, header, label) => {
+    const page = make('<section class="page ' + kind + '"><div class="running-header"></div>' +
+      '<main class="page-body"></main><footer class="page-footer"></footer></section>');
+    page.dataset.label = label || '';
+    page.querySelector('.running-header').textContent = header || '';
+    page.querySelector('.page-footer').textContent = label || '';
+    staging.appendChild(page);
+    return page;
+  };
+  const overflows = (body) =>
+    body.scrollHeight > body.clientHeight + 1 || body.scrollWidth > body.clientWidth + 1;
+
+  function append(block, state) {
+    const clone = block.cloneNode(true);
+    state.body.appendChild(clone);
+    if (!overflows(state.body)) return;
+    clone.remove();
+    state.next();
+    state.body.appendChild(clone);
+    if (!overflows(state.body)) return;
+    clone.remove();
+    if (block.tagName === 'TABLE') {
+      const head = block.querySelector('thead');
+      let table;
+      let tbody;
+      const reset = () => {
+        table = block.cloneNode(false);
+        if (head) table.appendChild(head.cloneNode(true));
+        tbody = document.createElement('tbody');
+        table.appendChild(tbody);
+        state.body.appendChild(table);
+      };
+      reset();
+      block.querySelectorAll('tbody tr').forEach((row) => {
+        tbody.appendChild(row.cloneNode(true));
+        if (overflows(state.body)) {
+          tbody.lastElementChild.remove();
+          state.next();
+          reset();
+          tbody.appendChild(row.cloneNode(true));
+        }
+      });
+    } else if (block.tagName === 'UL' || block.tagName === 'OL') {
+      let list = block.cloneNode(false);
+      state.body.appendChild(list);
+      [...block.children].forEach((item) => {
+        list.appendChild(item.cloneNode(true));
+        if (overflows(state.body)) {
+          list.lastElementChild.remove();
+          state.next();
+          list = block.cloneNode(false);
+          state.body.appendChild(list);
+          list.appendChild(item.cloneNode(true));
+        }
+      });
+    } else if (block.tagName === 'PRE') {
+      let pre = block.cloneNode(false);
+      let code = document.createElement('code');
+      pre.appendChild(code);
+      state.body.appendChild(pre);
+      block.textContent.split('\n').forEach((line) => {
+        const previous = code.textContent;
+        code.textContent = previous ? previous + '\n' + line : line;
+        if (overflows(state.body)) {
+          code.textContent = previous;
+          state.next();
+          pre = block.cloneNode(false);
+          code = document.createElement('code');
+          code.textContent = line;
+          pre.appendChild(code);
+          state.body.appendChild(pre);
+        }
+      });
+    } else {
+      state.body.appendChild(clone);
+      clone.classList.add('oversize-block');
+    }
+  }
+
+  const contentPages = [];
+  let contentNumber = 0;
+  let header = 'Financial Control';
+  let current;
+  const state = {
+    body: null,
+    next() {
+      contentNumber += 1;
+      current = createPage('content', header, String(contentNumber));
+      contentPages.push(current);
+      state.body = current.querySelector('.page-body');
+    },
+  };
+  source.querySelectorAll('.chapter-source').forEach((chapter) => {
+    const blocks = [...chapter.children];
+    const title = blocks.find((block) =>
+      block.tagName === 'H1' && !block.classList.contains('part-title'));
+    header = title ? title.textContent : chapter.dataset.file;
+    if (!current || state.body.children.length) state.next();
+    blocks.forEach((block, index) => {
+      const chapterTitle = block.tagName === 'H1' && !block.classList.contains('part-title');
+      if (chapterTitle && state.body.children.length &&
+          ![...state.body.children].every((child) => child.classList.contains('part-title'))) {
+        state.next();
+      }
+      if (/^H[2-4]$/.test(block.tagName) && blocks[index + 1]) {
+        const heading = block.cloneNode(true);
+        const following = blocks[index + 1].cloneNode(true);
+        state.body.append(heading, following);
+        const orphan = overflows(state.body);
+        heading.remove();
+        following.remove();
+        if (orphan && state.body.children.length) state.next();
+      }
+      append(block, state);
+    });
+  });
+  const headingPages = {};
+  contentPages.forEach((page) => page.querySelectorAll('[data-heading-key]').forEach((heading) => {
+    headingPages[heading.dataset.headingKey] = page.dataset.label;
+  }));
+
+  function paginate(nodes, kind, pageHeader, first, label = String) {
+    const pages = [];
+    let number = first;
+    let page = createPage(kind, pageHeader, label(number));
+    pages.push(page);
+    const local = {
+      body: page.querySelector('.page-body'),
+      next() {
+        number += 1;
+        page = createPage(kind, pageHeader, label(number));
+        pages.push(page);
+        local.body = page.querySelector('.page-body');
+      },
+    };
+    nodes.forEach((node) => append(node, local));
+    return pages;
+  }
+  const glossaryNodes = [
+    make('<h1>Glossário</h1>'),
+    make('<p class="book-note">Termos contextualizados ao conteúdo deste volume.</p>'),
+    ...glossary.map(([term, definition]) =>
+      make('<dl class="glossary-entry"><dt>' + term + '</dt><dd>' + definition + '</dd></dl>')),
+  ];
+  const glossaryPages = paginate(
+    glossaryNodes, 'appendix glossary', 'Glossário', contentNumber + 1);
+
+  const entries = [];
+  [...glossary].sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')).forEach(([term]) => {
+    const needle = term.toLocaleLowerCase('pt-BR');
+    const pages = contentPages
+      .filter((page) => page.innerText.toLocaleLowerCase('pt-BR').includes(needle))
+      .map((page) => page.dataset.label);
+    if (pages.length) entries.push(make(
+      '<div class="index-entry"><span>' + term + '</span><span class="index-pages">' +
+      pages.join(', ') + '</span></div>'));
+  });
+  const grid = make('<div class="index-grid"></div>');
+  entries.forEach((entry) => grid.appendChild(entry));
+  const indexStart = contentNumber + glossaryPages.length + 1;
+  const indexPages = paginate([
+    make('<h1>Índice remissivo</h1>'),
+    make('<p class="book-note">Referências calculadas pelas ocorrências nas páginas finais; não são estimativas.</p>'),
+    grid,
+  ], 'appendix index', 'Índice remissivo', indexStart);
+
+  const roman = (number) => {
+    const values = [[10,'x'],[9,'ix'],[5,'v'],[4,'iv'],[1,'i']];
+    let result = '';
+    values.forEach(([value, symbol]) => {
+      while (number >= value) { result += symbol; number -= value; }
+    });
+    return result;
+  };
+  const toc = [make('<h1 class="toc-title">Sumário</h1>')];
+  headings
+    .filter((heading) => heading.level <= 2 && !/^PARTE\b/i.test(heading.title))
+    .forEach((heading) => {
+      if (!headingPages[heading.key]) return;
+      toc.push(make('<div class="toc-row toc-level-' + heading.level + '">' +
+        '<span class="toc-label">' + heading.title + '</span>' +
+        '<span class="toc-page">' + headingPages[heading.key] + '</span></div>'));
+    });
+  toc.push(make('<div class="toc-row toc-level-1"><span class="toc-label">Glossário</span>' +
+    '<span class="toc-page">' + (contentNumber + 1) + '</span></div>'));
+  toc.push(make('<div class="toc-row toc-level-1"><span class="toc-label">Índice remissivo</span>' +
+    '<span class="toc-page">' + indexStart + '</span></div>'));
+  const tocPages = paginate(toc, 'frontmatter toc', 'Sumário', 1, roman);
+
+  const cover = make('<section class="page cover"><div class="cover-content">' +
+    '<p class="cover-kicker">Livro técnico</p><h1>Financial Control</h1>' +
+    '<p class="cover-subtitle">Arquitetura, persistência e desenvolvimento do sistema de controle financeiro pessoal</p>' +
+    '</div><div class="cover-meta"><span>Felipe</span><span>Edição auditada — agosto de 2026</span></div></section>');
+  const all = [cover, ...tocPages, ...contentPages, ...glossaryPages, ...indexPages];
+  book.replaceChildren(...all);
+  all.forEach((page, index) => {
+    page.classList.add((index + 1) % 2 ? 'odd' : 'even');
+    page.dataset.physicalPage = String(index + 1);
+  });
+  source.remove();
+  staging.remove();
+  const emptyPages = all.filter((page) => !page.classList.contains('cover'))
+    .filter((page) => !page.querySelector('.page-body')?.innerText.trim())
+    .map((page) => page.dataset.physicalPage);
+  const overflowDetails = all.map((page) => {
+    const body = page.querySelector('.page-body');
+    return body ? {
+      page: page.dataset.physicalPage,
+      heightDelta: body.scrollHeight - body.clientHeight,
+      widthDelta: body.scrollWidth - body.clientWidth,
+    } : null;
+  }).filter((detail) => detail && (detail.heightDelta > 1 || detail.widthDelta > 1));
+  const overflowPages = overflowDetails.map((detail) => detail.page);
+  const outOfBoundsElements = [];
+  all.forEach((page) => {
+    const body = page.querySelector('.page-body');
+    if (!body) return;
+    const bodyRect = body.getBoundingClientRect();
+    page.querySelectorAll('pre, table').forEach((element) => {
+      const rect = element.getBoundingClientRect();
+      if (
+        rect.left < bodyRect.left - 1 ||
+        rect.right > bodyRect.right + 1 ||
+        rect.top < bodyRect.top - 1 ||
+        rect.bottom > bodyRect.bottom + 1
+      ) {
+        outOfBoundsElements.push({
+          page: page.dataset.physicalPage,
+          tag: element.tagName,
+          text: element.innerText.slice(0, 80),
+        });
+      }
+    });
+  });
+  const orphanHeadings = all.flatMap((page) => {
+    const body = page.querySelector('.page-body');
+    if (!body || !body.lastElementChild || !/^H[2-4]$/.test(body.lastElementChild.tagName)) {
+      return [];
+    }
+    return [{
+      page: page.dataset.physicalPage,
+      heading: body.lastElementChild.innerText,
+    }];
+  });
+  const pageSummaries = all.map((page) => {
+    const body = page.querySelector('.page-body');
+    const text = body?.innerText.trim() || page.innerText.trim();
+    if (!body) {
+      return { page: page.dataset.physicalPage, kind: 'cover', characters: text.length };
+    }
+    const children = [...body.children];
+    const bottom = children.length
+      ? Math.max(...children.map((child) => child.getBoundingClientRect().bottom))
+      : body.getBoundingClientRect().top;
+    const bodyRect = body.getBoundingClientRect();
+    return {
+      page: page.dataset.physicalPage,
+      kind: page.classList.contains('toc')
+        ? 'toc'
+        : page.classList.contains('glossary')
+          ? 'glossary'
+          : page.classList.contains('index')
+            ? 'index'
+            : 'content',
+      label: page.dataset.label,
+      characters: text.length,
+      fillPercent: Math.round(((bottom - bodyRect.top) / bodyRect.height) * 100),
+      firstText: text.slice(0, 90),
+      lastText: text.slice(-90),
+    };
+  });
+  const representativeBody = contentPages[0].querySelector('.page-body');
+  const representativeStyle = getComputedStyle(representativeBody);
+  window.__BOOK_REPORT__ = {
+    physicalPages: all.length,
+    contentPages: contentPages.length,
+    tocPages: tocPages.length,
+    glossaryPages: glossaryPages.length,
+    indexPages: indexPages.length,
+    emptyPages,
+    overflowPages,
+    overflowDetails,
+    outOfBoundsElements,
+    orphanHeadings,
+    pageSummaries,
+    typography: {
+      fontSize: representativeStyle.fontSize,
+      lineHeight: representativeStyle.lineHeight,
+      pageWidth: getComputedStyle(contentPages[0]).width,
+      pageHeight: getComputedStyle(contentPages[0]).height,
+    },
+    headings: headings.length,
+    tables: book.querySelectorAll('table').length,
+    codeBlocks: book.querySelectorAll('pre').length,
+    diagrams: [...book.querySelectorAll('pre')].filter((pre) => /[↓→├└│]/.test(pre.textContent)).length,
+    indexEntries: entries.length,
+    portugueseCharacters: /[áàâãéêíóôõúç]/i.test(book.innerText),
+  };
+  window.__BOOK_READY__ = true;
+})();
+</script></body></html>

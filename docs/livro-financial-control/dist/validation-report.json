@@ -1,0 +1,225 @@
+{
+  "generatedAt": "2026-08-20T01:40:39.551Z",
+  "chapters": [
+    "05-backend-spring.md",
+    "09-banco-flyway.md"
+  ],
+  "chapterCount": 2,
+  "htmlPath": "D:\\Financeiro\\docs\\livro-financial-control\\dist\\financial-control-livro.html",
+  "htmlBytes": 58490,
+  "pdfPath": "D:\\Financeiro\\docs\\livro-financial-control\\dist\\financial-control-livro.pdf",
+  "pdfBytes": 536069,
+  "pdfHeader": true,
+  "pdfEof": true,
+  "pdfPageObjects": 20,
+  "pdfEmbedState": {
+    "type": "application/pdf",
+    "width": 1000,
+    "height": 760
+  },
+  "physicalPages": 20,
+  "contentPages": 16,
+  "tocPages": 1,
+  "glossaryPages": 1,
+  "indexPages": 1,
+  "emptyPages": [],
+  "overflowPages": [],
+  "overflowDetails": [],
+  "outOfBoundsElements": [],
+  "orphanHeadings": [],
+  "pageSummaries": [
+    {
+      "page": "1",
+      "kind": "cover",
+      "characters": 160
+    },
+    {
+      "page": "2",
+      "kind": "toc",
+      "label": "i",
+      "characters": 1009,
+      "fillPercent": 76,
+      "firstText": "Sumário\nCapítulo 5 — Anatomia do backend\n1\n5.1 Estrutura e stack efetivamente usadas\n1\n5.2",
+      "lastText": "igration\n14\n9.11 Divergências encontradas na auditoria\n15\nGlossário\n17\nÍndice remissivo\n18"
+    },
+    {
+      "page": "3",
+      "kind": "content",
+      "label": "1",
+      "characters": 1500,
+      "fillPercent": 97,
+      "firstText": "PARTE VI — BACKEND JAVA E SPRING\nCapítulo 5 — Anatomia do backend\n\nO backend do Financial ",
+      "lastText": " PDF\nJUnit/Testcontainers\ttestes com PostgreSQL real\nSpotless\tGoogle Java Format no verify"
+    },
+    {
+      "page": "4",
+      "kind": "content",
+      "label": "2",
+      "characters": 1235,
+      "fillPercent": 97,
+      "firstText": "Não há H2, MapStruct, camada DAO adicional, UseCase por CRUD ou arquitetura hexagonal arti",
+      "lastText": "/response DTO;\nstatus HTTP;\nAuthenticatedUser;\nService do módulo.\n\nExemplo representativo:"
+    },
+    {
+      "page": "5",
+      "kind": "content",
+      "label": "3",
+      "characters": 1399,
+      "fillPercent": 93,
+      "firstText": "@PostMapping\n@ResponseStatus(HttpStatus.CREATED)\npublic TransferResponse create(\n    @Auth",
+      "lastText": "ormato e limites estruturais. O Service verifica regras que dependem do estado persistido."
+    },
+    {
+      "page": "6",
+      "kind": "content",
+      "label": "4",
+      "characters": 1423,
+      "fillPercent": 98,
+      "firstText": "CONCEITO — DTO não é Entity reduzida DTO é contrato da fronteira. Ele protege o cliente co",
+      "lastText": "m PESSIMISTIC_WRITE. Transferências travam as duas contas em ordem determinística de UUID:"
+    },
+    {
+      "page": "7",
+      "kind": "content",
+      "label": "5",
+      "characters": 1105,
+      "fillPercent": 89,
+      "firstText": "if (sourceId.compareTo(destinationId) < 0) {\n  first = lock(sourceId);\n  second = lock(des",
+      "lastText": " há campo rule ou subCode. Clientes não devem supor que o nome da constante é transmitido."
+    },
+    {
+      "page": "8",
+      "kind": "content",
+      "label": "6",
+      "characters": 1446,
+      "fillPercent": 93,
+      "firstText": "5.9 Segurança do backend\nPOST /auth/login\n  ↓\nAuthService verifica Argon2id\n  ↓\nJwtService",
+      "lastText": "ura manualmente.\n\n5.12 Testes do backend\n\nA suíte auditada executou 578 testes sem falhas."
+    },
+    {
+      "page": "9",
+      "kind": "content",
+      "label": "7",
+      "characters": 1483,
+      "fillPercent": 93,
+      "firstText": "Categoria\tExemplos\nAPI\tExpenseApiTest, Phase14ApiTest, ReportsApiTest\ndomínio puro\tInvoice",
+      "lastText": "eite userId do cliente.\n\n5.14 Anatomia resumida: transferência\nHTTP\nPOST /api/v1/transfers"
+    },
+    {
+      "page": "10",
+      "kind": "content",
+      "label": "8",
+      "characters": 1023,
+      "fillPercent": 72,
+      "firstText": "Fluxo\nTransferController\n  → TransferService\n      → lock das contas em ordem UUID\n      →",
+      "lastText": "o fora do escopo atual\nremoção da tabela V13 superada\trequer migration e decisão explícita"
+    },
+    {
+      "page": "11",
+      "kind": "content",
+      "label": "9",
+      "characters": 1727,
+      "fillPercent": 90,
+      "firstText": "PARTE VIII — PERSISTÊNCIA E EVOLUÇÃO DO BANCO\nCapítulo 9 — PostgreSQL, modelo físico e Fly",
+      "lastText": "am valores com RoundingMode.HALF_UP.\n\nExemplo de parcelamento de R$ 100,00 em três partes:"
+    },
+    {
+      "page": "12",
+      "kind": "content",
+      "label": "10",
+      "characters": 1605,
+      "fillPercent": 97,
+      "firstText": "base = 100,00 / 3, arredondado para baixo = 33,33\nprimeira parcela = 100,00 - (33,33 × 2) ",
+      "lastText": "ration antiga permanece como registro da evolução, mas o contrato efetivo é o CHECK final."
+    },
+    {
+      "page": "13",
+      "kind": "content",
+      "label": "11",
+      "characters": 1039,
+      "fillPercent": 89,
+      "firstText": "Valores derivados não viram colunas\n\nO schema não persiste:\n\nsaldo atual, reservado ou dis",
+      "lastText": "ccount_refunds\ncredit_card_invoice_installments — tabela legada, sem uso operacional atual"
+    },
+    {
+      "page": "14",
+      "kind": "content",
+      "label": "12",
+      "characters": 1422,
+      "fillPercent": 95,
+      "firstText": "Agreements\ncredit_card_invoice_agreements\ncredit_card_invoice_agreement_settlements\ncredit",
+      "lastText": "ial único por cartão\nCategoria sem duplicata lógica\tíndice por usuário, tipo e lower(name)"
+    },
+    {
+      "page": "15",
+      "kind": "content",
+      "label": "13",
+      "characters": 1665,
+      "fillPercent": 91,
+      "firstText": "Índices de user_id, datas e FKs sustentam as consultas multiusuário. Índice não substitui ",
+      "lastText": "_card_invoice_installments.status pertence ao modelo superado e não\n\nganhou novo contrato."
+    },
+    {
+      "page": "16",
+      "kind": "content",
+      "label": "14",
+      "characters": 1728,
+      "fillPercent": 94,
+      "firstText": "9.8 Visões derivadas\nRecurso\tImplementação\tTabela própria\nPayables\tPayablesService\tnão\nRec",
+      "lastText": "D, não remova FK composta para simplificar JPA e não crie tabela para uma visão calculada."
+    },
+    {
+      "page": "17",
+      "kind": "content",
+      "label": "15",
+      "characters": 1758,
+      "fillPercent": 95,
+      "firstText": "9.11 Divergências encontradas na auditoria\n\nEstas divergências pertencem ao estado auditad",
+      "lastText": "ecisão sobre histórico.\n\nINC-06 — Lista documental de FKs incompleta\n\nPENDENTE documental."
+    },
+    {
+      "page": "18",
+      "kind": "content",
+      "label": "16",
+      "characters": 710,
+      "fillPercent": 30,
+      "firstText": "docs/23 §265 não enumera várias FKs introduzidas nas fases 9–17, embora elas existam nas m",
+      "lastText": "lada a fatura: decisão deferida.\n\nEsses pontos não devem receber implementação provisória."
+    },
+    {
+      "page": "19",
+      "kind": "glossary",
+      "label": "17",
+      "characters": 753,
+      "fillPercent": 84,
+      "firstText": "Glossário\n\nTermos contextualizados ao conteúdo deste volume.\n\nAPI\nFronteira HTTP REST expo",
+      "lastText": "PostgreSQL real executado em testes.\nUUID v7\nIdentificador temporal gerado pela aplicação."
+    },
+    {
+      "page": "20",
+      "kind": "index",
+      "label": "18",
+      "characters": 509,
+      "fillPercent": 25,
+      "firstText": "Índice remissivo\n\nReferências calculadas pelas ocorrências nas páginas finais; não são est",
+      "lastText": " 13, 15\nService\n1, 2, 3, 4, 6, 7, 8, 9, 13, 14, 15\nTestcontainers\n1, 7, 9, 14\nUUID v7\n4, 9"
+    }
+  ],
+  "typography": {
+    "fontSize": "14.6667px",
+    "lineHeight": "17.7467px",
+    "pageWidth": "793.688px",
+    "pageHeight": "1122.52px"
+  },
+  "headings": 58,
+  "tables": 9,
+  "codeBlocks": 23,
+  "diagrams": 6,
+  "indexEntries": 14,
+  "portugueseCharacters": true,
+  "inspectionImages": [
+    "D:\\Financeiro\\docs\\livro-financial-control\\dist\\inspection\\inicio-pagina-1.png",
+    "D:\\Financeiro\\docs\\livro-financial-control\\dist\\inspection\\meio-pagina-10.png",
+    "D:\\Financeiro\\docs\\livro-financial-control\\dist\\inspection\\final-pagina-20.png"
+  ]
+}
